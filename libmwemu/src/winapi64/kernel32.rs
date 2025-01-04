@@ -2255,7 +2255,8 @@ fn GetSystemDirectoryA(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs.rcx;
     let size = emu.regs.rdx;
 
-    emu.maps.write_string(out_buff_ptr, "C:\\Windows\\");
+    let output = "C:\\Windows\\";
+    emu.maps.write_string(out_buff_ptr, &format!("{}\\0", output));
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -2271,8 +2272,8 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs.rcx;
     let size = emu.regs.rdx;
 
-    let output = "C:\\Windows\\\0";
-    emu.maps.write_wide_string(out_buff_ptr, output);
+    let output = "C:\\Windows\\";
+    emu.maps.write_wide_string(out_buff_ptr, &format!("{}\\0", output));
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
