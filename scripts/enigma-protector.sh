@@ -3,7 +3,7 @@
 set -x
 
 export RUST_BACKTRACE=1
-export RUST_LOG=info
+export RUST_LOG=debug
 
 # Check if mode parameter is provided
 if [ -z "$1" ]; then
@@ -17,7 +17,7 @@ MODE=$1
 if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
     TARGET=x86_64-pc-windows-msvc
 else
-    TARGET=x86_64-apple-darwin
+    TARGET=aarch64-apple-darwin
 fi
 
 # Execute based on mode
@@ -30,8 +30,25 @@ if [ "$MODE" == "dump" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --rdx 1
-    python scripts/combine-dumps.py dumps/surprise-combined-output.bin dumps/*-surprise*
+        --rdx 1 \
+        --exit 232321175
+    mv ./dumps/emu.bin ./dumps/emu-232321175.bin
+elif [ "$MODE" == "dump_verbose" ]; then
+    cargo run \
+        -p mwemu \
+        --release \
+        --target $TARGET \
+        -- \
+        --filename ~/Desktop/enigma/surprise.dll \
+        --maps ./maps64/ \
+        --64bits \
+        --rdx 1 \
+        -vvv \
+        --memory \
+        --regs \
+        -p \
+        --banzai \
+        --trace /tmp/output.csv
 elif [ "$MODE" == "load" ]; then
     cargo run \
         -p mwemu \
@@ -41,7 +58,13 @@ elif [ "$MODE" == "load" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --dump ./dumps/emu-227958435.bin
+        --dump ./dumps/emu-232321175.bin \
+        -vvv \
+        --memory \
+        --regs \
+        -p \
+        --banzai \
+        --trace /tmp/output.csv
 else
     echo "Error: Invalid mode. Use 'dump' or 'load'"
     exit 1

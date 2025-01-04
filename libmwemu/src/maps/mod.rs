@@ -90,6 +90,37 @@ impl Maps {
         Ok(self.maps.get_mut(pos).unwrap())
     }
 
+    pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
+        for (idx, mem) in self.maps.iter_mut().enumerate() {
+            if mem.inside(addr) {
+                mem.write_byte(addr, value);
+                return true;
+            }
+        }
+
+        if self.banzai {
+            log::info!("writing byte on non mapped zone 0x{:x}", addr);
+            return false;
+        }
+
+        panic!("writing byte on non mapped zone 0x{:x}", addr);
+    }
+
+    pub fn read_byte(&self, addr: u64) -> Option<u8> {
+        for (idx, mem) in self.maps.iter().enumerate() {
+            if mem.inside(addr) {
+                return Some(mem.read_byte(addr));
+            }
+        }
+
+        if self.banzai {
+            log::warn!("reading byte on non mapped zone 0x{:x}", addr);
+            return None;
+        }
+
+        panic!("reading byte on non mapped zone 0x{:x}", addr);
+    }
+    
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
         for mem in self.maps.iter_mut() {
             if mem.inside(addr)
@@ -151,22 +182,6 @@ impl Maps {
         }
 
         true
-    }
-
-    pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
-        for mem in self.maps.iter_mut() {
-            if mem.inside(addr) {
-                mem.write_byte(addr, value);
-                return true;
-            }
-        }
-
-        if self.banzai {
-            log::info!("writing byte on non mapped zone 0x{:x}", addr);
-            false
-        } else {
-            panic!("writing byte on non mapped zone 0x{:x}", addr);
-        }
     }
 
     pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) {
@@ -338,15 +353,6 @@ impl Maps {
         Some(n)
     }
 
-    pub fn read_byte(&self, addr: u64) -> Option<u8> {
-        for mem in self.maps.iter() {
-            if mem.inside(addr) {
-                return Some(mem.read_byte(addr));
-            }
-        }
-        None
-    }
-
     pub fn get_mem_ref(&self, name: &str) -> &Mem64 {
         for mem in self.maps.iter() {
             if mem.get_name() == name {
@@ -417,6 +423,7 @@ impl Maps {
     }
 
     pub fn write_string(&mut self, to: u64, from: &str) {
+        log::debug!("write_string to: 0x{:x} from: {}", to, from);
         let bs: Vec<u8> = from.bytes().collect();
 
         for (i, bsi) in bs.iter().enumerate() {
@@ -426,6 +433,7 @@ impl Maps {
     }
 
     pub fn write_wide_string(&mut self, to: u64, from: &str) {
+        log::debug!("write_wide_string to: 0x{:x} from: {}", to, from);
         let bs: Vec<u8> = from.bytes().collect();
         let mut off = 0;
         for bsi in bs.iter() {

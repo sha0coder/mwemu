@@ -5,3 +5,7 @@ members = [
     "libmwemu",
     "mwemu"
 ]
+
+[profile.release]
+debug = 2
+panic = 'unwind'
