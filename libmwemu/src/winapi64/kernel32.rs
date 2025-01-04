@@ -13,6 +13,11 @@ use std::sync::Mutex;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
+fn clear_last_error(emu: &mut emu::Emu) {
+    let mut err = LAST_ERROR.lock().unwrap();
+    *err = constants::ERROR_SUCCESS;
+}
+
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
     match api.as_str() {
@@ -2256,7 +2261,7 @@ fn GetSystemDirectoryA(emu: &mut emu::Emu) {
     let size = emu.regs.rdx;
 
     let output = "C:\\Windows\\";
-    emu.maps.write_string(out_buff_ptr, &format!("{}\\0", output));
+    emu.maps.write_string(out_buff_ptr, &output);
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -2273,7 +2278,7 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let size = emu.regs.rdx;
 
     let output = "C:\\Windows\\";
-    emu.maps.write_wide_string(out_buff_ptr, &format!("{}\\0", output));
+    emu.maps.write_wide_string(out_buff_ptr, &output);
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -3097,17 +3102,19 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
     
-    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
+    let result = ".";
     let required_size = result.len() + 1; // Include null terminator
 
     // If cchData is 0, return required buffer size
     if cch_data == 0 {
         emu.regs.rax = required_size as u64;
+        clear_last_error(emu);
         return;
     }
 
     // Check if buffer is too small
     if cch_data < required_size {
+        log::warn!("{} buffer too small for result cch_data: {} required_size: {}", emu.pos, cch_data, required_size);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs.rax = 0;
@@ -3115,8 +3122,9 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     }
     
     // Write result directly to provided buffer
-    emu.maps.write_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.maps.write_string(lp_lc_data as u64, &result);
     emu.regs.rax = result.len() as u64; // Return length without null terminator
+    clear_last_error(emu);
 }
 
 /*
@@ -3141,17 +3149,19 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
         cch_data
     );
 
-    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
+    let result = ".";
+    let required_size = result.len() + 1; // Include null terminator
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
-        emu.regs.rax = result.len() as u64 + 1; // +1 for null terminator
+        emu.regs.rax = required_size as u64;
+        clear_last_error(emu);
         return;
     }
 
     // Check if buffer is too small
     if cch_data < result.len() + 1 {
-        log::warn!("{} buffer too small for result", emu.pos);
+        log::warn!("{} buffer too small for result cch_data: {} required_size: {}", emu.pos, cch_data, result.len() + 1);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs.rax = 0;
@@ -3159,8 +3169,9 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
     }
 
     // write the result to the buffer
-    emu.maps.write_wide_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.maps.write_wide_string(lp_lc_data as u64, &result);
     emu.regs.rax = result.len() as u64;
+    clear_last_error(emu);
 }
 
 /*
@@ -3197,8 +3208,9 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp + 24)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
-    log_red!(emu, "** {} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
+    log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
         emu.pos,
+        emu.regs.rip,
         code_page,
         dw_flags,
         lp_wide_char_str,
@@ -3211,6 +3223,9 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
 
     // 1. Input validation
     if lp_wide_char_str == 0 {
+        log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
+        let mut err = LAST_ERROR.lock().unwrap();
+        *err = constants::ERROR_INVALID_PARAMETER;
         emu.regs.rax = 0;
         return;
     }
@@ -3219,6 +3234,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     if code_page == constants::CP_UTF7 || code_page == constants::CP_UTF8 {
         if lp_default_char != 0 || lp_used_default_char != 0 {
             // Set last error to ERROR_INVALID_PARAMETER
+            log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
             let mut err = LAST_ERROR.lock().unwrap();
             *err = constants::ERROR_INVALID_PARAMETER;
             emu.regs.rax = 0;
@@ -3237,12 +3253,14 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     // 4. If this is just a size query
     if cb_multi_byte == 0 {
         emu.regs.rax = input_len as u64;
+        clear_last_error(emu);
         return;
     }
 
     // 5. Check output buffer size
     if cb_multi_byte < input_len as u64 {
         // Set last error to ERROR_INSUFFICIENT_BUFFER
+        log::warn!("{} buffer too small for result cb_multi_byte: {} input_len: {}", emu.pos, cb_multi_byte, input_len);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs.rax = 0;
@@ -3265,6 +3283,8 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     } else {
         s.len() as u64
     };
+
+    clear_last_error(emu);
 }
 
 /*
@@ -3303,6 +3323,9 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
 
     // 1. Input validation
     if utf8_ptr == 0 {
+        log::warn!("{} kernel32!MultiByteToWideChar invalid parameter", emu.pos);
+        let mut err = LAST_ERROR.lock().unwrap();
+        *err = constants::ERROR_INVALID_PARAMETER;
         emu.regs.rax = 0;
         return;
     }
@@ -3313,28 +3336,25 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
     }
 
     // 3. Read input string and get its length
-    let mut s = emu.maps.read_string(utf8_ptr);
-    
-    // Handle null termination for the input string
-    if cb_multi_byte == -1 {
-        // If -1, string is null-terminated, length includes the terminator
-        s = format!("{}\0", s);
+    let s = if cb_multi_byte == -1 {
+        emu.maps.read_string(utf8_ptr)
     } else {
-        // If not -1, take exactly cb_multi_byte bytes
-        s.truncate(cb_multi_byte as usize);
-    }
+        String::from_utf8(emu.maps.read_buffer(utf8_ptr, cb_multi_byte as usize)).unwrap()
+    };
 
     let required_chars = s.len();
 
     // 4. If this is just a size query
     if wide_ptr == 0 {
         emu.regs.rax = required_chars as u64;
+        clear_last_error(emu);
         return;
     }
 
     // 5. Check output buffer size
     if cch_wide_char < required_chars as i64 {
         // Set last error to ERROR_INSUFFICIENT_BUFFER
+        log::warn!("{} buffer too small for result cch_wide_char: {} required_chars: {}", emu.pos, cch_wide_char, required_chars);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs.rax = 0;
@@ -3348,6 +3368,8 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
 
     // 7. Return number of wide characters written
     emu.regs.rax = required_chars as u64;
+
+    clear_last_error(emu);
 }
 
 /*
