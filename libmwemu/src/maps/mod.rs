@@ -1079,26 +1079,37 @@ impl Maps {
 
     fn _alloc(&self, sz: u64, bottom: u64, top: u64, lib: bool) -> Option<u64> {
         let mut prev: u64 = bottom;
+        let debug = false;
 
-        //log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
+        if debug {
+            log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
+        }
 
         for i in 0..self.maps.len() {
             let mem = &self.maps[i];
             let base = mem.get_base();
 
             if lib && base < bottom {
-                //log::info!("skipping: 0x{:x}", base);
+                if debug {
+                    log::info!("skipping: 0x{:x}", base);
+                }
                 continue; // a lib finding allocs that are not lib
             }
 
-            //log::info!("base: 0x{:x} prev: 0x{:x} sz: 0x{:x}", base, prev, sz);
+            if debug {
+                log::info!("base: 0x{:x} prev: 0x{:x} sz: 0x{:x}", base, prev, sz);
+            }
             if prev > base {
                 //self.show_maps();
                 panic!("alloc error");
             }
-            //log::info!("space: 0x{:x}", base - prev);
+            if debug {
+                log::info!("space: 0x{:x}", base - prev);
+            }
             if (base - prev) > sz {
-                //log::info!("space found: 0x{:x}", prev);
+                if debug {
+                    log::info!("space found: 0x{:x}", prev);
+                }
                 return Some(prev);
             }
 
@@ -1106,7 +1117,9 @@ impl Maps {
         }
 
         if top - prev > sz {
-            //log::info!("space found: 0x{:x} sz:{}", prev, sz);
+            if debug {
+                log::info!("space found: 0x{:x} sz:{}", prev, sz);
+            }
             return Some(prev);
         }
 
