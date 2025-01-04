@@ -449,6 +449,7 @@ impl Maps {
     }
 
     pub fn write_string(&mut self, to: u64, from: &str) {
+        log::debug!("write_string to: 0x{:x} from: {}", to, from);
         let bs: Vec<u8> = from.bytes().collect();
 
         for (i, bsi) in bs.iter().enumerate() {
@@ -458,6 +459,7 @@ impl Maps {
     }
 
     pub fn write_wide_string(&mut self, to: u64, from: &str) {
+        log::debug!("write_wide_string to: 0x{:x} from: {}", to, from);
         let bs: Vec<u8> = from.bytes().collect();
         let mut off = 0;
         for bsi in bs.iter() {

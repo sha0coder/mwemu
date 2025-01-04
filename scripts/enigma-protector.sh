@@ -3,7 +3,7 @@
 set -x
 
 export RUST_BACKTRACE=1
-export RUST_LOG=info
+export RUST_LOG=debug
 
 # Check if mode parameter is provided
 if [ -z "$1" ]; then
@@ -30,7 +30,9 @@ if [ "$MODE" == "dump" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --rdx 1
+        --rdx 1 \
+        --exit 232321175
+    mv ./dumps/emu.bin ./dumps/emu-232321175.bin
 elif [ "$MODE" == "load" ]; then
     cargo run \
         -p mwemu \
@@ -40,7 +42,11 @@ elif [ "$MODE" == "load" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --dump ./dumps/emu-227958435.bin
+        --dump ./dumps/emu-232321175.bin \
+        -vvv \
+        --memory \
+        --regs \
+        --trace /tmp/output.csv
 else
     echo "Error: Invalid mode. Use 'dump' or 'load'"
     exit 1
