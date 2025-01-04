@@ -3143,7 +3143,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
-        emu.regs.rax = (result.len() as u64 + 1) * 2; // +1 for null terminator, *2 for wide chars
+        emu.regs.rax = result.len() as u64 + 1; // +1 for null terminator
         return;
     }
 
