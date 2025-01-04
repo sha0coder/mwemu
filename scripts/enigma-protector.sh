@@ -17,7 +17,7 @@ MODE=$1
 if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
     TARGET=x86_64-pc-windows-msvc
 else
-    TARGET=x86_64-apple-darwin
+    TARGET=aarch64-apple-darwin
 fi
 
 # Execute based on mode
