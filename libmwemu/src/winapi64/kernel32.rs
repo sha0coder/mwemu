@@ -3223,7 +3223,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
 
     // 1. Input validation
     if lp_wide_char_str == 0 {
-        log::warn!("{} invalid parameter", emu.pos);
+        log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INVALID_PARAMETER;
         emu.regs.rax = 0;
@@ -3234,7 +3234,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     if code_page == constants::CP_UTF7 || code_page == constants::CP_UTF8 {
         if lp_default_char != 0 || lp_used_default_char != 0 {
             // Set last error to ERROR_INVALID_PARAMETER
-            log::warn!("{} invalid parameter", emu.pos);
+            log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
             let mut err = LAST_ERROR.lock().unwrap();
             *err = constants::ERROR_INVALID_PARAMETER;
             emu.regs.rax = 0;
@@ -3323,7 +3323,7 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
 
     // 1. Input validation
     if utf8_ptr == 0 {
-        log::warn!("{} invalid parameter", emu.pos);
+        log::warn!("{} kernel32!MultiByteToWideChar invalid parameter", emu.pos);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INVALID_PARAMETER;
         emu.regs.rax = 0;
