@@ -108,6 +108,14 @@ impl Mem64 {
         self.alloc(size as usize);
     }
 
+    pub fn build_addresses(&self, addr: u64, sz: usize) -> Vec<u64> {
+        let mut addresses = Vec::new();
+        for i in 0..sz {
+            addresses.push(addr + i as u64);
+        }
+        addresses
+    }
+
     pub fn read_from(&self, addr: u64) -> &[u8] {
         let idx = (addr - self.base_addr) as usize;
         let max_sz = (self.bottom_addr - self.base_addr) as usize;
@@ -116,7 +124,9 @@ impl Mem64 {
         if sz > max_sz {
             sz = max_sz;
         }*/
-        self.mem.get(idx..max_sz).unwrap()
+        let r = self.mem.get(idx..max_sz).unwrap();
+        log::trace!("mem: read_from: 0x{:x?} = {:?}", self.build_addresses(addr, max_sz), r);
+        r
     }
 
     pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
@@ -125,31 +135,39 @@ impl Mem64 {
         if sz2 > self.mem.len() {
             return &[0; 0];
         }
-        self.mem.get(idx..sz2).unwrap()
+        let r = self.mem.get(idx..sz2).unwrap();
+        log::trace!("mem: read_bytes: 0x{:x?} = {:?}", self.build_addresses(addr, sz), r);
+        r
     }
 
     pub fn read_byte(&self, addr: u64) -> u8 {
-        assert!(self.inside(addr));
-
         let idx = (addr - self.base_addr) as usize;
-        if idx < self.mem.len() {
-            self.mem[idx]
-        } else {
-            panic!("reading at 0x{:x}", addr);
-        }
+        let r = self.mem[idx];
+
+        log::trace!("mem: read_byte: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 1), r);
+
+        r
     }
 
     pub fn read_word(&self, addr: u64) -> u16 {
         let idx = (addr - self.base_addr) as usize;
-        (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8)
+        let r = (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8);
+
+        log::trace!("mem: read_word: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 2), r);
+
+        r
     }
 
     pub fn read_dword(&self, addr: u64) -> u32 {
         let idx = (addr - self.base_addr) as usize;
-        (self.mem[idx] as u32)
+        let r = (self.mem[idx] as u32)
             + ((self.mem[idx + 1] as u32) << 8)
             + ((self.mem[idx + 2] as u32) << 16)
-            + ((self.mem[idx + 3] as u32) << 24)
+            + ((self.mem[idx + 3] as u32) << 24);
+
+        log::trace!("mem: read_dword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 4), r);
+
+        r
     }
 
     pub fn read_qword(&self, addr: u64) -> u64 {
@@ -160,32 +178,41 @@ impl Mem64 {
             r |= (self.mem[idx + i] as u64) << (8 * i);
         }
 
+        log::trace!("mem: read_qword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 8), r);
+
         r
     }
 
     pub fn write_byte(&mut self, addr: u64, value: u8) {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx] = value;
+
+        log::trace!("mem: write_byte: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 1), value);
     }
 
     pub fn write_bytes(&mut self, addr: u64, bs: &[u8]) {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..(bs.len() + idx)].copy_from_slice(&bs[..]);
+
+        log::trace!("mem: write_bytes: 0x{:x?} = {:?}", self.build_addresses(addr, bs.len()), bs);
     }
 
     pub fn write_word(&mut self, addr: u64, value: u16) {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx] = (value & 0x00ff) as u8;
         self.mem[idx + 1] = ((value & 0xff00) >> 8) as u8;
+
+        log::trace!("mem: write_word: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 2), value);
     }
 
     pub fn write_dword(&mut self, addr: u64, value: u32) {
         let idx = (addr - self.base_addr) as usize;
-        assert!(idx < self.mem.len());
         self.mem[idx] = (value & 0x000000ff) as u8;
         self.mem[idx + 1] = ((value & 0x0000ff00) >> 8) as u8;
         self.mem[idx + 2] = ((value & 0x00ff0000) >> 16) as u8;
         self.mem[idx + 3] = ((value & 0xff000000) >> 24) as u8;
+
+        log::trace!("mem: write_dword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 4), value);
     }
 
     pub fn write_qword(&mut self, addr: u64, value: u64) {
@@ -193,12 +220,16 @@ impl Mem64 {
         for i in 0..8 {
             self.mem[idx + i] = ((value >> (i * 8)) & 0xff) as u8;
         }
+
+        log::trace!("mem: write_qword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 8), value);
     }
 
     pub fn write_string(&mut self, addr: u64, s: &str) {
         let mut v = s.as_bytes().to_vec();
         v.push(0);
         self.write_bytes(addr, &v);
+
+        log::trace!("mem: write_string: 0x{:x?} = {:?}", self.build_addresses(addr, s.len() + 1), s);
     }
 
     pub fn write_wide_string(&mut self, addr: u64, s: &str) {
@@ -211,6 +242,8 @@ impl Mem64 {
         wv.push(0);
         wv.push(0);
         self.write_bytes(addr, &wv);
+
+        log::trace!("mem: write_wide_string: 0x{:x?} = {:?}", self.build_addresses(addr, s.len() * 2 + 2), s);
     }
 
     pub fn print_bytes(&self) {
