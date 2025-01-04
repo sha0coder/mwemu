@@ -3097,7 +3097,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
     
-    let result = "TODO"; // Replace with actual locale info based on locale and lctype
+    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
     let required_size = result.len() + 1; // Include null terminator
 
     // If cchData is 0, return required buffer size
@@ -3141,7 +3141,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
         cch_data
     );
 
-    let result = "TODO";
+    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
