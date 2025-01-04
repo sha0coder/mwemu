@@ -367,6 +367,7 @@ fn main() {
         let old_config = emu.cfg;
         emu = serialization::Serialization::load_from_file(dump_filename);
         emu.cfg = old_config;
+        emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
 
     // script
