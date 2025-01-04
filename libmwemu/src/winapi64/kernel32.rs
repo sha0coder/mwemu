@@ -2271,7 +2271,8 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs.rcx;
     let size = emu.regs.rdx;
 
-    emu.maps.write_wide_string(out_buff_ptr, "C:\\Windows\\");
+    let output = "C:\\Windows\\\0";
+    emu.maps.write_wide_string(out_buff_ptr, output);
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -2280,7 +2281,7 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 11 * 2;
+    emu.regs.rax = output.len() as u64;
 }
 
 fn GetStartupInfoA(emu: &mut emu::Emu) {
