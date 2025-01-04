@@ -4,10 +4,6 @@ use crate::constants;
 use mem64::Mem64;
 use serde::{Serialize, Deserialize};
 use std::str;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-// Use usize::MAX as our "None" sentinel value
-static LAST_MAP_INDEX: AtomicUsize = AtomicUsize::new(usize::MAX);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
@@ -95,19 +91,8 @@ impl Maps {
     }
 
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
-        // try to use cache
-        let last_map_index = LAST_MAP_INDEX.load(std::sync::atomic::Ordering::Relaxed);
-        if last_map_index != usize::MAX {
-            let mem = self.maps.get_mut(last_map_index).unwrap();
-            if mem.inside(addr) {
-                mem.write_byte(addr, value);
-                return true;
-            }
-        }
-
         for (idx, mem) in self.maps.iter_mut().enumerate() {
             if mem.inside(addr) {
-                LAST_MAP_INDEX.store(idx, std::sync::atomic::Ordering::Relaxed);
                 mem.write_byte(addr, value);
                 return true;
             }
@@ -122,19 +107,8 @@ impl Maps {
     }
 
     pub fn read_byte(&self, addr: u64) -> Option<u8> {
-        // try to use cache
-        let last_idx = LAST_MAP_INDEX.load(Ordering::Relaxed);
-        if last_idx != usize::MAX {  // Check if we have a valid cached index
-            if let Some(mem) = self.maps.get(last_idx) {
-                if mem.inside(addr) {
-                    return Some(mem.read_byte(addr));
-                }
-            }
-        }
-
         for (idx, mem) in self.maps.iter().enumerate() {
             if mem.inside(addr) {
-                LAST_MAP_INDEX.store(idx, Ordering::Relaxed);
                 return Some(mem.read_byte(addr));
             }
         }
