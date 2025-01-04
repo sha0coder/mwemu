@@ -2261,7 +2261,7 @@ fn GetSystemDirectoryA(emu: &mut emu::Emu) {
     let size = emu.regs.rdx;
 
     let output = "C:\\Windows\\";
-    emu.maps.write_string(out_buff_ptr, &format!("{}\\0", output));
+    emu.maps.write_string(out_buff_ptr, &output);
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -2278,7 +2278,7 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let size = emu.regs.rdx;
 
     let output = "C:\\Windows\\";
-    emu.maps.write_wide_string(out_buff_ptr, &format!("{}\\0", output));
+    emu.maps.write_wide_string(out_buff_ptr, &output);
 
     log::info!(
         "{}** {} kernel32!GetSystemDirectoryW  {}",
@@ -3102,7 +3102,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
     
-    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
+    let result = format!("LocaleInfoA:{}:{:x}", emu.pos, emu.regs.rip);
     let required_size = result.len() + 1; // Include null terminator
 
     // If cchData is 0, return required buffer size
@@ -3122,7 +3122,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     }
     
     // Write result directly to provided buffer
-    emu.maps.write_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.maps.write_string(lp_lc_data as u64, &result);
     emu.regs.rax = result.len() as u64; // Return length without null terminator
     clear_last_error(emu);
 }
@@ -3149,7 +3149,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
         cch_data
     );
 
-    let result = format!("LocaleInfo:{}:{}", emu.pos, emu.regs.rip);
+    let result = format!("LocaleInfoW:{}:{:x}", emu.pos, emu.regs.rip);
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
@@ -3168,7 +3168,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
     }
 
     // write the result to the buffer
-    emu.maps.write_wide_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.maps.write_wide_string(lp_lc_data as u64, &result);
     emu.regs.rax = result.len() as u64;
     clear_last_error(emu);
 }
