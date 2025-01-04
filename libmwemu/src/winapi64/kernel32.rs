@@ -3102,7 +3102,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
     
-    let result = format!("LocaleInfoA:{}:{:x}", emu.pos, emu.regs.rip);
+    let result = ".";
     let required_size = result.len() + 1; // Include null terminator
 
     // If cchData is 0, return required buffer size
@@ -3149,11 +3149,12 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
         cch_data
     );
 
-    let result = format!("LocaleInfoW:{}:{:x}", emu.pos, emu.regs.rip);
+    let result = ".";
+    let required_size = result.len() + 1; // Include null terminator
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
-        emu.regs.rax = result.len() as u64 + 1; // +1 for null terminator
+        emu.regs.rax = required_size as u64;
         clear_last_error(emu);
         return;
     }
@@ -3207,8 +3208,9 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp + 24)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
-    log_red!(emu, "** {} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
+    log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
         emu.pos,
+        emu.regs.rip,
         code_page,
         dw_flags,
         lp_wide_char_str,
@@ -3334,16 +3336,11 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
     }
 
     // 3. Read input string and get its length
-    let mut s = emu.maps.read_string(utf8_ptr);
-    
-    // Handle null termination for the input string
-    if cb_multi_byte == -1 {
-        // If -1, string is null-terminated, length includes the terminator
-        s = format!("{}\0", s);
+    let s = if cb_multi_byte == -1 {
+        emu.maps.read_string(utf8_ptr)
     } else {
-        // If not -1, take exactly cb_multi_byte bytes
-        s.truncate(cb_multi_byte as usize);
-    }
+        String::from_utf8(emu.maps.read_buffer(utf8_ptr, cb_multi_byte as usize)).unwrap()
+    };
 
     let required_chars = s.len();
 
