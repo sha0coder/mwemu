@@ -2265,7 +2265,7 @@ fn GetSystemDirectoryA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 11;
+    emu.regs.rax = output.len() as u64;
 }
 
 fn GetSystemDirectoryW(emu: &mut emu::Emu) {
