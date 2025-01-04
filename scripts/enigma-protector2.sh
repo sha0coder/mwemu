@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -x
+
+export RUST_BACKTRACE=1
+export RUST_LOG=info
+
+# Check if mode parameter is provided
+if [ -z "$1" ]; then
+    echo "Error: Mode parameter required (dump/load)"
+    exit 1
+fi
+
+MODE=$1
+
+# Set target architecture based on OS
+if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+    TARGET=x86_64-pc-windows-msvc
+else
+    TARGET=x86_64-apple-darwin
+fi
+
+# Execute based on mode
+if [ "$MODE" == "dump" ]; then
+    cargo run \
+        -p mwemu \
+        --release \
+        --target $TARGET \
+        -- \
+        --filename ~/Downloads/enigma/surprise.dll \
+        --maps ./maps64/ \
+        --64bits \
+        --banzai \
+        --rdx 1
+    python3 scripts/combine-dumps.py dumps/surprise-combined-output.bin dumps/*-surprise*
+elif [ "$MODE" == "load" ]; then
+    cargo run \
+        -p mwemu \
+        --release \
+        --target $TARGET \
+        -- \
+        --filename ~/Downloads/enigma/surprise.dll \
+        --maps ./maps64/ \
+        --64bits \
+        --dump ./dumps/emu-227958435.bin
+else
+    echo "Error: Invalid mode. Use 'dump' or 'load'"
+    exit 1
+fi
