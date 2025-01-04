@@ -3138,7 +3138,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
     if lp_lc_data == 0 {
         emu.regs.rax = 0x05 * 2;
     } else {
-        emu.maps.write_wide_string(lp_lc_data as u64, "TODO\0\0");
+        emu.maps.write_wide_string(lp_lc_data as u64, "English (United States)\0\0");
         emu.regs.rax = 0x05 * 2;
     }
 }
@@ -3271,7 +3271,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
     if lp_lc_data == 0 {
         emu.regs.rax = 0x05;
     } else {
-        emu.maps.write_string(lp_lc_data as u64, "TODO\0");
+        emu.maps.write_string(lp_lc_data as u64, "English (United States)\0");
         emu.regs.rax = 0x05;
     }
 }
