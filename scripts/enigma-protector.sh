@@ -47,6 +47,7 @@ elif [ "$MODE" == "load" ]; then
         --memory \
         --regs \
         -p \
+        --banzai \
         --trace /tmp/output.csv
 else
     echo "Error: Invalid mode. Use 'dump' or 'load'"
