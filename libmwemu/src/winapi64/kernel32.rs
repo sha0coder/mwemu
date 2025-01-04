@@ -125,6 +125,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "lstrlenA" => lstrlenA(emu),
         "lstrlenW" => lstrlenW(emu),
         "MultiByteToWideChar" => MultiByteToWideChar(emu),
+        "WideCharToMultiByte" => WideCharToMultiByte(emu),
         "GetSystemInfo" => GetSystemInfo(emu),
         "HeapFree" => HeapFree(emu),
         "EncodePointer" => EncodePointer(emu),
@@ -153,7 +154,6 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "SetThreadLocale" => SetThreadLocale(emu),
         "GetThreadLocale" => GetThreadLocale(emu),
         "GetLocaleInfoW" => GetLocaleInfoW(emu),
-        "WideCharToMultiByte" => WideCharToMultiByte(emu),
         "GetLocaleInfoA" => GetLocaleInfoA(emu),
         "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
         "ResetEvent" => ResetEvent(emu),
@@ -2508,89 +2508,6 @@ fn lstrlenW(emu: &mut emu::Emu) {
     emu.regs.rax = len * 2;
 }
 
-/*
-int MultiByteToWideChar(
-  [in]            UINT                              CodePage,
-  [in]            DWORD                             dwFlags,
-  [in]            _In_NLS_string_(cbMultiByte)LPCCH lpMultiByteStr,
-  [in]            int                               cbMultiByte,
-  [out, optional] LPWSTR                            lpWideCharStr,
-  [in]            int                               cchWideChar
-);
-*/
-fn MultiByteToWideChar(emu: &mut emu::Emu) {
-    let code_page = emu.regs.rcx;
-    let dw_flags = emu.regs.rdx;
-    let utf8_ptr = emu.regs.r8;
-    let cb_multi_byte = emu.regs.r9 as i64;
-    let wide_ptr = emu
-        .maps
-        .read_qword(emu.regs.rsp)
-        .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
-    let cch_wide_char = emu
-        .maps
-        .read_qword(emu.regs.rsp + 8)
-        .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
-
-    log_red!(emu, "** {} kernel32!MultiByteToWideChar codepage: {} flags: 0x{:x} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}", 
-        emu.pos,
-        code_page,
-        dw_flags,
-        utf8_ptr,
-        cb_multi_byte,
-        wide_ptr,
-        cch_wide_char
-    );
-
-    // 1. Input validation
-    if utf8_ptr == 0 {
-        emu.regs.rax = 0;
-        return;
-    }
-
-    // 2. Handle special code pages
-    if code_page == constants::CP_UTF7 || code_page == constants::CP_UTF8 {
-        // No special handling needed for default chars in this direction
-    }
-
-    // 3. Read input string and get its length
-    let mut s = emu.maps.read_string(utf8_ptr);
-    
-    // Handle null termination for the input string
-    if cb_multi_byte == -1 {
-        // If -1, string is null-terminated, length includes the terminator
-        s = format!("{}\0", s);
-    } else {
-        // If not -1, take exactly cb_multi_byte bytes
-        s.truncate(cb_multi_byte as usize);
-    }
-
-    let required_chars = s.len();
-
-    // 4. If this is just a size query
-    if wide_ptr == 0 {
-        emu.regs.rax = required_chars as u64;
-        return;
-    }
-
-    // 5. Check output buffer size
-    if cch_wide_char < required_chars as i64 {
-        // Set last error to ERROR_INSUFFICIENT_BUFFER
-        let mut err = LAST_ERROR.lock().unwrap();
-        *err = constants::ERROR_INSUFFICIENT_BUFFER;
-        emu.regs.rax = 0;
-        return;
-    }
-
-    // 6. Perform the actual conversion
-    if wide_ptr > 0 && !s.is_empty() {
-        emu.maps.write_wide_string(wide_ptr, &s);
-    }
-
-    // 7. Return number of wide characters written
-    emu.regs.rax = required_chars as u64;
-}
-
 fn GetSystemInfo(emu: &mut emu::Emu) {
     let out_sysinfo = emu.regs.rcx;
 
@@ -3165,6 +3082,42 @@ fn GetThreadLocale(emu: &mut emu::Emu) {
 }
 
 /*
+int GetLocaleInfoA(
+  [in]            LCID   Locale,
+  [in]            LCTYPE LCType,
+  [out, optional] LPSTR  lpLCData,
+  [in]            int    cchData
+);
+*/
+fn GetLocaleInfoA(emu: &mut emu::Emu) {
+    let locale = emu.regs.rcx as usize;     
+    let lctype = emu.regs.rdx as usize;
+    let lp_lc_data = emu.regs.r8 as usize;
+    let cch_data = emu.regs.r9 as usize;
+    
+    let result = "TODO"; // Replace with actual locale info based on locale and lctype
+    let required_size = result.len() + 1; // Include null terminator
+
+    // If cchData is 0, return required buffer size
+    if cch_data == 0 {
+        emu.regs.rax = required_size as u64;
+        return;
+    }
+
+    // Check if buffer is too small
+    if cch_data < required_size {
+        let mut err = LAST_ERROR.lock().unwrap();
+        *err = constants::ERROR_INSUFFICIENT_BUFFER;
+        emu.regs.rax = 0;
+        return;
+    }
+    
+    // Write result directly to provided buffer
+    emu.maps.write_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.regs.rax = result.len() as u64; // Return length without null terminator
+}
+
+/*
 int GetLocaleInfoW(
   [in]            LCID   Locale,
   [in]            LCTYPE LCType,
@@ -3197,13 +3150,15 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
     // Check if buffer is too small
     if cch_data < result.len() + 1 {
         log::warn!("{} buffer too small for result", emu.pos);
+        let mut err = LAST_ERROR.lock().unwrap();
+        *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs.rax = 0;
         return;
     }
 
     // write the result to the buffer
-    emu.maps.write_wide_string(lp_lc_data as u64, &format!("{}\0\0", result));
-    emu.regs.rax = (result.len() as u64) * 2; // *2 for wide chars, no +1 for null terminator
+    emu.maps.write_wide_string(lp_lc_data as u64, &format!("{}\0", result));
+    emu.regs.rax = result.len() as u64;
 }
 
 /*
@@ -3212,7 +3167,6 @@ int WideCharToMultiByte(
   [in]            DWORD                              dwFlags, rdx
   [in]            _In_NLS_string_(cchWideChar)LPCWCH lpWideCharStr, r8
   [in]            int                                cchWideChar, r9
-
   [out, optional] LPSTR                              lpMultiByteStr, rsp
   [in]            int                                cbMultiByte, rsp+8
   [in, optional]  LPCCH                              lpDefaultChar, rsp+16
@@ -3312,43 +3266,86 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
 }
 
 /*
-int GetLocaleInfoA(
-  [in]            LCID   Locale,
-  [in]            LCTYPE LCType,
-  [out, optional] LPSTR  lpLCData,
-  [in]            int    cchData
+int MultiByteToWideChar(
+  [in]            UINT                              CodePage,
+  [in]            DWORD                             dwFlags,
+  [in]            _In_NLS_string_(cbMultiByte)LPCCH lpMultiByteStr,
+  [in]            int                               cbMultiByte,
+  [out, optional] LPWSTR                            lpWideCharStr,
+  [in]            int                               cchWideChar
 );
 */
-fn GetLocaleInfoA(emu: &mut emu::Emu) {
-    let locale = emu.regs.rcx as usize;     
-    let lctype = emu.regs.rdx as usize;
-    let lp_lc_data = emu.regs.r8 as usize;
-    let cch_data = emu.regs.r9 as usize;
-    log_red!(emu, "** {} kernel32!GetLocaleInfoA locale: {} lctype: {} lp_lc_data: 0x{:x} cch_data: {}", 
+fn MultiByteToWideChar(emu: &mut emu::Emu) {
+    let code_page = emu.regs.rcx;
+    let dw_flags = emu.regs.rdx;
+    let utf8_ptr = emu.regs.r8;
+    let cb_multi_byte = emu.regs.r9 as i64;
+    let wide_ptr = emu
+        .maps
+        .read_qword(emu.regs.rsp)
+        .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
+    let cch_wide_char = emu
+        .maps
+        .read_qword(emu.regs.rsp + 8)
+        .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
+
+    log_red!(emu, "** {} kernel32!MultiByteToWideChar codepage: {} flags: 0x{:x} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}", 
         emu.pos,
-        locale,
-        lctype,
-        lp_lc_data,
-        cch_data
+        code_page,
+        dw_flags,
+        utf8_ptr,
+        cb_multi_byte,
+        wide_ptr,
+        cch_wide_char
     );
-    let result = "TODO";
 
-    // check if it wants buffer size
-    if lp_lc_data == 0 && cch_data == 0 {
-        emu.regs.rax = (result.len() + 1) as u64; // +1 for the null terminator
-        return;
-    }
-
-    // Check if buffer is too small
-    if cch_data < result.len() + 1 {
-        log::warn!("{} buffer too small for result", emu.pos);
+    // 1. Input validation
+    if utf8_ptr == 0 {
         emu.regs.rax = 0;
         return;
     }
+
+    // 2. Handle special code pages
+    if code_page == constants::CP_UTF7 || code_page == constants::CP_UTF8 {
+        // No special handling needed for default chars in this direction
+    }
+
+    // 3. Read input string and get its length
+    let mut s = emu.maps.read_string(utf8_ptr);
     
-    // write the result to the buffer
-    emu.maps.write_string(lp_lc_data as u64, &format!("{}\0", result));
-    emu.regs.rax = result.len() as u64; // no +1 for the null terminator
+    // Handle null termination for the input string
+    if cb_multi_byte == -1 {
+        // If -1, string is null-terminated, length includes the terminator
+        s = format!("{}\0", s);
+    } else {
+        // If not -1, take exactly cb_multi_byte bytes
+        s.truncate(cb_multi_byte as usize);
+    }
+
+    let required_chars = s.len();
+
+    // 4. If this is just a size query
+    if wide_ptr == 0 {
+        emu.regs.rax = required_chars as u64;
+        return;
+    }
+
+    // 5. Check output buffer size
+    if cch_wide_char < required_chars as i64 {
+        // Set last error to ERROR_INSUFFICIENT_BUFFER
+        let mut err = LAST_ERROR.lock().unwrap();
+        *err = constants::ERROR_INSUFFICIENT_BUFFER;
+        emu.regs.rax = 0;
+        return;
+    }
+
+    // 6. Perform the actual conversion
+    if wide_ptr > 0 && !s.is_empty() {
+        emu.maps.write_wide_string(wide_ptr, &s);
+    }
+
+    // 7. Return number of wide characters written
+    emu.regs.rax = required_chars as u64;
 }
 
 /*
