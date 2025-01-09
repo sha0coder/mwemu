@@ -32,9 +32,10 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     let mut size = emu.regs.rdx;
 
     log::info!(
-        "{}** {} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
+        "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
         emu.colors.light_red,
         emu.pos,
+        emu.regs.rip,
         str_ptr,
         size
     );
@@ -48,14 +49,17 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     let base = emu.maps.alloc(size + 100).expect("oleaut32!SysAllocStringLen out of memory");
     let name = format!("alloc_{:x}", base);
     emu.maps.create_map(&name, base, size + 100);
+
+    // watch out for null?
     if str_ptr != 0 {
         emu.maps.memcpy(base + 8, str_ptr, size as usize - 1);
     }
 
     log::info!(
-        "{}** {} oleaut32!SysAllocStringLen  ={} {} {}",
+        "{}** {}:{:x} oleaut32!SysAllocStringLen  ={} {} {}",
         emu.colors.light_red,
         emu.pos,
+        emu.regs.rip,
         name,
         size - 8,
         emu.colors.nc
