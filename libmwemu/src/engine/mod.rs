@@ -46,10 +46,22 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of call");
             }
 
+
+
             let addr = match emu.get_operand_value(ins, 0, true) {
                 Some(a) => a,
                 None => return false,
             };
+
+            if emu.regs.rip == addr-5 {
+                if emu.cfg.verbose >= 1 {
+                    log::info!("call next instruction, prolly call/pop");
+                }
+                //emu.stack_lvl[emu.stack_lvl_idx] -= 1;
+            } /*else {
+                emu.stack_lvl.push(0);
+                emu.stack_lvl_idx += 1;
+            }*/
 
             if emu.cfg.is_64bits {
                 if !emu.stack_push64(emu.regs.rip + instruction_sz as u64) {
@@ -214,6 +226,7 @@ pub fn emulate_instruction(
                     }
 
                     emu.regs.rsp += arg;
+                    //emu.stack_lvl[emu.stack_lvl_idx] -= arg as i32 / 8; 
                 } else {
                     if arg % 4 != 0 {
                         log::info!("weird ret argument!");
@@ -221,8 +234,16 @@ pub fn emulate_instruction(
                     }
 
                     emu.regs.set_esp(emu.regs.get_esp() + arg);
+                    //emu.stack_lvl[emu.stack_lvl_idx] -= arg as i32 / 4; 
                 }
             }
+
+            //if emu.stack_lvl[emu.stack_lvl_idx] != 0 {
+            //    log::info!("/!\\ error stack level is {}", emu.stack_lvl[emu.stack_lvl_idx]);
+            //}
+            //emu.stack_lvl.pop();
+            //emu.stack_lvl_idx -= 1;
+
 
             if emu.run_until_ret {
                 return true; 
@@ -484,10 +505,27 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
+
             let value1 = match emu.get_operand_value(ins, 1, true) {
                 Some(v) => v,
                 None => return false,
             };
+
+
+            if value0 == emu.regs.rsp {
+                emu.show_instruction(&emu.colors.light_cyan, ins);
+
+                /* 
+                if emu.cfg.is_64bits {
+                    if value1 % 8 == 0 {
+                        emu.stack_lvl[emu.stack_lvl_idx] -= value1 as i32 / 8;
+                    }
+                } else {
+                    if value1 % 4 == 0 {
+                        emu.stack_lvl[emu.stack_lvl_idx] -= value1 as i32 / 4;
+                    }
+                }*/
+            }
 
             let res: u64 = match emu.get_operand_sz(ins, 0) {
                 64 => emu.flags.sub64(value0, value1),

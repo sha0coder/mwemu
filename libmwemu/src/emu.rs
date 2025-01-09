@@ -96,6 +96,8 @@ pub struct Emu {
     pub tick: usize,
     pub trace_file: Option<File>,
     pub base: u64,
+    //pub stack_lvl: Vec<i32>,
+    //pub stack_lvl_idx: usize,
 }
 
 impl Default for Emu {
@@ -161,6 +163,8 @@ impl Emu {
             tick: 0,
             trace_file: None,
             base: 0,
+            //stack_lvl: vec![],
+            //stack_lvl_idx: 0,
         }
     }
 
@@ -1146,6 +1150,8 @@ impl Emu {
         }
 
         self.regs.set_esp(self.regs.get_esp() - 4);
+        //self.stack_lvl[self.stack_lvl_idx] += 1;
+        //log::info!("push32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
 
         /*
         let stack = self.maps.get_mem("stack");
@@ -1206,6 +1212,9 @@ impl Emu {
         }
 
         self.regs.rsp -= 8;
+        //self.stack_lvl[self.stack_lvl_idx] += 1;
+        //log::info!("push64 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
+
         /*
         let stack = self.maps.get_mem("stack");
         if stack.inside(self.regs.rsp) {
@@ -1326,6 +1335,8 @@ impl Emu {
         }
 
         self.regs.set_esp(self.regs.get_esp() + 4);
+        //self.stack_lvl[self.stack_lvl_idx] -= 1;
+        //log::info!("pop32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
     }
 
@@ -1406,6 +1417,8 @@ impl Emu {
         }
 
         self.regs.rsp += 8;
+        //self.stack_lvl[self.stack_lvl_idx] -= 1;
+        //log::info!("0x{:x} pop64 stack level is {} deep {}", self.regs.rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
     }
 
@@ -1771,6 +1784,27 @@ impl Emu {
         panic!("weird size: {}", operand);
     }
 
+    //TODO: check this, this is used only on pyscemu
+    pub fn handle_winapi(&mut self, addr: u64) {
+        let name = match self.maps.get_addr_name(addr) {
+            Some(n) => n,
+            None => {
+                log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
+                self.exception();
+                return;
+            }
+        };
+        if self.cfg.is_64bits {
+            self.gateway_return = self.stack_pop64(false).unwrap_or(0);
+            self.regs.rip = self.gateway_return;
+            winapi64::gateway(addr, name, self);
+        } else {
+            self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
+            self.regs.rip = self.gateway_return;
+            winapi32::gateway(addr as u32, name, self);
+        }
+    }
+
     pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
         self.force_reload = true;
 
@@ -1807,6 +1841,8 @@ impl Emu {
             || name == "loader.text"
         {
             self.regs.rip = addr;
+
+
         } else if self.linux {
             self.regs.rip = addr; // in linux libs are no implemented are emulated
         } else {
@@ -1820,7 +1856,12 @@ impl Emu {
             }
 
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
+
+            //self.stack_lvl.pop();
+            //self.stack_lvl_idx -= 1;
+
             self.regs.rip = self.gateway_return;
+
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
                 Some(hook_fn) => hook_fn(self, self.regs.rip, addr),
@@ -1834,26 +1875,6 @@ impl Emu {
         }
 
         true
-    }
-
-    pub fn handle_winapi(&mut self, addr: u64) {
-        let name = match self.maps.get_addr_name(addr) {
-            Some(n) => n,
-            None => {
-                log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                self.exception();
-                return;
-            }
-        };
-        if self.cfg.is_64bits {
-            self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-            self.regs.rip = self.gateway_return;
-            winapi64::gateway(addr, name, self);
-        } else {
-            self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
-            self.regs.rip = self.gateway_return;
-            winapi32::gateway(addr as u32, name, self);
-        }
     }
 
     pub fn set_eip(&mut self, addr: u64, is_branch: bool) -> bool {
@@ -1892,6 +1913,7 @@ impl Emu {
             || name == "loader.text"
         {
             self.regs.set_eip(addr);
+
         } else {
             if self.cfg.verbose >= 1 {
                 log::info!("/!\\ changing EIP to {} 0x{:x}", name, addr);
@@ -1902,7 +1924,18 @@ impl Emu {
                 return false;
             }
 
+            // anular el call
+            //self.stack_lvl.pop();
+            //self.stack_lvl_idx += 1;
+            // anular el pop previo
+            //self.stack_lvl[self.stack_lvl_idx] -= 1;
+
             self.gateway_return = self.stack_pop32(false).unwrap_or(0).into();
+
+            //self.stack_lvl.pop();
+            //self.stack_lvl_idx -= 1;
+
+
             self.regs.set_eip(self.gateway_return);
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
@@ -1914,6 +1947,7 @@ impl Emu {
                 winapi32::gateway(to32!(addr), name, self);
             }
             self.force_break = true;
+
         }
 
         true
@@ -3225,6 +3259,10 @@ impl Emu {
 
     ///  RUN ENGINE ///
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
+        //self.stack_lvl.clear();
+        //self.stack_lvl_idx = 0;
+        //self.stack_lvl.push(0);
+
         self.is_running.store(1, atomic::Ordering::Relaxed);
         let is_running2 = Arc::clone(&self.is_running);
 
