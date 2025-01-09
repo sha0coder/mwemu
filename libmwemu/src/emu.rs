@@ -2010,8 +2010,9 @@ impl Emu {
         } else {
             if self.seh == 0 {
                 log::info!(
-                    "exception without any SEH handler nor vector configured. pos = {}",
-                    self.pos
+                    "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
+                    self.pos,
+                    self.regs.rip
                 );
                 if self.cfg.console_enabled {
                     Console::spawn_console(self);

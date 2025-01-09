@@ -58,6 +58,16 @@ elif [ "$MODE" == "load" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
+        --dump ./dumps/emu-232321175.bin
+elif [ "$MODE" == "load_verbose" ]; then
+    cargo run \
+        -p mwemu \
+        --release \
+        --target $TARGET \
+        -- \
+        --filename ~/Desktop/enigma/surprise.dll \
+        --maps ./maps64/ \
+        --64bits \
         --dump ./dumps/emu-232321175.bin \
         -vvv \
         --memory \
