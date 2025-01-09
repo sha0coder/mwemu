@@ -3251,7 +3251,9 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
 
     // 6. Perform the actual conversion
     if lp_multi_byte_str > 0 && !s.is_empty() {
-        emu.maps.write_string(lp_multi_byte_str, &s);
+        if lp_multi_byte_str < emu.cfg.stack_addr || lp_multi_byte_str > emu.cfg.stack_addr + 0x030000 {
+            emu.maps.write_string(lp_multi_byte_str, &s);
+        }
         
         // Set used default char flag if requested
         if lp_used_default_char != 0 {

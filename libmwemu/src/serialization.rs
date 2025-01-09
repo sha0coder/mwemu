@@ -215,6 +215,8 @@ pub struct SerializableEmu {
     pub rep: Option<u64>,
     pub tick: usize,
     pub base: u64,
+    //pub stack_lvl: Vec<i32>,
+    //pub stack_lvl_idx: usize,
 }
 
 impl From<SerializableFPU> for FPU {
@@ -314,6 +316,8 @@ impl<'a> From<&'a Emu> for SerializableEmu {
                 rep: emu.rep,
                 tick: emu.tick,
                 base: emu.base,
+                //stack_lvl: emu.stack_lvl.clone(),
+                //stack_lvl_idx: emu.stack_lvl_idx,
         }
     }
 }   
@@ -382,6 +386,8 @@ impl From<SerializableEmu> for Emu {
             tick: serialized.tick,
             trace_file: trace_file,
             base: serialized.base,
+            //stack_lvl: serialized.stack_lvl,
+            //stack_lvl_idx: serialized.stack_lvl_idx,
         }
     }
 }
