@@ -9,6 +9,7 @@ use crate::peb64;
 use crate::winapi32;
 use crate::winapi64;
 use crate::to32;
+use crate::serialization;
 
 pub struct Console {}
 
@@ -148,6 +149,7 @@ impl Console {
         log::info!("iat .................... find api name in all iat's ");
         log::info!("iatx ................... addr to api name");
         log::info!("iatd ................... dump the iat of specific module");
+        log::info!("dump ................... dump current state to disk");
 
         //log::info!("o ...................... step over");
         log::info!("");
@@ -865,6 +867,11 @@ impl Console {
                         winapi64::kernel32::dump_module_iat(emu, &lib);
                     } else {
                         winapi32::kernel32::dump_module_iat(emu, &lib);
+                    }
+                }
+                "dump" => {
+                    if emu.cfg.dump_filename.is_some() {
+                        serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
                     }
                 }
                 "dt" => {

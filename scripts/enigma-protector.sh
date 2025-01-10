@@ -30,7 +30,9 @@ if [ "$MODE" == "dump" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
+        --rcx 0x180000000 \
         --rdx 1 \
+        --r8 0 \
         --exit 232321175
     mv ./dumps/emu.bin ./dumps/emu-232321175.bin
 elif [ "$MODE" == "dump_verbose" ]; then
@@ -42,12 +44,14 @@ elif [ "$MODE" == "dump_verbose" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --rdx 1 \
         -vvv \
         --memory \
         --regs \
         -p \
         --banzai \
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
         --trace /tmp/output.csv
 elif [ "$MODE" == "load" ]; then
     cargo run \
@@ -58,6 +62,9 @@ elif [ "$MODE" == "load" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
         --dump ./dumps/emu-232321175.bin
 elif [ "$MODE" == "load_verbose" ]; then
     cargo run \
@@ -74,6 +81,9 @@ elif [ "$MODE" == "load_verbose" ]; then
         --regs \
         -p \
         --banzai \
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
         --trace /tmp/output.csv
 else
     echo "Error: Invalid mode. Use 'dump' or 'load'"

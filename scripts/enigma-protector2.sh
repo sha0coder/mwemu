@@ -30,7 +30,11 @@ if [ "$MODE" == "dump" ]; then
         --filename ~/Downloads/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        --rdx 1 
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
+        -C 0x180055e7e
+        #-c 232446016
         #-c 232444028
     mv ./dumps/emu.bin ./dumps/emu-232321175.bin
 elif [ "$MODE" == "dump_verbose" ]; then
@@ -48,6 +52,9 @@ elif [ "$MODE" == "dump_verbose" ]; then
         --regs \
         -p \
         --banzai \
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
         --trace /tmp/output.csv
 elif [ "$MODE" == "load" ]; then
     cargo run \
@@ -64,6 +71,9 @@ elif [ "$MODE" == "load" ]; then
         --regs \
         -p \
         --banzai \
+        --rcx 0x180000000 \
+        --rdx 1 \
+        --r8 0 \
         --trace /tmp/output.csv
 else
     echo "Error: Invalid mode. Use 'dump' or 'load'"
