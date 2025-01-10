@@ -8,11 +8,14 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
     match api.as_str() {
         "PathCombineA" => PathCombineA(emu),
+        "PathCombineW" => PathCombineW(emu),
         "IsCharAlphaNumericA" => IsCharAlphaNumericA(emu),
         "GetTokenInformation" => GetTokenInformation(emu),
         "GetFileVersionInfoSizeA" => GetFileVersionInfoSizeA(emu),
         "GetFileVersionInfoA" => GetFileVersionInfoA(emu),
         "VerQueryValueA" => VerQueryValueA(emu),
+        "_initterm_e" => _initterm_e(emu),
+        "_initterm" => _initterm(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -32,8 +35,18 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 
 pub fn PathCombineA(emu: &mut emu::Emu) {
     let dst: u64 = emu.regs.rcx;
-    let path1 = emu.maps.read_string(emu.regs.rdx);
-    let path2 = emu.maps.read_string(emu.regs.r8);
+    let dir = emu.regs.rdx;
+    let file = emu.regs.r8;
+
+    let mut path1 = String::new();
+    let mut path2 = String::new();
+
+    if dir > 0 {
+        path1 = emu.maps.read_string(dir);
+    }
+    if file > 0 {
+        path2 = emu.maps.read_string(file);
+    }
 
     log::info!(
         "{}** {} kernelbase!PathCombineA path1: {} path2: {} {}",
@@ -46,6 +59,38 @@ pub fn PathCombineA(emu: &mut emu::Emu) {
 
     if dst != 0 && !path1.is_empty() && !path2.is_empty() {
         emu.maps.write_string(dst, &format!("{}\\{}", path1, path2));
+    }
+
+    emu.regs.rax = dst;
+}
+
+
+pub fn PathCombineW(emu: &mut emu::Emu) {
+    let dst: u64 = emu.regs.rcx;
+    let dir = emu.regs.rdx;
+    let file = emu.regs.r8;
+
+    let mut path1 = String::new();
+    let mut path2 = String::new();
+
+    if dir > 0 {
+        path1 = emu.maps.read_wide_string(dir);
+    }
+    if file > 0 {
+        path2 = emu.maps.read_wide_string(file);
+    }
+
+    log::info!(
+        "{}** {} kernelbase!PathCombineW path1: {} path2: {} {}",
+        emu.colors.light_red,
+        emu.pos,
+        path1,
+        path2,
+        emu.colors.nc
+    );
+
+    if dst != 0 && !path1.is_empty() && !path2.is_empty() {
+        emu.maps.write_wide_string(dst, &format!("{}\\{}", path1, path2));
     }
 
     emu.regs.rax = dst;
@@ -152,3 +197,12 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+fn _initterm_e(emu: &mut emu::Emu) {
+    log::info!("{}** {} kernelbase!_initterm_e  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    emu.regs.rax = 0;
+}
+
+fn _initterm(emu: &mut emu::Emu) {
+    log::info!("{}** {} kernelbase!_initterm  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    emu.regs.rax = 0;
+}

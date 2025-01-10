@@ -27,8 +27,18 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 pub fn PathIsContentTypeW(emu: &mut emu::Emu) {
-    let path = emu.maps.read_wide_string(emu.regs.rcx);
-    let content_type = emu.maps.read_wide_string(emu.regs.rdx);
+    let path_ptr = emu.regs.rcx;
+    let content_type_ptr = emu.regs.rdx;
+
+    let mut path = String::new();
+    let mut content_type = String::new();
+
+    if path_ptr > 0 {
+        path = emu.maps.read_wide_string(path_ptr);
+    }
+    if content_type_ptr > 0 {
+        content_type = emu.maps.read_wide_string(content_type_ptr);
+    }
 
     log::info!(
         "{}** {} shlwapi!PathIsContentTypeW path: {} content-type: {} {}",
@@ -43,8 +53,18 @@ pub fn PathIsContentTypeW(emu: &mut emu::Emu) {
 }
 
 pub fn PathFindSuffixArrayA(emu: &mut emu::Emu) {
-    let path = emu.maps.read_string(emu.regs.rcx);
-    let suffixes = emu.maps.read_string(emu.regs.rdx);
+    let path_ptr = emu.regs.rcx;
+    let suffixes_ptr = emu.regs.rdx;
+
+    let mut path = String::new();
+    let mut suffixes = String::new();
+
+    if path_ptr > 0 {
+        path = emu.maps.read_string(path_ptr);
+    }
+    if suffixes_ptr > 0 {
+        suffixes = emu.maps.read_string(suffixes_ptr);
+    }
 
     log::info!(
         "{}** {} shlwapi!PathFindSuffixArrayA path: {} suffixes: {} {}",
