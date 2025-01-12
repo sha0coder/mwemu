@@ -81,12 +81,12 @@ fn main() {
         .arg(clap_arg!("exit_position", "e", "exit", "exit position of the shellcode", "POSITION"))
         .arg(clap_arg!("code_base_address", "b", "base", "set base address for code", "ADDRESS"))
         .arg(clap_arg!("stack_address", "", "stack_address", "set stack address", "ADDRESS"))
-        .arg(clap_arg!("stack_trace", "p", "stack", "trace stack on push/pop"))
+        .arg(clap_arg!("stack_trace", "p", "stack_trace", "trace stack on push/pop"))
         .arg(clap_arg!("test_mode", "t", "test", "test mode"))
         .arg(clap_arg!("banzai", "", "banzai", "skip unimplemented instructions, and keep up emulating what can be emulated"))
         .arg(clap_arg!("script", "x", "script", "launch an emulation script, see scripts_examples folder", "SCRIPT"))
         .arg(clap_arg!("trace", "T", "trace", "output trace to specified file", "TRACE_FILENAME"))
-        .arg(clap_arg!("trace_start", "t", "trace_start", "start trace at specified position", "TRACE_START"))
+        .arg(clap_arg!("trace_start", "S", "trace_start", "start trace at specified position", "TRACE_START"))
         .arg(clap_arg!("rax", "", "rax", "set rax register", "RAX"))
         .arg(clap_arg!("rbx", "", "rbx", "set rbx register", "RBX"))
         .arg(clap_arg!("rcx", "", "rcx", "set rcx register", "RCX"))
@@ -170,6 +170,7 @@ fn main() {
             r#""Index","Address","Bytes","Disassembly","Registers","Memory","Comments""#
         )
         .expect("Failed to write trace file header");
+        emu.cfg.trace_filename = Some(trace_filename);
         emu.trace_file = Some(trace_file);
         emu.open_trace_file();
     }
