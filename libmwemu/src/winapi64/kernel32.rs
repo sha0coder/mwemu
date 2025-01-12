@@ -3739,5 +3739,12 @@ fn GetFileSize(emu: &mut emu::Emu) {
     let lp_file_size_high = emu.regs.rdx as usize;
     log_red!(emu, "** {} kernel32!GetFileSize {:x} {:x}", emu.pos, h_file, lp_file_size_high);
     // TODO: Implement this
-    emu.regs.rax = 3671040; // surprise.dll
+
+    let name = helper::handler_get_uri(h_file);
+    if name == "HaspEmul.dll" {
+        let size = std::fs::metadata("/Users/brandon/Desktop/enigma/surprise.dll").unwrap().len();
+        emu.regs.rax = size as u64;
+    } else {
+        panic!("unknown file");
+    }
 }
