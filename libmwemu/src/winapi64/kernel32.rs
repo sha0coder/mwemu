@@ -2696,6 +2696,13 @@ fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let mut sysinfo = structures::SystemInfo64::new();
     sysinfo.save(ptr_sysinfo, &mut emu.maps);
 
+    log::info!("{}** {} kernel32!GetNativeSysteminfo {:?}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        sysinfo,
+        emu.colors.nc
+    );
+
     log::info!(
         "{}** {} kernel32!GetNativeSysteminfo 0x{:x}  {}",
         emu.colors.light_red,
@@ -3743,6 +3750,7 @@ fn GetFileSize(emu: &mut emu::Emu) {
     let name = helper::handler_get_uri(h_file);
     if name == "HaspEmul.dll" {
         let size = std::fs::metadata("/Users/brandon/Desktop/enigma/surprise.dll").unwrap().len();
+        log::info!("** {} kernel32!GetFileSize {:x} {:x} size: {}", emu.pos, h_file, lp_file_size_high, size);
         emu.regs.rax = size as u64;
     } else {
         panic!("unknown file");

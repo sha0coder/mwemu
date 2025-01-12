@@ -187,31 +187,80 @@ fn __acrt_iob_func(emu: &mut emu::Emu) {
     );
 
     // TODO: Implement this
+    emu.regs.rax = 0;
 }
 
 /*
 _ACRTIMP int __cdecl __stdio_common_vfprintf(unsigned __int64,FILE*,const char*,_locale_t,__ms_va_list);
 */
+fn parse_format_specifiers(fmt: &str) -> Vec<&str> {
+    let mut specs = Vec::new();
+    let mut chars = fmt.chars().peekable();
+    
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            if let Some(next) = chars.next() {
+                if next != '%' {  // Skip %% (literal %)
+                    specs.push(match next {
+                        'd' | 'i' => "int",
+                        'x' | 'X' => "hex",
+                        'p' => "ptr",
+                        's' => "str",
+                        // Add other format specifiers as needed
+                        _ => "unknown"
+                    });
+                }
+            }
+        }
+    }
+    specs
+}
+
 fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     let options = emu.regs.rcx;      // _In_ options
     let file = emu.regs.rdx;         // _In_ FILE*
     let format = emu.regs.r8;        // _In_ format string ptr
     let locale = emu.regs.r9;        // _In_opt_ locale
-    // va_list is on stack since we've used up registers
+    let va_list = emu
+        .maps
+        .read_qword(emu.regs.rsp + 0x20) // 20 bytes of shadow space?
+        .expect("crt_runtime!__stdio_common_vfprintf cannot read_qword va_list");
     
     // Just try to read the format string
     let fmt_str = emu.maps.read_string(format);
+    let specs = parse_format_specifiers(&fmt_str);
 
     log::info!(
-        "{}** {} crt_runtime!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} {}",
+        "{}** {} crt_runtime!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} va_list: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
         options,
         file,
         fmt_str,
         locale,
+        va_list,
         emu.colors.nc
     );
+
+    let mut current_ptr = va_list;
+    for spec in specs {
+        match spec {
+            "int" | "hex" | "ptr" => {
+                let arg = emu.maps.read_qword(current_ptr).expect("crt_runtime!__stdio_common_vfprintf cannot read_qword arg");
+                current_ptr += 8;  // Move to next arg
+                log::info!("arg: {:016x}", arg);
+            }
+            "str" => {
+                let str_ptr = emu.maps.read_qword(current_ptr).expect("crt_runtime!__stdio_common_vfprintf cannot read_qword str_ptr");
+                let string = emu.maps.read_string(str_ptr);
+                current_ptr += 8;
+                log::info!("string: {}", string);
+            }
+            _ => {
+                unimplemented!("crt_runtime!__stdio_common_vfprintf unknown format character: {}", spec);
+            }
+        }
+    }
 
     // Return success (1) - this is super basic
     emu.regs.rax = 1;
