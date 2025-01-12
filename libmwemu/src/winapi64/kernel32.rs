@@ -176,6 +176,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "SizeofResource" => SizeofResource(emu),
         "LockResource" => LockResource(emu),
         "FreeResource" => FreeResource(emu),
+        "IsBadReadPtr" => IsBadReadPtr(emu),
         "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -1308,6 +1309,15 @@ fn DisconnectNamedPipe(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+/*
+BOOL ReadFile(
+  [in]                HANDLE       hFile,
+  [out]               LPVOID       lpBuffer,
+  [in]                DWORD        nNumberOfBytesToRead,
+  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+  [in, out, optional] LPOVERLAPPED lpOverlapped
+);
+*/
 fn ReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu.regs.rcx;
     let buff = emu.regs.rdx;
@@ -1319,26 +1329,37 @@ fn ReadFile(emu: &mut emu::Emu) {
         .expect("kernel32!ReadFile cannot read the overlapped");
 
     log::info!(
-        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
+        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} bytes_read: {:x} overlapped: {:x} {}",
         emu.colors.light_red,
         emu.pos,
         file_hndl,
         buff,
         size,
+        bytes_read,
+        overlapped,
         emu.colors.nc
     );
 
     if !helper::handler_exist(file_hndl) {
         panic!("\tinvalid handle.")
-    } 
-
-    if size != 3671040 {
-        panic!("unknown size");
     }
-    
-    let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
-    emu.maps.write_bytes(buff, bytes);
-    emu.regs.rax = 1;
+
+    let name = helper::handler_get_uri(file_hndl);
+    log_red!(emu, "** {} kernel32!ReadFile name = {name} {}", emu.pos, emu.colors.nc);
+
+    if name == "HaspEmul.dll" {
+        let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
+        if size as usize > bytes.len() {
+            panic!("size is greater than the file size");
+        }
+        if bytes_read != 0 {
+            emu.maps.write_qword(bytes_read, size);
+        }
+        emu.maps.write_bytes(buff, bytes);
+        emu.regs.rax = 1;
+    } else {
+        panic!("unknown file");
+    }
 }
 
 fn WriteFile(emu: &mut emu::Emu) {
@@ -1385,8 +1406,9 @@ fn CloseHandle(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_close(handle) {
-        log::info!("\tinvalid handle.")
+        panic!("\tinvalid handle.")
     }
+
     emu.regs.rax = 1;
 }
 
@@ -2672,8 +2694,15 @@ fn SystemTimeToFileTime(emu: &mut emu::Emu) {
 fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let ptr_sysinfo = emu.regs.rcx;
 
-    let mut sysinfo = structures::SystemInfo32::new();
+    let mut sysinfo = structures::SystemInfo64::new();
     sysinfo.save(ptr_sysinfo, &mut emu.maps);
+
+    log::info!("{}** {} kernel32!GetNativeSysteminfo {:?}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        sysinfo,
+        emu.colors.nc
+    );
 
     log::info!(
         "{}** {} kernel32!GetNativeSysteminfo 0x{:x}  {}",
@@ -3703,6 +3732,7 @@ fn CreateFileA(emu: &mut emu::Emu) {
     if lp_file_name > 0 {
         name = emu.maps.read_string(lp_file_name as u64);
     }
+    log_red!(emu, "** {} kernel32!CreateFileA name = {name} {}", emu.pos, emu.colors.nc);
     emu.regs.rax = helper::handler_create(&name);
 }
 
@@ -3717,5 +3747,27 @@ fn GetFileSize(emu: &mut emu::Emu) {
     let lp_file_size_high = emu.regs.rdx as usize;
     log_red!(emu, "** {} kernel32!GetFileSize {:x} {:x}", emu.pos, h_file, lp_file_size_high);
     // TODO: Implement this
-    emu.regs.rax = 3671040; // surprise.dll
+
+    let name = helper::handler_get_uri(h_file);
+    if name == "HaspEmul.dll" {
+        let size = std::fs::metadata("/Users/brandon/Desktop/enigma/surprise.dll").unwrap().len();
+        log::info!("** {} kernel32!GetFileSize {:x} {:x} size: {}", emu.pos, h_file, lp_file_size_high, size);
+        emu.regs.rax = size as u64;
+    } else {
+        panic!("unknown file");
+    }
+}
+
+/*
+BOOL IsBadReadPtr(
+  [in] const VOID *lp,
+  [in] UINT_PTR   ucb
+);
+*/
+fn IsBadReadPtr(emu: &mut emu::Emu) {
+    let lp = emu.regs.rcx as usize;
+    let ucb = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!IsBadReadPtr {:x} {:x}", emu.pos, lp, ucb);
+    // TODO: implement this
+    emu.regs.rax = 0;
 }
