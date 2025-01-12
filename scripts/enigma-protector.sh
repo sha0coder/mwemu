@@ -33,8 +33,8 @@ if [ "$MODE" == "dump" ]; then
         --rcx 0x180000000 \
         --rdx 1 \
         --r8 0 \
-        --exit 232321175
-    mv ./dumps/emu.bin ./dumps/emu-232321175.bin
+        --exit 1000000
+    mv ./dumps/emu.bin ./dumps/emu-1000000.bin
 elif [ "$MODE" == "dump_verbose" ]; then
     cargo run \
         -p mwemu \
@@ -44,14 +44,13 @@ elif [ "$MODE" == "dump_verbose" ]; then
         --filename ~/Desktop/enigma/surprise.dll \
         --maps ./maps64/ \
         --64bits \
-        -vvv \
-        --memory \
-        --regs \
-        -p \
-        --banzai \
         --rcx 0x180000000 \
         --rdx 1 \
         --r8 0 \
+        -vvv \
+        --memory \
+        --regs \
+        --exit 1000000 \
         --trace /tmp/output.csv
 elif [ "$MODE" == "load" ]; then
     cargo run \
