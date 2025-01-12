@@ -3,7 +3,7 @@
 import csv
 
 MWEMU_TRACE_PATH = '/tmp/output.csv' # mwemu
-X64DBG_TRACE_PATH = '/Users/brandon/Downloads/export-20241226-135447.csv' # x64dbg
+X64DBG_TRACE_PATH = '/tmp/rip_trace.csv' # x64dbg
 EXPECTED_HEADERS = ["Index", "Address", "Bytes", "Disassembly", "Registers", "Memory", "Comments"]
 EXPECTED_BASE = 0x180000000
 EXPECTED_ENTRY = 0x181035FF0
