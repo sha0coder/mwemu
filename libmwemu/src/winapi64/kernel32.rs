@@ -1308,6 +1308,15 @@ fn DisconnectNamedPipe(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+/*
+BOOL ReadFile(
+  [in]                HANDLE       hFile,
+  [out]               LPVOID       lpBuffer,
+  [in]                DWORD        nNumberOfBytesToRead,
+  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+  [in, out, optional] LPOVERLAPPED lpOverlapped
+);
+*/
 fn ReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu.regs.rcx;
     let buff = emu.regs.rdx;
@@ -1332,16 +1341,24 @@ fn ReadFile(emu: &mut emu::Emu) {
 
     if !helper::handler_exist(file_hndl) {
         panic!("\tinvalid handle.")
-    } 
-
-    if size != 3671040 {
-        panic!("unknown size");
     }
-    
-    let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
-    emu.maps.write_bytes(buff, bytes);
-    emu.maps.write_qword(bytes_read, size);
-    emu.regs.rax = 1;
+
+    let name = helper::handler_get_uri(file_hndl);
+    log_red!(emu, "** {} kernel32!ReadFile name = {name} {}", emu.pos, emu.colors.nc);
+
+    if name == "HaspEmul.dll" {
+        let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
+        if size as usize > bytes.len() {
+            panic!("size is greater than the file size");
+        }
+        if bytes_read != 0 {
+            emu.maps.write_qword(bytes_read, size);
+        }
+        emu.maps.write_bytes(buff, bytes);
+        emu.regs.rax = 1;
+    } else {
+        panic!("unknown file");
+    }
 }
 
 fn WriteFile(emu: &mut emu::Emu) {
@@ -3706,6 +3723,7 @@ fn CreateFileA(emu: &mut emu::Emu) {
     if lp_file_name > 0 {
         name = emu.maps.read_string(lp_file_name as u64);
     }
+    log_red!(emu, "** {} kernel32!CreateFileA name = {name} {}", emu.pos, emu.colors.nc);
     emu.regs.rax = helper::handler_create(&name);
 }
 
