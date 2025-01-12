@@ -101,6 +101,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetProcessAffinityMask" => GetProcessAffinityMask(emu),
         "IsDebuggerPresent" => IsDebuggerPresent(emu),
         "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
+        "SetCurrentDirectoryA" => SetCurrentDirectoryA(emu),
         "UnhandledExceptionFilter" => UnhandledExceptionFilter(emu),
         "GetCurrentProcess" => GetCurrentProcess(emu),
         "VirtualAllocExNuma" => VirtualAllocExNuma(emu),
@@ -163,6 +164,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
         "ResetEvent" => ResetEvent(emu),
         "VirtualFree" => VirtualFree(emu),
+        "CreateFileA" => CreateFileA(emu),
+        "GetFileSize" => GetFileSize(emu),
         "GetModuleFileNameW" => GetModuleFileNameW(emu),
         "EnterCriticalSection" => EnterCriticalSection(emu),
         "LeaveCriticalSection" => LeaveCriticalSection(emu),
@@ -3676,4 +3679,54 @@ fn GetEnvironmentStringsW(emu: &mut emu::Emu) {
     emu.maps
         .write_wide_string(addr, "PATH=c:\\Windows\\System32");
     emu.regs.rax = addr;
+}
+
+/*
+BOOL SetCurrentDirectory(
+  [in] LPCTSTR lpPathName
+);
+*/
+fn SetCurrentDirectoryA(emu: &mut emu::Emu) {
+    let lp_path_name = emu.regs.rcx as usize;
+    log_red!(emu, "** {} kernel32!SetCurrentDirectoryA lp_path_name: 0x{:x}", emu.pos, lp_path_name);
+    // TODO: Implement this
+    emu.regs.rax = 1;
+}
+
+/*
+HANDLE CreateFileA(
+  [in]           LPCSTR                lpFileName,
+  [in]           DWORD                 dwDesiredAccess,
+  [in]           DWORD                 dwShareMode,
+  [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+  [in]           DWORD                 dwCreationDisposition,
+  [in]           DWORD                 dwFlagsAndAttributes,
+  [in, optional] HANDLE                hTemplateFile
+);
+*/
+fn CreateFileA(emu: &mut emu::Emu) {
+    let lp_file_name = emu.regs.rcx as usize;
+    let dw_desired_access = emu.regs.rdx as usize;
+    let dw_share_mode = emu.regs.r8 as usize;
+    let lp_security_attributes = emu.regs.r9 as usize;
+    let dw_creation_disposition = emu.regs.r10 as usize;
+    let dw_flags_and_attributes = emu.regs.r11 as usize;
+    let h_template_file = emu.regs.r12 as usize;
+    log_red!(emu, "** {} kernel32!CreateFileA lp_file_name: 0x{:x} dw_desired_access: 0x{:x} dw_share_mode: 0x{:x} lp_security_attributes: 0x{:x} dw_creation_disposition: 0x{:x} dw_flags_and_attributes: 0x{:x} h_template_file: 0x{:x}", emu.pos, lp_file_name, dw_desired_access, dw_share_mode, lp_security_attributes, dw_creation_disposition, dw_flags_and_attributes, h_template_file);
+    // TODO: Implement this
+    emu.regs.rax = 1;
+}
+
+/*
+DWORD GetFileSize(
+  [in]            HANDLE  hFile,
+  [out, optional] LPDWORD lpFileSizeHigh
+);
+*/
+fn GetFileSize(emu: &mut emu::Emu) {
+    let h_file = emu.regs.rcx;
+    let lp_file_size_high = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!GetFileSize {:x} {:x}", emu.pos, h_file, lp_file_size_high);
+    // TODO: Implement this
+    emu.regs.rax = 3671040; // surprise.dll
 }
