@@ -10,6 +10,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
         "__p___argv" => __p___argv(emu),
         "__p___argc" => __p___argc(emu),
+        "__acrt_iob_func" => __acrt_iob_func(emu),
+        "__stdio_common_vfprintf" => __stdio_common_vfprintf(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -94,22 +96,58 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
     );
 
     // TODO: Implement this
+    emu.regs.rax = 0;
 }
 
+// char*** CDECL __p___argv(void) { return &MSVCRT___argv; }
 fn __p___argv(emu: &mut emu::Emu) {
-    let argv = emu.regs.rcx;
-
     log::info!(
-        "{}** {} crt_runtime!__p___argv argv: 0x{:x}  {}",
+        "{}** {} crt_runtime!__p___argv {}",
         emu.colors.light_red,
         emu.pos,
-        argv,
         emu.colors.nc
     );
 
-    // TODO: Implement this
+    // First, allocate space for argv array (pointer array)
+    // We'll allocate space for 2 pointers - one for program name and null terminator
+    let argv_array_addr = emu
+        .maps
+        .alloc(16) // 2 * sizeof(pointer) on x64
+        .expect("crt_runtime!__p___argv cannot allocate argv array");
+    emu.maps.create_map(&format!("alloc_{:x}", argv_array_addr), argv_array_addr, 16);
+
+    // Allocate space for program name string (using a dummy name)
+    let prog_name = "program.exe\0";
+    let prog_name_addr = emu
+        .maps
+        .alloc(prog_name.len() as u64)
+        .expect("crt_runtime!__p___argv cannot allocate program name");
+    emu.maps.create_map(&format!("alloc_{:x}", prog_name_addr), prog_name_addr, 16);
+
+    // Write program name string
+    emu.maps.write_string(prog_name_addr, prog_name);
+
+    // Write argv array:
+    // argv[0] = pointer to program name
+    emu.maps.write_qword(argv_array_addr, prog_name_addr);
+    // argv[1] = null terminator
+    emu.maps.write_qword(argv_array_addr + 8, 0);
+
+    // Allocate space for pointer to argv array
+    let p_argv_addr = emu
+        .maps
+        .alloc(8) // sizeof(pointer) on x64
+        .expect("crt_runtime!__p___argv cannot allocate p_argv");
+    emu.maps.create_map(&format!("alloc_{:x}", p_argv_addr), p_argv_addr, 8);
+
+    // Write pointer to argv array
+    emu.maps.write_qword(p_argv_addr, argv_array_addr);
+
+    // Return pointer to argv
+    emu.regs.rax = p_argv_addr;
 }
 
+// int* CDECL __p___argc(void) { return &MSVCRT___argc; }
 fn __p___argc(emu: &mut emu::Emu) {
     let argc = emu.regs.rcx;
 
@@ -118,6 +156,50 @@ fn __p___argc(emu: &mut emu::Emu) {
         emu.colors.light_red,
         emu.pos,
         argc,
+        emu.colors.nc
+    );
+
+    let argc_addr = emu
+        .maps
+        .alloc(4)
+        .expect("crt_runtime!__p___argc cannot allocate");
+    emu.maps.create_map(&format!("alloc_{:x}", argc_addr), argc_addr, 4);
+    emu.maps.write_dword(argc_addr, 1);
+    emu.regs.rax = argc_addr;
+}
+
+/*
+FILE * CDECL __acrt_iob_func(int index)
+{
+    return &__iob_func()[index];
+}
+*/
+
+fn __acrt_iob_func(emu: &mut emu::Emu) {
+    let index = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} crt_runtime!__acrt_iob_func index: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        index,
+        emu.colors.nc
+    );
+
+    // TODO: Implement this
+}
+
+/*
+_ACRTIMP int __cdecl __stdio_common_vfprintf(unsigned __int64,FILE*,const char*,_locale_t,__ms_va_list);
+*/
+fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
+    let index = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} crt_runtime!__stdio_common_vfprintf index: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        index,
         emu.colors.nc
     );
 
