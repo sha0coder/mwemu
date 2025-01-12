@@ -1949,18 +1949,18 @@ impl Default for SystemInfo64 {
 impl SystemInfo64 {
     pub fn new() -> SystemInfo64 {
         SystemInfo64 {
-            oem_id: 0x1337,
-            processor_architecture: 9,
+            oem_id: 0,  // Not used in modern Windows
+            processor_architecture: 9,  // PROCESSOR_ARCHITECTURE_AMD64
             reserved: 0,
-            page_size: 4090,
-            min_app_addr: 0,
-            max_app_addr: 0,
-            active_processor_mask: 1,
-            number_of_processors: 4,
-            processor_type: 586,
-            alloc_granularity: 65536,
-            processor_level: 5,
-            processor_revision: 255,
+            page_size: 4096,  // Standard x64 page size
+            min_app_addr: 0x10000,  // Typical minimum user-mode address
+            max_app_addr: 0x7FFFFFFEFFFF,  // Typical maximum user-mode address for x64
+            active_processor_mask: 0xFF,  // Assuming 8 cores (adjust as needed)
+            number_of_processors: 8,  // Typical modern system (adjust as needed)
+            processor_type: 8664,  // PROCESSOR_AMD_X8664
+            alloc_granularity: 65536,  // Standard Windows allocation granularity
+            processor_level: 6,  // Common for modern x64 processors
+            processor_revision: 0xA201,  // Example revision (family/model/stepping)
         }
     }
 
