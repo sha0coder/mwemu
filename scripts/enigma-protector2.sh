@@ -33,9 +33,9 @@ if [ "$MODE" == "dump" ]; then
         --rcx 0x180000000 \
         --rdx 1 \
         --r8 0 \
-        -C 0x180055e7e
-        #-c 232446016
-        #-c 232444028
+        -c 1
+        #-C 180055e7e
+        #-C 0x180055e84
     mv ./dumps/emu.bin ./dumps/emu-232321175.bin
 elif [ "$MODE" == "dump_verbose" ]; then
     cargo run \
