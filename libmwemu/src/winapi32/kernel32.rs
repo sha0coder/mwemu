@@ -935,6 +935,15 @@ fn DisconnectNamedPipe(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+/*
+BOOL ReadFile(
+  [in]                HANDLE       hFile,
+  [out]               LPVOID       lpBuffer,
+  [in]                DWORD        nNumberOfBytesToRead,
+  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+  [in, out, optional] LPOVERLAPPED lpOverlapped
+);
+*/
 fn ReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu
         .maps

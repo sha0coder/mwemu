@@ -1925,6 +1925,7 @@ impl SystemInfo32 {
     }
 }
 
+#[derive(Debug)]
 pub struct SystemInfo64 {
     oem_id: u32,
     processor_architecture: u32,
@@ -1949,38 +1950,40 @@ impl Default for SystemInfo64 {
 impl SystemInfo64 {
     pub fn new() -> SystemInfo64 {
         SystemInfo64 {
-            oem_id: 0x1337,
-            processor_architecture: 9,
+            oem_id: 0,
+            processor_architecture: 9,  // PROCESSOR_ARCHITECTURE_AMD64
             reserved: 0,
-            page_size: 4090,
-            min_app_addr: 0,
-            max_app_addr: 0,
-            active_processor_mask: 1,
-            number_of_processors: 4,
-            processor_type: 586,
+            page_size: 4096,
+            min_app_addr: 0x10000,
+            max_app_addr: 0x7FFFFFFEFFFF,
+            active_processor_mask: 0xFF,
+            number_of_processors: 8,
+            processor_type: 8664,
             alloc_granularity: 65536,
-            processor_level: 5,
-            processor_revision: 255,
+            processor_level: 6,
+            processor_revision: 0xA201,
         }
     }
 
     pub fn save(&mut self, addr: u64, maps: &mut Maps) {
-        maps.write_dword(addr, self.oem_id);
-        maps.write_dword(addr + 4, self.processor_architecture);
-        maps.write_word(addr + 8, self.reserved);
-        maps.write_dword(addr + 10, self.page_size);
-        maps.write_qword(addr + 14, self.min_app_addr);
-        maps.write_qword(addr + 22, self.max_app_addr);
-        maps.write_qword(addr + 30, self.active_processor_mask);
-        maps.write_dword(addr + 38, self.number_of_processors);
-        maps.write_dword(addr + 42, self.processor_type);
-        maps.write_dword(addr + 46, self.alloc_granularity);
-        maps.write_word(addr + 50, self.processor_level);
-        maps.write_word(addr + 52, self.processor_revision);
+        // First union/struct (4 bytes total)
+        maps.write_word(addr + 0, self.processor_architecture as u16);
+        maps.write_word(addr + 2, self.reserved);
+        
+        // Rest of the structure
+        maps.write_dword(addr + 4, self.page_size);
+        maps.write_qword(addr + 8, self.min_app_addr);
+        maps.write_qword(addr + 16, self.max_app_addr);
+        maps.write_qword(addr + 24, self.active_processor_mask);
+        maps.write_dword(addr + 32, self.number_of_processors);
+        maps.write_dword(addr + 36, self.processor_type);
+        maps.write_dword(addr + 40, self.alloc_granularity);
+        maps.write_word(addr + 44, self.processor_level);
+        maps.write_word(addr + 46, self.processor_revision);
     }
 
     pub fn size(&self) -> usize {
-        54
+        48
     }
 }
 
