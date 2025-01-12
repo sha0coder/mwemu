@@ -7,6 +7,9 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     match api.as_str() {
         "_initialize_onexit_table" => _initialize_onexit_table(emu),
         "_register_onexit_function" => _register_onexit_function(emu),
+        "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
+        "__p___argv" => __p___argv(emu),
+        "__p___argc" => __p___argc(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -71,4 +74,52 @@ fn _register_onexit_function(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = 0;
+}
+
+/*
+extern "C" char** __cdecl _get_initial_narrow_environment()
+{
+    return common_get_initial_environment<char>();
+}
+*/
+fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
+    let env = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} crt_runtime!_get_initial_narrow_environment env: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        env,
+        emu.colors.nc
+    );
+
+    // TODO: Implement this
+}
+
+fn __p___argv(emu: &mut emu::Emu) {
+    let argv = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} crt_runtime!__p___argv argv: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        argv,
+        emu.colors.nc
+    );
+
+    // TODO: Implement this
+}
+
+fn __p___argc(emu: &mut emu::Emu) {
+    let argc = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} crt_runtime!__p___argc argc: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        argc,
+        emu.colors.nc
+    );
+
+    // TODO: Implement this
 }
