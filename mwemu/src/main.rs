@@ -170,6 +170,7 @@ fn main() {
             r#""Index","Address","Bytes","Disassembly","Registers","Memory","Comments""#
         )
         .expect("Failed to write trace file header");
+        emu.cfg.trace_filename = Some(trace_filename);
         emu.trace_file = Some(trace_file);
         emu.open_trace_file();
     }

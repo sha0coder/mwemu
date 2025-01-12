@@ -42,6 +42,7 @@ elif [ "$MODE" == "dump_verbose" ]; then
         --target $TARGET \
         -- \
         --filename ~/Desktop/enigma/surprise.dll \
+        --trace /tmp/output.csv \
         --maps ./maps64/ \
         --64bits \
         --rcx 0x180000000 \
@@ -50,8 +51,7 @@ elif [ "$MODE" == "dump_verbose" ]; then
         -vvv \
         --memory \
         --regs \
-        --exit 1000000 \
-        --trace /tmp/output.csv
+        --exit 1000000
 elif [ "$MODE" == "load" ]; then
     cargo run \
         -p mwemu \
