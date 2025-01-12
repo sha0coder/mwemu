@@ -170,7 +170,14 @@ impl Emu {
 
     pub fn open_trace_file(&mut self) {
         if let Some(filename) = self.cfg.trace_filename.clone() {
-            self.trace_file = Some(File::create(filename).unwrap());
+            let mut trace_file =
+                std::fs::File::create(&filename).expect("Failed to create trace file");
+            writeln!(
+                trace_file,
+                r#""Index","Address","Bytes","Disassembly","Registers","Memory","Comments""#
+            )
+            .expect("Failed to write trace file header");
+            self.trace_file = Some(trace_file);
         }
     }
 
@@ -3196,6 +3203,10 @@ impl Emu {
                 serialization::Serialization::dump_to_file(self, self.cfg.dump_filename.as_ref().unwrap());
             }
 
+            if self.cfg.trace_filename.is_some() {
+                self.trace_file.as_ref().unwrap().flush().expect("failed to flush trace file");
+            }
+
             return false;
         }
 
@@ -3343,6 +3354,10 @@ impl Emu {
 
                         if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
                             serialization::Serialization::dump_to_file(self, self.cfg.dump_filename.as_ref().unwrap());
+                        }
+
+                        if self.cfg.trace_filename.is_some() {
+                            self.trace_file.as_ref().unwrap().flush().expect("failed to flush trace file");
                         }
 
                         return Ok(self.regs.rip);

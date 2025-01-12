@@ -40,6 +40,8 @@ pub fn gateway(addr: u64, name: String, emu: &mut emu::Emu) {
         "gdi32.text" => gdi32::gateway(addr, emu),
         "ole32.text" => ole32::gateway(addr, emu),
         "api-ms-win-crt-runtime-l1-1-0.rdata" => crt_runtime::gateway(addr, emu),
+        "api-ms-win-crt-stdio-l1-1-0.rdata" => crt_runtime::gateway(addr, emu),
+        "api-ms-win-crt-heap-l1-1-0.rdata" => crt_runtime::gateway(addr, emu),
         "not_loaded" => {
             // TODO: banzai check?
             emu.pe64.as_ref().unwrap().import_addr_to_name(addr)
