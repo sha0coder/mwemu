@@ -16,6 +16,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "VerQueryValueA" => VerQueryValueA(emu),
         "_initterm_e" => _initterm_e(emu),
         "_initterm" => _initterm(emu),
+        "exit" => exit(emu),
+        "_exit" => _exit(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -205,4 +207,14 @@ fn _initterm_e(emu: &mut emu::Emu) {
 fn _initterm(emu: &mut emu::Emu) {
     log::info!("{}** {} kernelbase!_initterm  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
     emu.regs.rax = 0;
+}
+
+fn exit(emu: &mut emu::Emu) {
+    log::info!("{}** {} kernelbase!exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    panic!("exit called");
+}
+
+fn _exit(emu: &mut emu::Emu) {
+    log::info!("{}** {} kernelbase!_exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    panic!("_exit called");
 }
