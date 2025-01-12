@@ -23,7 +23,7 @@ def read_uint64_from_binary(filename):
                 memory = ""
                 comments = ""
 
-                print(f"{index:02x},{value:08x},{bytes},{disassembly},{registers},{memory},{comments}")
+                print(f"{index:02X},{value:016X},{bytes},{disassembly},{registers},{memory},{comments}")
 
                 index += 1
                 
@@ -37,4 +37,5 @@ if __name__ == "__main__":
         print("Usage: ./script.py <binary_file>")
         sys.exit(1)
     
+    print("Index,Address,Bytes,Disassembly,Registers,Memory,Comments")
     read_uint64_from_binary(sys.argv[1])
