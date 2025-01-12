@@ -163,15 +163,7 @@ fn main() {
             .value_of("trace")
             .expect("specify the trace output file")
             .to_string();
-        let mut trace_file =
-            std::fs::File::create(&trace_filename).expect("Failed to create trace file");
-        writeln!(
-            trace_file,
-            r#""Index","Address","Bytes","Disassembly","Registers","Memory","Comments""#
-        )
-        .expect("Failed to write trace file header");
         emu.cfg.trace_filename = Some(trace_filename);
-        emu.trace_file = Some(trace_file);
         emu.open_trace_file();
     }
     if matches.is_present("trace_start") {
