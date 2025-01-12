@@ -8,6 +8,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "_initialize_onexit_table" => _initialize_onexit_table(emu),
         "_register_onexit_function" => _register_onexit_function(emu),
         "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
+        "realloc" => realloc(emu),
         "__p___argv" => __p___argv(emu),
         "__p___argc" => __p___argc(emu),
         "__acrt_iob_func" => __acrt_iob_func(emu),
@@ -264,4 +265,76 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
 
     // Return success (1) - this is super basic
     emu.regs.rax = 1;
+}
+
+fn realloc(emu: &mut emu::Emu) {
+    let addr = emu.regs.rcx;
+    let size = emu.regs.rdx;
+
+    if addr == 0 {
+        if size == 0 {
+            emu.regs.rax = 0;
+            return;
+        } else {
+            let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
+
+            emu.maps
+                .create_map(&format!("alloc_{:x}", base), base, size)
+                .expect("msvcrt!malloc cannot create map");
+
+            log::info!(
+                "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
+                emu.colors.light_red,
+                emu.pos,
+                addr,
+                size,
+                base,
+                emu.colors.nc
+            );
+
+            emu.regs.rax = base;
+            return;
+        }
+    }
+
+    if size == 0 {
+        log::info!(
+            "{}** {} msvcrt!realloc 0x{:x} {} =0x1337 {}",
+            emu.colors.light_red,
+            emu.pos,
+            addr,
+            size,
+            emu.colors.nc
+        );
+
+        emu.regs.rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
+        return;
+    }
+
+    let mem = emu
+        .maps
+        .get_mem_by_addr(addr)
+        .expect("msvcrt!realloc error getting mem");
+    let prev_size = mem.size();
+
+    let new_addr = emu.maps.alloc(size).expect("msvcrt!realloc out of memory");
+
+    emu.maps
+        .create_map(&format!("alloc_{:x}", new_addr), new_addr, size)
+        .expect("msvcrt!realloc cannot create map");
+
+    emu.maps.memcpy(new_addr, addr, prev_size);
+    emu.maps.dealloc(addr);
+
+    log::info!(
+        "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        addr,
+        size,
+        new_addr,
+        emu.colors.nc
+    );
+
+    emu.regs.rax = new_addr;
 }
