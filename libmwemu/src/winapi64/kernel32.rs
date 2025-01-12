@@ -1318,28 +1318,6 @@ fn ReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp)
         .expect("kernel32!ReadFile cannot read the overlapped");
 
-    let mut count = COUNT_READ.lock().unwrap();
-    *count += 1;
-
-    if size == 4 && *count == 1 {
-        // probably reading the size
-        emu.maps.write_dword(buff, 0x10);
-    }
-
-    if *count < 3 {
-        // keep reading bytes
-        emu.maps.write_qword(bytes_read, size);
-        emu.maps.memset(buff, 0x90, size as usize);
-        emu.regs.rax = 1;
-    } else {
-        // try to force finishing reading and continue the malware logic
-        emu.maps.write_qword(bytes_read, 0);
-        emu.regs.rax = 0;
-    }
-
-    //TODO: write some random bytes to the buffer
-    //emu.maps.write_spaced_bytes(buff, "00 00 00 01".to_string());
-
     log::info!(
         "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
         emu.colors.light_red,
@@ -1351,8 +1329,16 @@ fn ReadFile(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(file_hndl) {
-        log::info!("\tinvalid handle.")
+        panic!("\tinvalid handle.")
+    } 
+
+    if size != 3671040 {
+        panic!("unknown size");
     }
+    
+    let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
+    emu.maps.write_bytes(buff, bytes);
+    emu.regs.rax = 1;
 }
 
 fn WriteFile(emu: &mut emu::Emu) {
