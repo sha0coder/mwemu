@@ -1319,12 +1319,14 @@ fn ReadFile(emu: &mut emu::Emu) {
         .expect("kernel32!ReadFile cannot read the overlapped");
 
     log::info!(
-        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
+        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} bytes_read: {:x} overlapped: {:x} {}",
         emu.colors.light_red,
         emu.pos,
         file_hndl,
         buff,
         size,
+        bytes_read,
+        overlapped,
         emu.colors.nc
     );
 
@@ -1338,6 +1340,7 @@ fn ReadFile(emu: &mut emu::Emu) {
     
     let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
     emu.maps.write_bytes(buff, bytes);
+    emu.maps.write_qword(bytes_read, size);
     emu.regs.rax = 1;
 }
 
