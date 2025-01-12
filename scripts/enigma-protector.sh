@@ -27,14 +27,10 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Desktop/enigma/surprise.dll \
+        --filename ~/Desktop/enigma/surprise-loader.exe \
+        --trace /tmp/output.csv \
         --maps ./maps64/ \
-        --64bits \
-        --rcx 0x180000000 \
-        --rdx 1 \
-        --r8 0 \
-        --exit 1000000
-    mv ./dumps/emu.bin ./dumps/emu-1000000.bin
+        --64bits
 elif [ "$MODE" == "dump_verbose" ]; then
     cargo run \
         -p mwemu \

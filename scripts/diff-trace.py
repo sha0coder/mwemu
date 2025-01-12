@@ -3,7 +3,7 @@
 import csv
 
 MWEMU_TRACE_PATH = '/tmp/output.csv' # mwemu
-X64DBG_TRACE_PATH = '/Users/brandon/Downloads/export-20241226-135447.csv' # x64dbg
+X64DBG_TRACE_PATH = '/tmp/rip_trace.csv' # x64dbg
 EXPECTED_HEADERS = ["Index", "Address", "Bytes", "Disassembly", "Registers", "Memory", "Comments"]
 EXPECTED_BASE = 0x180000000
 EXPECTED_ENTRY = 0x181035FF0
@@ -84,6 +84,12 @@ def compare_traces():
 
             if mwemu_idx != x64dbg_idx or mwemu_addr != x64dbg_addr:
                 print(f"\nDifference found at row {row_num}:")
+
+                print(f"mwemu_idx: {mwemu_idx:x}")
+                print(f"x64dbg_idx: {x64dbg_idx:x}")
+                print(f"mwemu_addr: {mwemu_addr:x}")
+                print(f"x64dbg_addr: {x64dbg_addr:x}")
+
                 print(f"\nPrevious {max_history} lines from mwemu trace:")
                 for prev_idx, prev_addr, prev_row in mwemu_prev_lines:
                     print(f"{prev_row}")

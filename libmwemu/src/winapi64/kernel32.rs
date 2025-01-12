@@ -101,6 +101,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetProcessAffinityMask" => GetProcessAffinityMask(emu),
         "IsDebuggerPresent" => IsDebuggerPresent(emu),
         "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
+        "SetCurrentDirectoryA" => SetCurrentDirectoryA(emu),
         "UnhandledExceptionFilter" => UnhandledExceptionFilter(emu),
         "GetCurrentProcess" => GetCurrentProcess(emu),
         "VirtualAllocExNuma" => VirtualAllocExNuma(emu),
@@ -163,6 +164,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
         "ResetEvent" => ResetEvent(emu),
         "VirtualFree" => VirtualFree(emu),
+        "CreateFileA" => CreateFileA(emu),
+        "GetFileSize" => GetFileSize(emu),
         "GetModuleFileNameW" => GetModuleFileNameW(emu),
         "EnterCriticalSection" => EnterCriticalSection(emu),
         "LeaveCriticalSection" => LeaveCriticalSection(emu),
@@ -1315,28 +1318,6 @@ fn ReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp)
         .expect("kernel32!ReadFile cannot read the overlapped");
 
-    let mut count = COUNT_READ.lock().unwrap();
-    *count += 1;
-
-    if size == 4 && *count == 1 {
-        // probably reading the size
-        emu.maps.write_dword(buff, 0x10);
-    }
-
-    if *count < 3 {
-        // keep reading bytes
-        emu.maps.write_qword(bytes_read, size);
-        emu.maps.memset(buff, 0x90, size as usize);
-        emu.regs.rax = 1;
-    } else {
-        // try to force finishing reading and continue the malware logic
-        emu.maps.write_qword(bytes_read, 0);
-        emu.regs.rax = 0;
-    }
-
-    //TODO: write some random bytes to the buffer
-    //emu.maps.write_spaced_bytes(buff, "00 00 00 01".to_string());
-
     log::info!(
         "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
         emu.colors.light_red,
@@ -1348,8 +1329,16 @@ fn ReadFile(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(file_hndl) {
-        log::info!("\tinvalid handle.")
+        panic!("\tinvalid handle.")
+    } 
+
+    if size != 3671040 {
+        panic!("unknown size");
     }
+    
+    let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
+    emu.maps.write_bytes(buff, bytes);
+    emu.regs.rax = 1;
 }
 
 fn WriteFile(emu: &mut emu::Emu) {
@@ -3676,4 +3665,57 @@ fn GetEnvironmentStringsW(emu: &mut emu::Emu) {
     emu.maps
         .write_wide_string(addr, "PATH=c:\\Windows\\System32");
     emu.regs.rax = addr;
+}
+
+/*
+BOOL SetCurrentDirectory(
+  [in] LPCTSTR lpPathName
+);
+*/
+fn SetCurrentDirectoryA(emu: &mut emu::Emu) {
+    let lp_path_name = emu.regs.rcx as usize;
+    log_red!(emu, "** {} kernel32!SetCurrentDirectoryA lp_path_name: 0x{:x}", emu.pos, lp_path_name);
+    // TODO: Implement this
+    emu.regs.rax = 1;
+}
+
+/*
+HANDLE CreateFileA(
+  [in]           LPCSTR                lpFileName,
+  [in]           DWORD                 dwDesiredAccess,
+  [in]           DWORD                 dwShareMode,
+  [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+  [in]           DWORD                 dwCreationDisposition,
+  [in]           DWORD                 dwFlagsAndAttributes,
+  [in, optional] HANDLE                hTemplateFile
+);
+*/
+fn CreateFileA(emu: &mut emu::Emu) {
+    let lp_file_name = emu.regs.rcx as usize;
+    let dw_desired_access = emu.regs.rdx as usize;
+    let dw_share_mode = emu.regs.r8 as usize;
+    let lp_security_attributes = emu.regs.r9 as usize;
+    let dw_creation_disposition = emu.regs.r10 as usize;
+    let dw_flags_and_attributes = emu.regs.r11 as usize;
+    let h_template_file = emu.regs.r12 as usize;
+    log_red!(emu, "** {} kernel32!CreateFileA lp_file_name: 0x{:x} dw_desired_access: 0x{:x} dw_share_mode: 0x{:x} lp_security_attributes: 0x{:x} dw_creation_disposition: 0x{:x} dw_flags_and_attributes: 0x{:x} h_template_file: 0x{:x}", emu.pos, lp_file_name, dw_desired_access, dw_share_mode, lp_security_attributes, dw_creation_disposition, dw_flags_and_attributes, h_template_file);
+    let mut name: String = String::new();
+    if lp_file_name > 0 {
+        name = emu.maps.read_string(lp_file_name as u64);
+    }
+    emu.regs.rax = helper::handler_create(&name);
+}
+
+/*
+DWORD GetFileSize(
+  [in]            HANDLE  hFile,
+  [out, optional] LPDWORD lpFileSizeHigh
+);
+*/
+fn GetFileSize(emu: &mut emu::Emu) {
+    let h_file = emu.regs.rcx;
+    let lp_file_size_high = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!GetFileSize {:x} {:x}", emu.pos, h_file, lp_file_size_high);
+    // TODO: Implement this
+    emu.regs.rax = 3671040; // surprise.dll
 }
