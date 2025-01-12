@@ -193,15 +193,26 @@ fn __acrt_iob_func(emu: &mut emu::Emu) {
 _ACRTIMP int __cdecl __stdio_common_vfprintf(unsigned __int64,FILE*,const char*,_locale_t,__ms_va_list);
 */
 fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
-    let index = emu.regs.rcx;
+    let options = emu.regs.rcx;      // _In_ options
+    let file = emu.regs.rdx;         // _In_ FILE*
+    let format = emu.regs.r8;        // _In_ format string ptr
+    let locale = emu.regs.r9;        // _In_opt_ locale
+    // va_list is on stack since we've used up registers
+    
+    // Just try to read the format string
+    let fmt_str = emu.maps.read_string(format);
 
     log::info!(
-        "{}** {} crt_runtime!__stdio_common_vfprintf index: 0x{:x}  {}",
+        "{}** {} crt_runtime!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
-        index,
+        options,
+        file,
+        fmt_str,
+        locale,
         emu.colors.nc
     );
 
-    // TODO: Implement this
+    // Return success (1) - this is super basic
+    emu.regs.rax = 1;
 }

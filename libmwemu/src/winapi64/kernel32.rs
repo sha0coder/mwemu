@@ -1405,8 +1405,9 @@ fn CloseHandle(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_close(handle) {
-        log::info!("\tinvalid handle.")
+        panic!("\tinvalid handle.")
     }
+
     emu.regs.rax = 1;
 }
 
@@ -2692,7 +2693,7 @@ fn SystemTimeToFileTime(emu: &mut emu::Emu) {
 fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let ptr_sysinfo = emu.regs.rcx;
 
-    let mut sysinfo = structures::SystemInfo32::new();
+    let mut sysinfo = structures::SystemInfo64::new();
     sysinfo.save(ptr_sysinfo, &mut emu.maps);
 
     log::info!(

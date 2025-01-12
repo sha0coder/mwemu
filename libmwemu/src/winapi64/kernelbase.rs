@@ -211,10 +211,10 @@ fn _initterm(emu: &mut emu::Emu) {
 
 fn exit(emu: &mut emu::Emu) {
     log::info!("{}** {} kernelbase!exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
-    emu.regs.rax = 0;
+    panic!("exit called");
 }
 
 fn _exit(emu: &mut emu::Emu) {
     log::info!("{}** {} kernelbase!_exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
-    emu.regs.rax = 0;
+    panic!("_exit called");
 }
