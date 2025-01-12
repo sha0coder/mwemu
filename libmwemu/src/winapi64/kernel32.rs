@@ -176,6 +176,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "SizeofResource" => SizeofResource(emu),
         "LockResource" => LockResource(emu),
         "FreeResource" => FreeResource(emu),
+        "IsBadReadPtr" => IsBadReadPtr(emu),
         "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -3755,4 +3756,18 @@ fn GetFileSize(emu: &mut emu::Emu) {
     } else {
         panic!("unknown file");
     }
+}
+
+/*
+BOOL IsBadReadPtr(
+  [in] const VOID *lp,
+  [in] UINT_PTR   ucb
+);
+*/
+fn IsBadReadPtr(emu: &mut emu::Emu) {
+    let lp = emu.regs.rcx as usize;
+    let ucb = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!IsBadReadPtr {:x} {:x}", emu.pos, lp, ucb);
+    // TODO: implement this
+    emu.regs.rax = 0;
 }
