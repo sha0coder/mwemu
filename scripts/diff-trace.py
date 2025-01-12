@@ -84,6 +84,12 @@ def compare_traces():
 
             if mwemu_idx != x64dbg_idx or mwemu_addr != x64dbg_addr:
                 print(f"\nDifference found at row {row_num}:")
+
+                print(f"mwemu_idx: {mwemu_idx:x}")
+                print(f"x64dbg_idx: {x64dbg_idx:x}")
+                print(f"mwemu_addr: {mwemu_addr:x}")
+                print(f"x64dbg_addr: {x64dbg_addr:x}")
+
                 print(f"\nPrevious {max_history} lines from mwemu trace:")
                 for prev_idx, prev_addr, prev_row in mwemu_prev_lines:
                     print(f"{prev_row}")
