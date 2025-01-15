@@ -27,7 +27,7 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Desktop/enigma/surprise-loader.exe \
+        --filename ~/Desktop/enigma/pe_loader.exe \
         --trace /tmp/output.csv \
         --maps ./maps64/ \
         --64bits
