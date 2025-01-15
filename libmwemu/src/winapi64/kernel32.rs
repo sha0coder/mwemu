@@ -178,6 +178,9 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "FreeResource" => FreeResource(emu),
         "IsBadReadPtr" => IsBadReadPtr(emu),
         "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
+        "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
+        "SetThreadStackGuarantee" => SetThreadStackGuarantee(emu),
+        "GetCurrentThread" => GetCurrentThread(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -3783,4 +3786,43 @@ fn IsBadReadPtr(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!IsBadReadPtr {:x} {:x}", emu.pos, lp, ucb);
     // TODO: implement this
     emu.regs.rax = 0;
+}
+
+fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {
+    let p1 = emu.regs.rcx as usize;
+    let fptr = emu.regs.rdx as usize;
+
+    log::info!(
+        "{}** {} kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        p1,
+        fptr,
+        emu.colors.nc
+    );
+
+    emu.veh = fptr as u64;
+
+    emu.regs.rax = 0x2c2878;
+}
+
+/*
+BOOL SetThreadStackGuarantee(
+  [in, out] PULONG StackSizeInBytes
+);
+*/
+fn SetThreadStackGuarantee(emu: &mut emu::Emu) {
+    let stack_size_in_bytes = emu.regs.rcx as usize;
+    log_red!(emu, "** {} kernel32!SetThreadStackGuarantee {:x}", emu.pos, stack_size_in_bytes);
+    // TODO: implement this
+    emu.regs.rax = 1;
+}
+
+/*
+HANDLE GetCurrentThread();
+*/
+fn GetCurrentThread(emu: &mut emu::Emu) {
+    log_red!(emu, "** {} kernel32!GetCurrentThread", emu.pos);
+    // TODO: implement this
+    emu.regs.rax = 0xFFFF_FFFF_FFFF_FFFE;
 }
