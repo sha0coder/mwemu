@@ -678,12 +678,17 @@ impl Maps {
                     None => "".to_string(),
                 };
 
+                let mut s = "".to_string();
+                if !name.is_empty() {
+                    s = self.read_string(value.into());
+                }
+
                 log::info!(
                     "0x{:x}: 0x{:x} ({}) '{}'",
                     a,
                     value,
                     name,
-                    self.filter_replace_string(&self.read_string(value.into()))
+                    self.filter_replace_string(&s)
                 );
             } else {
                 log::info!("0x{:x}: 0x{:x}", a, value);
@@ -1077,9 +1082,13 @@ impl Maps {
         }
     }
 
-    fn _alloc(&self, sz: u64, bottom: u64, top: u64, lib: bool) -> Option<u64> {
+    fn _alloc(&self, mut sz: u64, bottom: u64, top: u64, lib: bool) -> Option<u64> {
         let mut prev: u64 = bottom;
         let debug = false;
+
+        if sz > 0xffffff {
+            sz = 0xffffff;
+        }
 
         if debug {
             log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
@@ -1116,6 +1125,10 @@ impl Maps {
             prev = mem.get_bottom();
         }
 
+        if top < prev {
+            //TODO: check this case!!
+            prev = top;
+        }
         if top - prev > sz {
             if debug {
                 log::info!("space found: 0x{:x} sz:{}", prev, sz);

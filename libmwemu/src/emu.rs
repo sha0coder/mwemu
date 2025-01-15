@@ -3510,7 +3510,8 @@ impl Emu {
                                 self.rep = None;
                             }
                         } else {
-                            unimplemented!("string instruction not supported");
+                            self.rep = None;
+                            //unimplemented!("string instruction not supported");
                         }
                     }
 

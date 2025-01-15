@@ -482,6 +482,19 @@ fn GetProcAddress(emu: &mut emu::Emu) {
     let func_ptr = emu.regs.rdx;
 
     let func = emu.maps.read_string(func_ptr).to_lowercase();
+    if func == "zwcopyfilechunk" {
+        emu.regs.rax = 0x7ff7e0001337;
+        log::info!(
+            "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
+            emu.colors.light_red,
+            emu.pos,
+            "kernel32",
+            "zwcopyfilechunk",
+            emu.regs.rax,
+            emu.colors.nc
+        );
+        return;
+    }
 
     let mut flink = peb64::Flink::new(emu);
     flink.load(emu);
@@ -1348,7 +1361,7 @@ fn ReadFile(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!ReadFile name = {name} {}", emu.pos, emu.colors.nc);
 
     if name == "HaspEmul.dll" {
-        let bytes = std::fs::read("/Users/brandon/Desktop/enigma/surprise.dll").unwrap(); 
+        let bytes = std::fs::read("/Users/jesus/Downloads/enigma/surprise.dll").unwrap(); 
         if size as usize > bytes.len() {
             panic!("size is greater than the file size");
         }
@@ -3750,7 +3763,7 @@ fn GetFileSize(emu: &mut emu::Emu) {
 
     let name = helper::handler_get_uri(h_file);
     if name == "HaspEmul.dll" {
-        let size = std::fs::metadata("/Users/brandon/Desktop/enigma/surprise.dll").unwrap().len();
+        let size = std::fs::metadata("/Users/jesus/Downloads/enigma/surprise.dll").unwrap().len();
         log::info!("** {} kernel32!GetFileSize {:x} {:x} size: {}", emu.pos, h_file, lp_file_size_high, size);
         emu.regs.rax = size as u64;
     } else {
