@@ -3839,7 +3839,8 @@ fn GetConsoleMode(emu: &mut emu::Emu) {
     let h_console_handle = emu.regs.rcx;
     let lp_mode = emu.regs.rdx as usize;
     log_red!(emu, "** {} kernel32!GetConsoleMode {:x} {:x}", emu.pos, h_console_handle, lp_mode);
-    // TODO: implement this
+    // TODO: implement this    
+    emu.maps.write_dword(lp_mode as u64, 0x00000003); //TODO: not sure what this is
     emu.regs.rax = 1;
 }
 
@@ -3856,10 +3857,15 @@ BOOL WINAPI WriteConsoleW(
 fn WriteConsoleW(emu: &mut emu::Emu) {
     let h_console_output = emu.regs.rcx;
     let lp_buffer = emu.regs.rdx as usize;
-    let n_number_of_chars_to_write = emu.regs.r8 as usize;
+    let s1: String = emu.maps.read_wide_string(lp_buffer as u64);
+    let n_number_of_chars_to_write = emu.regs.r8 as u32;
     let lp_number_of_chars_written = emu.regs.r9 as usize;
-    let lp_reserved = emu.regs.r10 as usize;
-    log_red!(emu, "** {} kernel32!WriteConsoleW {:x} {:x} {:x} {:x} {:x}", emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, lp_number_of_chars_written, lp_reserved);
+    let lp_reserved = emu
+        .maps
+        .read_qword(emu.regs.rsp)
+        .expect("kernel32!WriteConsoleW cannot read_qword lp_reserved");
+    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}", emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, lp_number_of_chars_written, lp_reserved, s1);
     // TODO: implement this
+    emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write as u32); //TODO: not sure what this is
     emu.regs.rax = 1;
 }
