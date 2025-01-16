@@ -2305,13 +2305,23 @@ impl Emu {
                             }
                         }
                         0x58 => {
-                            // TEB.ThreadLocalStoragePointer
-                            let teb = self.maps.get_mem("teb");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading ThreadLocalStoragePointer from TEB 0x{:x}", self.pos, teb.get_base());
-                            }
-                            // You might want to set up proper TLS array
-                            teb.get_base() + 0x1500  // Example offset for TLS array
+                            // Get or create static TLS array (for __declspec(thread) variables)
+                            let static_tls = match self.maps.get_mem2("static_tls_array") {
+                                Some(mem) => mem.get_base(),
+                                None => {
+                                    // This should be sized based on the number of modules with .tls sections
+                                    // For now, allocate space for a few module entries
+                                    let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
+                                    let tls_array = self.alloc("static_tls_array", size);
+                                    
+                                    // Initialize to null pointers
+                                    self.maps.write_bytes(tls_array, vec![0; size as usize]);
+                                    
+                                    tls_array
+                                }
+                            };
+                            
+                            static_tls
                         }
                         _ => {
                             log::info!("unimplemented gs:[0x{:x}]", mem_addr);
