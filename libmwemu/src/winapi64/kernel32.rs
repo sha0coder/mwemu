@@ -181,6 +181,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
         "SetThreadStackGuarantee" => SetThreadStackGuarantee(emu),
         "GetCurrentThread" => GetCurrentThread(emu),
+        "GetConsoleMode" => GetConsoleMode(emu),
+        "WriteConsoleW" => WriteConsoleW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -3825,4 +3827,39 @@ fn GetCurrentThread(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!GetCurrentThread", emu.pos);
     // TODO: implement this
     emu.regs.rax = 0xFFFF_FFFF_FFFF_FFFE;
+}
+
+/*
+BOOL WINAPI GetConsoleMode(
+  _In_  HANDLE  hConsoleHandle,
+  _Out_ LPDWORD lpMode
+);
+*/
+fn GetConsoleMode(emu: &mut emu::Emu) {
+    let h_console_handle = emu.regs.rcx;
+    let lp_mode = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!GetConsoleMode {:x} {:x}", emu.pos, h_console_handle, lp_mode);
+    // TODO: implement this
+    emu.regs.rax = 1;
+}
+
+
+/*
+BOOL WINAPI WriteConsoleW(
+  _In_             HANDLE  hConsoleOutput,
+  _In_       const wchar_t    *lpBuffer,
+  _In_             DWORD   nNumberOfCharsToWrite,
+  _Out_opt_        LPDWORD lpNumberOfCharsWritten,
+  _Reserved_       LPVOID  lpReserved
+);
+*/
+fn WriteConsoleW(emu: &mut emu::Emu) {
+    let h_console_output = emu.regs.rcx;
+    let lp_buffer = emu.regs.rdx as usize;
+    let n_number_of_chars_to_write = emu.regs.r8 as usize;
+    let lp_number_of_chars_written = emu.regs.r9 as usize;
+    let lp_reserved = emu.regs.r10 as usize;
+    log_red!(emu, "** {} kernel32!WriteConsoleW {:x} {:x} {:x} {:x} {:x}", emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, lp_number_of_chars_written, lp_reserved);
+    // TODO: implement this
+    emu.regs.rax = 1;
 }
