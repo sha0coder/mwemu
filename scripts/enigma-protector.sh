@@ -27,10 +27,11 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Desktop/enigma/pe_loader.exe \
+        --filename ~/Desktop/enigma/pe_loader2.exe \
         --trace /tmp/output.csv \
         --maps ./maps64/ \
-        --64bits
+        --64bits \
+        -vv
 elif [ "$MODE" == "dump_verbose" ]; then
     cargo run \
         -p mwemu \
