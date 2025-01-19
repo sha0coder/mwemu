@@ -3,10 +3,9 @@
 import csv
 
 MWEMU_TRACE_PATH = '/tmp/output.csv' # mwemu
-X64DBG_TRACE_PATH = '/tmp/rip_trace.csv' # x64dbg
+X64DBG_TRACE_PATH = '/Users/brandon/Desktop/pe_loader2-export-20250116-230152.csv' # x64dbg
 EXPECTED_HEADERS = ["Index", "Address", "Bytes", "Disassembly", "Registers", "Memory", "Comments"]
-EXPECTED_BASE = 0x180000000
-EXPECTED_ENTRY = 0x181035FF0
+EXPECTED_ENTRY = 0x000000014005D7F0
 
 def validate_headers(headers):
     if headers != EXPECTED_HEADERS:
@@ -44,16 +43,31 @@ def compare_traces():
         # add Source column to traces
         mwemu_row['Source'] = 'mwemu'
         x64dbg_row['Source'] = 'x64dbg'
+
+        # parse addresses
+        mwemu_addr = parse_hex(mwemu_row['Address'].split()[0])
+        x64dbg_addr = parse_hex(x64dbg_row['Address'].split()[0])
         
         # Calculate offsets based on first address
-        mwemu_offset = calculate_offset(parse_hex(mwemu_row['Address'].split()[0]))
-        x64dbg_offset = calculate_offset(parse_hex(x64dbg_row['Address'].split()[0]))
+        mwemu_offset = calculate_offset(mwemu_addr)
+        x64dbg_offset = calculate_offset(x64dbg_addr)
+
+        # check if x64dbg row is out of range
+        entry_rva = 0x005D7F0
+        x64dbg_base = x64dbg_addr - entry_rva
+        text_start = 0x1000
+        text_end = 0x60000
+
+        if x64dbg_addr < x64dbg_base + text_start or x64dbg_addr > x64dbg_base + text_end:
+            print(f"x64dbg row is out of range: 0x{x64dbg_addr:x}")
+            return
+
+        print(f"x64dbg base: 0x{x64dbg_base:x}")
+        print(f"text start: 0x{text_start:x}")
+        print(f"text end: 0x{text_end:x}")
         
         print(f"mwemu trace offset: 0x{mwemu_offset:x}")
         print(f"x64dbg trace offset: 0x{x64dbg_offset:x}")
-
-        if mwemu_offset != x64dbg_offset:
-            raise ValueError(f"Trace offsets do not match: mwemu=0x{mwemu_offset:x}, x64dbg=0x{x64dbg_offset:x}")
 
         # Add buffer for previous lines
         mwemu_prev_lines = [(parse_hex(mwemu_row['Index']), 
@@ -88,7 +102,7 @@ def compare_traces():
                 print(f"mwemu_idx: {mwemu_idx:x}")
                 print(f"x64dbg_idx: {x64dbg_idx:x}")
                 print(f"mwemu_addr: {mwemu_addr:x}")
-                print(f"x64dbg_addr: {x64dbg_addr:x}")
+                print(f"x64dbg_addr: {x64dbg_addr + x64dbg_offset:x}")
 
                 print(f"\nPrevious {max_history} lines from mwemu trace:")
                 for prev_idx, prev_addr, prev_row in mwemu_prev_lines:

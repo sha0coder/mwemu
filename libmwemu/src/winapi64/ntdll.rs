@@ -308,7 +308,7 @@ fn ZwQueueApcThread(emu: &mut emu::Emu) {
     let arg1 = emu.regs.r9;
     let arg2 = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!ZwQueueApcThread cannot read arg2");
 
     log::info!(
@@ -571,31 +571,31 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let iostat = emu.regs.r9;
     let alloc_sz = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("ntdll!NtCreateFile error reading alloc_sz param");
     let fattrib = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("ntdll!NtCreateFile error reading fattrib param");
     let share_access = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("ntdll!NtCreateFile error reading share_access param");
     let create_disp = emu
         .maps
-        .read_qword(emu.regs.rsp + 24)
+        .read_qword(emu.regs.rsp + 0x38)
         .expect("ntdll!NtCreateFile error reading create_disp param");
     let create_opt = emu
         .maps
-        .read_qword(emu.regs.rsp + 32)
+        .read_qword(emu.regs.rsp + 0x40)
         .expect("ntdll!NtCreateFile error reading create_opt param");
     let ea_buff = emu
         .maps
-        .read_qword(emu.regs.rsp + 40)
+        .read_qword(emu.regs.rsp + 0x40)
         .expect("ntdll!NtCreateFile error reading ea_buff param");
     let ea_len = emu
         .maps
-        .read_qword(emu.regs.rsp + 48)
+        .read_qword(emu.regs.rsp + 0x50)
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
     let obj_name_ptr = emu
@@ -664,7 +664,7 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
     let len = emu.regs.r9;
     let fileinfoctls = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("ntdll!NtQueryInformationFile cannot read fileinfoctls param");
 
     log::info!(
@@ -684,23 +684,23 @@ fn NtReadFile(emu: &mut emu::Emu) {
     let apc_ctx = emu.regs.r9;
     let stat = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("ntdll!NtReadFile error reading stat param");
     let buff = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("ntdll!NtReadFile error reading buff param");
     let len = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("ntdll!NtReadFile error reading len param") as usize;
     let off = emu
         .maps
-        .read_qword(emu.regs.rsp + 24)
+        .read_qword(emu.regs.rsp + 0x38)
         .expect("ntdll!NtReadFile error reading off param");
     let key = emu
         .maps
-        .read_qword(emu.regs.rsp + 32)
+        .read_qword(emu.regs.rsp + 0x40)
         .expect("ntdll!NtReadFile error reading key param");
 
     let file = helper::handler_get_uri(file_hndl);
@@ -762,7 +762,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
     let page = emu.regs.r9;
     let prot = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("ntdll!NtProtectVirtualMemory error reading old prot param");
 
     log::info!(
@@ -923,7 +923,7 @@ fn LdrGetDllHandleEx(emu: &mut emu::Emu) {
     let dll_name_ptr = emu.regs.r9;
     let out_hndl = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("ntdll!LdrGetDllHandleEx error reading out_hdl");
 
     let dll_name = emu.maps.read_wide_string(dll_name_ptr);
