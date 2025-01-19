@@ -3370,9 +3370,6 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp + 0x28)  
         .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
 
-    log::info!("Memory at utf8_ptr: {:?}", 
-    emu.maps.read_bytes(utf8_ptr, 32.min(cb_multi_byte as usize)));
-
     // Read exact number of bytes specified
     let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
     let utf8 = String::from_utf8_lossy(&bytes).to_string();
