@@ -99,11 +99,11 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
     let typ_out = emu.regs.r9;
     let data_out = emu
         .maps
-        .read_qword(emu.regs.rsp) // TODO: shadow space?
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("error reading api aparam");
     let datasz_out = emu
         .maps
-        .read_qword(emu.regs.rsp + 8) // TODO: shadow space?
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("error reading api param");
 
     let mut value = String::new();
