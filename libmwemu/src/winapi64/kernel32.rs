@@ -3414,8 +3414,6 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
                 emu.maps.write_word(wide_ptr + (i * 2) as u64, *wchar);
             }
             emu.regs.rax = wide.len() as u64;
-
-            log::info!("Written UTF-16 at wide_ptr: {:?}", emu.maps.read_bytes(wide_ptr, (wide.len() * 2).min(32)));
         } else {
             let mut err = LAST_ERROR.lock().unwrap();
             *err = constants::ERROR_INSUFFICIENT_BUFFER;
@@ -3824,7 +3822,7 @@ HANDLE GetCurrentThread();
 fn GetCurrentThread(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!GetCurrentThread", emu.pos);
     // TODO: implement this
-    emu.regs.rax = 0xFFFF_FFFF_FFFF_FFFE;
+    emu.regs.rax = 3;
 }
 
 /*
@@ -3875,8 +3873,6 @@ fn WriteConsoleW(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}", 
         emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, 
         lp_number_of_chars_written, lp_reserved, s1);
-
-    log::info!("WriteConsoleW buffer contents: {:?}", emu.maps.read_bytes(lp_buffer as u64, (n_number_of_chars_to_write as usize * 2).min(32)));
 
     // Write back the number of characters written
     emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write);
