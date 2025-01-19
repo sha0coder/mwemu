@@ -117,7 +117,7 @@ pub fn GetTokenInformation(emu: &mut emu::Emu) {
     let token_information_class = emu.regs.rcx;
     let token_information = emu.regs.r8;
     let token_information_length = emu.regs.r9;
-    let return_length = emu.maps.read_qword(emu.regs.rsp);
+    let return_length = emu.maps.read_qword(emu.regs.rsp); // TODO: shadow space?
 
     log::info!(
         "{}** {} kernelbase!GetTokenInformation token_information_class: 0x{:x} {}",
