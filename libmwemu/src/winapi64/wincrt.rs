@@ -227,7 +227,7 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     let locale = emu.regs.r9;        // _In_opt_ locale
     let va_list = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20) // 20 bytes of shadow space?
+        .read_qword(emu.regs.rsp + 0x20) // TODO: 20 bytes of shadow space?
         .expect("wincrt!__stdio_common_vfprintf cannot read_qword va_list");
     
     // Just try to read the format string
