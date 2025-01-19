@@ -326,18 +326,20 @@ impl Emu {
     }
 
     pub fn init_stack64(&mut self) {
+        let stack_size = 0x100000;
+
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x22a000;
             // Set up 1MB stack
-            self.regs.rsp = self.cfg.stack_addr + 0x100000;  // 1MB offset
-            self.regs.rbp = self.cfg.stack_addr + 0x100000 + 0x1000;  // Extra page for frame
+            self.regs.rsp = self.cfg.stack_addr + stack_size;  // 1MB offset
+            self.regs.rbp = self.cfg.stack_addr + stack_size + 0x1000;  // Extra page for frame
         }
 
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, 0x102000)  // Increased size
+            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000)  // Increased size
             .expect("cannot create stack map");
 
         assert!(self.regs.rsp < self.regs.rbp);
@@ -351,7 +353,7 @@ impl Emu {
         let teb_map = self.maps.get_mem("teb");
         let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = self.cfg.stack_addr;
-        teb.nt_tib.stack_limit = self.cfg.stack_addr + 0x102000;
+        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
         teb.save(teb_map);
     }
 
