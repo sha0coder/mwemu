@@ -28,11 +28,11 @@ fn RealShellExecuteA(emu: &mut emu::Emu) {
     let params_ptr = emu.regs.r9;
     let dir = emu
         .maps
-        .read_qword(emu.regs.rsp) // TODO: shadow space?
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("cannot read parameter");
     let bShowWindow = emu
         .maps
-        .read_qword(emu.regs.rsp + 8) // TODO: shadow space?
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("cannot read parameter");
 
     let file = emu.maps.read_string(file_ptr);
