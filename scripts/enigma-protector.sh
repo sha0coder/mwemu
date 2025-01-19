@@ -27,7 +27,7 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Desktop/enigma/pe_loader2.exe \
+        --filename ~/.cargo/target/x86_64-pc-windows-gnu/debug/hello_world.exe \
         --trace /tmp/output.csv \
         --maps ./maps64/ \
         --64bits \
