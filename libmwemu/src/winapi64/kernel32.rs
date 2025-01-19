@@ -831,7 +831,7 @@ fn VirtualAllocEx(emu: &mut emu::Emu) {
     let alloc_type = emu.regs.r9;
     let protect = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!VirtualAllocEx cannot read_qword protect");
 
     let base = emu
@@ -864,7 +864,7 @@ fn WriteProcessMemory(emu: &mut emu::Emu) {
     let size = emu.regs.r9;
     let written_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!WriteProcessMemory cannot read written_ptr");
 
     log::info!(
@@ -1069,11 +1069,11 @@ fn CreateThread(emu: &mut emu::Emu) {
     let param = emu.regs.r9;
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp) // TODO: shadow space?
         .expect("kernel32!CreateThread cannot read flags");
     let tid_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!CreateThread cannot read tid_ptr");
 
     if tid_ptr > 0 {
@@ -1196,15 +1196,15 @@ fn CreateRemoteThread(emu: &mut emu::Emu) {
     let addr = emu.regs.r9;
     let param = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("krenel32!CreateRemoteThread cannot read the param");
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!CreateRemoteThread cannot read the flags");
     let out_tid = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 16)  // TODO: shadow space?
         .expect("kernel32!CreateRemoteThread cannot read the tid");
 
     log::info!(
@@ -1227,19 +1227,19 @@ fn CreateNamedPipeA(emu: &mut emu::Emu) {
     let instances = emu.regs.r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 16)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 24)
+        .read_qword(emu.regs.rsp + 24)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_string(name_ptr);
@@ -1264,19 +1264,19 @@ fn CreateNamedPipeW(emu: &mut emu::Emu) {
     let instances = emu.regs.r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 16)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 24)
+        .read_qword(emu.regs.rsp + 24)  // TODO: shadow space?
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_wide_string(name_ptr);
@@ -1343,7 +1343,7 @@ fn ReadFile(emu: &mut emu::Emu) {
     let bytes_read = emu.regs.r9;
     let overlapped = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!ReadFile cannot read the overlapped");
 
     log::info!(
@@ -1387,7 +1387,7 @@ fn WriteFile(emu: &mut emu::Emu) {
     let bytes_written = emu.regs.r9;
     let overlapped = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!WriteFile cannot read the overlapped");
 
     let mut count = COUNT_WRITE.lock().unwrap();
@@ -1498,7 +1498,7 @@ fn ReadProcessMemory(emu: &mut emu::Emu) {
     let size = emu.regs.r9;
     let bytes = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!ReadProcessMemory cannot read bytes");
 
     log::info!(
@@ -1577,7 +1577,7 @@ fn VirtualProtectEx(emu: &mut emu::Emu) {
     let new_prot = emu.regs.r9;
     let oldld_prot_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!VirtualProtectEx cannot read old_prot");
 
     log::info!(
@@ -1900,7 +1900,7 @@ fn MapViewOfFile(emu: &mut emu::Emu) {
     let off_low = emu.regs.r9;
     let mut size = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!MapViewOfFile cannot read the size");
 
     let off: u64 = (off_high << 32) + off_low;
@@ -2032,11 +2032,11 @@ fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     let alloc_type = emu.regs.r9;
     let protect = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!VirtualAllocExNuma cannot read the protect");
     let nnd = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
 
     log::info!(
@@ -2161,11 +2161,11 @@ fn CreateFileMappingA(emu: &mut emu::Emu) {
     let max_sz_high = emu.regs.r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)   // TODO: shadow space?
         .expect("kernel32!CreateFileMappingW cannot read name pointer");
 
     let mut name: String = String::new();
@@ -2191,11 +2191,11 @@ fn CreateFileMappingW(emu: &mut emu::Emu) {
     let max_sz_high = emu.regs.r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!CreateFileMappingW cannot read name pointer");
 
     let mut name: String = String::new();
@@ -2786,7 +2786,8 @@ pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
     let section_name_ptr = emu.regs.rdx;
     let string_name_ptr = emu.regs.r8;
     let string_value_ptr = emu.regs.r9;
-    let out_ptr = emu.maps.read_qword(emu.regs.rsp).expect("error reading out_ptr");
+    let out_ptr = emu.maps.read_qword(emu.regs.rsp)  // TODO: shadow space?
+        .expect("error reading out_ptr");
 
     let mut section_name = String::new();
     let mut string_name = String::new();
@@ -3249,19 +3250,19 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     let cch_wide_char = emu.regs.r9 as isize;
     let lp_multi_byte_str = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!WideCharToMultiByte error reading param");
     let cb_multi_byte = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 8)  // TODO: shadow space?
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 16)
+        .read_qword(emu.regs.rsp + 16)  // TODO: shadow space?
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_used_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 24)
+        .read_qword(emu.regs.rsp + 24)  // TODO: shadow space?
         .expect("kernel32!WideCharToMultiByte error reading param");
 
     log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
@@ -3362,72 +3363,69 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let cb_multi_byte = emu.regs.r9 as i64;
     let wide_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp + 0x20)  // TODO: shadow space?
         .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
     let cch_wide_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 8)
+        .read_qword(emu.regs.rsp + 0x28)  // TODO: shadow space?
         .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
 
-    log_red!(emu, "** {} kernel32!MultiByteToWideChar codepage: {} flags: 0x{:x} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}", 
+    log::info!("Memory at utf8_ptr: {:?}", 
+    emu.maps.read_bytes(utf8_ptr, 32.min(cb_multi_byte as usize)));
+
+    // Read exact number of bytes specified
+    let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
+    let utf8 = String::from_utf8_lossy(&bytes).to_string();
+    
+    log::info!(
+        "{}** {}:{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}{}",
+        emu.colors.light_red,
         emu.pos,
+        emu.regs.rip,
         code_page,
         dw_flags,
         utf8_ptr,
         cb_multi_byte,
         wide_ptr,
-        cch_wide_char
+        cch_wide_char,
+        emu.colors.nc
     );
 
-    // 1. Input validation
-    if utf8_ptr == 0 {
-        log::warn!("{} kernel32!MultiByteToWideChar invalid parameter", emu.pos);
+    log::info!(
+        "{}** {} kernel32!MultiByteToWideChar '{}' dst:0x{:x} cch_wide_char:{} {}",
+        emu.colors.light_red,
+        emu.pos,
+        utf8,
+        wide_ptr,
+        cch_wide_char,
+        emu.colors.nc
+    );
+
+    // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)
+    let wide: Vec<u16> = utf8.encode_utf16().collect();
+
+    if cch_wide_char == 0 {
+        // Return required buffer size for UTF-16 conversion
+        emu.regs.rax = wide.len() as u64;
+    } else if wide_ptr != 0 {
+        // Write string if buffer is large enough
+        if cch_wide_char >= wide.len() as i64 {
+            for (i, wchar) in wide.iter().enumerate() {
+                emu.maps.write_word(wide_ptr + (i * 2) as u64, *wchar);
+            }
+            emu.regs.rax = wide.len() as u64;
+
+            log::info!("Written UTF-16 at wide_ptr: {:?}", emu.maps.read_bytes(wide_ptr, (wide.len() * 2).min(32)));
+        } else {
+            let mut err = LAST_ERROR.lock().unwrap();
+            *err = constants::ERROR_INSUFFICIENT_BUFFER;
+            emu.regs.rax = 0;
+        }
+    } else {
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INVALID_PARAMETER;
         emu.regs.rax = 0;
-        return;
     }
-
-    // 2. Handle special code pages
-    if code_page == constants::CP_UTF7 || code_page == constants::CP_UTF8 {
-        // No special handling needed for default chars in this direction
-    }
-
-    // 3. Read input string and get its length
-    let s = if cb_multi_byte == -1 {
-        emu.maps.read_string(utf8_ptr)
-    } else {
-        String::from_utf8(emu.maps.read_buffer(utf8_ptr, cb_multi_byte as usize)).unwrap()
-    };
-
-    let required_chars = s.len();
-
-    // 4. If this is just a size query
-    if wide_ptr == 0 {
-        emu.regs.rax = required_chars as u64;
-        clear_last_error(emu);
-        return;
-    }
-
-    // 5. Check output buffer size
-    if cch_wide_char < required_chars as i64 {
-        // Set last error to ERROR_INSUFFICIENT_BUFFER
-        log::warn!("{} buffer too small for result cch_wide_char: {} required_chars: {}", emu.pos, cch_wide_char, required_chars);
-        let mut err = LAST_ERROR.lock().unwrap();
-        *err = constants::ERROR_INSUFFICIENT_BUFFER;
-        emu.regs.rax = 0;
-        return;
-    }
-
-    // 6. Perform the actual conversion
-    if wide_ptr > 0 && !s.is_empty() {
-        emu.maps.write_wide_string(wide_ptr, &s);
-    }
-
-    // 7. Return number of wide characters written
-    emu.regs.rax = required_chars as u64;
-
-    clear_last_error(emu);
 }
 
 /*
@@ -3857,15 +3855,30 @@ BOOL WINAPI WriteConsoleW(
 fn WriteConsoleW(emu: &mut emu::Emu) {
     let h_console_output = emu.regs.rcx;
     let lp_buffer = emu.regs.rdx as usize;
-    let s1: String = emu.maps.read_wide_string(lp_buffer as u64);
     let n_number_of_chars_to_write = emu.regs.r8 as u32;
     let lp_number_of_chars_written = emu.regs.r9 as usize;
     let lp_reserved = emu
         .maps
-        .read_qword(emu.regs.rsp)
+        .read_qword(emu.regs.rsp)  // TODO: shadow space?
         .expect("kernel32!WriteConsoleW cannot read_qword lp_reserved");
-    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}", emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, lp_number_of_chars_written, lp_reserved, s1);
-    // TODO: implement this
-    emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write as u32); //TODO: not sure what this is
+
+    // Read the UTF-16 buffer
+    let mut wide_chars = Vec::new();
+    for i in 0..n_number_of_chars_to_write {
+        let wchar = emu.maps.read_word(lp_buffer as u64 + (i * 2) as u64).unwrap();
+        wide_chars.push(wchar);
+    }
+
+    // Convert UTF-16 to String for logging
+    let s1 = String::from_utf16_lossy(&wide_chars);
+
+    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}", 
+        emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, 
+        lp_number_of_chars_written, lp_reserved, s1);
+
+    log::info!("WriteConsoleW buffer contents: {:?}", emu.maps.read_bytes(lp_buffer as u64, (n_number_of_chars_to_write as usize * 2).min(32)));
+
+    // Write back the number of characters written
+    emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write);
     emu.regs.rax = 1;
 }
