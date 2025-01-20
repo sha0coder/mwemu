@@ -8,7 +8,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "_initialize_onexit_table" => _initialize_onexit_table(emu),
         "_register_onexit_function" => _register_onexit_function(emu),
         "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
+        "_set_invalid_parameter_handler" => set_invalid_parameter_handler(emu),
+        "malloc" => malloc(emu),
         "realloc" => realloc(emu),
+        "_crt_atexit" => _crt_atexit(emu),
         "__p___argv" => __p___argv(emu),
         "__p___argc" => __p___argc(emu),
         "__acrt_iob_func" => __acrt_iob_func(emu),
@@ -44,7 +47,7 @@ fn _initialize_onexit_table(emu: &mut emu::Emu) {
      */
 
     log::info!(
-        "{}** {} crt_runtime!_initialize_onexit_table  {}",
+        "{}** {} wincrt!_initialize_onexit_table  {}",
         emu.colors.light_red,
         emu.pos,
         emu.colors.nc
@@ -69,7 +72,7 @@ fn _register_onexit_function(emu: &mut emu::Emu) {
      */
 
     log::info!(
-        "{}** {} crt_runtime!_initialize_onexit_function callback: 0x{:x}  {}",
+        "{}** {} wincrt!_initialize_onexit_function callback: 0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
         callback,
@@ -89,7 +92,7 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
     let env = emu.regs.rcx;
 
     log::info!(
-        "{}** {} crt_runtime!_get_initial_narrow_environment env: 0x{:x}  {}",
+        "{}** {} wincrt!_get_initial_narrow_environment env: 0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
         env,
@@ -103,7 +106,7 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
 // char*** CDECL __p___argv(void) { return &MSVCRT___argv; }
 fn __p___argv(emu: &mut emu::Emu) {
     log::info!(
-        "{}** {} crt_runtime!__p___argv {}",
+        "{}** {} wincrt!__p___argv {}",
         emu.colors.light_red,
         emu.pos,
         emu.colors.nc
@@ -114,7 +117,7 @@ fn __p___argv(emu: &mut emu::Emu) {
     let argv_array_addr = emu
         .maps
         .alloc(16) // 2 * sizeof(pointer) on x64
-        .expect("crt_runtime!__p___argv cannot allocate argv array");
+        .expect("wincrt!__p___argv cannot allocate argv array");
     emu.maps.create_map(&format!("alloc_{:x}", argv_array_addr), argv_array_addr, 16);
 
     // Allocate space for program name string (using a dummy name)
@@ -122,7 +125,7 @@ fn __p___argv(emu: &mut emu::Emu) {
     let prog_name_addr = emu
         .maps
         .alloc(prog_name.len() as u64)
-        .expect("crt_runtime!__p___argv cannot allocate program name");
+        .expect("wincrt!__p___argv cannot allocate program name");
     emu.maps.create_map(&format!("alloc_{:x}", prog_name_addr), prog_name_addr, 16);
 
     // Write program name string
@@ -138,7 +141,7 @@ fn __p___argv(emu: &mut emu::Emu) {
     let p_argv_addr = emu
         .maps
         .alloc(8) // sizeof(pointer) on x64
-        .expect("crt_runtime!__p___argv cannot allocate p_argv");
+        .expect("wincrt!__p___argv cannot allocate p_argv");
     emu.maps.create_map(&format!("alloc_{:x}", p_argv_addr), p_argv_addr, 8);
 
     // Write pointer to argv array
@@ -153,7 +156,7 @@ fn __p___argc(emu: &mut emu::Emu) {
     let argc = emu.regs.rcx;
 
     log::info!(
-        "{}** {} crt_runtime!__p___argc argc: 0x{:x}  {}",
+        "{}** {} wincrt!__p___argc argc: 0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
         argc,
@@ -163,7 +166,7 @@ fn __p___argc(emu: &mut emu::Emu) {
     let argc_addr = emu
         .maps
         .alloc(4)
-        .expect("crt_runtime!__p___argc cannot allocate");
+        .expect("wincrt!__p___argc cannot allocate");
     emu.maps.create_map(&format!("alloc_{:x}", argc_addr), argc_addr, 4);
     emu.maps.write_dword(argc_addr, 1);
     emu.regs.rax = argc_addr;
@@ -180,7 +183,7 @@ fn __acrt_iob_func(emu: &mut emu::Emu) {
     let index = emu.regs.rcx;
 
     log::info!(
-        "{}** {} crt_runtime!__acrt_iob_func index: 0x{:x}  {}",
+        "{}** {} wincrt!__acrt_iob_func index: 0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
         index,
@@ -224,15 +227,15 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     let locale = emu.regs.r9;        // _In_opt_ locale
     let va_list = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20) // 20 bytes of shadow space?
-        .expect("crt_runtime!__stdio_common_vfprintf cannot read_qword va_list");
+        .read_qword(emu.regs.rsp + 0x20)
+        .expect("wincrt!__stdio_common_vfprintf cannot read_qword va_list");
     
     // Just try to read the format string
     let fmt_str = emu.maps.read_string(format);
     let specs = parse_format_specifiers(&fmt_str);
 
     log::info!(
-        "{}** {} crt_runtime!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} va_list: 0x{:x} {}",
+        "{}** {} wincrt!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} va_list: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
         options,
@@ -247,18 +250,18 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     for spec in specs {
         match spec {
             "int" | "hex" | "ptr" => {
-                let arg = emu.maps.read_qword(current_ptr).expect("crt_runtime!__stdio_common_vfprintf cannot read_qword arg");
+                let arg = emu.maps.read_qword(current_ptr).expect("wincrt!__stdio_common_vfprintf cannot read_qword arg");
                 current_ptr += 8;  // Move to next arg
                 log::info!("arg: {:016x}", arg);
             }
             "str" => {
-                let str_ptr = emu.maps.read_qword(current_ptr).expect("crt_runtime!__stdio_common_vfprintf cannot read_qword str_ptr");
+                let str_ptr = emu.maps.read_qword(current_ptr).expect("wincrt!__stdio_common_vfprintf cannot read_qword str_ptr");
                 let string = emu.maps.read_string(str_ptr);
                 current_ptr += 8;
                 log::info!("string: {}", string);
             }
             _ => {
-                unimplemented!("crt_runtime!__stdio_common_vfprintf unknown format character: {}", spec);
+                unimplemented!("wincrt!__stdio_common_vfprintf unknown format character: {}", spec);
             }
         }
     }
@@ -337,4 +340,59 @@ fn realloc(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = new_addr;
+}
+
+fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
+    log::info!(
+        "{}** {} wincrt!_set_invalid_parameter_handler {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
+    emu.regs.rax = 0;
+}
+
+fn malloc(emu: &mut emu::Emu) {
+    let size = emu.regs.rcx;  // In malloc, size is the only parameter
+
+    if size == 0 {
+        emu.regs.rax = 0;
+        return;
+    }
+
+    let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
+
+    emu.maps
+        .create_map(&format!("alloc_{:x}", base), base, size)
+        .expect("msvcrt!malloc cannot create map");
+
+    log::info!(
+        "{}** {} msvcrt!malloc {} =0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        size,
+        base,
+        emu.colors.nc
+    );
+
+    emu.regs.rax = base;
+}
+
+/*
+int _crt_atexit(
+    _PVFV const function
+)
+*/
+fn _crt_atexit(emu: &mut emu::Emu) {
+    let function = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} wincrt!_crt_atexit function: 0x{:x}  {}",
+        emu.colors.light_red,
+        emu.pos,
+        function,
+        emu.colors.nc
+    ); 
+    // TODO: Implement this
+    emu.regs.rax = 0;
 }
