@@ -2182,6 +2182,14 @@ impl Emu {
                                 1
                             }
                         }
+                        0x14 => {
+                            let teb = self.maps.get_mem("teb");
+                            let tib = teb.get_base(); // tib is first element.
+                            if self.cfg.verbose >= 1 {
+                                log::info!("{} Reading NtTIB 0x{:x}", self.pos, tib);
+                            }
+                            tib
+                        }
                         0x30 => {
                             let peb = self.maps.get_mem("peb");
                             if self.cfg.verbose >= 1 {
