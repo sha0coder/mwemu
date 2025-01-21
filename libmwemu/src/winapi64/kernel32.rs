@@ -270,7 +270,7 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
 
     loop {
         if flink.export_table_rva > 0 {
-            println!("export_table_rva: 0x{:x}", flink.export_table_rva);
+            //println!("export_table_rva: 0x{:x}", flink.export_table_rva);
             for i in 0..flink.num_of_funcs {
                 if flink.pe_hdr == 0 {
                     continue;
@@ -279,7 +279,7 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
                 let ordinal = flink.get_function_ordinal(emu, i);
                 if ordinal.func_name.to_lowercase() == name.to_lowercase() {
                     //if ordinal.func_name.contains(name) {
-                    println!("found api id:{} name: 0x{:x} {}!{}", i, ordinal.func_va, flink.mod_name, ordinal.func_name);
+                    //println!("found api id:{} name: 0x{:x} {}!{}", i, ordinal.func_va, flink.mod_name, ordinal.func_name);
                     return ordinal.func_va;
                 }
             }
