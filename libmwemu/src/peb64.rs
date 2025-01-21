@@ -227,6 +227,16 @@ impl Flink {
             .expect("error reading func_rva") as u64;
         ordinal.func_va = ordinal.func_rva + self.mod_base;
 
+        /* 
+        println!("Function Name RVA: 0x{:x}", func_name_rva);
+        println!("Function Name: {}", ordinal.func_name);
+        println!("Ordinal Table RVA: 0x{:x}", ordinal.ordinal_tbl_rva);
+        println!("Ordinal: {}", ordinal.ordinal);
+        println!("Function RVA: 0x{:x} + base: 0x{:x}", ordinal.func_rva, self.mod_base);
+        println!("Function VA: 0x{:x}", ordinal.func_va);
+        println!("--------------------------------");
+        */
+
         ordinal
     }
 
