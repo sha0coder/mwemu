@@ -24,6 +24,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "free" => free(emu),
         "realloc" => realloc(emu),
         "strtok" => strtok(emu),
+        "__set_app_type" => __set_app_type(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -60,8 +61,6 @@ fn _initterm_e(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    //emu.stack_pop32(false);
-    //emu.stack_pop32(false);
     emu.regs.rax = 0;
 }
 
@@ -84,8 +83,6 @@ fn _initterm(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    //emu.stack_pop32(false);
-    //emu.stack_pop32(false);
     emu.regs.rax = 0;
 }
 
@@ -99,6 +96,17 @@ fn StrCmpCA(emu: &mut emu::Emu) {
         .read_dword(emu.regs.get_esp() + 4)
         .expect("msvcrt!StrCmpA: error reading str2 pointer") as u64;
 
+    if str1_ptr == 0 || str2_ptr == 0 {
+        emu.regs.rax = 0xffffffff;
+        log::info!(
+            "{}** {} msvcrt!StrCmpA null ptrs {}",
+            emu.colors.light_red,
+            emu.pos,
+            emu.colors.nc
+        );
+        return;
+    }
+
     let str1 = emu.maps.read_string(str1_ptr);
     let str2 = emu.maps.read_string(str2_ptr);
 
@@ -110,9 +118,6 @@ fn StrCmpCA(emu: &mut emu::Emu) {
         str2,
         emu.colors.nc
     );
-
-    //emu.stack_pop32(false);
-    //emu.stack_pop32(false);
 
     if str1 == str2 {
         emu.regs.rax = 0;
@@ -131,6 +136,18 @@ fn fopen(emu: &mut emu::Emu) {
         .read_dword(emu.regs.get_esp() + 4)
         .expect("msvcrt!fopen error reading mode pointer") as u64;
 
+
+    if filepath_ptr == 0 || mode_ptr == 0 {
+        emu.regs.rax = 0xffffffff;
+        log::info!(
+            "{}** {} msvcrt!fopen null ptrs {}",
+            emu.colors.light_red,
+            emu.pos,
+            emu.colors.nc
+        );
+        return;
+    }
+
     let filepath = emu.maps.read_string(filepath_ptr);
     let mode = emu.maps.read_string(mode_ptr);
 
@@ -142,9 +159,6 @@ fn fopen(emu: &mut emu::Emu) {
         mode,
         emu.colors.nc
     );
-
-    //emu.stack_pop32(false);
-    //emu.stack_pop32(false);
 
     emu.regs.rax = helper::handler_create(&filepath);
 }
@@ -169,9 +183,6 @@ fn fwrite(emu: &mut emu::Emu) {
 
     let filename = helper::handler_get_uri(file as u64);
 
-    /*for _ in 0..4 {
-        emu.stack_pop32(false);
-    }*/
     log::info!(
         "{}** {} msvcrt!fwrite `{}` 0x{:x} {} {}",
         emu.colors.light_red,
@@ -221,8 +232,6 @@ fn fclose(emu: &mut emu::Emu) {
         filename,
         emu.colors.nc
     );
-
-    //emu.stack_pop32(false);
 
     emu.regs.rax = 1;
 }
@@ -312,7 +321,6 @@ fn _onexit(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = fptr;
-    //emu.stack_pop32(false);
 }
 
 fn _lock(emu: &mut emu::Emu) {
@@ -330,7 +338,6 @@ fn _lock(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = 1;
-    //emu.stack_pop32(false);
 }
 
 fn free(emu: &mut emu::Emu) {
@@ -450,4 +457,17 @@ fn strtok(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = 0;
+}
+
+fn __set_app_type(emu: &mut emu::Emu) {
+    let app_type = emu.maps.read_dword(emu.regs.get_esp())
+        .expect("msvcrt!__set_app_type error reading app_type");
+
+    log::info!(
+        "{}** {} msvcrt!__set_app_type  app_type: 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        app_type,
+        emu.colors.nc
+    );
 }

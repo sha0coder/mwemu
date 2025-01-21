@@ -18,6 +18,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "_initterm" => _initterm(emu),
         "exit" => exit(emu),
         "_exit" => _exit(emu),
+        "atexit" => atexit(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -217,4 +218,10 @@ fn exit(emu: &mut emu::Emu) {
 fn _exit(emu: &mut emu::Emu) {
     log::info!("{}** {} kernelbase!_exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
     panic!("_exit called");
+}
+
+fn atexit(emu: &mut emu::Emu) {
+    let fptr = emu.regs.rcx;
+    log::info!("{}** {} kernelbase!atexit fptr: 0x{:x} {}", emu.colors.light_red, emu.pos, fptr, emu.colors.nc);
+    emu.regs.rax = 0;
 }
