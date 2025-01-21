@@ -396,10 +396,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 peb64::dynamic_link_module(base, pe_off, &dll, emu);
                 return base;
             } else {
-                if emu.cfg.verbose > 0 {
-                    log::info!("dll {} not found.", dll_path);
-                }
-                0
+                panic!("dll {} not found.", dll_path);
             }
         }
     }
