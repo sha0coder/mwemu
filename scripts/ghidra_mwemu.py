@@ -1,8 +1,8 @@
 '''
     View in ghidra the trace of emulation by changin color of emulated instructions, and save a call log with ghidra function names.
 
-    1. store mwemu trace
-    cargo run --release -- -6 -f file.bin > log 2>&1
+    1. store mwemu trace with verbose
+    cargo run --release -- -6 -vv -f file.bin > log 2>&1
 
     2. put this script here and launch it from hidra with the same binary opened.
     /Users/jesus/ghidra/Ghidra/Features/Jython/ghidra_scripts
