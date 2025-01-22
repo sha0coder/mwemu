@@ -185,6 +185,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "WriteConsoleW" => WriteConsoleW(emu),
         "CreateActCtxA" => CreateActCtxA(emu),
         "ActivateActCtx" => ActivateActCtx(emu),
+        "HeapReAlloc" => HeapReAlloc(emu),
+        "InitOnceBeginInitialize" => InitOnceBeginInitialize(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -3899,6 +3901,101 @@ fn ActivateActCtx(emu: &mut emu::Emu) {
     let h_act_ctx = emu.regs.rcx;
     let lp_cookie = emu.regs.rdx as usize;
     log_red!(emu, "** {} kernel32!ActivateActCtx {:x} {:x}", emu.pos, h_act_ctx, lp_cookie);
+    // TODO: implement this
+    emu.regs.rax = 1;
+}
+
+/*
+DECLSPEC_ALLOCATOR LPVOID HeapReAlloc(
+  [in] HANDLE                 hHeap,
+  [in] DWORD                  dwFlags,
+  [in] _Frees_ptr_opt_ LPVOID lpMem,
+  [in] SIZE_T                 dwBytes
+);
+*/
+fn HeapReAlloc(emu: &mut emu::Emu) {
+    let heap_handle = emu.regs.rcx;
+    let flags = emu.regs.rdx;
+    let old_mem = emu.regs.r8;
+    let new_size = emu.regs.r9;
+
+    log::info!(
+        "{}** {} kernel32!HeapReAlloc heap: 0x{:x} flags: 0x{:x} old_mem: 0x{:x} new_size: {} {}",
+        emu.colors.light_red,
+        emu.pos,
+        heap_handle,
+        flags,
+        old_mem,
+        new_size,
+        emu.colors.nc
+    );
+
+    // Check if we're dealing with a valid memory pointer
+    if !emu.maps.is_mapped(old_mem) {
+        emu.regs.rax = 0;
+        return;
+    }
+
+    // Allocate new block
+    match emu.maps.alloc(new_size) {
+        Some(new_addr) => {
+            // Create new memory map for the allocated space
+            if let Err(_) = emu.maps.create_map(
+                format!("alloc_{:x}", new_addr).as_str(),
+                new_addr,
+                new_size
+            ) {
+                emu.regs.rax = 0;
+                return;
+            }
+
+            // Copy old content to new location if HEAP_REALLOC_IN_PLACE_ONLY is not set
+            if (flags & constants::HEAP_REALLOC_IN_PLACE_ONLY) == 0 {
+                // Get the size of the old allocation to know how much to copy
+                let old_size = emu.maps.get_mem_size(old_mem)
+                    .unwrap_or(new_size as usize);
+                let copy_size = std::cmp::min(old_size, new_size as usize);
+                
+                // Copy the data
+                if !emu.maps.memcpy(old_mem, new_addr, copy_size) {
+                    emu.regs.rax = 0;
+                    return;
+                }
+
+                // If HEAP_ZERO_MEMORY is set and we're expanding, zero the additional memory
+                if (flags & constants::HEAP_ZERO_MEMORY) != 0 && new_size > old_size as u64 {
+                    let zero_start = new_addr + old_size as u64;
+                    let zero_size = (new_size - old_size as u64) as usize;
+                    emu.maps.memset(zero_start, 0, zero_size);
+                }
+            } else {
+                // HEAP_REALLOC_IN_PLACE_ONLY was set but we couldn't comply
+                emu.regs.rax = 0;
+                return;
+            }
+
+            emu.regs.rax = new_addr;
+        }
+        None => {
+            emu.regs.rax = 0;
+        }
+    }
+}
+
+/*
+BOOL InitOnceBeginInitialize(
+  [in, out]       LPINIT_ONCE lpInitOnce,
+  [in]            DWORD       dwFlags,
+  [out]           PBOOL       fPending,
+  [out, optional] LPVOID      *lpContext
+);
+*/
+fn InitOnceBeginInitialize(emu: &mut emu::Emu) {
+    let lp_init_once = emu.regs.rcx as usize;
+    let dw_flags = emu.regs.rdx as usize;
+    let f_pending = emu.regs.r8 as usize;
+    let lp_context = emu.regs.r9 as usize;
+    log_red!(emu, "** {} kernel32!InitOnceBeginInitialize {:x} {:x} {:x} {:x}", emu.pos, lp_init_once, dw_flags, f_pending, lp_context);
     // TODO: implement this
     emu.regs.rax = 1;
 }
