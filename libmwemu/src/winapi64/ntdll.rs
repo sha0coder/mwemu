@@ -47,6 +47,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
         "RtlCaptureContext" => RtlCaptureContext(emu),
         "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
+        "strlen" => strlen(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -1024,4 +1025,22 @@ fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
     log_red!(emu, "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}", emu.pos, control_pc, image_base, history_table);
     // TODO: implement this
     emu.regs.rax = 0;
+}
+
+fn strlen(emu: &mut emu::Emu) {
+    let s_ptr = emu.regs.rcx as usize;
+
+    let s = emu.maps.read_string(s_ptr as u64);
+    let l = s.len();
+
+    log::info!(
+        "{}** {} ntdll!strlen: `{}` {} {}",
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        l,
+        emu.colors.nc
+    );
+
+    emu.regs.rax = l as u32 as u64;
 }
