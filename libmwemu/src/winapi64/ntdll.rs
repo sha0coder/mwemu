@@ -46,6 +46,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "NtTerminateThread" => NtTerminateThread(emu),
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
         "RtlCaptureContext" => RtlCaptureContext(emu),
+        "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -1006,4 +1007,21 @@ fn RtlCaptureContext(emu: &mut emu::Emu) {
     let context_record = emu.regs.rcx as usize;
     log_red!(emu, "** {} ntdll!RtlCaptureContext {:x}", emu.pos, context_record);
     // TODO: implement this
+}
+
+
+/*
+NTSYSAPI PRUNTIME_FUNCTION RtlLookupFunctionEntry(
+  [in]  DWORD64               ControlPc,
+  [out] PDWORD64              ImageBase,
+  [out] PUNWIND_HISTORY_TABLE HistoryTable
+);
+*/
+fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
+    let control_pc = emu.regs.rcx as usize;
+    let image_base = emu.regs.rdx as usize;
+    let history_table = emu.regs.r8 as usize;
+    log_red!(emu, "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}", emu.pos, control_pc, image_base, history_table);
+    // TODO: implement this
+    emu.regs.rax = 0;
 }
