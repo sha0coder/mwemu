@@ -1029,6 +1029,12 @@ fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
 
 fn strlen(emu: &mut emu::Emu) {
     let s_ptr = emu.regs.rcx as usize;
+    log_red!(emu, "** {} ntdll!strlen {:x}", emu.pos, s_ptr);
+
+    if s_ptr == 0 {
+        emu.regs.rax = 0;
+        return;
+    }
 
     let s = emu.maps.read_string(s_ptr as u64);
     let l = s.len();
