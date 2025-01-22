@@ -96,8 +96,7 @@ pub struct Emu {
     pub tick: usize,
     pub trace_file: Option<File>,
     pub base: u64,
-    //pub stack_lvl: Vec<i32>,
-    //pub stack_lvl_idx: usize,
+    pub call_stack: Vec<String>,
 }
 
 impl Default for Emu {
@@ -163,8 +162,7 @@ impl Emu {
             tick: 0,
             trace_file: None,
             base: 0,
-            //stack_lvl: vec![],
-            //stack_lvl_idx: 0,
+            call_stack: vec![],
         }
     }
 
