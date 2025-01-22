@@ -1160,30 +1160,6 @@ impl Maps {
         addr & !(align - 1)
     }
 
-    pub fn alloc_deprecated(&self, sz: u64) -> Option<u64> {
-        let mut addr: u64 = 0;
-        let inc = 0x10;
-
-        loop {
-            addr += inc;
-
-            if addr >= 0x70000000 {
-                return None;
-            }
-
-            for mem in self.maps.iter() {
-                if addr >= mem.get_base() && addr <= mem.get_bottom() {
-                    addr = mem.get_bottom();
-                    continue;
-                }
-            }
-
-            if !self.overlaps(addr, sz) {
-                return Some(addr);
-            }
-        }
-    }
-
     pub fn save_all_allocs(&mut self, path: String) {
         for mem in self.maps.iter() {
             if mem.get_name().to_string().starts_with("alloc_") {
