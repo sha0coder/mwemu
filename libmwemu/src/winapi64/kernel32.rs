@@ -183,6 +183,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetCurrentThread" => GetCurrentThread(emu),
         "GetConsoleMode" => GetConsoleMode(emu),
         "WriteConsoleW" => WriteConsoleW(emu),
+        "CreateActCtxA" => CreateActCtxA(emu),
+        "ActivateActCtx" => ActivateActCtx(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -3872,5 +3874,31 @@ fn WriteConsoleW(emu: &mut emu::Emu) {
 
     // Write back the number of characters written
     emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write);
+    emu.regs.rax = 1;
+}
+
+/*
+HANDLE CreateActCtxA(
+  [in, out] PCACTCTXA pActCtx
+);
+*/
+fn CreateActCtxA(emu: &mut emu::Emu) {
+    let p_act_ctx = emu.regs.rcx as usize;
+    log_red!(emu, "** {} kernel32!CreateActCtxA {:x}", emu.pos, p_act_ctx);
+    // TODO: implement this
+    emu.regs.rax = 1;
+}
+
+/*
+BOOL ActivateActCtx(
+  [in]  HANDLE    hActCtx,
+  [out] ULONG_PTR *lpCookie
+);
+*/
+fn ActivateActCtx(emu: &mut emu::Emu) {
+    let h_act_ctx = emu.regs.rcx;
+    let lp_cookie = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!ActivateActCtx {:x} {:x}", emu.pos, h_act_ctx, lp_cookie);
+    // TODO: implement this
     emu.regs.rax = 1;
 }
