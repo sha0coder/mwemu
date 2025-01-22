@@ -512,10 +512,10 @@ pub fn emulate_instruction(
             };
 
 
+            /* 
             if value0 == emu.regs.rsp {
                 emu.show_instruction(&emu.colors.light_cyan, ins);
 
-                /* 
                 if emu.cfg.is_64bits {
                     if value1 % 8 == 0 {
                         emu.stack_lvl[emu.stack_lvl_idx] -= value1 as i32 / 8;
@@ -524,8 +524,8 @@ pub fn emulate_instruction(
                     if value1 % 4 == 0 {
                         emu.stack_lvl[emu.stack_lvl_idx] -= value1 as i32 / 4;
                     }
-                }*/
-            }
+                }
+            }*/
 
             let res: u64 = match emu.get_operand_sz(ins, 0) {
                 64 => emu.flags.sub64(value0, value1),
