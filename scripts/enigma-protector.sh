@@ -27,8 +27,7 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Desktop/enigma/pe_loader-20250121.exe \
-        --trace /tmp/output.csv \
+        --filename ~/Desktop/enigma/pe_loader-20250122.exe \
         --maps ./maps64/ \
         --64bits \
         -vv

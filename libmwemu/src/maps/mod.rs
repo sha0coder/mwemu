@@ -62,6 +62,15 @@ impl Maps {
         self.maps.iter_mut().find(|map| map.get_name() == name)
     }
 
+    pub fn get_mem_size(&self, addr: u64) -> Option<usize> {
+        for mem in self.maps.iter() {
+            if mem.inside(addr) {
+                return Some(mem.size());
+            }
+        }
+        None
+    }
+
     pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
         //if size == 0 {
         //    return Err(format!("map size cannot be 0"));

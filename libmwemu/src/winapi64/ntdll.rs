@@ -45,7 +45,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "LdrGetDllHandleEx" => LdrGetDllHandleEx(emu),
         "NtTerminateThread" => NtTerminateThread(emu),
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
-
+        "RtlCaptureContext" => RtlCaptureContext(emu),
+        "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -507,11 +508,14 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address");
 
         if dst_map_name.starts_with("alloc_") {
-            emu.maps.memcpy(
+            let result = emu.maps.memcpy(
                 dos_path_unicode_ptr,
                 dos_path_name_ptr,
                 emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
             );
+            if result == false {
+                panic!("RtlDosPathNameToNtPathName_U failed to copy");
+            }
         } else if emu.cfg.verbose >= 1 {
             log::info!(
                 "/!\\ ntdll!RtlDosPathNameToNtPathName_U denied dest buffer on {} map",
@@ -535,11 +539,14 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address.");
 
         if dst_map_name.starts_with("alloc_") {
-            emu.maps.memcpy(
+            let result = emu.maps.memcpy(
                 nt_path_name_ptr,
                 dos_path_name_ptr,
                 emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
             );
+            if result == false {
+                panic!("RtlDosPathNameToNtPathName_U failed to copy");
+            }
         } else {
             match emu.maps.alloc(255) {
                 Some(a) => {
@@ -548,11 +555,14 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                         .create_map("nt_alloc", a, 255)
                         .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
                     emu.maps.write_dword(nt_path_name_ptr, a as u32);
-                    emu.maps.memcpy(
+                    let result = emu.maps.memcpy(
                         a,
                         dos_path_name_ptr,
                         emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
                     );
+                    if result == false {
+                        panic!("RtlDosPathNameToNtPathName_U failed to copy");
+                    }
                 }
                 None => {
                     if emu.cfg.verbose >= 1 {
@@ -856,21 +866,22 @@ fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+/*
+void RtlCopyMemory(
+   void*       Destination,
+   const void* Source,
+   size_t      Length
+);
+*/
 fn RtlCopyMemory(emu: &mut emu::Emu) {
     let dst = emu.regs.rcx;
     let src = emu.regs.rdx;
     let sz = emu.regs.r8 as usize;
-
-    emu.maps.memcpy(dst, src, sz);
-    let s = emu.maps.read_string(src);
-
-    log::info!(
-        "{}** {} ntdll!RtlCopyMemory {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        s,
-        emu.colors.nc
-    );
+    let result = emu.maps.memcpy(dst, src, sz);
+    if result == false {
+        panic!("RtlCopyMemory failed to copy");
+    }
+    log_red!(emu, "** {} ntdll!RtlCopyMemory dst = {:x} src = {:x} sz = {}", emu.pos, dst, src, sz);
 }
 
 fn RtlReAllocateHeap(emu: &mut emu::Emu) {
@@ -936,7 +947,10 @@ fn LdrGetDllHandleEx(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.maps.memcpy(path_ptr, dll_name_ptr, dll_name.len());
+    let result = emu.maps.memcpy(path_ptr, dll_name_ptr, dll_name.len());
+    if result == false {
+        panic!("LdrGetDllHandleEx failed to copy");
+    }
 
     let handle = helper::handler_create(&dll_name);
     emu.maps.write_qword(out_hndl, handle);
@@ -982,4 +996,32 @@ fn RtlAddFunctionTable(emu: &mut emu::Emu) {
     // TODO: do something with it
 
     emu.regs.rax = 1;
+}
+
+/*
+NTSYSAPI VOID RtlCaptureContext(
+  [out] PCONTEXT ContextRecord
+);
+*/
+fn RtlCaptureContext(emu: &mut emu::Emu) {
+    let context_record = emu.regs.rcx as usize;
+    log_red!(emu, "** {} ntdll!RtlCaptureContext {:x}", emu.pos, context_record);
+    // TODO: implement this
+}
+
+
+/*
+NTSYSAPI PRUNTIME_FUNCTION RtlLookupFunctionEntry(
+  [in]  DWORD64               ControlPc,
+  [out] PDWORD64              ImageBase,
+  [out] PUNWIND_HISTORY_TABLE HistoryTable
+);
+*/
+fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
+    let control_pc = emu.regs.rcx as usize;
+    let image_base = emu.regs.rdx as usize;
+    let history_table = emu.regs.r8 as usize;
+    log_red!(emu, "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}", emu.pos, control_pc, image_base, history_table);
+    // TODO: implement this
+    emu.regs.rax = 0;
 }
