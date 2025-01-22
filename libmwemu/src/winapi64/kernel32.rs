@@ -187,6 +187,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "ActivateActCtx" => ActivateActCtx(emu),
         "HeapReAlloc" => HeapReAlloc(emu),
         "InitOnceBeginInitialize" => InitOnceBeginInitialize(emu),
+        "GetEnvironmentVariableW" => GetEnvironmentVariableW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -3996,6 +3997,23 @@ fn InitOnceBeginInitialize(emu: &mut emu::Emu) {
     let f_pending = emu.regs.r8 as usize;
     let lp_context = emu.regs.r9 as usize;
     log_red!(emu, "** {} kernel32!InitOnceBeginInitialize {:x} {:x} {:x} {:x}", emu.pos, lp_init_once, dw_flags, f_pending, lp_context);
+    // TODO: implement this
+    emu.regs.rax = 1;
+}
+
+/*
+DWORD GetEnvironmentVariableW(
+  [in, optional]  LPCWSTR lpName,
+  [out, optional] LPWSTR  lpBuffer,
+  [in]            DWORD   nSize
+);
+*/
+fn GetEnvironmentVariableW(emu: &mut emu::Emu) {
+    let lp_name = emu.regs.rcx as usize;
+    let lp_buffer = emu.regs.rdx as usize;
+    let n_size = emu.regs.r8 as usize;
+    let name = emu.maps.read_wide_string(lp_name as u64);
+    log_red!(emu, "** {} kernel32!GetEnvironmentVariableW {:x} {:x} {:x} name: {}", emu.pos, lp_name, lp_buffer, n_size, name);
     // TODO: implement this
     emu.regs.rax = 1;
 }
