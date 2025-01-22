@@ -27,13 +27,13 @@ if [ "$MODE" == "dump" ]; then
         --release \
         --target $TARGET \
         -- \
-        --filename ~/Downloads/Telegram\ Desktop/pe_loader-20250121.exe \
+        --filename ~/Downloads/Telegram\ Desktop/pe_loader-20250122.exe \
         --maps ./maps64/ \
         --64bits \
         --rcx 0x180000000 \
         --rdx 1 \
         --r8 0 \
-        -vv
+        -c 278006
         #-C 180055e7e
         #-C 0x180055e84
     mv ./dumps/emu.bin ./dumps/emu-232321175.bin
