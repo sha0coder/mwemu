@@ -856,21 +856,19 @@ fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
     emu.regs.rax = 1;
 }
 
+/*
+void RtlCopyMemory(
+   void*       Destination,
+   const void* Source,
+   size_t      Length
+);
+*/
 fn RtlCopyMemory(emu: &mut emu::Emu) {
     let dst = emu.regs.rcx;
     let src = emu.regs.rdx;
     let sz = emu.regs.r8 as usize;
-
     emu.maps.memcpy(dst, src, sz);
-    let s = emu.maps.read_string(src);
-
-    log::info!(
-        "{}** {} ntdll!RtlCopyMemory {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        s,
-        emu.colors.nc
-    );
+    log_red!(emu, "** {} ntdll!RtlCopyMemory dst = {:x} src = {:x} sz = {}", emu.pos, dst, src, sz);
 }
 
 fn RtlReAllocateHeap(emu: &mut emu::Emu) {
