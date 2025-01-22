@@ -28,7 +28,6 @@ if [ "$MODE" == "dump" ]; then
         --target $TARGET \
         -- \
         --filename ~/Desktop/enigma/pe_loader-20250122.exe \
-        --trace /tmp/output.csv \
         --maps ./maps64/ \
         --64bits \
         -vv

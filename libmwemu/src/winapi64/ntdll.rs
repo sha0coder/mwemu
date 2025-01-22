@@ -45,7 +45,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "LdrGetDllHandleEx" => LdrGetDllHandleEx(emu),
         "NtTerminateThread" => NtTerminateThread(emu),
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
-
+        "RtlCaptureContext" => RtlCaptureContext(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -995,4 +995,15 @@ fn RtlAddFunctionTable(emu: &mut emu::Emu) {
     // TODO: do something with it
 
     emu.regs.rax = 1;
+}
+
+/*
+NTSYSAPI VOID RtlCaptureContext(
+  [out] PCONTEXT ContextRecord
+);
+*/
+fn RtlCaptureContext(emu: &mut emu::Emu) {
+    let context_record = emu.regs.rcx as usize;
+    log_red!(emu, "** {} ntdll!RtlCaptureContext {:x}", emu.pos, context_record);
+    // TODO: implement this
 }
