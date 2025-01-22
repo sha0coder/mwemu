@@ -44,4 +44,5 @@ pub fn gateway(addr: u32, name: String, emu: &mut emu::Emu) {
         },
         _ => panic!("/!\\ trying to execute on {} at 0x{:x}", name, addr),
     };
+    emu.call_stack.pop();
 }
