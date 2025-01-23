@@ -703,6 +703,7 @@ impl Emu {
         }
 
         if set_entry {
+
             // 2. pe binding
             if !is_maps {
                 pe32.iat_binding(self);
@@ -722,6 +723,8 @@ impl Emu {
                     self.regs.rip
                 );
             }
+
+            println!("base: 0x{:x}", base);
         }
 
         // 4. map pe and then sections
@@ -846,6 +849,7 @@ impl Emu {
         }
 
         if set_entry {
+
             // 2. pe binding
             if !is_maps {
                 pe64.iat_binding(self);
@@ -865,6 +869,7 @@ impl Emu {
                     self.regs.rip
                 );
             }
+            println!("base: 0x{:x}", base);
         }
 
         // 4. map pe and then sections
