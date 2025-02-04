@@ -46,8 +46,6 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of call");
             }
 
-
-
             let addr = match emu.get_operand_value(ins, 0, true) {
                 Some(a) => a,
                 None => return false,
@@ -62,6 +60,8 @@ pub fn emulate_instruction(
                 emu.stack_lvl.push(0);
                 emu.stack_lvl_idx += 1;
             }*/
+
+            emu.call_stack.push(format!("{:x}:call:{:x}", emu.regs.rip, addr));
 
             if emu.cfg.is_64bits {
                 if !emu.stack_push64(emu.regs.rip + instruction_sz as u64) {
@@ -238,12 +238,7 @@ pub fn emulate_instruction(
                 }
             }
 
-            //if emu.stack_lvl[emu.stack_lvl_idx] != 0 {
-            //    log::info!("/!\\ error stack level is {}", emu.stack_lvl[emu.stack_lvl_idx]);
-            //}
-            //emu.stack_lvl.pop();
-            //emu.stack_lvl_idx -= 1;
-
+            emu.call_stack.pop();
 
             if emu.run_until_ret {
                 return true; 
@@ -4207,7 +4202,8 @@ pub fn emulate_instruction(
                     }
 
                     0x29 => {
-                        log::info!("int 0x21: __fastfail {}", emu.regs.rcx);
+                        log::info!("call_stack = {:?}", emu.call_stack);
+                        log::info!("int 0x29: __fastfail {}", emu.regs.rcx);
                         std::process::exit(1);
                     }
 
