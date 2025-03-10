@@ -96,8 +96,7 @@ pub struct Emu {
     pub tick: usize,
     pub trace_file: Option<File>,
     pub base: u64,
-    //pub stack_lvl: Vec<i32>,
-    //pub stack_lvl_idx: usize,
+    pub call_stack: Vec<String>,
 }
 
 impl Default for Emu {
@@ -163,8 +162,7 @@ impl Emu {
             tick: 0,
             trace_file: None,
             base: 0,
-            //stack_lvl: vec![],
-            //stack_lvl_idx: 0,
+            call_stack: vec![],
         }
     }
 
@@ -1870,12 +1868,7 @@ impl Emu {
             }
 
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-
-            //self.stack_lvl.pop();
-            //self.stack_lvl_idx -= 1;
-
             self.regs.rip = self.gateway_return;
-
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
                 Some(hook_fn) => hook_fn(self, self.regs.rip, addr),
@@ -1937,17 +1930,7 @@ impl Emu {
                 return false;
             }
 
-            // anular el call
-            //self.stack_lvl.pop();
-            //self.stack_lvl_idx += 1;
-            // anular el pop previo
-            //self.stack_lvl[self.stack_lvl_idx] -= 1;
-
             self.gateway_return = self.stack_pop32(false).unwrap_or(0).into();
-
-            //self.stack_lvl.pop();
-            //self.stack_lvl_idx -= 1;
-
 
             self.regs.set_eip(self.gateway_return);
 
