@@ -19,6 +19,8 @@ impl Default for Maps {
 }
 
 impl Maps {
+    const DEFAULT_ALIGNMENT: u64 = 16;
+
     pub fn new() -> Maps {
         Maps {
             maps: Vec::new(),
@@ -1092,12 +1094,15 @@ impl Maps {
     }
 
     fn _alloc(&self, mut sz: u64, bottom: u64, top: u64, lib: bool) -> Option<u64> {
-        let mut prev: u64 = bottom;
+        let mut prev: u64 = self.align_up(bottom, Self::DEFAULT_ALIGNMENT);
         let debug = false;
 
         if sz > 0xffffff {
             sz = 0xffffff;
         }
+
+        // Round up size to alignment
+        sz = self.align_up(sz, Self::DEFAULT_ALIGNMENT);
 
         if debug {
             log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
@@ -1111,14 +1116,13 @@ impl Maps {
                 if debug {
                     log::info!("skipping: 0x{:x}", base);
                 }
-                continue; // a lib finding allocs that are not lib
+                continue;
             }
 
             if debug {
                 log::info!("base: 0x{:x} prev: 0x{:x} sz: 0x{:x}", base, prev, sz);
             }
             if prev > base {
-                //self.show_maps();
                 panic!("alloc error");
             }
             if debug {
@@ -1131,12 +1135,11 @@ impl Maps {
                 return Some(prev);
             }
 
-            prev = mem.get_bottom();
+            prev = self.align_up(mem.get_bottom(), Self::DEFAULT_ALIGNMENT);
         }
 
         if top < prev {
-            //TODO: check this case!!
-            prev = top;
+            prev = self.align_up(top, Self::DEFAULT_ALIGNMENT);
         }
         if top - prev > sz {
             if debug {
@@ -1149,28 +1152,12 @@ impl Maps {
         None
     }
 
-    pub fn alloc_deprecated(&self, sz: u64) -> Option<u64> {
-        let mut addr: u64 = 0;
-        let inc = 0x10;
+    fn align_up(&self, addr: u64, align: u64) -> u64 {
+        (addr + (align - 1)) & !(align - 1)
+    }
 
-        loop {
-            addr += inc;
-
-            if addr >= 0x70000000 {
-                return None;
-            }
-
-            for mem in self.maps.iter() {
-                if addr >= mem.get_base() && addr <= mem.get_bottom() {
-                    addr = mem.get_bottom();
-                    continue;
-                }
-            }
-
-            if !self.overlaps(addr, sz) {
-                return Some(addr);
-            }
-        }
+    fn align_down(&self, addr: u64, align: u64) -> u64 {
+        addr & !(align - 1)
     }
 
     pub fn save_all_allocs(&mut self, path: String) {
