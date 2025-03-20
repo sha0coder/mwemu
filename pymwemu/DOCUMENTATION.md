@@ -488,3 +488,15 @@ while True:
         emu.handle_winapi(addr)
 ```
 
+### building pymwemu
+
+python3 -m venv .env
+bash
+source .env/bin/activate
+maturin develop
+
+
+
+
+
+
