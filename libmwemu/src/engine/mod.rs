@@ -11,6 +11,7 @@ use crate::syscall32;
 use crate::syscall64;
 use crate::ntapi32;
 use crate::console::Console;
+use crate::ExType::ExceptionType;
 use crate::{to32, get_bit, set_bit};
 
 pub fn emulate_instruction(
@@ -338,6 +339,8 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 2);
             assert!(emu.get_operand_sz(ins, 0) == emu.get_operand_sz(ins, 1));
 
+            
+
             let value0 = match emu.get_operand_value(ins, 0, true) {
                 Some(v) => v,
                 None => return false,
@@ -363,6 +366,9 @@ pub fn emulate_instruction(
             emu.flags.f_of = false;
             emu.flags.f_cf = false;
             emu.flags.calc_pf(result as u8);
+
+            // WELL WELL WELL
+            // Xor needs to handle ModRM for direct memory access
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
@@ -3810,7 +3816,7 @@ pub fn emulate_instruction(
         Mnemonic::Int3 => {
             emu.show_instruction(&emu.colors.red, ins);
             log::info!("/!\\ int 3 sigtrap!!!!");
-            emu.exception();
+            emu.exception(ExceptionType::INT3);
             return true;
         }
 
@@ -4210,7 +4216,7 @@ pub fn emulate_instruction(
                     0x03 => {
                         emu.show_instruction(&emu.colors.red, ins);
                         log::info!("/!\\ int 0x3 sigtrap!!!!");
-                        emu.exception();
+                        emu.exception(ExceptionType::INT3);
                         return false;
                     }
 
@@ -4977,7 +4983,7 @@ pub fn emulate_instruction(
                 Some(v) => v,
                 None => {
                     log::error!("popf cannot read the stack");
-                    emu.exception();
+                    emu.exception(ExceptionType::POPF);
                     return false;
                 }
             };
@@ -8342,7 +8348,7 @@ pub fn emulate_instruction(
 
             if !emu.maps.write_word(emu.regs.rsp, val) {
                 log::info!("/!\\ exception writing word at rsp 0x{:x}", emu.regs.rsp);
-                emu.exception();
+                emu.exception(ExceptionType::WRITE);
                 return false;
             }
         }
