@@ -725,6 +725,17 @@ impl Maps {
         s
     }
 
+    pub fn read_string_len(&mut self, addr: u64, sz: usize) -> String
+    {
+        let mut svec: Vec<String> = Vec::new();
+        let bytes = self.read_bytes(addr, sz);
+        for bs in bytes.iter() {
+            svec.push(format!("{}", *bs as char));
+        }
+        let s: String = svec.into_iter().collect();
+        s
+    }
+
     pub fn read_string(&self, addr: u64) -> String {
         let mut bytes: Vec<char> = Vec::new();
         let mut b: u8;

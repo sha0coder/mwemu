@@ -1,11 +1,11 @@
 use iced_x86::Instruction;
-
 use crate::emu;
+use crate::ExType::ExceptionType;
 
 // return: false will ignore interrupt handling like 0x80 -> linux
 type TypeHookOnInterrupt = fn(emu: &mut emu::Emu, ip_addr: u64, interrupt: u64) -> bool;
 // return: allow handle exception?
-type TypeHookOnException = fn(emu: &mut emu::Emu, ip_addr: u64) -> bool;
+type TypeHookOnException = fn(emu: &mut emu::Emu, ip_addr: u64, ex: ExceptionType) -> bool;
 // memory read is pre-read you can modify the value that is going to be read.
 type TypeHookOnMemoryRead = fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32);
 // the memory write is pre but you can change the value is going to be written.
