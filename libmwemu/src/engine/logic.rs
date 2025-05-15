@@ -1,6 +1,6 @@
 use crate::emu::Emu;
 use crate::{get_bit, set_bit, to32};
-
+use crate::exception_type;
 pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     let mut ret: u64 = val;
 
@@ -231,7 +231,7 @@ pub fn div64(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -256,7 +256,7 @@ pub fn div32(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -279,7 +279,7 @@ pub fn div16(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -302,7 +302,7 @@ pub fn div8(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -327,7 +327,7 @@ pub fn idiv64(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -346,7 +346,7 @@ pub fn idiv64(emu: &mut Emu, value0: u64) {
         || ((value1 as i128) < 0 && (resq as i64) > 0)
     {
         log::info!("/!\\ sign change exception on division");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::SignChangeOnDivision);
         emu.force_break = true;
     }
 }
@@ -359,7 +359,7 @@ pub fn idiv32(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -378,7 +378,7 @@ pub fn idiv32(emu: &mut Emu, value0: u64) {
         || ((value1 as i64) < 0 && (resq as i32) > 0)
     {
         log::info!("/!\\ sign change exception on division");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::SignChangeOnDivision);
         emu.force_break = true;
     }
 }
@@ -389,7 +389,7 @@ pub fn idiv16(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -409,7 +409,7 @@ pub fn idiv16(emu: &mut Emu, value0: u64) {
         || ((value1 as i32) < 0 && (resq as i16) > 0)
     {
         log::info!("/!\\ sign change exception on division");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::SignChangeOnDivision);
         emu.force_break = true;
     }
 }
@@ -420,7 +420,7 @@ pub fn idiv8(emu: &mut Emu, value0: u64) {
     if value2 == 0 {
         emu.flags.f_tf = true;
         log::info!("/!\\ division by 0 exception");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
         return;
     }
@@ -440,7 +440,7 @@ pub fn idiv8(emu: &mut Emu, value0: u64) {
         || ((value1 as i16) < 0 && (resq as i8) > 0)
     {
         log::info!("/!\\ sign change exception on division");
-        emu.exception();
+        emu.exception(exception_type::ExceptionType::SignChangeOnDivision);
         emu.force_break = true;
     }
 }
