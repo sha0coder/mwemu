@@ -12,6 +12,7 @@ use crate::syscall64;
 use crate::ntapi32;
 use crate::console::Console;
 use crate::{to32, get_bit, set_bit};
+use crate::exception_type;
 
 pub fn emulate_instruction(
     emu: &mut Emu,
@@ -3810,7 +3811,7 @@ pub fn emulate_instruction(
         Mnemonic::Int3 => {
             emu.show_instruction(&emu.colors.red, ins);
             log::info!("/!\\ int 3 sigtrap!!!!");
-            emu.exception();
+            emu.exception(exception_type::ExceptionType::Int3);
             return true;
         }
 
@@ -4210,7 +4211,7 @@ pub fn emulate_instruction(
                     0x03 => {
                         emu.show_instruction(&emu.colors.red, ins);
                         log::info!("/!\\ int 0x3 sigtrap!!!!");
-                        emu.exception();
+                        emu.exception(exception_type::ExceptionType::Int3);
                         return false;
                     }
 
@@ -4977,7 +4978,7 @@ pub fn emulate_instruction(
                 Some(v) => v,
                 None => {
                     log::error!("popf cannot read the stack");
-                    emu.exception();
+                    emu.exception(exception_type::ExceptionType::PopfCannotReadStack);
                     return false;
                 }
             };
@@ -8342,7 +8343,7 @@ pub fn emulate_instruction(
 
             if !emu.maps.write_word(emu.regs.rsp, val) {
                 log::info!("/!\\ exception writing word at rsp 0x{:x}", emu.regs.rsp);
-                emu.exception();
+                emu.exception(exception_type::ExceptionType::WritingWord);
                 return false;
             }
         }
