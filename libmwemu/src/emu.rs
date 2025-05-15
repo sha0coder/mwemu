@@ -3453,7 +3453,9 @@ impl Emu {
                     //let info = info_factory.info(&ins);
 
                     if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-                        hook_fn(self, self.regs.rip, &ins, sz)
+                        if !hook_fn(self, self.regs.rip, &ins, sz) {
+                            continue;
+                        }
                     }
 
                     if ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix() {

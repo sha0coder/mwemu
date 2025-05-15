@@ -12,7 +12,10 @@ type TypeHookOnMemoryRead = fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, 
 // the memory write is pre but you can change the value is going to be written.
 type TypeHookOnMemoryWrite =
     fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32, value: u128) -> u128;
-type TypeHookOnPreInstruction = fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize);
+
+// [BREAKING API CHANGE] returning false will skip the handling of the instruction
+type TypeHookOnPreInstruction = fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize) -> bool;
+
 type TypeHookOnPostInstruction =
     fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize, emu_ok: bool);
 type TypeHookOnWinApiCall = fn(emu: &mut emu::Emu, ip_addr: u64, called_addr: u64) -> bool;

@@ -107,7 +107,9 @@ fn trace_exceptions(emu:&mut libmwemu::emu::Emu, ip_addr:u64, ex_type: libmwemu:
 }
 
 fn trace_pre_instruction(emu:&mut libmwemu::emu::Emu, ip_addr:u64, 
-                         ins:&Instruction, sz:usize) {
+                         ins:&Instruction, sz:usize) -> bool{
+                            // return false to skip the instruction
+                            true
 }
 
 fn trace_post_instruction(emu:&mut libmwemu::emu::Emu, ip_addr:u64, 
