@@ -3270,9 +3270,21 @@ impl Emu {
         formatter.format(&ins, &mut self.out);
         self.instruction = Some(ins);
         self.decoder_position = position;
+
+        // Run pre-instruction hook
+        if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
+            if !hook_fn(self, self.regs.rip, &ins, sz) {
+                return true; // skip instruction emulation
+            }
+        }
         // emulate
         let result_ok = engine::emulate_instruction(self, &ins, sz, true);
         self.last_instruction_size = sz;
+
+        // Run post-instruction hook
+        if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
+            hook_fn(self, self.regs.rip, &ins, sz, result_ok)
+        }
 
         // update eip/rip
         if self.force_reload {
