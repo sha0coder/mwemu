@@ -28,7 +28,7 @@ impl Maps {
     pub fn new() -> Maps {
         Maps {
             maps2: BTreeMap::<u64, Mem64>::default(),
-            name_map: AHashMap::<String, u64>::default(),
+            name_map: AHashMap::<String, u64>::with_capacity(200),
             is_64bits: false,
             banzai: false,
         }
