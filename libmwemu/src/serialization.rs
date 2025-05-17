@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 use serde::{Serialize, Deserialize};
-use iced_x86::Instruction;
+use iced_x86::{Instruction};
 
 use crate::banzai::Banzai;
 use crate::breakpoint::Breakpoint;
@@ -188,7 +188,6 @@ pub struct SerializableEmu {
     pub tls32: Vec<u32>,
     pub tls64: Vec<u64>,
     pub fls: Vec<u32>,
-    pub out: String,
     pub instruction: Option<Instruction>,
     pub decoder_position: usize,
     pub memory_operations: Vec<MemoryOperation>,
@@ -288,7 +287,6 @@ impl<'a> From<&'a Emu> for SerializableEmu {
                 tls32: emu.tls32.clone(),
                 tls64: emu.tls64.clone(),
                 fls: emu.fls.clone(),
-                out: emu.out.clone(),
                 instruction: emu.instruction,
                 decoder_position: emu.decoder_position,
                 memory_operations: emu.memory_operations.clone(),
@@ -356,7 +354,6 @@ impl From<SerializableEmu> for Emu {
             tls32: serialized.tls32,
             tls64: serialized.tls64,
             fls: serialized.fls,
-            out: serialized.out,
             instruction: serialized.instruction,
             decoder_position: serialized.decoder_position,
             memory_operations: serialized.memory_operations,
@@ -385,6 +382,7 @@ impl From<SerializableEmu> for Emu {
             trace_file: trace_file,
             base: serialized.base,
             call_stack: serialized.call_stack,
+            formatter: Default::default(),
         }
     }
 }

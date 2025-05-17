@@ -1508,7 +1508,7 @@ pub struct MemoryBasicInformation {
 
 impl MemoryBasicInformation {
     pub fn guess(addr: u64, maps: &mut Maps) -> MemoryBasicInformation {
-        match maps.get_mem_by_addr(addr) {
+        match maps.get_mem_by_addr_mut(addr) {
             Some(mem) => MemoryBasicInformation {
                 base_address: mem.get_base() as u32,
                 allocation_base: mem.get_base() as u32,
