@@ -3,9 +3,9 @@
  */
 
 use crate::emu;
-use crate::structures;
 use crate::pe32;
 use crate::pe32::PE32;
+use crate::structures;
 use crate::winapi64;
 use std::fs::File;
 use std::io::Read;
@@ -545,7 +545,6 @@ impl PE64 {
             } else {
                 self.iat_binding_original(emu, iim.original_first_thunk, iim.first_thunk);
             }
-
         }
         log::info!("IAT Bound.");
     }
@@ -554,10 +553,10 @@ impl PE64 {
         // this function is called for every DLL that in iat.
 
         let mut off = PE32::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
-        let ordinal:u16;
+        let ordinal: u16;
 
         loop {
-            let entry = read_u64_le!(self.raw, off); 
+            let entry = read_u64_le!(self.raw, off);
             if entry == 0 {
                 break;
             }
@@ -565,11 +564,10 @@ impl PE64 {
                 ordinal = (entry & 0xFFFF) as u16;
                 println!("---- ordinal: {}", ordinal);
                 unimplemented!("third variation of iat binding not implemented");
-
             } else {
                 let name_rva = entry as u32;
                 let name_off = PE32::vaddr_to_off(&self.sect_hdr, name_rva) as usize;
-                let api_name = PE32::read_string(&self.raw, name_off+2);
+                let api_name = PE32::read_string(&self.raw, name_off + 2);
 
                 let real_addr = winapi64::kernel32::resolve_api_name(emu, &api_name);
                 if real_addr > 0 {
@@ -577,57 +575,59 @@ impl PE64 {
                 }
             }
 
-
             off += 8;
         }
     }
 
-    pub fn iat_binding_original(&mut self, emu: &mut emu::Emu, original_first_thunk: u32, first_thunk: u32) {
-            // this function is called for every DLL in iat.
+    pub fn iat_binding_original(
+        &mut self,
+        emu: &mut emu::Emu,
+        original_first_thunk: u32,
+        first_thunk: u32,
+    ) {
+        // this function is called for every DLL in iat.
 
-            let mut off_name =
-                PE32::vaddr_to_off(&self.sect_hdr, original_first_thunk) as usize;
-            let mut off_addr = PE32::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
-            let mut flipflop = false;
+        let mut off_name = PE32::vaddr_to_off(&self.sect_hdr, original_first_thunk) as usize;
+        let mut off_addr = PE32::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
+        let mut flipflop = false;
 
-            loop {
-                if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 8 {
-                    break;
-                }
-
-                let hint = pe32::HintNameItem::load(&self.raw, off_name);
-                let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
-                let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
-
-                if off2 == 0 {
-                    off_name += pe32::HintNameItem::size();
-                    if flipflop {
-                        break;
-                    }
-                    flipflop = true;
-                    continue;
-                }
-                flipflop = false;
-                let func_name = PE32::read_string(&self.raw, off2 + 2);
-                //println!("resolving func_name: {}", func_name);
-                let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
-                if real_addr == 0 {
-                    break;
-                }
-
-                /*if emu.cfg.verbose >= 1 {
-                    log::info!("binded 0x{:x} {}", real_addr, func_name);
-                }*/
-
-                let fake_addr = read_u64_le!(self.raw, off_addr);
-
-                //println!("writing real_addr: 0x{:x} {} 0x{:x} -> 0x{:x} ", off_addr, func_name, fake_addr, real_addr);
-                write_u64_le!(self.raw, off_addr, real_addr);
-
-                off_name += pe32::HintNameItem::size();
-                off_addr += 8;
+        loop {
+            if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 8 {
+                break;
             }
 
+            let hint = pe32::HintNameItem::load(&self.raw, off_name);
+            let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
+            let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
+
+            if off2 == 0 {
+                off_name += pe32::HintNameItem::size();
+                if flipflop {
+                    break;
+                }
+                flipflop = true;
+                continue;
+            }
+            flipflop = false;
+            let func_name = PE32::read_string(&self.raw, off2 + 2);
+            //println!("resolving func_name: {}", func_name);
+            let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
+            if real_addr == 0 {
+                break;
+            }
+
+            /*if emu.cfg.verbose >= 1 {
+                log::info!("binded 0x{:x} {}", real_addr, func_name);
+            }*/
+
+            let fake_addr = read_u64_le!(self.raw, off_addr);
+
+            //println!("writing real_addr: 0x{:x} {} 0x{:x} -> 0x{:x} ", off_addr, func_name, fake_addr, real_addr);
+            write_u64_le!(self.raw, off_addr, real_addr);
+
+            off_name += pe32::HintNameItem::size();
+            off_addr += 8;
+        }
     }
 
     pub fn import_addr_to_name(&self, paddr: u64) -> String {
@@ -678,7 +678,16 @@ impl PE64 {
         String::new()
     }
 
-    pub fn locate_resource_data_entry(&self, rsrc: &[u8], off: usize, level: u32, type_id: Option<u32>, name_id: Option<u32>, type_name: Option<&str>, name: Option<&str>) -> Option<structures::ImageResourceDataEntry64> {
+    pub fn locate_resource_data_entry(
+        &self,
+        rsrc: &[u8],
+        off: usize,
+        level: u32,
+        type_id: Option<u32>,
+        name_id: Option<u32>,
+        type_name: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<structures::ImageResourceDataEntry64> {
         if level >= 10 {
             return None;
         }
@@ -699,23 +708,32 @@ impl PE64 {
             entry.name_or_id = read_u32_le!(rsrc, off2);
             entry.data_or_directory = read_u32_le!(rsrc, off2 + 4);
 
-            let matched:bool;
+            let matched: bool;
 
             if entry.is_id() {
                 if level == 0 && type_id.is_some() && type_id.unwrap() == entry.get_name_or_id() {
                     println!("type_id matched");
                     matched = true;
-                } else if level == 1 && name_id.is_some() && name_id.unwrap() == entry.get_name_or_id() {
+                } else if level == 1
+                    && name_id.is_some()
+                    && name_id.unwrap() == entry.get_name_or_id()
+                {
                     println!("name_id matched");
                     matched = true;
                 } else {
                     matched = false;
                 }
             } else {
-                if level == 0 && type_name.is_some() && type_name.unwrap() == self.get_resource_name(&entry) {
+                if level == 0
+                    && type_name.is_some()
+                    && type_name.unwrap() == self.get_resource_name(&entry)
+                {
                     println!("type_name matched");
                     matched = true;
-                } else if level == 1 && name.is_some() && name.unwrap() == self.get_resource_name(&entry) {
+                } else if level == 1
+                    && name.is_some()
+                    && name.unwrap() == self.get_resource_name(&entry)
+                {
                     println!("name matched");
                     matched = true;
                 } else {
@@ -725,7 +743,15 @@ impl PE64 {
 
             if matched {
                 if entry.is_directory() {
-                    return self.locate_resource_data_entry(rsrc, off2, level + 1, type_id, name_id, type_name, name);
+                    return self.locate_resource_data_entry(
+                        rsrc,
+                        off2,
+                        level + 1,
+                        type_id,
+                        name_id,
+                        type_name,
+                        name,
+                    );
                 } else {
                     let mut data_entry = structures::ImageResourceDataEntry64::new();
                     let off = PE32::vaddr_to_off(&self.sect_hdr, entry.get_offset()) as usize;
@@ -733,7 +759,7 @@ impl PE64 {
                     data_entry.size = read_u64_le!(self.raw, off + 8);
                     data_entry.code_page = read_u64_le!(self.raw, off + 16);
                     data_entry.reserved = read_u64_le!(self.raw, off + 24);
-            
+
                     return Some(data_entry);
                 }
             }
@@ -742,10 +768,16 @@ impl PE64 {
         None
     }
 
-    pub fn get_resource(&self, type_id: Option<u32>, name_id: Option<u32>, type_name: Option<&str>, name: Option<&str>) -> Option<(u64, usize)> {
+    pub fn get_resource(
+        &self,
+        type_id: Option<u32>,
+        name_id: Option<u32>,
+        type_name: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<(u64, usize)> {
         // to query a resource, we need the type and name, and both could be a string or an id.
         // it resturn the address on memory of the resource but without the base address, the api will add it.
-        
+
         let rsrc = self.get_section_ptr_by_name(".rsrc");
         if rsrc.is_none() {
             return None;
@@ -753,13 +785,15 @@ impl PE64 {
 
         let rsrc = rsrc.unwrap();
 
-
-        let data_entry = self.locate_resource_data_entry(rsrc, 0, 0, type_id, name_id, type_name, name);
+        let data_entry =
+            self.locate_resource_data_entry(rsrc, 0, 0, type_id, name_id, type_name, name);
         if data_entry.is_none() {
             return None;
         }
         let data_entry = data_entry.unwrap();
-        let data_off = PE32::vaddr_to_off(&self.sect_hdr, data_entry.offset_to_data as u32) as usize - self.opt.image_base as usize;
+        let data_off = PE32::vaddr_to_off(&self.sect_hdr, data_entry.offset_to_data as u32)
+            as usize
+            - self.opt.image_base as usize;
         return Some((data_off as u64, data_entry.size as usize));
     }
 
@@ -769,13 +803,11 @@ impl PE64 {
         let string_start = off + 2;
         let utf16_data: Vec<u16> = (0..length)
             .map(|i| {
-            let idx = string_start + i * 2;
-            u16::from_le_bytes([self.raw[idx], self.raw[idx + 1]])
-        }).collect(); 
+                let idx = string_start + i * 2;
+                u16::from_le_bytes([self.raw[idx], self.raw[idx + 1]])
+            })
+            .collect();
 
         String::from_utf16_lossy(&utf16_data)
     }
-
-
-
 }

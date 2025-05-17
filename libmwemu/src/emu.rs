@@ -1,25 +1,30 @@
 use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{
-    Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter,
-    MemorySize, Mnemonic, OpKind, Register,
+    Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind,
+    Register,
 };
-use std::io::Write as _;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::Write as _;
 use std::sync::atomic;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::config::Config;
 use crate::banzai::Banzai;
 use crate::breakpoint::Breakpoint;
 use crate::colors::Colors;
+use crate::config::Config;
 use crate::console::Console;
+use crate::constants;
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
+use crate::elf64;
 use crate::elf64::Elf64;
+use crate::engine;
 use crate::err::MwemuError;
+use crate::exception;
+use crate::exception_type;
 use crate::flags::Flags;
 use crate::fpu::FPU;
 use crate::hooks::Hooks;
@@ -28,19 +33,14 @@ use crate::pe32::PE32;
 use crate::pe64::PE64;
 use crate::peb32;
 use crate::peb64;
-use crate::engine;
-use crate::constants;
-use crate::serialization;
-use crate::winapi32;
-use crate::winapi64;
-use crate::regs64::Regs64;
-use crate::elf64;
 use crate::regs64;
-use crate::exception;
+use crate::regs64::Regs64;
+use crate::serialization;
 use crate::structures;
 use crate::structures::MemoryOperation;
+use crate::winapi32;
+use crate::winapi64;
 use crate::{get_bit, set_bit, to32};
-use crate::exception_type;
 
 pub struct Emu {
     pub regs: Regs64,
@@ -168,7 +168,6 @@ impl Emu {
             base: 0,
             call_stack: vec![],
         }
-
     }
 
     pub fn open_trace_file(&mut self) {
@@ -335,14 +334,14 @@ impl Emu {
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x22a000;
             // Set up 1MB stack
-            self.regs.rsp = self.cfg.stack_addr + stack_size;  // 1MB offset
-            self.regs.rbp = self.cfg.stack_addr + stack_size + 0x1000;  // Extra page for frame
+            self.regs.rsp = self.cfg.stack_addr + stack_size; // 1MB offset
+            self.regs.rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
         }
 
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000)  // Increased size
+            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
             .expect("cannot create stack map");
 
         assert!(self.regs.rsp < self.regs.rbp);
@@ -641,7 +640,8 @@ impl Emu {
     }
 
     pub fn filename_to_mapname(&self, filename: &str) -> String {
-        filename.split('/')
+        filename
+            .split('/')
             .last()
             .map(|x| x.split('.'))
             .and_then(|x| x.peekable().next())
@@ -709,7 +709,6 @@ impl Emu {
         }
 
         if set_entry {
-
             // 2. pe binding
             if !is_maps {
                 pe32.iat_binding(self);
@@ -855,7 +854,6 @@ impl Emu {
         }
 
         if set_entry {
-
             // 2. pe binding
             if !is_maps {
                 pe64.iat_binding(self);
@@ -1860,7 +1858,7 @@ impl Emu {
         if addr < constants::LIBS64_MIN
             || name == "code"
             || (!map_name.is_empty() && name.starts_with(&map_name))
-            || name == "loader.text" 
+            || name == "loader.text"
         {
             self.regs.rip = addr;
         } else if self.linux {
@@ -1925,7 +1923,7 @@ impl Emu {
         if name == "code"
             || addr < constants::LIBS32_MIN
             || (!map_name.is_empty() && name.starts_with(&map_name))
-            || name == "loader.text" 
+            || name == "loader.text"
         {
             self.regs.set_eip(addr);
         } else {
@@ -1951,7 +1949,6 @@ impl Emu {
                 winapi32::gateway(to32!(addr), name, self);
             }
             self.force_break = true;
-
         }
 
         true
@@ -2094,9 +2091,11 @@ impl Emu {
         do_derref: bool,
     ) -> Option<u64> {
         assert!(ins.op_count() > noperand);
-        
+
         let value: u64 = match ins.op_kind(noperand) {
-            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => ins.near_branch_target(),
+            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => {
+                ins.near_branch_target()
+            }
             OpKind::FarBranch32 => ins.far_branch32().into(),
             OpKind::FarBranch16 => ins.far_branch16().into(),
 
@@ -2313,14 +2312,14 @@ impl Emu {
                                     // For now, allocate space for a few module entries
                                     let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
                                     let tls_array = self.alloc("static_tls_array", size);
-                                    
+
                                     // Initialize to null pointers
                                     self.maps.write_bytes(tls_array, vec![0; size as usize]);
-                                    
+
                                     tls_array
                                 }
                             };
-                            
+
                             static_tls
                         }
                         _ => {
@@ -2503,7 +2502,9 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
+                                    self.exception(
+                                        exception_type::ExceptionType::BadAddressDereferencing,
+                                    );
                                     return false;
                                 }
                             }
@@ -2523,7 +2524,9 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
+                                    self.exception(
+                                        exception_type::ExceptionType::BadAddressDereferencing,
+                                    );
                                     return false;
                                 }
                             }
@@ -2543,7 +2546,9 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
+                                    self.exception(
+                                        exception_type::ExceptionType::BadAddressDereferencing,
+                                    );
                                     return false;
                                 }
                             }
@@ -2563,7 +2568,9 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
+                                    self.exception(
+                                        exception_type::ExceptionType::BadAddressDereferencing,
+                                    );
                                     return false;
                                 }
                             }
@@ -3251,11 +3258,18 @@ impl Emu {
             log::info!("exit position reached");
 
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump_to_file(self, self.cfg.dump_filename.as_ref().unwrap());
+                serialization::Serialization::dump_to_file(
+                    self,
+                    self.cfg.dump_filename.as_ref().unwrap(),
+                );
             }
 
             if self.cfg.trace_filename.is_some() {
-                self.trace_file.as_ref().unwrap().flush().expect("failed to flush trace file");
+                self.trace_file
+                    .as_ref()
+                    .unwrap()
+                    .flush()
+                    .expect("failed to flush trace file");
             }
 
             return false;
@@ -3340,11 +3354,7 @@ impl Emu {
         }
 
         //self.pos = 0;
-        let arch = if self.cfg.is_64bits {
-            64
-        } else {
-            32
-        };
+        let arch = if self.cfg.is_64bits { 64 } else { 32 };
         let mut ins: Instruction = Instruction::default();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
@@ -3364,7 +3374,8 @@ impl Emu {
                 // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block = code.read_bytes(self.regs.rip, 0x300).to_vec();
-                let mut decoder = Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
+                let mut decoder =
+                    Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
                 let mut addr: u64 = 0;
 
@@ -3389,11 +3400,18 @@ impl Emu {
                         log::info!("exit position reached");
 
                         if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                            serialization::Serialization::dump_to_file(self, self.cfg.dump_filename.as_ref().unwrap());
+                            serialization::Serialization::dump_to_file(
+                                self,
+                                self.cfg.dump_filename.as_ref().unwrap(),
+                            );
                         }
 
                         if self.cfg.trace_filename.is_some() {
-                            self.trace_file.as_ref().unwrap().flush().expect("failed to flush trace file");
+                            self.trace_file
+                                .as_ref()
+                                .unwrap()
+                                .flush()
+                                .expect("failed to flush trace file");
                         }
 
                         return Ok(self.regs.rip);
@@ -3574,7 +3592,10 @@ impl Emu {
                         if self.cfg.console_enabled {
                             Console::spawn_console(self);
                         } else {
-                            return Err(MwemuError::new(&format!("emulation error at pos = {} rip = 0x{:x}", self.pos, self.regs.rip)));
+                            return Err(MwemuError::new(&format!(
+                                "emulation error at pos = {} rip = 0x{:x}",
+                                self.pos, self.regs.rip
+                            )));
                         }
                     }
 

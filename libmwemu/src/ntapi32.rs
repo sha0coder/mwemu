@@ -1,5 +1,5 @@
-use iced_x86::Formatter;
 use crate::emu;
+use iced_x86::Formatter;
 /*
 use crate::console;
 use crate::constants;

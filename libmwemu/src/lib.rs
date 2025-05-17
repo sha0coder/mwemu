@@ -1,4 +1,3 @@
-#![feature(btree_cursors)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -27,6 +26,7 @@ pub mod hooks;
 pub mod inline;
 #[macro_use]
 pub mod macros;
+pub mod exception_type;
 pub mod maps;
 pub mod ntapi32;
 pub mod pe32;
@@ -35,13 +35,12 @@ pub mod peb32;
 pub mod peb64;
 pub mod regs64;
 pub mod script;
+pub mod serialization;
 pub mod structures;
 pub mod syscall32;
 pub mod syscall64;
 pub mod winapi32;
 pub mod winapi64;
-pub mod serialization;
-pub mod exception_type;
 
 #[cfg(test)]
 mod tests;

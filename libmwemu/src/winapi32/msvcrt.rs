@@ -1,7 +1,7 @@
 use crate::emu;
+use crate::serialization;
 use crate::winapi32::helper;
 use crate::winapi32::kernel32;
-use crate::serialization;
 //use crate::endpoint;
 
 // msvcrt is an exception and these functions dont have to compensate the stack.
@@ -29,12 +29,20 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -135,7 +143,6 @@ fn fopen(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs.get_esp() + 4)
         .expect("msvcrt!fopen error reading mode pointer") as u64;
-
 
     if filepath_ptr == 0 || mode_ptr == 0 {
         emu.regs.rax = 0xffffffff;
@@ -460,7 +467,9 @@ fn strtok(emu: &mut emu::Emu) {
 }
 
 fn __set_app_type(emu: &mut emu::Emu) {
-    let app_type = emu.maps.read_dword(emu.regs.get_esp())
+    let app_type = emu
+        .maps
+        .read_dword(emu.regs.get_esp())
         .expect("msvcrt!__set_app_type error reading app_type");
 
     log::info!(

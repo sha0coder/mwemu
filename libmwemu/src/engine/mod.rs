@@ -3,6 +3,7 @@ pub mod logic;
 use crate::console::Console;
 use crate::emu::Emu;
 use crate::exception;
+use crate::exception_type;
 use crate::fpu::FPUState;
 use crate::inline;
 use crate::ntapi32;
@@ -13,7 +14,6 @@ use crate::syscall64;
 use crate::{get_bit, set_bit, to32};
 use iced_x86::{Formatter, Instruction, Mnemonic, Register};
 use phf::phf_map;
-use crate::exception_type;
 
 static COLOR: phf::Map<&'static str, &'static str> = phf_map! {
     "Black" => "\x1b[0;30m",
@@ -105,7 +105,6 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            
             emu.show_instruction_pushpop(COLOR.get("Blue").cloned().unwrap(), ins, value);
 
             if emu.cfg.is_64bits {
@@ -130,7 +129,6 @@ pub fn emulate_instruction(
                 }
             };
 
-            
             emu.show_instruction_pushpop(COLOR.get("Blue").cloned().unwrap(), ins, value);
 
             if !emu.set_operand_value(ins, 0, value) {
@@ -139,7 +137,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pushad => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             // only 32bits instruction
@@ -171,7 +168,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Popad => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             let mut poped: u64;
 
@@ -196,7 +192,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cdqe => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             emu.regs.rax = emu.regs.get_eax() as u32 as i32 as i64 as u64;
@@ -204,7 +199,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cdq => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let num: i64 = emu.regs.get_eax() as u32 as i32 as i64; // sign-extend
@@ -216,7 +210,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cqo => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let sigextend: u128 = emu.regs.rax as i64 as i128 as u128;
@@ -236,7 +229,6 @@ pub fn emulate_instruction(
                 }
             };
 
-            
             emu.show_instruction_ret(COLOR.get("Yellow").cloned().unwrap(), ins, ret_addr);
 
             if emu.break_on_next_return {
@@ -288,7 +280,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xchg => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -312,7 +303,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Aad => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             assert!(ins.op_count() <= 1);
 
@@ -336,7 +326,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Les => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -352,7 +341,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mov | Mnemonic::Movnti => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -368,7 +356,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xor => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -406,7 +393,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Add => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -450,7 +436,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Adc => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -496,7 +481,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sbb => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -530,7 +514,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sub => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -547,7 +530,7 @@ pub fn emulate_instruction(
 
             /*
                         if value0 == emu.regs.rsp {
-                            
+
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
                             if emu.cfg.is_64bits {
@@ -575,7 +558,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Inc => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -599,7 +581,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Dec => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -623,7 +604,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Neg => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -656,7 +636,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Not => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -707,7 +686,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::And => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -765,7 +743,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Or => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -824,7 +801,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sal => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -889,7 +865,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sar => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -955,7 +930,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Shl => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1022,7 +996,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Shr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1089,7 +1062,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Ror => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1165,7 +1137,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Rcr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1215,7 +1186,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Rol => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1298,7 +1268,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Rcl => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2);
@@ -1346,7 +1315,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mul => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -1394,7 +1362,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Div => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -1445,7 +1412,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Idiv => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -1493,7 +1459,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Imul => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1 || ins.op_count() == 2 || ins.op_count() == 3);
@@ -1612,7 +1577,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bt => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1637,7 +1601,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Btc => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1666,7 +1629,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bts => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1695,7 +1657,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Btr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1724,7 +1685,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bsf => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1791,7 +1751,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bsr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1842,7 +1801,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bswap => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 1);
 
@@ -1898,7 +1856,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xadd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -1945,7 +1902,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Ucomiss => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -1980,7 +1936,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Ucomisd => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -2015,7 +1970,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movss => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             if ins.op_count() > 2 {
@@ -2056,7 +2010,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movsxd => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -2074,7 +2027,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movsx => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -2132,7 +2084,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movzx => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -2172,11 +2123,9 @@ pub fn emulate_instruction(
         Mnemonic::Movsb => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -2226,11 +2175,9 @@ pub fn emulate_instruction(
         Mnemonic::Movsw => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -2269,11 +2216,9 @@ pub fn emulate_instruction(
         Mnemonic::Movsq => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
             emu.pos += 1;
@@ -2299,7 +2244,6 @@ pub fn emulate_instruction(
             if ins.op_count() == 2
                 && (emu.get_operand_sz(ins, 0) == 128 || emu.get_operand_sz(ins, 1) == 128)
             {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 let src = match emu.get_operand_xmm_value_128(ins, 1, true) {
                     Some(v) => v & 0xffffffff_ffffffff,
@@ -2319,11 +2263,9 @@ pub fn emulate_instruction(
 
                 if emu.rep.is_some() {
                     if emu.rep.unwrap() == 0 {
-                        
                         emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                     }
                 } else {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
 
@@ -2366,7 +2308,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmova => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
@@ -2382,7 +2323,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovae => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf {
@@ -2398,7 +2338,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovb => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_cf {
@@ -2414,7 +2353,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovbe => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_cf || emu.flags.f_zf {
@@ -2430,7 +2368,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmove => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_zf {
@@ -2446,7 +2383,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovg => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_zf && emu.flags.f_sf == emu.flags.f_of {
@@ -2462,7 +2398,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovge => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_sf == emu.flags.f_of {
@@ -2478,7 +2413,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovl => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_sf != emu.flags.f_of {
@@ -2494,7 +2428,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovle => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_zf || emu.flags.f_sf != emu.flags.f_of {
@@ -2510,7 +2443,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovno => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_of {
@@ -2526,7 +2458,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovne => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_zf {
@@ -2542,7 +2473,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovp => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_pf {
@@ -2559,7 +2489,6 @@ pub fn emulate_instruction(
 
         // https://hjlebbink.github.io/x86doc/html/CMOVcc.html
         Mnemonic::Cmovnp => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_pf {
@@ -2575,7 +2504,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovs => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -2601,7 +2529,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovns => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_sf {
@@ -2617,7 +2544,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmovo => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_of {
@@ -2633,7 +2559,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Seta => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
@@ -2646,7 +2571,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setae => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf {
@@ -2659,7 +2583,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setb => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_cf {
@@ -2672,7 +2595,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setbe => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_cf || emu.flags.f_zf {
@@ -2685,7 +2607,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sete => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_zf {
@@ -2698,7 +2619,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setg => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_zf && emu.flags.f_sf == emu.flags.f_of {
@@ -2711,7 +2631,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setge => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_sf == emu.flags.f_of {
@@ -2724,7 +2643,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setl => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_sf != emu.flags.f_of {
@@ -2737,7 +2655,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setle => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_zf || emu.flags.f_sf != emu.flags.f_of {
@@ -2750,7 +2667,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setne => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_zf {
@@ -2763,7 +2679,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setno => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_of {
@@ -2776,7 +2691,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setnp => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_pf {
@@ -2789,7 +2703,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setns => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if !emu.flags.f_sf {
@@ -2802,7 +2715,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Seto => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_of {
@@ -2815,7 +2727,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Setp => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_pf {
@@ -2828,7 +2739,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Sets => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             if emu.flags.f_sf {
@@ -2843,11 +2753,9 @@ pub fn emulate_instruction(
         Mnemonic::Stosb => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -2877,7 +2785,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Stosw => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             if emu.cfg.is_64bits {
@@ -2904,12 +2811,10 @@ pub fn emulate_instruction(
         Mnemonic::Stosd => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                     log::info!("    rdi: 0x{:x}", emu.regs.rdi);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 log::info!("    rdi: 0x{:x}", emu.regs.rdi);
             }
@@ -2948,11 +2853,9 @@ pub fn emulate_instruction(
 
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -2968,11 +2871,9 @@ pub fn emulate_instruction(
         Mnemonic::Scasb => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3005,11 +2906,9 @@ pub fn emulate_instruction(
         Mnemonic::Scasw => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3039,11 +2938,9 @@ pub fn emulate_instruction(
         Mnemonic::Scasd => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3073,11 +2970,9 @@ pub fn emulate_instruction(
         Mnemonic::Scasq => {
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3096,7 +2991,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Test => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -3122,7 +3016,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmpxchg => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -3160,7 +3053,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmpxchg8b => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -3185,7 +3077,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmpxchg16b => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -3210,7 +3101,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cmp => {
-            
             emu.show_instruction(COLOR.get("Orange").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -3284,11 +3174,9 @@ pub fn emulate_instruction(
 
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3334,11 +3222,9 @@ pub fn emulate_instruction(
 
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3410,11 +3296,9 @@ pub fn emulate_instruction(
 
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3486,11 +3370,9 @@ pub fn emulate_instruction(
 
             if emu.rep.is_some() {
                 if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-                    
                     emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
                 }
             } else {
-                
                 emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
             }
 
@@ -3566,7 +3448,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
 
                 let addr = match emu.get_operand_value(ins, 0, true) {
@@ -3580,7 +3461,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3589,7 +3469,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
 
                 let addr = match emu.get_operand_value(ins, 0, true) {
@@ -3603,7 +3482,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3612,7 +3490,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_sf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3625,7 +3502,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3634,7 +3510,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_sf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3647,7 +3522,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3656,7 +3530,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_zf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3669,7 +3542,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3678,7 +3550,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_zf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3691,7 +3562,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3700,7 +3570,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_cf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3713,7 +3582,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3722,7 +3590,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_cf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3735,7 +3602,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3744,7 +3610,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_cf || emu.flags.f_zf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3757,7 +3622,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3766,7 +3630,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3779,7 +3642,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3788,7 +3650,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_sf != emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3801,7 +3662,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3810,7 +3670,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_sf == emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3823,7 +3682,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3832,7 +3690,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_zf || emu.flags.f_sf != emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3845,7 +3702,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3854,7 +3710,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_zf && emu.flags.f_sf == emu.flags.f_of {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3867,7 +3722,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3876,7 +3730,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.flags.f_pf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3889,7 +3742,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3898,7 +3750,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if !emu.flags.f_pf {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3911,7 +3762,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3920,7 +3770,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.regs.get_cx() == 0 {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3933,7 +3782,6 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
@@ -3942,7 +3790,6 @@ pub fn emulate_instruction(
             assert!(ins.op_count() == 1);
 
             if emu.regs.get_cx() == 0 {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3955,14 +3802,12 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
 
         Mnemonic::Jrcxz => {
             if emu.regs.rcx == 0 {
-                
                 emu.show_instruction_taken(COLOR.get("Orange").cloned().unwrap(), ins);
                 let addr = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
@@ -3975,13 +3820,11 @@ pub fn emulate_instruction(
                     return emu.set_eip(addr, true);
                 }
             } else {
-                
                 emu.show_instruction_not_taken(COLOR.get("Orange").cloned().unwrap(), ins);
             }
         }
 
         Mnemonic::Int3 => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
             log::info!("/!\\ int 3 sigtrap!!!!");
             emu.exception(exception_type::ExceptionType::Int3);
@@ -3989,22 +3832,18 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Nop => {
-            
             emu.show_instruction(COLOR.get("LightPurple").cloned().unwrap(), ins);
         }
 
         Mnemonic::Fnop => {
-            
             emu.show_instruction(COLOR.get("LightPurple").cloned().unwrap(), ins);
         }
 
         Mnemonic::Mfence | Mnemonic::Lfence | Mnemonic::Sfence => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Cpuid => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             // guloader checks bit31 which is if its hipervisor with command
@@ -4147,13 +3986,11 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Clc => {
-            
             emu.show_instruction(COLOR.get("LightGray").cloned().unwrap(), ins);
             emu.flags.f_cf = false;
         }
 
         Mnemonic::Rdtsc => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let elapsed = emu.now.elapsed();
@@ -4163,7 +4000,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Rdtscp => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let elapsed = emu.now.elapsed();
@@ -4174,7 +4010,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Loop => {
-            
             emu.show_instruction(COLOR.get("Yellow").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -4226,7 +4061,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Loope => {
-            
             emu.show_instruction(COLOR.get("Yellow").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -4278,7 +4112,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Loopne => {
-            
             emu.show_instruction(COLOR.get("Yellow").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -4330,7 +4163,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Lea => {
-            
             emu.show_instruction(COLOR.get("LightCyan").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -4346,7 +4178,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Leave => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             if emu.cfg.is_64bits {
@@ -4366,7 +4197,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Int => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 1);
@@ -4395,7 +4225,6 @@ pub fn emulate_instruction(
                     }
 
                     0x03 => {
-                        
                         emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
                         log::info!("/!\\ int 0x3 sigtrap!!!!");
                         emu.exception(exception_type::ExceptionType::Int3);
@@ -4415,38 +4244,32 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Syscall => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             syscall64::gateway(emu);
         }
 
         Mnemonic::Std => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             emu.flags.f_df = true;
         }
 
         Mnemonic::Stc => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             emu.flags.f_cf = true;
         }
 
         Mnemonic::Cmc => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             emu.flags.f_cf = !emu.flags.f_cf;
         }
 
         Mnemonic::Cld => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             emu.flags.f_df = false;
         }
 
         Mnemonic::Lodsq => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
             //TODO: crash if arrive to zero or max value
 
@@ -4468,7 +4291,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Lodsd => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
             //TODO: crash if arrive to zero or max value
 
@@ -4500,7 +4322,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Lodsw => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
             //TODO: crash if rsi arrive to zero or max value
 
@@ -4532,7 +4353,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Lodsb => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
             //TODO: crash if arrive to zero or max value
 
@@ -4572,7 +4392,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cbw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let sigextend = emu.regs.get_al() as u8 as i8 as i16 as u16;
@@ -4580,7 +4399,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cwde => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let sigextend = emu.regs.get_ax() as u16 as i16 as i32 as u32;
@@ -4589,7 +4407,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Cwd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let sigextend = emu.regs.get_ax() as u16 as i16 as i32 as u32;
@@ -4607,7 +4424,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Ffree => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match ins.op_register(0) {
@@ -4626,7 +4442,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fbld => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = match emu.get_operand_value(ins, 0, false) {
@@ -4639,7 +4454,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldcw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = match emu.get_operand_value(ins, 0, false) {
@@ -4651,7 +4465,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fnstenv => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let addr = match emu.get_operand_value(ins, 0, false) {
@@ -4676,14 +4489,12 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fld => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldz => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(0.0);
@@ -4691,7 +4502,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fld1 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(1.0);
@@ -4699,7 +4509,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldpi => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(std::f64::consts::PI);
@@ -4707,7 +4516,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldl2t => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(10f64.log2());
@@ -4715,7 +4523,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldlg2 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(2f64.log10());
@@ -4723,7 +4530,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldln2 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(2f64.log(std::f64::consts::E));
@@ -4731,7 +4537,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fldl2e => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.push(std::f64::consts::E.log2());
@@ -4739,7 +4544,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fst => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let res = emu.fpu.get_st(0) as u64;
@@ -4750,7 +4554,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsubrp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -4762,7 +4565,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fstp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let res = emu.fpu.get_st(0) as u64;
@@ -4775,7 +4577,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fincstp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.f_c1 = false;
@@ -4783,7 +4584,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fild => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.dec_top();
@@ -4800,7 +4600,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fist => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = emu.fpu.get_st(0) as i64;
@@ -4814,7 +4613,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fxtract => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             let (mantissa, exponent) = emu.fpu.frexp(st0);
@@ -4823,7 +4621,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fxsave => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let addr = match emu.get_operand_value(ins, 0, false) {
@@ -4836,7 +4633,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fxrstor => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let addr = match emu.get_operand_value(ins, 0, false) {
@@ -4850,7 +4646,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fistp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = emu.fpu.get_st(0) as i64;
@@ -4870,7 +4665,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmove => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if emu.flags.f_zf {
@@ -4891,7 +4685,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if emu.flags.f_cf {
@@ -4912,7 +4705,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovbe => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if emu.flags.f_cf || emu.flags.f_zf {
@@ -4933,7 +4725,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovu => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if emu.flags.f_pf {
@@ -4954,7 +4745,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovnb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf {
@@ -4975,7 +4765,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovne => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if !emu.flags.f_zf {
@@ -4996,7 +4785,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovnbe => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
@@ -5017,7 +4805,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcmovnu => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if !emu.flags.f_pf {
@@ -5038,7 +4825,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fxch => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             match ins.op_register(1) {
                 Register::ST0 => emu.fpu.xchg_st(0),
@@ -5056,7 +4842,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsqrt => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -5064,7 +4849,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fchs => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -5073,7 +4857,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fptan => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -5082,7 +4865,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fmulp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
@@ -5093,7 +4875,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fdivp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
@@ -5104,7 +4885,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsubp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = 0;
@@ -5115,7 +4895,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsubr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
@@ -5125,7 +4904,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsub => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0);
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
@@ -5135,7 +4913,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fadd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             //assert!(ins.op_count() == 2); there are with 1 operand
 
@@ -5181,7 +4958,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fucom => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             let st1 = emu.fpu.get_st(1);
@@ -5191,7 +4967,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::F2xm1 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -5200,14 +4975,12 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fyl2x => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.fyl2x();
         }
 
         Mnemonic::Fyl2xp1 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             emu.fpu.fyl2xp1();
@@ -5215,7 +4988,6 @@ pub fn emulate_instruction(
 
         // end fpu
         Mnemonic::Popf => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let flags: u16 = match emu.maps.read_word(emu.regs.rsp) {
@@ -5233,7 +5005,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Popfd => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let flags = match emu.stack_pop32(true) {
@@ -5244,7 +5015,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Popfq => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let eflags = match emu.stack_pop64(true) {
@@ -5255,7 +5025,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Daa => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let old_al = emu.regs.get_al();
@@ -5285,7 +5054,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Shld => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -5325,7 +5093,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Shrd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -5375,7 +5142,6 @@ pub fn emulate_instruction(
         // packed: compute all parts.
         // packed double
         Mnemonic::Pcmpeqd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             if emu.get_operand_sz(ins, 0) != 128 || emu.get_operand_sz(ins, 1) != 128 {
                 log::info!("unimplemented");
@@ -5402,7 +5168,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubusb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             if emu.get_operand_sz(ins, 0) != 128 || emu.get_operand_sz(ins, 1) != 128 {
                 log::info!("unimplemented");
@@ -5424,7 +5189,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpckhbw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -5463,7 +5227,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pand => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -5489,7 +5252,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Por => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -5515,7 +5277,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pxor => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -5542,7 +5303,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpcklbw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -5581,7 +5341,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpcklwd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -5617,7 +5376,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xorps => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -5648,7 +5406,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xorpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -5683,7 +5440,6 @@ pub fn emulate_instruction(
         | Mnemonic::Psubusb
         | Mnemonic::Psubusw => {*/
         Mnemonic::Psubb => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5720,7 +5476,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubw => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5757,7 +5512,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubd => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5794,7 +5548,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubq => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5835,7 +5588,6 @@ pub fn emulate_instruction(
         Mnemonic::Movhpd => {
             // we keep the high part of xmm destination
 
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5916,7 +5668,6 @@ pub fn emulate_instruction(
         Mnemonic::Movlpd | Mnemonic::Movlps | Mnemonic::Cvtsi2sd | Mnemonic::Cvtsi2ss => {
             // we keep the high part of xmm destination
 
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -5992,7 +5743,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movhps => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -6061,7 +5811,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpcklqdq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let sz0 = emu.get_operand_sz(ins, 0);
             let sz1 = emu.get_operand_sz(ins, 1);
@@ -6094,7 +5843,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -6132,7 +5880,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpckhdq => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6165,7 +5912,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpckldq => {
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6200,7 +5946,6 @@ pub fn emulate_instruction(
         Mnemonic::Movd => {
             // the high part is cleared to zero
 
-            
             emu.show_instruction(COLOR.get("Cyan").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -6266,7 +6011,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movdqa => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -6340,7 +6084,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Andpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6364,7 +6107,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Orpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6388,7 +6130,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Addps => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6419,7 +6160,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Addpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6446,7 +6186,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Addsd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6470,7 +6209,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Addss => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6494,7 +6232,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Subps => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6525,7 +6262,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Subpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6552,7 +6288,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Subsd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6576,7 +6311,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Subss => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6600,7 +6334,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mulpd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6627,7 +6360,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mulps => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6658,7 +6390,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mulsd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6682,7 +6413,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mulss => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6706,7 +6436,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Packsswb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6762,7 +6491,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Packssdw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6804,7 +6532,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psrldq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if ins.op_count() == 2 {
@@ -6871,7 +6598,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pslld => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -6893,7 +6619,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pslldq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -6910,7 +6635,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psllq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -6932,7 +6656,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psllw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -6965,7 +6688,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Paddsw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
             let value1 = emu.get_operand_xmm_value_128(ins, 1, true).unwrap_or(0);
@@ -6987,7 +6709,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Paddsb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
             let value1 = emu.get_operand_xmm_value_128(ins, 1, true).unwrap_or(0);
@@ -7007,7 +6728,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psrad => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
             let value1 = emu.get_operand_xmm_value_128(ins, 1, true).unwrap_or(0);
@@ -7027,7 +6747,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Paddusb | Mnemonic::Paddb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -7138,7 +6857,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Paddusw | Mnemonic::Paddw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
@@ -7207,7 +6925,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pshufd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let source = emu
@@ -7231,7 +6948,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movups => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let source = match emu.get_operand_xmm_value_128(ins, 1, true) {
@@ -7243,7 +6959,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movdqu => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let source = match emu.get_operand_xmm_value_128(ins, 1, true) {
@@ -7259,7 +6974,6 @@ pub fn emulate_instruction(
 
         // ymmX registers
         Mnemonic::Vzeroupper => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let mask_lower = regs64::U256::from(0xffffffffffffffffu64);
@@ -7284,7 +6998,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vmovdqu => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -7322,7 +7035,7 @@ pub fn emulate_instruction(
 
         Mnemonic::Vmovdqa => {
             //TODO: exception if memory address is unaligned to 16,32,64
-            
+
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let sz0 = emu.get_operand_sz(ins, 0);
@@ -7357,7 +7070,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movaps | Mnemonic::Movapd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -7373,7 +7085,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vmovd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -7400,7 +7111,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vmovq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             assert!(ins.op_count() == 2);
@@ -7427,7 +7137,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpbroadcastb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let byte: u8 = match emu.get_operand_sz(ins, 1) {
@@ -7479,7 +7188,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpor => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 1) {
@@ -7526,7 +7234,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpxor => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 0) {
@@ -7573,7 +7280,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pcmpeqb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 0) {
@@ -7652,7 +7358,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubsb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7673,7 +7378,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fcomp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
@@ -7690,7 +7394,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psrlq => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let destination = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7701,7 +7404,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psubsw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             // Obtener los valores de los registros XMM (128 bits cada uno)
@@ -7723,7 +7425,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fsincos => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -7735,7 +7436,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Packuswb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7770,7 +7470,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pandn => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0); // xmm1
@@ -7781,7 +7480,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psrld => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7801,7 +7499,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Punpckhwd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7824,7 +7521,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psraw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value1 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7846,7 +7542,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Frndint => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value = emu.fpu.get_st(0);
@@ -7856,7 +7551,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Psrlw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             if emu.get_operand_sz(ins, 1) < 128 {
@@ -7903,7 +7597,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Paddd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -7925,7 +7618,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fscale => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -7938,7 +7630,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpcmpeqb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 0) {
@@ -8017,7 +7708,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pmullw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let source0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -8037,7 +7727,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pmulhw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let source0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -8059,7 +7748,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pmovmskb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 1) {
@@ -8107,7 +7795,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpmovmskb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 1) {
@@ -8155,7 +7842,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Vpminub => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 0) {
@@ -8223,13 +7909,11 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fdecstp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             emu.fpu.dec_top();
         }
 
         Mnemonic::Ftst => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -8239,12 +7923,10 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Emms => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
         }
 
         Mnemonic::Fxam => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0: f64 = emu.fpu.get_st(0);
@@ -8263,7 +7945,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pcmpgtw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
             assert!(emu.get_operand_sz(ins, 0) == 128);
@@ -8298,7 +7979,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pcmpgtb => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
             assert!(emu.get_operand_sz(ins, 0) == 128);
@@ -8329,7 +8009,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Faddp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.pop();
@@ -8339,7 +8018,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pcmpeqw => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.get_operand_sz(ins, 0) {
@@ -8417,13 +8095,11 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fnclex => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             emu.fpu.stat &= !(0b10000011_11111111);
         }
 
         Mnemonic::Fcom => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -8446,7 +8122,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fmul => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -8460,28 +8135,24 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fabs => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             emu.fpu.set_st(0, st0.abs());
         }
 
         Mnemonic::Fsin => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             emu.fpu.set_st(0, st0.sin());
         }
 
         Mnemonic::Fcos => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             emu.fpu.set_st(0, st0.cos());
         }
 
         Mnemonic::Fdiv => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
 
@@ -8495,7 +8166,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fdivr => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let st0 = emu.fpu.get_st(0);
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
@@ -8504,7 +8174,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fdivrp => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
@@ -8518,7 +8187,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fpatan => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -8529,7 +8197,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fprem => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -8542,7 +8209,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fprem1 => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let st0 = emu.fpu.get_st(0);
@@ -8555,7 +8221,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pcmpgtd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -8580,7 +8245,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pmaddwd => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let src0 = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);
@@ -8609,7 +8273,6 @@ pub fn emulate_instruction(
 
         // end SSE
         Mnemonic::Tzcnt => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value1 = match emu.get_operand_value(ins, 1, true) {
@@ -8633,7 +8296,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Xgetbv => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             match emu.regs.get_ecx() {
@@ -8649,7 +8311,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Arpl => {
-            
             emu.show_instruction(COLOR.get("Green").cloned().unwrap(), ins);
 
             let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -8668,7 +8329,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pushf => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             let val: u16 = (emu.flags.dump() & 0xffff) as u16;
@@ -8683,7 +8343,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pushfd => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
 
             // 32bits only instruction
@@ -8694,7 +8353,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pushfq => {
-            
             emu.show_instruction(COLOR.get("Blue").cloned().unwrap(), ins);
             emu.flags.f_tf = false;
             if !emu.stack_push64(emu.flags.dump() as u64) {
@@ -8703,7 +8361,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Bound => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let array_index = match emu.get_operand_value(ins, 0, true) {
@@ -8732,7 +8389,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Lahf => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             //log::info!("\tlahf: flags = {:?}", emu.flags);
@@ -8750,7 +8406,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Salc => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             if emu.flags.f_cf {
@@ -8761,7 +8416,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Movlhps => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
             assert!(ins.op_count() == 2);
 
@@ -8776,7 +8430,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pshuflw => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
             assert!(ins.op_count() == 3);
 
@@ -8800,7 +8453,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Pshufhw => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
             assert!(ins.op_count() == 3);
 
@@ -8826,7 +8478,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Stmxcsr => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let value = emu.fpu.mxcsr;
@@ -8834,7 +8485,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Ldmxcsr => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let value = emu.get_operand_value(ins, 0, true).unwrap_or(0);
@@ -8842,7 +8492,6 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Fnstcw => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let addr = emu.get_operand_value(ins, 0, false).unwrap_or(0);
@@ -8852,52 +8501,42 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Prefetchnta => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Prefetchw => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Pause => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Wait => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Mwait => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Endbr64 => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Endbr32 => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Enqcmd => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Enqcmds => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
         }
 
         Mnemonic::Enter => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             let allocSZ = match emu.get_operand_value(ins, 0, true) {
@@ -8945,7 +8584,6 @@ pub fn emulate_instruction(
 
         ////   Ring0  ////
         Mnemonic::Rdmsr => {
-            
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
 
             match emu.regs.rcx {

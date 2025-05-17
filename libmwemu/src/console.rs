@@ -3,13 +3,13 @@ use std::num::ParseIntError;
 use std::sync::atomic;
 
 use crate::emu::Emu;
-use crate::structures;
 use crate::peb32;
 use crate::peb64;
+use crate::serialization;
+use crate::structures;
+use crate::to32;
 use crate::winapi32;
 use crate::winapi64;
-use crate::to32;
-use crate::serialization;
 
 pub struct Console {}
 
@@ -587,11 +587,7 @@ impl Console {
                     if emu.cfg.is_64bits {
                         log::info!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
                     } else {
-                        log::info!(
-                            "0x{:x}: '{}'",
-                            to32!(addr),
-                            emu.maps.read_wide_string(addr)
-                        );
+                        log::info!("0x{:x}: '{}'", to32!(addr), emu.maps.read_wide_string(addr));
                     }
                 }
                 "mdd" => {
@@ -871,7 +867,10 @@ impl Console {
                 }
                 "dump" => {
                     if emu.cfg.dump_filename.is_some() {
-                        serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                        serialization::Serialization::dump_to_file(
+                            &emu,
+                            emu.cfg.dump_filename.as_ref().unwrap(),
+                        );
                     }
                 }
                 "dt" => {

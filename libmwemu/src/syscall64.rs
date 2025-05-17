@@ -1,7 +1,7 @@
-use crate::emu;
-use crate::constants;
-use crate::structures;
 use crate::console::Console;
+use crate::constants;
+use crate::emu;
+use crate::structures;
 //use crate::endpoint;
 use crate::winapi32::helper;
 
