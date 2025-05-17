@@ -2,8 +2,7 @@ use crate::maps::mem64::Mem64;
 use crate::maps::Maps;
 
 use chrono::prelude::*;
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
 
 ////// PEB / TEB //////
 
@@ -1508,7 +1507,7 @@ pub struct MemoryBasicInformation {
 
 impl MemoryBasicInformation {
     pub fn guess(addr: u64, maps: &mut Maps) -> MemoryBasicInformation {
-        match maps.get_mem_by_addr(addr) {
+        match maps.get_mem_by_addr_mut(addr) {
             Some(mem) => MemoryBasicInformation {
                 base_address: mem.get_base() as u32,
                 allocation_base: mem.get_base() as u32,
@@ -1951,7 +1950,7 @@ impl SystemInfo64 {
     pub fn new() -> SystemInfo64 {
         SystemInfo64 {
             oem_id: 0,
-            processor_architecture: 9,  // PROCESSOR_ARCHITECTURE_AMD64
+            processor_architecture: 9, // PROCESSOR_ARCHITECTURE_AMD64
             reserved: 0,
             page_size: 4096,
             min_app_addr: 0x10000,
@@ -1969,7 +1968,7 @@ impl SystemInfo64 {
         // First union/struct (4 bytes total)
         maps.write_word(addr + 0, self.processor_architecture as u16);
         maps.write_word(addr + 2, self.reserved);
-        
+
         // Rest of the structure
         maps.write_dword(addr + 4, self.page_size);
         maps.write_qword(addr + 8, self.min_app_addr);
@@ -2162,8 +2161,8 @@ pub struct MemoryOperation {
 #[derive(Debug)]
 pub struct CpInfo {
     pub max_char_size: u32,
-    pub default_char: [u8; 2],  // MAX_DEFAULTCHAR = 2
-    pub lead_byte: [u8; 12],    // MAX_LEADBYTES = 12
+    pub default_char: [u8; 2], // MAX_DEFAULTCHAR = 2
+    pub lead_byte: [u8; 12],   // MAX_LEADBYTES = 12
 }
 
 impl Default for CpInfo {
@@ -2176,7 +2175,7 @@ impl CpInfo {
     pub fn new() -> CpInfo {
         CpInfo {
             max_char_size: 1,
-            default_char: [0x3F, 0],  // '?' character as default
+            default_char: [0x3F, 0], // '?' character as default
             lead_byte: [0; 12],
         }
     }
@@ -2184,28 +2183,28 @@ impl CpInfo {
     pub fn load(addr: u64, maps: &Maps) -> CpInfo {
         let mut info = CpInfo::new();
         info.max_char_size = maps.read_dword(addr).unwrap();
-        
+
         // Read default char array
         for i in 0..2 {
             info.default_char[i] = maps.read_byte(addr + 4 + i as u64).unwrap();
         }
-        
+
         // Read lead byte array
         for i in 0..12 {
             info.lead_byte[i] = maps.read_byte(addr + 6 + i as u64).unwrap();
         }
-        
+
         info
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
         maps.write_dword(addr, self.max_char_size);
-        
+
         // Write default char array
         for i in 0..2 {
             maps.write_byte(addr + 4 + i as u64, self.default_char[i]);
         }
-        
+
         // Write lead byte array
         for i in 0..12 {
             maps.write_byte(addr + 6 + i as u64, self.lead_byte[i]);
@@ -2213,14 +2212,13 @@ impl CpInfo {
     }
 
     pub fn size() -> usize {
-        18  // 4 bytes for max_char_size + 2 bytes for default_char + 12 bytes for lead_byte
+        18 // 4 bytes for max_char_size + 2 bytes for default_char + 12 bytes for lead_byte
     }
 
     pub fn print(&self) {
         log::info!("{:#x?}", self);
     }
 }
-
 
 /******* resources *******/
 
@@ -2269,7 +2267,11 @@ impl ImageResourceDirectoryEntry {
     }
 
     pub fn print(&self) {
-        log::info!("name_or_id: {:x} data_or_directory: {:x}", self.name_or_id, self.data_or_directory);
+        log::info!(
+            "name_or_id: {:x} data_or_directory: {:x}",
+            self.name_or_id,
+            self.data_or_directory
+        );
     }
 
     pub fn is_name(&self) -> bool {
@@ -2291,8 +2293,6 @@ impl ImageResourceDirectoryEntry {
     pub fn get_offset(&self) -> u32 {
         self.data_or_directory & 0x7FFF_FFFF
     }
-
-
 }
 
 pub struct ImageResourceDataEntry32 {
@@ -2343,7 +2343,7 @@ pub struct ActCtxSectionKeyedData32 {
     pub h_act_ctx: u32,
     pub ul_assembly_roster_index: u32,
     pub ul_flags: u32,
-    pub assembly_metadata: [u8;64],
+    pub assembly_metadata: [u8; 64],
 }
 
 impl ActCtxSectionKeyedData32 {
@@ -2392,7 +2392,7 @@ pub struct ActCtxSectionKeyedData64 {
     pub h_act_ctx: u64,
     pub ul_assembly_roster_index: u32,
     pub ul_flags: u32,
-    pub assembly_metadata: [u8;64],
+    pub assembly_metadata: [u8; 64],
 }
 
 impl ActCtxSectionKeyedData64 {

@@ -13,12 +13,20 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -45,7 +53,7 @@ fn __register_frame_info(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let mem = match emu.maps.get_mem_by_addr(0x40E198) {
+    let mem = match emu.maps.get_mem_by_addr_mut(0x40E198) {
         Some(m) => m,
         None => emu
             .maps

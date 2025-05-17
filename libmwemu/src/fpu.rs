@@ -1,19 +1,19 @@
-use iced_x86::Register;
 use crate::emu;
+use iced_x86::Register;
 
 pub struct FPUState {
-    pub fpu_control_word: u16,               // Control Word
-    pub fpu_status_word: u16,               // Status Word
-    pub fpu_tag_word: u16,                // Tag Word
+    pub fpu_control_word: u16, // Control Word
+    pub fpu_status_word: u16,  // Status Word
+    pub fpu_tag_word: u16,     // Tag Word
     pub reserved1: u8,
-    pub fpu_opcode: u16,               // Opcode
-    pub rip: u64,               // Instruction Pointer
-    pub rdp: u64,               // Data Pointer
-    pub mxcsr: u32,             // SSE Control and Status
+    pub fpu_opcode: u16, // Opcode
+    pub rip: u64,        // Instruction Pointer
+    pub rdp: u64,        // Data Pointer
+    pub mxcsr: u32,      // SSE Control and Status
     pub mxcsr_mask: u32,
-    pub st: [u128; 8],          // FPU registers (packed in 128 bits each)
-    pub xmm: [u128; 16],        // XMM registers
-    pub reserved2: [u8; 224],   // Reserved
+    pub st: [u128; 8],        // FPU registers (packed in 128 bits each)
+    pub xmm: [u128; 16],      // XMM registers
+    pub reserved2: [u8; 224], // Reserved
 }
 
 impl FPUState {
@@ -48,14 +48,14 @@ impl FPUState {
     }
 
     pub fn save(&self, addr: u64, emu: &mut emu::Emu) {
-        emu.maps.write_word(addr, self.fpu_control_word);          // FCW (offset 0)
-        emu.maps.write_word(addr + 2, self.fpu_status_word);       // FSW (offset 2)
-        emu.maps.write_word(addr + 4, self.fpu_tag_word);          // FTW (offset 4)
-        emu.maps.write_word(addr + 6, self.fpu_opcode);            // FOP (offset 6)
-        emu.maps.write_qword(addr + 8, self.rip);                  // RIP (offset 8)
-        emu.maps.write_qword(addr + 16, self.rdp);                 // RDP (offset 16)
-        emu.maps.write_dword(addr + 24, self.mxcsr);               // MXCSR (offset 24)
-        emu.maps.write_dword(addr + 28, self.mxcsr_mask);          // MXCSR_MASK (offset 28)
+        emu.maps.write_word(addr, self.fpu_control_word); // FCW (offset 0)
+        emu.maps.write_word(addr + 2, self.fpu_status_word); // FSW (offset 2)
+        emu.maps.write_word(addr + 4, self.fpu_tag_word); // FTW (offset 4)
+        emu.maps.write_word(addr + 6, self.fpu_opcode); // FOP (offset 6)
+        emu.maps.write_qword(addr + 8, self.rip); // RIP (offset 8)
+        emu.maps.write_qword(addr + 16, self.rdp); // RDP (offset 16)
+        emu.maps.write_dword(addr + 24, self.mxcsr); // MXCSR (offset 24)
+        emu.maps.write_dword(addr + 28, self.mxcsr_mask); // MXCSR_MASK (offset 28)
     }
 }
 
@@ -306,7 +306,7 @@ impl FPU {
 
     pub fn convert_st(&self, src: Vec<f64>) -> [u128; 8] {
         let mut result = [0u128; 8];
-        
+
         for i in 0..8 {
             let low = if let Some(val) = src.get(i * 2) {
                 *val
@@ -318,12 +318,12 @@ impl FPU {
             } else {
                 0.0
             };
-    
+
             let low_bits = low.to_bits() as u128;
             let high_bits = high.to_bits() as u128;
             result[i] = low_bits | (high_bits << 64);
         }
-    
+
         result
     }
 
@@ -350,13 +350,13 @@ impl FPU {
         self.ip = state.rip;
         self.operand_ptr = state.rdp;
         self.mxcsr = state.mxcsr;
-        
+
         // Convert the packed 128-bit ST registers back to f64 values
         for i in 0..8 {
             let low_bits = (state.st[i] & 0xFFFFFFFFFFFFFFFF) as u64;
             self.st[i] = f64::from_bits(low_bits);
         }
-        
+
         self.xmm = state.xmm;
     }
 }

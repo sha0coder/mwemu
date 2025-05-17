@@ -1,6 +1,6 @@
 use crate::emu;
-use crate::winapi64;
 use crate::serialization;
+use crate::winapi64;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
@@ -18,12 +18,20 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -86,11 +94,19 @@ BOOL SystemParametersInfoA(
 );
 */
 fn SystemParametersInfoA(emu: &mut emu::Emu) {
-    let ui_action = emu.regs.rcx;   
+    let ui_action = emu.regs.rcx;
     let ui_param = emu.regs.rdx;
     let pv_param = emu.regs.r8;
     let f_win_ini = emu.regs.r9;
-    log_red!(emu, "** {} user32!SystemParametersInfoA {} {} {} {}", emu.pos, ui_action, ui_param, pv_param, f_win_ini);
+    log_red!(
+        emu,
+        "** {} user32!SystemParametersInfoA {} {} {} {}",
+        emu.pos,
+        ui_action,
+        ui_param,
+        pv_param,
+        f_win_ini
+    );
     // TODO: write pvParam
     emu.regs.rax = 1;
 }
@@ -104,7 +120,13 @@ HICON LoadIconA(
 fn LoadIconA(emu: &mut emu::Emu) {
     let hinstance = emu.regs.rcx;
     let lpiconname = emu.regs.rdx;
-    log_red!(emu, "** {} user32!LoadIconA {} {}", emu.pos, hinstance, lpiconname);
+    log_red!(
+        emu,
+        "** {} user32!LoadIconA {} {}",
+        emu.pos,
+        hinstance,
+        lpiconname
+    );
     // TODO: do not return null
     emu.regs.rax = 0;
 }
@@ -118,7 +140,13 @@ HCURSOR LoadCursorA(
 fn LoadCursorA(emu: &mut emu::Emu) {
     let hinstance = emu.regs.rcx;
     let lpcursorname = emu.regs.rdx;
-    log_red!(emu, "** {} user32!LoadCursorA {} {}", emu.pos, hinstance, lpcursorname);
+    log_red!(
+        emu,
+        "** {} user32!LoadCursorA {} {}",
+        emu.pos,
+        hinstance,
+        lpcursorname
+    );
     // TODO: do not return null
     emu.regs.rax = 0;
 }
@@ -166,7 +194,7 @@ int ReleaseDC(
 );
 */
 fn ReleaseDC(emu: &mut emu::Emu) {
-    let hwnd = emu.regs.rcx; 
+    let hwnd = emu.regs.rcx;
     let hdc = emu.regs.rdx;
     log_red!(emu, "** {} user32!ReleaseDC {} {}", emu.pos, hwnd, hdc);
     // TODO: do something

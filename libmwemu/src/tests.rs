@@ -2,8 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Once;
     use std::io::Write as _;
+    use std::sync::Once;
 
     use crate::emu::Emu;
     use crate::emu64;
@@ -32,7 +32,10 @@ mod tests {
         emu.init(false, false);
 
         // load binary
-        let filename = format!("/Users/{username}/Desktop/enigma/surprise.dll", username = std::env::var("USER").unwrap());
+        let filename = format!(
+            "/Users/{username}/Desktop/enigma/surprise.dll",
+            username = std::env::var("USER").unwrap()
+        );
         emu.load_code(&filename);
 
         // set registers
@@ -61,7 +64,10 @@ mod tests {
         emu.init(false, false);
 
         // load binary
-        let filename = format!("/Users/{username}/Desktop/enigma/surprise.dll", username = std::env::var("USER").unwrap());
+        let filename = format!(
+            "/Users/{username}/Desktop/enigma/surprise.dll",
+            username = std::env::var("USER").unwrap()
+        );
         emu.load_code(&filename);
 
         // set registers

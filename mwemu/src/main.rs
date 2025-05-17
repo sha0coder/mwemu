@@ -106,9 +106,10 @@ fn main() {
         .arg(clap_arg!("rflags", "", "rflags", "set rflags register", "RFLAGS"))
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
         .get_matches();
-
+    
     if !matches.is_present("filename") {
         log::error!("the filename is mandatory, try -f <FILENAME> or --help");
+        return;
     }
 
     let mut emu: libmwemu::emu::Emu;
@@ -125,7 +126,7 @@ fn main() {
     // filename
     let filename = matches
         .value_of("filename")
-        .expect("please enter the filename.")
+        .expect("the filename is mandatory, try -f <FILENAME> or --help.")
         .to_string();
     emu.cfg.filename = filename.clone();
 

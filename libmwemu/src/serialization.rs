@@ -8,8 +8,8 @@ use std::time::Instant;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use serde::{Serialize, Deserialize};
 use iced_x86::Instruction;
+use serde::{Deserialize, Serialize};
 
 use crate::banzai::Banzai;
 use crate::breakpoint::Breakpoint;
@@ -35,12 +35,9 @@ pub struct SerializableInstant {
 impl From<Instant> for SerializableInstant {
     fn from(instant: Instant) -> Self {
         // Convert Instant to duration since UNIX_EPOCH
-        let duration = instant
-            .duration_since(Instant::now())
-            + SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap();
-        
+        let duration = instant.duration_since(Instant::now())
+            + SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+
         SerializableInstant {
             timestamp: duration.as_secs(),
         }
@@ -52,11 +49,12 @@ impl SerializableInstant {
         // Convert back to Instant
         let system_now = SystemTime::now();
         let instant_now = Instant::now();
-        
-        instant_now - system_now
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .saturating_sub(std::time::Duration::from_secs(self.timestamp))
+
+        instant_now
+            - system_now
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .saturating_sub(std::time::Duration::from_secs(self.timestamp))
     }
 }
 
@@ -73,9 +71,9 @@ pub struct SerializableFPU {
     pub code_segment: u16,
     pub data_segment: u16,
     pub operand_ptr: u64,
-    pub reserved: Vec<u8>, // not a slice
+    pub reserved: Vec<u8>,  // not a slice
     pub reserved2: Vec<u8>, // not a slice
-    pub xmm: Vec<u128>, // not a slice
+    pub xmm: Vec<u128>,     // not a slice
     pub top: i8,
     pub f_c0: bool, // overflow
     pub f_c1: bool, // underflow
@@ -124,9 +122,7 @@ pub struct SerializablePE32 {
 
 impl From<PE32> for SerializablePE32 {
     fn from(pe32: PE32) -> Self {
-        SerializablePE32 {
-            raw: pe32.raw,
-        }
+        SerializablePE32 { raw: pe32.raw }
     }
 }
 
@@ -138,7 +134,6 @@ impl From<&PE32> for SerializablePE32 {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
 pub struct SerializablePE64 {
     pub raw: Vec<u8>,
@@ -146,9 +141,7 @@ pub struct SerializablePE64 {
 
 impl From<PE64> for SerializablePE64 {
     fn from(pe64: PE64) -> Self {
-        SerializablePE64 {
-            raw: pe64.raw,
-        }
+        SerializablePE64 { raw: pe64.raw }
     }
 }
 
@@ -188,7 +181,6 @@ pub struct SerializableEmu {
     pub tls32: Vec<u32>,
     pub tls64: Vec<u64>,
     pub fls: Vec<u32>,
-    pub out: String,
     pub instruction: Option<Instruction>,
     pub decoder_position: usize,
     pub memory_operations: Vec<MemoryOperation>,
@@ -264,61 +256,60 @@ impl<'a> From<&'a Emu> for SerializableEmu {
     fn from(emu: &'a Emu) -> Self {
         SerializableEmu {
             regs: emu.regs,
-                pre_op_regs: emu.pre_op_regs,
-                post_op_regs: emu.post_op_regs,
-                flags: emu.flags,
-                pre_op_flags: emu.pre_op_flags,
-                post_op_flags: emu.post_op_flags,
-                eflags: emu.eflags.clone(),
-                fpu: emu.fpu.clone().into(),
-                maps: emu.maps.clone(),
-                exp: emu.exp,
-                break_on_alert: emu.break_on_alert,
-                bp: emu.bp.clone(),
-                seh: emu.seh,
-                veh: emu.veh,
-                feh: emu.feh,
-                eh_ctx: emu.eh_ctx,
-                cfg: emu.cfg.clone(),
-                colors: emu.colors.clone(),
-                pos: emu.pos,
-                force_break: emu.force_break,
-                force_reload: emu.force_reload,
-                tls_callbacks: emu.tls_callbacks.clone(),
-                tls32: emu.tls32.clone(),
-                tls64: emu.tls64.clone(),
-                fls: emu.fls.clone(),
-                out: emu.out.clone(),
-                instruction: emu.instruction,
-                decoder_position: emu.decoder_position,
-                memory_operations: emu.memory_operations.clone(),
-                main_thread_cont: emu.main_thread_cont,
-                gateway_return: emu.gateway_return,
-                is_running: emu.is_running.load(std::sync::atomic::Ordering::Relaxed),
-                break_on_next_cmp: emu.break_on_next_cmp,
-                break_on_next_return: emu.break_on_next_return,
-                filename: emu.filename.clone(),
-                enabled_ctrlc: emu.enabled_ctrlc,
-                run_until_ret: emu.run_until_ret,
-                running_script: emu.running_script,
-                banzai: emu.banzai.clone(),
-                mnemonic: emu.mnemonic.clone(),
-                dbg: emu.dbg,
-                linux: emu.linux,
-                fs: emu.fs.clone(),
-                now: SerializableInstant::from(emu.now),
-                skip_apicall: emu.skip_apicall,
-                its_apicall: emu.its_apicall,
-                last_instruction_size: emu.last_instruction_size,
-                pe64: emu.pe64.as_ref().map(|x| x.into()),
-                pe32: emu.pe32.as_ref().map(|x| x.into()),
-                rep: emu.rep,
-                tick: emu.tick,
-                base: emu.base,
-                call_stack: emu.call_stack.clone(),
+            pre_op_regs: emu.pre_op_regs,
+            post_op_regs: emu.post_op_regs,
+            flags: emu.flags,
+            pre_op_flags: emu.pre_op_flags,
+            post_op_flags: emu.post_op_flags,
+            eflags: emu.eflags.clone(),
+            fpu: emu.fpu.clone().into(),
+            maps: emu.maps.clone(),
+            exp: emu.exp,
+            break_on_alert: emu.break_on_alert,
+            bp: emu.bp.clone(),
+            seh: emu.seh,
+            veh: emu.veh,
+            feh: emu.feh,
+            eh_ctx: emu.eh_ctx,
+            cfg: emu.cfg.clone(),
+            colors: emu.colors.clone(),
+            pos: emu.pos,
+            force_break: emu.force_break,
+            force_reload: emu.force_reload,
+            tls_callbacks: emu.tls_callbacks.clone(),
+            tls32: emu.tls32.clone(),
+            tls64: emu.tls64.clone(),
+            fls: emu.fls.clone(),
+            instruction: emu.instruction,
+            decoder_position: emu.decoder_position,
+            memory_operations: emu.memory_operations.clone(),
+            main_thread_cont: emu.main_thread_cont,
+            gateway_return: emu.gateway_return,
+            is_running: emu.is_running.load(std::sync::atomic::Ordering::Relaxed),
+            break_on_next_cmp: emu.break_on_next_cmp,
+            break_on_next_return: emu.break_on_next_return,
+            filename: emu.filename.clone(),
+            enabled_ctrlc: emu.enabled_ctrlc,
+            run_until_ret: emu.run_until_ret,
+            running_script: emu.running_script,
+            banzai: emu.banzai.clone(),
+            mnemonic: emu.mnemonic.clone(),
+            dbg: emu.dbg,
+            linux: emu.linux,
+            fs: emu.fs.clone(),
+            now: SerializableInstant::from(emu.now),
+            skip_apicall: emu.skip_apicall,
+            its_apicall: emu.its_apicall,
+            last_instruction_size: emu.last_instruction_size,
+            pe64: emu.pe64.as_ref().map(|x| x.into()),
+            pe32: emu.pe32.as_ref().map(|x| x.into()),
+            rep: emu.rep,
+            tick: emu.tick,
+            base: emu.base,
+            call_stack: emu.call_stack.clone(),
         }
     }
-}   
+}
 
 impl From<SerializableEmu> for Emu {
     fn from(serialized: SerializableEmu) -> Self {
@@ -356,7 +347,6 @@ impl From<SerializableEmu> for Emu {
             tls32: serialized.tls32,
             tls64: serialized.tls64,
             fls: serialized.fls,
-            out: serialized.out,
             instruction: serialized.instruction,
             decoder_position: serialized.decoder_position,
             memory_operations: serialized.memory_operations,
@@ -385,6 +375,7 @@ impl From<SerializableEmu> for Emu {
             trace_file: trace_file,
             base: serialized.base,
             call_stack: serialized.call_stack,
+            formatter: Default::default(),
         }
     }
 }

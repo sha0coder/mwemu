@@ -1,6 +1,6 @@
-use crate::emu;
-use crate::constants;
 use crate::console::Console;
+use crate::constants;
+use crate::emu;
 //use crate::endpoint;
 use crate::winapi32::helper;
 

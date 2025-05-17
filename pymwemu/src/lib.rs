@@ -1,3 +1,4 @@
+use iced_x86::{Formatter};
 use env_logger::Env;
 use std::io::Write as _;
 
@@ -8,7 +9,7 @@ use libmwemu::console::Console;
 use libmwemu::emu32;
 use libmwemu::emu64;
 
-#[pyclass]
+#[pyclass(unsendable)]
 pub struct Emu {
     emu: libmwemu::emu::Emu,
 }
@@ -22,8 +23,10 @@ impl Emu {
     }
 
     /// get last emulated mnemonic with name and parameters.
-    fn get_prev_mnemonic(&self) -> PyResult<String> {
-        Ok(self.emu.out.clone())
+    fn get_prev_mnemonic(&mut self) -> PyResult<String> {
+        let mut output = String::new();
+        self.emu.formatter.format(&self.emu.instruction.unwrap(), &mut output);
+        Ok(output.clone())
     }
 
     /// reset the instruction counter to zero.

@@ -1,6 +1,6 @@
-use crate::emu;
 use crate::context32::Context32;
 use crate::context64::Context64;
+use crate::emu;
 
 pub fn enter(emu: &mut emu::Emu) {
     if emu.cfg.is_64bits {

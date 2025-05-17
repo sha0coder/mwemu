@@ -14,12 +14,20 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -46,7 +54,10 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     size += 1; // null byte
     size += 8; // metadata
 
-    let base = emu.maps.alloc(size + 100).expect("oleaut32!SysAllocStringLen out of memory");
+    let base = emu
+        .maps
+        .alloc(size + 100)
+        .expect("oleaut32!SysAllocStringLen out of memory");
     let name = format!("alloc_{:x}", base);
     emu.maps.create_map(&name, base, size + 100);
 
@@ -113,7 +124,10 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
     let total_size = size + 8; // Add metadata size
 
     // Allocate new memory
-    let new_base = emu.maps.alloc(total_size + 100).expect("oleaut32!SysReAllocStringLen out of memory");
+    let new_base = emu
+        .maps
+        .alloc(total_size + 100)
+        .expect("oleaut32!SysReAllocStringLen out of memory");
 
     // Create new memory map
     let name = format!("alloc_{:x}", new_base);

@@ -1,4 +1,5 @@
 use crate::emu;
+use iced_x86::Formatter;
 /*
 use crate::console;
 use crate::constants;
@@ -22,12 +23,14 @@ pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
         }
 
         _ => {
+            let mut output = String::new();
+            emu.formatter.format(&emu.instruction.unwrap(), &mut output);
             log::info!(
                 "{}{} 0x{:x}: {}{}",
                 emu.colors.red,
                 emu.pos,
                 emu.regs.rip,
-                emu.out,
+                output,
                 emu.colors.nc
             );
             unimplemented!();

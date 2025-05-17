@@ -7,8 +7,8 @@ use std::io::Read;
 use std::str;
 
 use crate::emu;
-use crate::winapi32;
 use crate::structures;
+use crate::winapi32;
 
 macro_rules! read_u8 {
     ($raw:expr, $off:expr) => {
@@ -1164,7 +1164,16 @@ impl PE32 {
         String::new()
     }
 
-    pub fn locate_resource_data_entry(&self, rsrc: &[u8], off: usize, level: u32, type_id: Option<u32>, name_id: Option<u32>, type_name: Option<&str>, name: Option<&str>) -> Option<structures::ImageResourceDataEntry32> {
+    pub fn locate_resource_data_entry(
+        &self,
+        rsrc: &[u8],
+        off: usize,
+        level: u32,
+        type_id: Option<u32>,
+        name_id: Option<u32>,
+        type_name: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<structures::ImageResourceDataEntry32> {
         if level >= 10 {
             return None;
         }
@@ -1185,13 +1194,16 @@ impl PE32 {
             entry.name_or_id = read_u32_le!(rsrc, off2);
             entry.data_or_directory = read_u32_le!(rsrc, off2 + 4);
 
-            let matched:bool;
+            let matched: bool;
 
             if entry.is_id() {
                 if level == 0 && type_id.is_some() && type_id.unwrap() == entry.get_name_or_id() {
                     println!("type_id matched");
                     matched = true;
-                } else if level == 1 && name_id.is_some() && name_id.unwrap() == entry.get_name_or_id() {
+                } else if level == 1
+                    && name_id.is_some()
+                    && name_id.unwrap() == entry.get_name_or_id()
+                {
                     println!("name_id matched");
                     matched = true;
                 } else {
@@ -1202,10 +1214,16 @@ impl PE32 {
                     }
                 }
             } else {
-                if level == 0 && type_name.is_some() && type_name.unwrap() == self.get_resource_name(&entry) {
+                if level == 0
+                    && type_name.is_some()
+                    && type_name.unwrap() == self.get_resource_name(&entry)
+                {
                     println!("type_name matched");
                     matched = true;
-                } else if level == 1 && name.is_some() && name.unwrap() == self.get_resource_name(&entry) {
+                } else if level == 1
+                    && name.is_some()
+                    && name.unwrap() == self.get_resource_name(&entry)
+                {
                     println!("name matched");
                     matched = true;
                 } else {
@@ -1219,7 +1237,15 @@ impl PE32 {
 
             if matched {
                 if entry.is_directory() {
-                    return self.locate_resource_data_entry(rsrc, off2, level + 1, type_id, name_id, type_name, name);
+                    return self.locate_resource_data_entry(
+                        rsrc,
+                        off2,
+                        level + 1,
+                        type_id,
+                        name_id,
+                        type_name,
+                        name,
+                    );
                 } else {
                     let mut data_entry = structures::ImageResourceDataEntry32::new();
                     let off = PE32::vaddr_to_off(&self.sect_hdr, entry.get_offset()) as usize;
@@ -1227,7 +1253,7 @@ impl PE32 {
                     data_entry.size = read_u32_le!(self.raw, off + 4);
                     data_entry.code_page = read_u32_le!(self.raw, off + 8);
                     data_entry.reserved = read_u32_le!(self.raw, off + 12);
-            
+
                     return Some(data_entry);
                 }
             }
@@ -1236,7 +1262,13 @@ impl PE32 {
         None
     }
 
-    pub fn get_resource(&self, type_id: Option<u32>, name_id: Option<u32>, type_name: Option<&str>, name: Option<&str>) -> Option<(u64, usize)> {
+    pub fn get_resource(
+        &self,
+        type_id: Option<u32>,
+        name_id: Option<u32>,
+        type_name: Option<&str>,
+        name: Option<&str>,
+    ) -> Option<(u64, usize)> {
         let rsrc = self.get_section_ptr_by_name(".rsrc");
         if rsrc.is_none() {
             return None;
@@ -1244,13 +1276,16 @@ impl PE32 {
 
         let rsrc = rsrc.unwrap();
 
-        let data_entry = self.locate_resource_data_entry(rsrc, 0, 0, type_id, name_id, type_name, name);
+        let data_entry =
+            self.locate_resource_data_entry(rsrc, 0, 0, type_id, name_id, type_name, name);
         if data_entry.is_none() {
             return None;
         }
         let data_entry = data_entry.unwrap();
 
-        let data_off = PE32::vaddr_to_off(&self.sect_hdr, data_entry.offset_to_data as u32) as usize - self.opt.image_base as usize;
+        let data_off = PE32::vaddr_to_off(&self.sect_hdr, data_entry.offset_to_data as u32)
+            as usize
+            - self.opt.image_base as usize;
         return Some((data_off as u64, data_entry.size as usize));
     }
 
@@ -1260,11 +1295,11 @@ impl PE32 {
         let string_start = off + 2;
         let utf16_data: Vec<u16> = (0..length)
             .map(|i| {
-            let idx = string_start + i * 2;
-            u16::from_le_bytes([self.raw[idx], self.raw[idx + 1]])
-        }).collect(); 
+                let idx = string_start + i * 2;
+                u16::from_le_bytes([self.raw[idx], self.raw[idx + 1]])
+            })
+            .collect();
 
         String::from_utf16_lossy(&utf16_data)
     }
-
 }

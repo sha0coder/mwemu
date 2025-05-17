@@ -1,6 +1,6 @@
 // TODO: move these to const?
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Colors {
