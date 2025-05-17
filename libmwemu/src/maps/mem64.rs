@@ -1,9 +1,9 @@
 /*
     Little endian 64 bits and inferior bits memory.
 */
-use std::convert::TryInto;
 use md5;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -79,7 +79,11 @@ impl Mem64 {
 
     pub fn memcpy(&mut self, ptr: &[u8], sz: usize) {
         if self.mem.len() < sz {
-            log::error!("Try memcpy at mem but size bigger than allocated size: addr {}, size {}", self.base_addr, sz);
+            log::error!(
+                "Try memcpy at mem but size bigger than allocated size: addr {}, size {}",
+                self.base_addr,
+                sz
+            );
             panic!("memcpy: {} < {}", self.mem.len(), sz);
         }
         self.mem[..sz].copy_from_slice(&ptr[..sz]);
@@ -123,7 +127,7 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn build_addresses(&self, addr: u64, sz: usize) -> Vec<u64> {
-        vec![addr;addr as usize + sz]
+        vec![addr; addr as usize + sz]
     }
 
     #[inline(always)]
@@ -137,7 +141,11 @@ impl Mem64 {
         }*/
         let r = self.mem.get(idx..max_sz).unwrap();
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_from: 0x{:x?} = {:?}", self.build_addresses(addr, max_sz), r);
+            log::trace!(
+                "mem: read_from: 0x{:x?} = {:?}",
+                self.build_addresses(addr, max_sz),
+                r
+            );
         }
         r
     }
@@ -151,7 +159,11 @@ impl Mem64 {
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_bytes: 0x{:x?} = {:?}", self.build_addresses(addr, sz), r);
+            log::trace!(
+                "mem: read_bytes: 0x{:x?} = {:?}",
+                self.build_addresses(addr, sz),
+                r
+            );
         }
         r
     }
@@ -162,7 +174,11 @@ impl Mem64 {
         let r = self.mem[idx];
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_byte: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 1), r);
+            log::trace!(
+                "mem: read_byte: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 1),
+                r
+            );
         }
         r
     }
@@ -171,9 +187,13 @@ impl Mem64 {
     pub fn read_word(&self, addr: u64) -> u16 {
         let idx = (addr - self.base_addr) as usize;
         let r = (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8);
-        let r = u16::from_le_bytes(self.mem[idx..idx+2].try_into().expect("incorrect length"));
+        let r = u16::from_le_bytes(self.mem[idx..idx + 2].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_word: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 2), r);
+            log::trace!(
+                "mem: read_word: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 2),
+                r
+            );
         }
         r
     }
@@ -181,9 +201,13 @@ impl Mem64 {
     #[inline(always)]
     pub fn read_dword(&self, addr: u64) -> u32 {
         let idx = (addr - self.base_addr) as usize;
-        let r = u32::from_le_bytes(self.mem[idx..idx+4].try_into().expect("incorrect length"));
+        let r = u32::from_le_bytes(self.mem[idx..idx + 4].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_dword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 4), r);
+            log::trace!(
+                "mem: read_dword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 4),
+                r
+            );
         }
 
         r
@@ -192,10 +216,14 @@ impl Mem64 {
     #[inline(always)]
     pub fn read_qword(&self, addr: u64) -> u64 {
         let idx = (addr - self.base_addr) as usize;
-        let r = u64::from_le_bytes(self.mem[idx..idx+8].try_into().expect("incorrect length"));
+        let r = u64::from_le_bytes(self.mem[idx..idx + 8].try_into().expect("incorrect length"));
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_qword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 8), r);
+            log::trace!(
+                "mem: read_qword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 8),
+                r
+            );
         }
 
         r
@@ -203,10 +231,18 @@ impl Mem64 {
 
     pub fn read_oword(&self, addr: u64) -> u128 {
         let idx = (addr - self.base_addr) as usize;
-        let r = u128::from_le_bytes(self.mem[idx..idx+16].try_into().expect("incorrect length"));
+        let r = u128::from_le_bytes(
+            self.mem[idx..idx + 16]
+                .try_into()
+                .expect("incorrect length"),
+        );
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: read_qword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 8), r);
+            log::trace!(
+                "mem: read_qword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 8),
+                r
+            );
         }
 
         r
@@ -218,36 +254,52 @@ impl Mem64 {
         self.mem[idx] = value;
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_byte: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 1), value);
+            log::trace!(
+                "mem: write_byte: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 1),
+                value
+            );
         }
     }
 
     #[inline(always)]
-    pub fn  write_bytes(&mut self, addr: u64, bs: &[u8]) {
+    pub fn write_bytes(&mut self, addr: u64, bs: &[u8]) {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_bytes: 0x{:x?} = {:?}", self.build_addresses(addr, bs.len()), bs);
+            log::trace!(
+                "mem: write_bytes: 0x{:x?} = {:?}",
+                self.build_addresses(addr, bs.len()),
+                bs
+            );
         }
     }
 
     #[inline(always)]
     pub fn write_word(&mut self, addr: u64, value: u16) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx+2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_word: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 2), value);
+            log::trace!(
+                "mem: write_word: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 2),
+                value
+            );
         }
     }
 
     #[inline(always)]
     pub fn write_dword(&mut self, addr: u64, value: u32) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx+4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_dword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 4), value);
+            log::trace!(
+                "mem: write_dword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 4),
+                value
+            );
         }
     }
 
@@ -257,7 +309,11 @@ impl Mem64 {
         self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_qword: 0x{:x?} = 0x{:x}", self.build_addresses(addr, 8), value);
+            log::trace!(
+                "mem: write_qword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 8),
+                value
+            );
         }
     }
 
@@ -268,7 +324,11 @@ impl Mem64 {
         self.write_bytes(addr, &v);
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_string: 0x{:x?} = {:?}", self.build_addresses(addr, s.len() + 1), s);
+            log::trace!(
+                "mem: write_string: 0x{:x?} = {:?}",
+                self.build_addresses(addr, s.len() + 1),
+                s
+            );
         }
     }
 
@@ -277,7 +337,7 @@ impl Mem64 {
         let wide_string: Vec<u16> = s.encode_utf16().collect();
         /* TODO: maybe this is unsafe. It needed to assert that the the input is not empty
             and divided by 2.
-        */ 
+        */
         let byte_slice: &[u8] = unsafe {
             std::slice::from_raw_parts(
                 wide_string.as_ptr() as *const u8,
@@ -287,7 +347,11 @@ impl Mem64 {
         self.write_bytes(addr, &byte_slice);
 
         if cfg!(feature = "log_mem") {
-            log::trace!("mem: write_wide_string: 0x{:x?} = {:?}", self.build_addresses(addr, s.len() * 2 + 2), s);
+            log::trace!(
+                "mem: write_wide_string: 0x{:x?} = {:?}",
+                self.build_addresses(addr, s.len() * 2 + 2),
+                s
+            );
         }
     }
 
@@ -396,7 +460,12 @@ impl Mem64 {
         let blob = self.mem.get(idx..sz2).unwrap();
 
         match f.write_all(blob) {
-            Ok(_) => log::info!("saved. addr: 0x{:x} size: {} filename: {}", addr, size, filename),
+            Ok(_) => log::info!(
+                "saved. addr: 0x{:x} size: {} filename: {}",
+                addr,
+                size,
+                filename
+            ),
             Err(_) => log::error!("couldn't save the file"),
         }
 

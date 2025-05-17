@@ -2,21 +2,21 @@ mod advapi32;
 mod comctl32;
 mod comctl64;
 mod dnsapi;
+mod gdi32;
 pub mod kernel32;
 mod kernelbase;
+mod msvcrt;
 mod ntdll;
+mod ole32;
+mod oleaut32;
 mod shell32;
 mod shlwapi;
 mod user32;
+mod uxtheme;
+mod wincrt;
 mod winhttp;
 mod wininet;
 mod ws2_32;
-mod oleaut32;
-mod uxtheme;
-mod gdi32;
-mod ole32;
-mod wincrt;
-mod msvcrt;
 
 use crate::emu;
 
@@ -47,7 +47,7 @@ pub fn gateway(addr: u64, name: String, emu: &mut emu::Emu) {
         "not_loaded" => {
             // TODO: banzai check?
             emu.pe64.as_ref().unwrap().import_addr_to_name(addr)
-        },
+        }
         _ => panic!("/!\\ trying to execute on {} at 0x{:x}", name, addr),
     };
 

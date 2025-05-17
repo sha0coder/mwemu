@@ -1,18 +1,18 @@
 #[derive(Clone, Copy)]
 pub enum ExceptionType {
-    Int3, // int 3 breakpoint
-    Div0, // division by zero
-    SignChangeOnDivision, // sign change exception on division
-    PopfCannotReadStack, // popf cannot read stack
-    WritingWord, // exception writing word
+    Int3,                      // int 3 breakpoint
+    Div0,                      // division by zero
+    SignChangeOnDivision,      // sign change exception on division
+    PopfCannotReadStack,       // popf cannot read stack
+    WritingWord,               // exception writing word
     SettingRipToNonMappedAddr, // setting rip to non mapped addr
-    QWordDereferencing, // error dereferencing qword
-    DWordDereferencing, // error dereferencing dword
-    WordDereferencing, // error dereferencing word
-    ByteDereferencing, // error dereferencing byte
-    BadAddressDereferencing, // exception dereferencing bad address
-    SettingXmmOperand, // exception setting xmm operand
-    ReadingXmmOperand, // exception reading xmm operand
+    QWordDereferencing,        // error dereferencing qword
+    DWordDereferencing,        // error dereferencing dword
+    WordDereferencing,         // error dereferencing word
+    ByteDereferencing,         // error dereferencing byte
+    BadAddressDereferencing,   // exception dereferencing bad address
+    SettingXmmOperand,         // exception setting xmm operand
+    ReadingXmmOperand,         // exception reading xmm operand
 }
 
 impl PartialEq for ExceptionType {
@@ -34,7 +34,9 @@ impl std::fmt::Display for ExceptionType {
             ExceptionType::DWordDereferencing => write!(f, "error dereferencing dword"),
             ExceptionType::WordDereferencing => write!(f, "error dereferencing word"),
             ExceptionType::ByteDereferencing => write!(f, "error dereferencing byte"),
-            ExceptionType::BadAddressDereferencing => write!(f, "exception dereferencing bad address"),
+            ExceptionType::BadAddressDereferencing => {
+                write!(f, "exception dereferencing bad address")
+            }
             ExceptionType::SettingXmmOperand => write!(f, "exception setting xmm operand"),
             ExceptionType::ReadingXmmOperand => write!(f, "exception reading xmm operand"),
         }

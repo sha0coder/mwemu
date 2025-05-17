@@ -1,12 +1,12 @@
 pub mod mem64;
 
 use crate::constants;
+use ahash::AHashMap;
 use mem64::Mem64;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::str;
-use ahash::AHashMap;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
@@ -303,12 +303,20 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr_mut(&mut self, addr: u64) -> Option<&mut Mem64> {
-        self.maps2.range_mut(..=addr).next_back().map(|(_, mem)| mem).take_if(|mem| mem.inside(addr))
+        self.maps2
+            .range_mut(..=addr)
+            .next_back()
+            .map(|(_, mem)| mem)
+            .take_if(|mem| mem.inside(addr))
     }
 
     #[inline(always)]
     pub fn get_mem_by_addr(&self, addr: u64) -> Option<&Mem64> {
-        self.maps2.range(..=addr).next_back().map(|(_, mem)| mem).take_if(|mem| mem.inside(addr))
+        self.maps2
+            .range(..=addr)
+            .next_back()
+            .map(|(_, mem)| mem)
+            .take_if(|mem| mem.inside(addr))
     }
 
     #[inline(always)]
@@ -560,7 +568,9 @@ impl Maps {
 
             if !self.is_64bits {
                 // only in 32bits make sense derreference dwords in memory
-                let name = self.get_addr_name(value.into()).unwrap_or_else(|| "".to_string());
+                let name = self
+                    .get_addr_name(value.into())
+                    .unwrap_or_else(|| "".to_string());
 
                 let mut s = "".to_string();
                 if !name.is_empty() {
