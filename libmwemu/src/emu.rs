@@ -40,6 +40,7 @@ use crate::exception;
 use crate::structures;
 use crate::structures::MemoryOperation;
 use crate::{get_bit, set_bit, to32};
+use crate::exception_type;
 
 pub struct Emu {
     pub regs: Regs64,
@@ -1811,7 +1812,7 @@ impl Emu {
             Some(n) => n,
             None => {
                 log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                self.exception();
+                self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
                 return;
             }
         };
@@ -1849,7 +1850,7 @@ impl Emu {
                     return true;
                 } else {
                     log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                    self.exception();
+                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
                     return false;
                 }
             }
@@ -1914,7 +1915,7 @@ impl Emu {
                     return true;
                 } else {
                     log::error!("/!\\ setting eip to non mapped addr 0x{:x}", addr);
-                    self.exception();
+                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
                     return false;
                 }
             }
@@ -1988,12 +1989,12 @@ impl Emu {
         self.regs.show_r15(&self.maps, 0);
     }
 
-    pub fn exception(&mut self) {
+    pub fn exception(&mut self, ex_type: exception_type::ExceptionType) {
         let addr: u64;
         let next: u64;
 
         let handle_exception: bool = match self.hooks.hook_on_exception {
-            Some(hook_fn) => hook_fn(self, self.regs.rip),
+            Some(hook_fn) => hook_fn(self, self.regs.rip, ex_type),
             None => true,
         };
 
@@ -2343,7 +2344,7 @@ impl Emu {
                             Some(v) => v,
                             None => {
                                 log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
-                                self.exception();
+                                self.exception(exception_type::ExceptionType::QWordDereferencing);
                                 return None;
                             }
                         },
@@ -2352,7 +2353,7 @@ impl Emu {
                             Some(v) => v.into(),
                             None => {
                                 log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
-                                self.exception();
+                                self.exception(exception_type::ExceptionType::DWordDereferencing);
                                 return None;
                             }
                         },
@@ -2361,7 +2362,7 @@ impl Emu {
                             Some(v) => v.into(),
                             None => {
                                 log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
-                                self.exception();
+                                self.exception(exception_type::ExceptionType::WordDereferencing);
                                 return None;
                             }
                         },
@@ -2370,7 +2371,7 @@ impl Emu {
                             Some(v) => v.into(),
                             None => {
                                 log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
-                                self.exception();
+                                self.exception(exception_type::ExceptionType::ByteDereferencing);
                                 return None;
                             }
                         },
@@ -2502,7 +2503,7 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception();
+                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
                                     return false;
                                 }
                             }
@@ -2522,7 +2523,7 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception();
+                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
                                     return false;
                                 }
                             }
@@ -2542,7 +2543,7 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception();
+                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
                                     return false;
                                 }
                             }
@@ -2562,7 +2563,7 @@ impl Emu {
                                         "/!\\ exception dereferencing bad address. 0x{:x}",
                                         mem_addr
                                     );
-                                    self.exception();
+                                    self.exception(exception_type::ExceptionType::BadAddressDereferencing);
                                     return false;
                                 }
                             }
@@ -2645,7 +2646,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ xmm exception reading operand");
-                        self.exception();
+                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
                         return None;
                     }
                 };
@@ -2659,7 +2660,7 @@ impl Emu {
                         Some(v) => v,
                         None => {
                             log::info!("/!\\ exception reading xmm operand at 0x{:x} ", mem_addr);
-                            self.exception();
+                            self.exception(exception_type::ExceptionType::ReadingXmmOperand);
                             return None;
                         }
                     };
@@ -2685,7 +2686,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ exception setting xmm operand.");
-                        self.exception();
+                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
                         return;
                     }
                 };
@@ -2730,7 +2731,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ xmm exception reading operand");
-                        self.exception();
+                        self.exception(exception_type::ExceptionType::ReadingXmmOperand);
                         return None;
                     }
                 };
@@ -2770,7 +2771,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ exception setting xmm operand.");
-                        self.exception();
+                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
                         return;
                     }
                 };
@@ -3475,7 +3476,9 @@ impl Emu {
                     //let info = info_factory.info(&ins);
 
                     if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-                        hook_fn(self, self.regs.rip, &ins, sz)
+                        if !hook_fn(self, self.regs.rip, &ins, sz) {
+                            continue;
+                        }
                     }
 
                     if ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix() {

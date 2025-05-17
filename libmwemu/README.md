@@ -97,13 +97,19 @@ fn trace_interrupt(emu:&mut libmwemu::emu::Emu, ip_addr:u64,
     true  // do handle interrupts
 }   
 
-fn trace_exceptions(emu:&mut libmwemu::emu::Emu, ip_addr:u64) -> bool {
-    log::info!("0x{:x} triggered an exception", ip_addr);
+// [BREAKING API CHANGE] a parameter called ex_type with the exception type was added to the hook function.
+fn trace_exceptions(emu:&mut libmwemu::emu::Emu, ip_addr:u64, ex_type: libmwemu::exception_type::ExceptionType) -> bool {
+    log::info!("0x{:x} triggered an exception {}", ip_addr, ex_type);
+    if (ex_type == libmwemu::exception_type::ExceptionType::Int3) {
+        // do handle SIGTRAP for example
+    }
     true // do handle exceptions
 }
 
 fn trace_pre_instruction(emu:&mut libmwemu::emu::Emu, ip_addr:u64, 
-                         ins:&Instruction, sz:usize) {
+                         ins:&Instruction, sz:usize) -> bool{
+                            // return false to skip the instruction
+                            true
 }
 
 fn trace_post_instruction(emu:&mut libmwemu::emu::Emu, ip_addr:u64, 

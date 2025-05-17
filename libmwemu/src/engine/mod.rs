@@ -10,9 +10,16 @@ use crate::regs64;
 use crate::serialization;
 use crate::syscall32;
 use crate::syscall64;
+<<<<<<< HEAD
 use crate::{get_bit, set_bit, to32};
 use iced_x86::{Formatter, Instruction, Mnemonic, Register};
 use phf::phf_map;
+=======
+use crate::ntapi32;
+use crate::console::Console;
+use crate::{to32, get_bit, set_bit};
+use crate::exception_type;
+>>>>>>> origin/main
 
 static COLOR: phf::Map<&'static str, &'static str> = phf_map! {
     "Black" => "\x1b[0;30m",
@@ -3983,7 +3990,7 @@ pub fn emulate_instruction(
             
             emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
             log::info!("/!\\ int 3 sigtrap!!!!");
-            emu.exception();
+            emu.exception(exception_type::ExceptionType::Int3);
             return true;
         }
 
@@ -4397,7 +4404,7 @@ pub fn emulate_instruction(
                         
                         emu.show_instruction(COLOR.get("Red").cloned().unwrap(), ins);
                         log::info!("/!\\ int 0x3 sigtrap!!!!");
-                        emu.exception();
+                        emu.exception(exception_type::ExceptionType::Int3);
                         return false;
                     }
 
@@ -5221,7 +5228,7 @@ pub fn emulate_instruction(
                 Some(v) => v,
                 None => {
                     log::error!("popf cannot read the stack");
-                    emu.exception();
+                    emu.exception(exception_type::ExceptionType::PopfCannotReadStack);
                     return false;
                 }
             };
@@ -8676,7 +8683,7 @@ pub fn emulate_instruction(
 
             if !emu.maps.write_word(emu.regs.rsp, val) {
                 log::info!("/!\\ exception writing word at rsp 0x{:x}", emu.regs.rsp);
-                emu.exception();
+                emu.exception(exception_type::ExceptionType::WritingWord);
                 return false;
             }
         }
