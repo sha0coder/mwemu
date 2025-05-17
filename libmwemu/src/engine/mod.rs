@@ -10,16 +10,10 @@ use crate::regs64;
 use crate::serialization;
 use crate::syscall32;
 use crate::syscall64;
-<<<<<<< HEAD
 use crate::{get_bit, set_bit, to32};
 use iced_x86::{Formatter, Instruction, Mnemonic, Register};
 use phf::phf_map;
-=======
-use crate::ntapi32;
-use crate::console::Console;
-use crate::{to32, get_bit, set_bit};
 use crate::exception_type;
->>>>>>> origin/main
 
 static COLOR: phf::Map<&'static str, &'static str> = phf_map! {
     "Black" => "\x1b[0;30m",
