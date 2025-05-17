@@ -41,6 +41,7 @@ pub mod syscall64;
 pub mod winapi32;
 pub mod winapi64;
 pub mod serialization;
+pub mod exception_type;
 
 #[cfg(test)]
 mod tests;
