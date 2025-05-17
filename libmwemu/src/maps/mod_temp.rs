@@ -3,7 +3,7 @@ pub mod mem64;
 use crate::constants;
 use mem64::Mem64;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap};
 use std::convert::TryInto;
 use std::str;
 use ahash::AHashMap;
@@ -27,8 +27,8 @@ impl Maps {
 
     pub fn new() -> Maps {
         Maps {
-            maps2: BTreeMap::<u64, Mem64>::default(),
-            name_map: AHashMap::<String, u64>::default(),
+            maps2: BTreeMap::<u64, Mem64>::new(),
+            name_map: AHashMap::<String, u64>::with_capacity(100),
             is_64bits: false,
             banzai: false,
         }
@@ -69,10 +69,7 @@ impl Maps {
     }
 
     pub fn get_mem_size(&self, addr: u64) -> Option<usize> {
-        self.maps2
-            .range(..=addr)
-            .next_back()
-            .map(|pair| pair.1.size())
+        self.maps2.range(..=addr).next_back().map(|(_, m)| m.size())
     }
 
     pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
@@ -306,19 +303,12 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr_mut(&mut self, addr: u64) -> Option<&mut Mem64> {
-        self.maps2
-            .range_mut(..=addr)
-            .next_back()
-            .map(|(_, v)| v)
-            .take_if(|v| v.inside(addr))
+        self.maps2.range_mut(..=addr).next_back().map(|(_, mem)| mem).take_if(|mem| mem.inside(addr))
     }
 
     #[inline(always)]
     pub fn get_mem_by_addr(&self, addr: u64) -> Option<&Mem64> {
-        match self.maps2.range(..=addr).next_back() {
-            Some((_, v)) if v.inside(addr) => Some(v),
-            _ => None,
-        }
+        self.maps2.range(..=addr).next_back().map(|(_, mem)| mem).take_if(|mem| mem.inside(addr))
     }
 
     #[inline(always)]

@@ -407,7 +407,7 @@ fn realloc(emu: &mut emu::Emu) {
 
     let mem = emu
         .maps
-        .get_mem_by_addr(addr)
+        .get_mem_by_addr_mut(addr)
         .expect("msvcrt!realloc error getting mem");
     let prev_size = mem.size();
 

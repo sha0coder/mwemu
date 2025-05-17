@@ -1,7 +1,7 @@
 use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{
-    Decoder, DecoderOptions, Formatter, Instruction, InstructionInfoFactory, IntelFormatter,
+    Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter,
     MemorySize, Mnemonic, OpKind, Register,
 };
 use std::io::Write as _;
@@ -68,7 +68,6 @@ pub struct Emu {
     pub tls32: Vec<u32>,
     pub tls64: Vec<u64>,
     pub fls: Vec<u32>,
-    pub out: String,
     pub instruction: Option<Instruction>,
     pub decoder_position: usize,
     pub memory_operations: Vec<MemoryOperation>,
@@ -97,6 +96,7 @@ pub struct Emu {
     pub trace_file: Option<File>,
     pub base: u64,
     pub call_stack: Vec<String>,
+    pub formatter: IntelFormatter,
 }
 
 impl Default for Emu {
@@ -107,7 +107,11 @@ impl Default for Emu {
 
 impl Emu {
     pub fn new() -> Emu {
+        let mut formatter = IntelFormatter::new();
+        formatter.options_mut().set_digit_separator("");
+        formatter.options_mut().set_first_operand_char_index(6);
         Emu {
+            formatter,
             regs: Regs64::new(),
             pre_op_regs: Regs64::new(),
             post_op_regs: Regs64::new(),
@@ -134,7 +138,6 @@ impl Emu {
             tls32: Vec::new(),
             tls64: Vec::new(),
             fls: Vec::new(),
-            out: String::new(),
             main_thread_cont: 0,
             gateway_return: 0,
             is_running: Arc::new(atomic::AtomicU32::new(0)),
@@ -164,6 +167,7 @@ impl Emu {
             base: 0,
             call_stack: vec![],
         }
+
     }
 
     pub fn open_trace_file(&mut self) {
@@ -196,7 +200,7 @@ impl Emu {
         self.cfg.stack_addr = addr;
     }
 
-    // select the folder with maps32 or maps64 depending the arch, make sure to do init after this.
+    // select the folder with maps32 or maps64 depending upon the arch, make sure to do init after this.
     pub fn set_maps_folder(&mut self, folder: &str) {
         let mut f = folder.to_string();
         f.push('/');
@@ -636,9 +640,12 @@ impl Emu {
     }
 
     pub fn filename_to_mapname(&self, filename: &str) -> String {
-        let spl: Vec<&str> = filename.split('/').collect();
-        let spl2: Vec<&str> = spl[spl.len() - 1].split('.').collect();
-        spl2[0].to_string()
+        filename.split('/')
+            .last()
+            .map(|x| x.split('.'))
+            .and_then(|x| x.peekable().next())
+            .unwrap()
+            .to_string()
     }
 
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
@@ -2057,16 +2064,13 @@ impl Emu {
 
         let bits: u32 = if self.cfg.is_64bits { 64 } else { 32 };
         let mut decoder = Decoder::with_ip(bits, block, addr, DecoderOptions::NONE);
-        let mut formatter = IntelFormatter::new();
-        formatter.options_mut().set_digit_separator("");
-        formatter.options_mut().set_first_operand_char_index(6);
         let mut output = String::new();
         let mut instruction = Instruction::default();
         let mut count: u32 = 1;
         while decoder.can_decode() {
             decoder.decode_out(&mut instruction);
             output.clear();
-            formatter.format(&instruction, &mut output);
+            self.formatter.format(&instruction, &mut output);
             if self.cfg.is_64bits {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip(), output));
                 //log::info!("0x{:x}: {}", instruction.ip(), output);
@@ -2089,11 +2093,9 @@ impl Emu {
         do_derref: bool,
     ) -> Option<u64> {
         assert!(ins.op_count() > noperand);
-
+        
         let value: u64 = match ins.op_kind(noperand) {
-            OpKind::NearBranch64 => ins.near_branch64(),
-            OpKind::NearBranch32 => ins.near_branch32().into(),
-            OpKind::NearBranch16 => ins.near_branch16().into(),
+            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => ins.near_branch_target(),
             OpKind::FarBranch32 => ins.far_branch32().into(),
             OpKind::FarBranch16 => ins.far_branch16().into(),
 
@@ -2815,11 +2817,7 @@ impl Emu {
             OpKind::MemoryESEDI => 32,
             OpKind::MemorySegESI => 32,
             OpKind::Memory => {
-                let mut info_factory = InstructionInfoFactory::new();
-                let info = info_factory.info(ins);
-                let mem = info.used_memory()[0];
-
-                let size2: u32 = match mem.memory_size() {
+                let size2: u32 = match ins.memory_size() {
                     MemorySize::Float16 => 16,
                     MemorySize::Float32 => 32,
                     MemorySize::Float64 => 64,
@@ -2847,7 +2845,7 @@ impl Emu {
                     MemorySize::Packed256_UInt128 => 128,
                     MemorySize::Packed128_Float32 => 32,
                     MemorySize::SegPtr32 => 32,
-                    _ => unimplemented!("memory size {:?}", mem.memory_size()),
+                    _ => unimplemented!("memory size {:?}", ins.memory_size()),
                 };
 
                 size2
@@ -2858,27 +2856,39 @@ impl Emu {
         size
     }
 
-    pub fn show_instruction(&self, color: &str, ins: &Instruction) {
+    #[inline]
+    pub fn show_instruction(&mut self, color: &str, ins: &Instruction) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             log::info!(
                 "{}{} 0x{:x}: {}{}",
                 color,
                 self.pos,
                 ins.ip(),
-                self.out,
+                out,
                 self.colors.nc
             );
         }
     }
 
-    pub fn show_instruction_ret(&self, color: &str, ins: &Instruction, addr: u64) {
+    #[inline]
+    pub fn show_instruction_ret(&mut self, color: &str, ins: &Instruction, addr: u64) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             log::info!(
                 "{}{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x} {}",
                 color,
                 self.pos,
                 ins.ip(),
-                self.out,
+                out,
                 addr,
                 self.regs.rax,
                 self.colors.nc
@@ -2886,46 +2896,64 @@ impl Emu {
         }
     }
 
-    pub fn show_instruction_pushpop(&self, color: &str, ins: &Instruction, value: u64) {
+    #[inline]
+    pub fn show_instruction_pushpop(&mut self, color: &str, ins: &Instruction, value: u64) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             log::info!(
                 "{}{} 0x{:x}: {} ;0x{:x} {}",
                 color,
                 self.pos,
                 ins.ip(),
-                self.out,
+                out,
                 value,
                 self.colors.nc
             );
         }
     }
 
-    pub fn show_instruction_taken(&self, color: &str, ins: &Instruction) {
+    #[inline]
+    pub fn show_instruction_taken(&mut self, color: &str, ins: &Instruction) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             log::info!(
                 "{}{} 0x{:x}: {} taken {}",
                 color,
                 self.pos,
                 ins.ip(),
-                self.out,
+                out,
                 self.colors.nc
             );
         }
     }
 
-    pub fn show_instruction_not_taken(&self, color: &str, ins: &Instruction) {
+    pub fn show_instruction_not_taken(&mut self, color: &str, ins: &Instruction) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             log::info!(
                 "{}{} 0x{:x}: {} not taken {}",
                 color,
                 self.pos,
                 ins.ip(),
-                self.out,
+                out,
                 self.colors.nc
             );
         }
     }
 
+    #[inline]
     pub fn stop(&mut self) {
         self.is_running.store(0, atomic::Ordering::Relaxed);
     }
@@ -2991,16 +3019,19 @@ impl Emu {
         Ok(self.regs.rax)
     }
 
+    #[inline]
     pub fn run_until_ret(&mut self) -> Result<u64, MwemuError> {
         self.run_until_ret = true;
         self.run(None)
     }
 
+    #[inline]
     pub fn capture_pre_op(&mut self) {
         self.pre_op_regs = self.regs;
         self.pre_op_flags = self.flags;
     }
 
+    #[inline]
     pub fn capture_post_op(&mut self) {
         self.post_op_regs = self.regs;
         self.post_op_flags = self.flags;
@@ -3120,13 +3151,16 @@ impl Emu {
         }
 
         let mut trace_file = self.trace_file.as_ref().unwrap();
+
+        let mut output: String = String::new();
+        self.formatter.format(&instruction, &mut output);
         writeln!(
             trace_file,
             r#""{index:02X}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
             index = index,
             address = self.pre_op_regs.rip,
             bytes = instruction_bytes,
-            disassembly = self.out,
+            disassembly = output,
             registers = format!("{} {}", registers, flags),
             memory = memory,
             comments = comments
@@ -3227,7 +3261,7 @@ impl Emu {
         }
 
         // code
-        let code = match self.maps.get_mem_by_addr(self.regs.rip) {
+        let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
             Some(c) => c,
             None => {
                 log::info!(
@@ -3250,11 +3284,6 @@ impl Emu {
             decoder = Decoder::with_ip(32, &block, self.regs.get_eip(), DecoderOptions::NONE);
         }
 
-        // formatter
-        let mut formatter = IntelFormatter::new();
-        formatter.options_mut().set_digit_separator("");
-        formatter.options_mut().set_first_operand_char_index(6);
-
         // get first instruction from iterator
         let ins = decoder.decode();
         let sz = ins.len();
@@ -3262,11 +3291,9 @@ impl Emu {
         let position = decoder.position();
 
         // clear
-        self.out.clear();
         self.memory_operations.clear();
 
         // format
-        formatter.format(&ins, &mut self.out);
         self.instruction = Some(ins);
         self.decoder_position = position;
         // emulate
@@ -3311,45 +3338,39 @@ impl Emu {
             log::info!(" ----- emulation -----");
         }
 
-        //let ins = Instruction::default();
-        let mut formatter = IntelFormatter::new();
-        formatter.options_mut().set_digit_separator("");
-        formatter.options_mut().set_first_operand_char_index(6);
-
         //self.pos = 0;
-
+        let arch = if self.cfg.is_64bits {
+            64
+        } else {
+            32
+        };
+        let mut ins: Instruction = Instruction::default();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs.rip);
-                let code = match self.maps.get_mem_by_addr(self.regs.rip) {
+                let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
                     Some(c) => c,
                     None => {
                         log::info!(
-                            "redirecting code flow to non maped address 0x{:x}",
+                            "redirecting code flow to non mapped address 0x{:x}",
                             self.regs.rip
                         );
                         Console::spawn_console(self);
                         return Err(MwemuError::new("cannot read program counter"));
                     }
                 };
-                let block = code.read_from(self.regs.rip).to_vec();
-                let mut decoder;
 
-                if self.cfg.is_64bits {
-                    decoder = Decoder::with_ip(64, &block, self.regs.rip, DecoderOptions::NONE);
-                } else {
-                    decoder =
-                        Decoder::with_ip(32, &block, self.regs.get_eip(), DecoderOptions::NONE);
-                }
-
-                let mut ins: Instruction = Instruction::default();
+                // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
+                // reading anymore would be a waste of time
+                let block = code.read_bytes(self.regs.rip, 0x300).to_vec();
+                let mut decoder = Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
                 let mut addr: u64 = 0;
 
                 self.rep = None;
                 while decoder.can_decode() {
                     if self.rep.is_none() {
-                        ins = decoder.decode();
+                        decoder.decode_out(&mut ins);
                         sz = ins.len();
                         addr = ins.ip();
 
@@ -3358,8 +3379,6 @@ impl Emu {
                         }
                     }
 
-                    self.out.clear();
-                    formatter.format(&ins, &mut self.out);
                     self.instruction = Some(ins);
                     self.decoder_position = decoder.position();
                     self.memory_operations.clear();
@@ -3389,8 +3408,12 @@ impl Emu {
                         }
 
                         self.cfg.console2 = false;
-                        log::info!("-------");
-                        log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), self.out);
+                        if self.cfg.verbose >= 2 {
+                            let mut output = String::new();
+                            self.formatter.format(&ins, &mut output);
+                            log::info!("-------");
+                            log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
+                        }
                         Console::spawn_console(self);
                         if self.force_break {
                             self.force_break = false;

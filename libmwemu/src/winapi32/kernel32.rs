@@ -2241,7 +2241,7 @@ fn GetModuleHandleA(emu: &mut emu::Emu) {
         }
     } else {
         mod_name = emu.maps.read_string(mod_name_ptr).to_lowercase();
-        let mod_mem = match emu.maps.get_mem2(&mod_name) {
+        let mod_mem = match emu.maps.get_mem2(mod_name.as_str()) {
             Some(m) => m,
             None => {
                 emu.regs.rax = 0;
@@ -3924,7 +3924,7 @@ fn VirtualFree(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    match emu.maps.get_mem_by_addr(addr) {
+    match emu.maps.get_mem_by_addr_mut(addr) {
         Some(mem) => {
             emu.regs.rax = 1;
             let name = mem.get_name();
