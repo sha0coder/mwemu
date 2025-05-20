@@ -44,6 +44,7 @@ pub mod winapi64;
 
 #[cfg(test)]
 mod tests;
+mod kuser_shared;
 
 use config::Config;
 use emu::Emu;
