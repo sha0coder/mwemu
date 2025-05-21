@@ -6,7 +6,8 @@ use crate::exception_type;
 // return: false will ignore interrupt handling like 0x80 -> linux
 type TypeHookOnInterrupt = fn(emu: &mut emu::Emu, ip_addr: u64, interrupt: u64) -> bool;
 // return: allow handle exception?
-type TypeHookOnException = fn(emu: &mut emu::Emu, ip_addr: u64, ex_type: exception_type::ExceptionType) -> bool;
+type TypeHookOnException =
+    fn(emu: &mut emu::Emu, ip_addr: u64, ex_type: exception_type::ExceptionType) -> bool;
 // memory read is pre-read you can modify the value that is going to be read.
 type TypeHookOnMemoryRead = fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32);
 // the memory write is pre but you can change the value is going to be written.
@@ -14,7 +15,8 @@ type TypeHookOnMemoryWrite =
     fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32, value: u128) -> u128;
 
 // [BREAKING API CHANGE] returning false will skip the handling of the instruction
-type TypeHookOnPreInstruction = fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize) -> bool;
+type TypeHookOnPreInstruction =
+    fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize) -> bool;
 
 type TypeHookOnPostInstruction =
     fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize, emu_ok: bool);

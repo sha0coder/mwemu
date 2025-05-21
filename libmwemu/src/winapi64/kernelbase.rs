@@ -1,6 +1,6 @@
 use crate::emu;
-use crate::winapi64;
 use crate::serialization;
+use crate::winapi64;
 //use crate::constants;
 //use crate::winapi32::helper;
 
@@ -23,12 +23,20 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -67,7 +75,6 @@ pub fn PathCombineA(emu: &mut emu::Emu) {
     emu.regs.rax = dst;
 }
 
-
 pub fn PathCombineW(emu: &mut emu::Emu) {
     let dst: u64 = emu.regs.rcx;
     let dir = emu.regs.rdx;
@@ -93,7 +100,8 @@ pub fn PathCombineW(emu: &mut emu::Emu) {
     );
 
     if dst != 0 && !path1.is_empty() && !path2.is_empty() {
-        emu.maps.write_wide_string(dst, &format!("{}\\{}", path1, path2));
+        emu.maps
+            .write_wide_string(dst, &format!("{}\\{}", path1, path2));
     }
 
     emu.regs.rax = dst;
@@ -140,7 +148,9 @@ DWORD GetFileVersionInfoSizeA(
 fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
     let lptstr_filename = emu.regs.rcx as usize;
     let lpdw_handle = emu.regs.rdx as usize;
-    log_red!(emu, "** {} kernelbase!GetFileVersionInfoSizeA lptstr_filename: 0x{:x} lpdw_handle: 0x{:x}", 
+    log_red!(
+        emu,
+        "** {} kernelbase!GetFileVersionInfoSizeA lptstr_filename: 0x{:x} lpdw_handle: 0x{:x}",
         emu.pos,
         lptstr_filename,
         lpdw_handle
@@ -201,27 +211,53 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
 }
 
 fn _initterm_e(emu: &mut emu::Emu) {
-    log::info!("{}** {} kernelbase!_initterm_e  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    log::info!(
+        "{}** {} kernelbase!_initterm_e  {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
     emu.regs.rax = 0;
 }
 
 fn _initterm(emu: &mut emu::Emu) {
-    log::info!("{}** {} kernelbase!_initterm  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    log::info!(
+        "{}** {} kernelbase!_initterm  {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
     emu.regs.rax = 0;
 }
 
 fn exit(emu: &mut emu::Emu) {
-    log::info!("{}** {} kernelbase!exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    log::info!(
+        "{}** {} kernelbase!exit  {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
     panic!("exit called");
 }
 
 fn _exit(emu: &mut emu::Emu) {
-    log::info!("{}** {} kernelbase!_exit  {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+    log::info!(
+        "{}** {} kernelbase!_exit  {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
     panic!("_exit called");
 }
 
 fn atexit(emu: &mut emu::Emu) {
     let fptr = emu.regs.rcx;
-    log::info!("{}** {} kernelbase!atexit fptr: 0x{:x} {}", emu.colors.light_red, emu.pos, fptr, emu.colors.nc);
+    log::info!(
+        "{}** {} kernelbase!atexit fptr: 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        fptr,
+        emu.colors.nc
+    );
     emu.regs.rax = 0;
 }
