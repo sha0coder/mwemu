@@ -3,11 +3,11 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::vec::Vec;
 
+use crate::console::Console;
 use crate::emu::Emu;
 use crate::peb32;
 use crate::peb64;
 use crate::structures;
-use crate::console::Console;
 use crate::winapi32;
 use crate::winapi64;
 

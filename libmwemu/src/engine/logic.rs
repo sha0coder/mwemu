@@ -1,6 +1,6 @@
 use crate::emu::Emu;
-use crate::{get_bit, set_bit, to32};
 use crate::exception_type;
+use crate::{get_bit, set_bit, to32};
 pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     let mut ret: u64 = val;
 
@@ -436,8 +436,7 @@ pub fn idiv8(emu: &mut Emu, value0: u64) {
         if emu.break_on_alert {
             panic!();
         }
-    } else if ((value1 as i16) > 0 && (resq as i8) < 0)
-        || ((value1 as i16) < 0 && (resq as i8) > 0)
+    } else if ((value1 as i16) > 0 && (resq as i8) < 0) || ((value1 as i16) < 0 && (resq as i8) > 0)
     {
         log::info!("/!\\ sign change exception on division");
         emu.exception(exception_type::ExceptionType::SignChangeOnDivision);
