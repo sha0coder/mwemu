@@ -1,11 +1,11 @@
-use crate::emu;
+use crate::console::Console;
 use crate::constants;
 use crate::context64::Context64;
+use crate::emu;
+use crate::serialization;
 use crate::structures;
 use crate::winapi32::helper;
 use crate::winapi64::kernel32;
-use crate::serialization;
-use crate::console::Console;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
@@ -51,12 +51,20 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(&emu, emu.cfg.dump_filename.as_ref().unwrap());
+                    serialization::Serialization::dump_to_file(
+                        &emu,
+                        emu.cfg.dump_filename.as_ref().unwrap(),
+                    );
                 }
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!(
+                "calling unimplemented API 0x{:x} {} at 0x{:x}",
+                addr,
+                api,
+                emu.regs.rip
+            );
             return api;
         }
     }
@@ -882,7 +890,14 @@ fn RtlCopyMemory(emu: &mut emu::Emu) {
     if result == false {
         panic!("RtlCopyMemory failed to copy");
     }
-    log_red!(emu, "** {} ntdll!RtlCopyMemory dst = {:x} src = {:x} sz = {}", emu.pos, dst, src, sz);
+    log_red!(
+        emu,
+        "** {} ntdll!RtlCopyMemory dst = {:x} src = {:x} sz = {}",
+        emu.pos,
+        dst,
+        src,
+        sz
+    );
 }
 
 fn RtlReAllocateHeap(emu: &mut emu::Emu) {
@@ -1006,10 +1021,14 @@ NTSYSAPI VOID RtlCaptureContext(
 */
 fn RtlCaptureContext(emu: &mut emu::Emu) {
     let context_record = emu.regs.rcx as usize;
-    log_red!(emu, "** {} ntdll!RtlCaptureContext {:x}", emu.pos, context_record);
+    log_red!(
+        emu,
+        "** {} ntdll!RtlCaptureContext {:x}",
+        emu.pos,
+        context_record
+    );
     // TODO: implement this
 }
-
 
 /*
 NTSYSAPI PRUNTIME_FUNCTION RtlLookupFunctionEntry(
@@ -1022,7 +1041,14 @@ fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
     let control_pc = emu.regs.rcx as usize;
     let image_base = emu.regs.rdx as usize;
     let history_table = emu.regs.r8 as usize;
-    log_red!(emu, "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}", emu.pos, control_pc, image_base, history_table);
+    log_red!(
+        emu,
+        "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}",
+        emu.pos,
+        control_pc,
+        image_base,
+        history_table
+    );
     // TODO: implement this
     emu.regs.rax = 0;
 }

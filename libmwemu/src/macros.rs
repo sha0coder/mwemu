@@ -124,4 +124,3 @@ macro_rules! log_red {
         );
     };
 }
-

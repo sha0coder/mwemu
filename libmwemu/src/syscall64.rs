@@ -1,7 +1,7 @@
-use crate::emu;
-use crate::constants;
-use crate::structures;
 use crate::console::Console;
+use crate::constants;
+use crate::emu;
+use crate::structures;
 //use crate::endpoint;
 use crate::winapi32::helper;
 
@@ -77,7 +77,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
                             let map = emu
                                 .maps
-                                .get_mem_by_addr(buff)
+                                .get_mem_by_addr_mut(buff)
                                 .expect("buffer send to read syscall point to no map");
 
                             // does the file data bypasses mem end?
@@ -875,7 +875,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
                             let map = emu
                                 .maps
-                                .get_mem_by_addr(addr)
+                                .get_mem_by_addr_mut(addr)
                                 .expect("buffer send to read syscall point to no map");
 
                             // does the file data bypasses mem end?

@@ -1,10 +1,10 @@
-use crate::emu;
 use crate::console;
 use crate::constants;
+use crate::emu;
 use crate::peb64;
+use crate::serialization;
 use crate::structures;
 use crate::winapi32::helper;
-use crate::serialization;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::context64;
@@ -1073,11 +1073,11 @@ fn CreateThread(emu: &mut emu::Emu) {
     let param = emu.regs.r9;
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20) 
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!CreateThread cannot read flags");
     let tid_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!CreateThread cannot read tid_ptr");
 
     if tid_ptr > 0 {
@@ -1200,15 +1200,15 @@ fn CreateRemoteThread(emu: &mut emu::Emu) {
     let addr = emu.regs.r9;
     let param = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("krenel32!CreateRemoteThread cannot read the param");
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!CreateRemoteThread cannot read the flags");
     let out_tid = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)  
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("kernel32!CreateRemoteThread cannot read the tid");
 
     log::info!(
@@ -1231,19 +1231,19 @@ fn CreateNamedPipeA(emu: &mut emu::Emu) {
     let instances = emu.regs.r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)  
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)  
+        .read_qword(emu.regs.rsp + 0x38)
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_string(name_ptr);
@@ -1268,19 +1268,19 @@ fn CreateNamedPipeW(emu: &mut emu::Emu) {
     let instances = emu.regs.r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)  
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)  
+        .read_qword(emu.regs.rsp + 0x38)
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_wide_string(name_ptr);
@@ -1370,7 +1370,7 @@ fn ReadFile(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!ReadFile name = {name} {}", emu.pos, emu.colors.nc);
 
     if name == "HaspEmul.dll" {
-        let bytes = std::fs::read("/Users/jesus/Downloads/enigma/surprise.dll").unwrap(); 
+        let bytes = std::fs::read("/Users/jesus/Downloads/enigma/surprise.dll").unwrap();
         if size as usize > bytes.len() {
             panic!("size is greater than the file size");
         }
@@ -2036,11 +2036,11 @@ fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     let alloc_type = emu.regs.r9;
     let protect = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!VirtualAllocExNuma cannot read the protect");
     let nnd = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
 
     log::info!(
@@ -2165,11 +2165,11 @@ fn CreateFileMappingA(emu: &mut emu::Emu) {
     let max_sz_high = emu.regs.r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)   
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!CreateFileMappingW cannot read name pointer");
 
     let mut name: String = String::new();
@@ -2195,7 +2195,7 @@ fn CreateFileMappingW(emu: &mut emu::Emu) {
     let max_sz_high = emu.regs.r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
@@ -2688,7 +2688,7 @@ fn GetLocalTime(emu: &mut emu::Emu) {
     buffer[1] = minutes as u8;
     buffer[2] = seconds as u8;
 
-    emu.maps.write_bytes_slice(ptr, &buffer);
+    emu.maps.write_bytes(ptr, buffer.to_vec());
 
     log::info!(
         "{}** {} kernel32!GetLocalTime  {}",
@@ -2828,7 +2828,6 @@ fn GetModuleHandleA(emu: &mut emu::Emu) {
             Some(base) => base,
             None => helper::handler_create(&module_name),
         }
-
     } else {
         module_name = emu.maps.read_string(module_name_ptr).to_lowercase();
         let mod_mem = match emu.maps.get_mem2(&module_name) {
@@ -2849,7 +2848,6 @@ fn GetModuleHandleA(emu: &mut emu::Emu) {
         module_name,
         emu.colors.nc
     );
-
 }
 
 fn GetModuleHandleW(emu: &mut emu::Emu) {
@@ -2862,7 +2860,6 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
             Some(base) => base,
             None => helper::handler_create(&module_name),
         }
-
     } else {
         module_name = emu.maps.read_wide_string(module_name_ptr).to_lowercase();
         let mod_mem = match emu.maps.get_mem2(&module_name) {
@@ -3158,11 +3155,11 @@ int GetLocaleInfoA(
 );
 */
 fn GetLocaleInfoA(emu: &mut emu::Emu) {
-    let locale = emu.regs.rcx as usize;     
+    let locale = emu.regs.rcx as usize;
     let lctype = emu.regs.rdx as usize;
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
-    
+
     let result = ".";
     let required_size = result.len() + 1; // Include null terminator
 
@@ -3181,7 +3178,7 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
         emu.regs.rax = 0;
         return;
     }
-    
+
     // Write result directly to provided buffer
     emu.maps.write_string(lp_lc_data as u64, &result);
     emu.regs.rax = result.len() as u64; // Return length without null terminator
@@ -3197,11 +3194,11 @@ int GetLocaleInfoW(
 );
 */
 fn GetLocaleInfoW(emu: &mut emu::Emu) {
-    let locale = emu.regs.rcx as u64;         
+    let locale = emu.regs.rcx as u64;
     let lctype = emu.regs.rdx as u64;
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
-    
+
     log_red!(emu, "** {} kernel32!GetLocaleInfoW locale: {} lctype: {} lp_lc_data: 0x{:x} cch_data: {}", 
         emu.pos,
         locale,
@@ -3254,19 +3251,19 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     let cch_wide_char = emu.regs.r9 as isize;
     let lp_multi_byte_str = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let cb_multi_byte = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)  
+        .read_qword(emu.regs.rsp + 0x30)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_used_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)  
+        .read_qword(emu.regs.rsp + 0x38)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
     log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
@@ -3333,7 +3330,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         if lp_multi_byte_str < emu.cfg.stack_addr || lp_multi_byte_str > emu.cfg.stack_addr + 0x030000 {
             emu.maps.write_string(lp_multi_byte_str, &s);
         }
-        
+
         // Set used default char flag if requested
         if lp_used_default_char != 0 {
             emu.maps.write_byte(lp_used_default_char, 0); // For this simple implementation, assume no defaults needed
@@ -3367,17 +3364,17 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let cb_multi_byte = emu.regs.r9 as i64;
     let wide_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)  
+        .read_qword(emu.regs.rsp + 0x20)
         .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
     let cch_wide_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)  
+        .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
 
     // Read exact number of bytes specified
     let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
     let utf8 = String::from_utf8_lossy(&bytes).to_string();
-    
+
     log::info!(
         "{}** {}:{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}{}",
         emu.colors.light_red,
@@ -3558,7 +3555,7 @@ fn FindResourceA(emu: &mut emu::Emu) {
     let lpName = emu.regs.rdx as usize;
     let lpType = emu.regs.r8 as usize;
 
-    let x:Option<(u64, usize)>;
+    let x: Option<(u64, usize)>;
 
     if lpName > 0xff && lpType > 0xff {
         let name = emu.maps.read_string(lpName as u64);
@@ -3597,7 +3594,6 @@ fn FindResourceA(emu: &mut emu::Emu) {
     let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
 
     emu.regs.rax = hndl;
-
 }
 
 fn FindResourceW(emu: &mut emu::Emu) {
@@ -3605,7 +3601,7 @@ fn FindResourceW(emu: &mut emu::Emu) {
     let lpName = emu.regs.rdx as usize;
     let lpType = emu.regs.r8 as usize;
 
-    let x:Option<(u64, usize)>;
+    let x: Option<(u64, usize)>;
 
     if lpName > 0xff && lpType > 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
@@ -3643,7 +3639,6 @@ fn FindResourceW(emu: &mut emu::Emu) {
     let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
 
     emu.regs.rax = hndl;
-
 }
 
 fn LoadResource(emu: &mut emu::Emu) {
@@ -3944,7 +3939,7 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
             if let Err(_) = emu.maps.create_map(
                 format!("alloc_{:x}", new_addr).as_str(),
                 new_addr,
-                new_size
+                new_size,
             ) {
                 emu.regs.rax = 0;
                 return;
@@ -3956,7 +3951,7 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
                 let old_size = emu.maps.get_mem_size(old_mem)
                     .unwrap_or(new_size as usize);
                 let copy_size = std::cmp::min(old_size, new_size as usize);
-                
+
                 // Copy the data
                 if !emu.maps.memcpy(old_mem, new_addr, copy_size) {
                     emu.regs.rax = 0;
