@@ -41,7 +41,7 @@ pub fn gateway(addr: u32, name: String, emu: &mut emu::Emu) {
         "not_loaded" => {
             // TODO: banzai check?
             emu.pe32.as_ref().unwrap().import_addr_to_name(addr)
-        },
+        }
         _ => panic!("/!\\ trying to execute on {} at 0x{:x}", name, addr),
     };
     emu.call_stack.pop();
