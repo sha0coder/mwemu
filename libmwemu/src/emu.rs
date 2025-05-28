@@ -3427,7 +3427,7 @@ impl Emu {
         let mut ins: Instruction = Instruction::default();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                log::info!("reloading rip 0x{:x}", self.regs.rip);
+                //log::info!("reloading rip 0x{:x}", self.regs.rip);
 
                 let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
                     Some(c) => c,
