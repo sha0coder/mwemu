@@ -471,7 +471,7 @@ impl Emu {
                 .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffe000, 0x10000)
+                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000)
                 .expect("cannot create linker map");
         } else {
             self.regs.rsp = 0x7fffffffe270;
