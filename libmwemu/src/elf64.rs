@@ -195,6 +195,8 @@ impl Elf64 {
     }*/
 
     pub fn load_programs(&mut self, maps: &mut Maps, name: &str, is_lib: bool, dyn_link: bool) {
+        return;
+        /*
         let mut i = 0;
         for phdr in &self.elf_phdr {
             if phdr.p_type == constants::PT_LOAD {
@@ -217,7 +219,6 @@ impl Elf64 {
                 } else {
                     vaddr = phdr.p_vaddr; // + ELF64_STA_BASE;
                 }
-
                 let map = maps
                     .create_map(&format!("{}_{}", name, i), vaddr, phdr.p_memsz)
                     .expect("cannot create map from load_programs elf64");
@@ -226,7 +227,7 @@ impl Elf64 {
 
                 map.write_bytes(vaddr, &self.bin[start..end]);
             }
-        }
+        }*/
     }
 
     pub fn load(
@@ -260,19 +261,29 @@ impl Elf64 {
         }
 
         // map sections
-        for shdr in &self.elf_shdr {
-            let sname = self.get_section_name(shdr.sh_name as usize);
+        for i in 0..self.elf_shdr.len() {
+            let sh_name = self.elf_shdr[i].sh_name;
+            let sh_offset = self.elf_shdr[i].sh_offset;
+            let sh_size = self.elf_shdr[i].sh_size; 
+            let mut sh_addr = self.elf_shdr[i].sh_addr;
+
+            let sname = self.get_section_name(sh_name as usize);
+
+            log::info!("loading elf64 section {}", sname);
+            if sname == ".comment" ||  sname.starts_with(".note") || sname == ".interp" || sname.starts_with(".gnu") {
+                continue;
+            }
 
             // get .got offset
             if sname == ".got" {
-                self.elf_got_off = shdr.sh_offset;
+                self.elf_got_off = sh_offset;
             }
 
             // load dynsym
             if sname == ".dynsym" {
-                let mut off = shdr.sh_offset as usize;
+                let mut off = sh_offset as usize;
 
-                for _ in 0..(shdr.sh_size / Elf64Sym::size() as u64) {
+                for _ in 0..(sh_size / Elf64Sym::size() as u64) {
                     let mut sym = Elf64Sym::parse(&self.bin, off);
 
                     if (sym.get_st_type() == STT_FUNC || sym.get_st_type() == STT_OBJECT)
@@ -293,11 +304,11 @@ impl Elf64 {
                 }
             }
 
-            if !is_lib && !dynamic_linking {
+            if !is_lib /*&& !dynamic_linking*/ {
                 //TODO: clean this block since is_lib cases are not reachable.
 
                 // map if its vaddr is on a PT_LOAD program
-                if self.is_loadable(shdr.sh_addr) {
+                if self.is_loadable(sh_addr) {
                     let map_name: String = if sname == ".text" && !is_lib {
                         //maps.exists_mapname("code") {
                         "code".to_string()
@@ -305,40 +316,78 @@ impl Elf64 {
                         format!("{}{}", name, sname) //self.get_section_name(shdr.sh_name as usize));
                     };
                     if sname == ".init" {
-                        self.init = Some(shdr.sh_addr);
+                        self.init = Some(sh_addr);
                     }
 
                     //log::info!("loading map {} 0x{:x} sz:{}", &map_name, shdr.sh_addr, shdr.sh_size);
-                    let base: u64;
-                    if dynamic_linking {
-                        if shdr.sh_addr < 0x8000 {
-                            base = shdr.sh_addr + ELF64_DYN_BASE + 0x4000;
+                    /*if dynamic_linking {
+                        if sh_addr < 0x8000 {
+                            base = sh_addr + ELF64_DYN_BASE + 0x4000;
                         } else {
-                            base = shdr.sh_addr + ELF64_DYN_BASE;
+                            base = sh_addr + ELF64_DYN_BASE;
                         }
-                    } else {
-                        base = shdr.sh_addr;
+                    } else {*/
+                    //}
+        
+                    if sh_size == 0 {
+                        log::info!("section {} size is zero, skipping.", sname);
+                        continue;
                     }
 
-                    let mem = maps
-                        .create_map(&map_name, base, shdr.sh_size)
-                        .expect("cannot create map from load_programs elf64");
+                    let mut must_alloc = false;
 
-                    let mut end_off = (shdr.sh_offset + shdr.sh_size) as usize;
+                    if sname == ".text" {
+                        sh_addr = self.elf_hdr.e_entry;
+                    } else {
+                        if sh_addr <= self.elf_hdr.e_entry && self.elf_hdr.e_entry < sh_addr+sh_size+10 {
+                            must_alloc = true;
+                        }
+                    }
+
+                    if sh_addr < 0xf {
+                        must_alloc = true;
+                    }
+
+                    let mem;
+
+                    if must_alloc {
+                        sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
+                        mem = maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
+                    } else {
+                        mem = match maps.create_map(&map_name, sh_addr, sh_size+10) {
+                            Ok(m) => m,
+                            Err(_) => {
+                                sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
+                                maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
+                            }
+                        };
+                    }
+
+
+                    let mut end_off = (sh_offset + sh_size) as usize;
                     if end_off > self.bin.len() {
                         end_off = self.bin.len();
                     }
 
-                    let segment = &self.bin[shdr.sh_offset as usize..end_off];
-                    if dynamic_linking {
-                        if shdr.sh_addr < 0x8000 {
-                            mem.write_bytes(shdr.sh_addr + ELF64_DYN_BASE + 0x4000, segment);
-                        } else {
-                            mem.write_bytes(shdr.sh_addr + ELF64_DYN_BASE, segment);
-                        }
-                    } else {
-                        mem.write_bytes(shdr.sh_addr, segment);
+                    if end_off as u64 - sh_offset > sh_size {
+                        log::info!("no room at sh_size for all the data in the section, skipping {}", sname);
+                        continue;
                     }
+
+                    let segment = &self.bin[sh_offset as usize..end_off];
+                    /*if dynamic_linking {
+                        if sh_addr < 0x8000 {
+                            mem.write_bytes(sh_addr + ELF64_DYN_BASE + 0x4000, segment);
+                        } else {
+                            mem.write_bytes(sh_addr + ELF64_DYN_BASE, segment);
+                        }
+                    } else {*/
+                        mem.write_bytes(sh_addr, segment);
+
+                    //}
+                    
+                   
+                    self.elf_shdr[i].sh_addr = sh_addr;
                 }
             }
         }
