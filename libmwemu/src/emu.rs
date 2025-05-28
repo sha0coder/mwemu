@@ -1004,6 +1004,42 @@ impl Emu {
             );
             self.init_linux64(dyn_link);
 
+            let mut text_addr = 0;
+            let mut text_sz = 0;
+            for i in 0..elf64.elf_shdr.len() {
+                let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
+                if sname == ".text" {
+                    text_addr = elf64.elf_shdr[i].sh_addr;
+                    text_sz = elf64.elf_shdr[i].sh_size;
+                    break;
+                }
+            }
+
+            if text_addr == 0 {
+                log::error!(".text not found on this elf");
+                return;
+            }
+
+            // relative entry point
+            if elf64.elf_hdr.e_entry < text_addr {
+                println!("elf64 entry logic1: relative entry:  e_entry={:x} .text={:x} total={:x}", elf64.elf_hdr.e_entry, text_addr, elf64.elf_hdr.e_entry + text_addr);
+                self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
+            } else {
+                if text_addr <= elf64.elf_hdr.e_entry && elf64.elf_hdr.e_entry < text_addr+text_sz {
+                    self.regs.rip = elf64.elf_hdr.e_entry;
+                } else {
+                    if self.cfg.entry_point != 0x3c0000 { // configured entry point
+                        self.regs.rip = self.cfg.entry_point;
+                    } else {
+                        log::error!("cannot calculate the entry point");
+                        return;
+                    }
+                }
+            }
+
+
+
+            /*
             if dyn_link {
                 //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
                 //ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
@@ -1016,7 +1052,7 @@ impl Emu {
                 //self.run(None); 
             } else {
                 self.regs.rip = elf64.elf_hdr.e_entry;
-            }
+            }*/
 
             /*
             for lib in elf64.get_dynamic() {
@@ -3355,8 +3391,16 @@ impl Emu {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
-        //
-        println!("iniciando run");
+        
+        match self.maps.get_mem_by_addr(self.regs.rip) {
+            Some(mem) =>  {
+            }
+            None => {
+                log::info!("Cannot start emulation, pc pointing to unmapped area");
+                return Err(MwemuError::new("program counter pointing to unmapped memory"))
+            }
+        };
+
 
         self.is_running.store(1, atomic::Ordering::Relaxed);
         let is_running2 = Arc::clone(&self.is_running);
@@ -3383,7 +3427,8 @@ impl Emu {
         let mut ins: Instruction = Instruction::default();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                //log::info!("reloading rip 0x{:x}", self.regs.rip);
+                log::info!("reloading rip 0x{:x}", self.regs.rip);
+
                 let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
                     Some(c) => c,
                     None => {
@@ -3399,6 +3444,9 @@ impl Emu {
                 // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block = code.read_bytes(self.regs.rip, 0x300).to_vec();
+                if block.len() == 0 {
+                     return Err(MwemuError::new("cannot read code block, weird address."));
+                }
                 let mut decoder =
                     Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
