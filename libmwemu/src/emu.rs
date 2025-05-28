@@ -19,7 +19,7 @@ use crate::console::Console;
 use crate::constants;
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
-use crate::elf64;
+//use crate::elf64;
 use crate::elf64::Elf64;
 use crate::engine;
 use crate::err::MwemuError;
