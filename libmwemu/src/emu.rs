@@ -468,10 +468,10 @@ impl Emu {
                 .expect("cannot create linux_dynamic_stack map");
             //self.maps.create_map("dso_dyn").load_at(0x7ffff7ffd0000);
             self.maps
-                .create_map("dso_dyn", 0x7ffff7ffd000, 0x100000)
+                .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffe000, 0x100000)
+                .create_map("linker", 0x7ffff7ffe000, 0x10000)
                 .expect("cannot create linker map");
         } else {
             self.regs.rsp = 0x7fffffffe270;
@@ -484,7 +484,7 @@ impl Emu {
         }
         let tls = self
             .maps
-            .create_map("tls", 0x7ffff7fff000, 0xfff)
+            .create_map("tls", 0x7ffff8fff000, 0xfff)
             .expect("cannot create tls map");
         tls.load("tls.bin");
 
@@ -3352,6 +3352,8 @@ impl Emu {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
+        //
+        println!("iniciando run");
 
         self.is_running.store(1, atomic::Ordering::Relaxed);
         let is_running2 = Arc::clone(&self.is_running);
