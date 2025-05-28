@@ -1005,9 +1005,9 @@ impl Emu {
             self.init_linux64(dyn_link);
 
             if dyn_link {
-                let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
-                ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
-                log::info!("--- emulating ld-linux _start ---");
+                //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
+                //ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
+                //log::info!("--- emulating ld-linux _start ---");
 
                 self.regs.rip = elf64.elf_hdr.e_entry;
 
