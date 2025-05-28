@@ -3443,7 +3443,8 @@ impl Emu {
 
                 // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
-                let block = code.read_bytes(self.regs.rip, 0x300).to_vec();
+                let block_sz = 0x300;
+                let block = code.read_bytes(self.regs.rip, block_sz).to_vec();
                 if block.len() == 0 {
                      return Err(MwemuError::new("cannot read code block, weird address."));
                 }
