@@ -1009,8 +1009,11 @@ impl Emu {
                 ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
                 log::info!("--- emulating ld-linux _start ---");
 
-                self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
-                self.run(None);
+                self.regs.rip = elf64.elf_hdr.e_entry;
+
+                //TODO: emulate the linker
+                //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
+                //self.run(None); 
             } else {
                 self.regs.rip = elf64.elf_hdr.e_entry;
             }
