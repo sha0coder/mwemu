@@ -18,7 +18,6 @@ Rust apps https://crates.io/crates/libmwemu
 ## Features
 - 📦 rust safety, good for malware. 
 	- All dependencies are in rust.
-	- zero unsafe{} blocks.
 - ⚡ very fast emulation (much faster than unicorn) 
 	- 2,000,000 instructions/second
 	- 379,000 instructions/second printing every instruction -vvv.
