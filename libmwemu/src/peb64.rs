@@ -41,19 +41,11 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .maps
         .create_map("peb", peb_addr, PEB64::size() as u64)
         .expect("cannot create peb map");
-    // Create KUSER_SHARED_DATA map
+    // Create KuserSharedData map
     let process_parameters = 0x521e20;
     let peb = PEB64::new(0, ldr, process_parameters);
     peb.save(peb_map);
     emu.maps.write_byte(peb_addr + 2, 0); // not being_debugged
-
-    const KUSER_ADDR: u64 = 0x7ffe0000;
-    let kuser_shared_map = emu
-        .maps
-        .create_map("KUSER_SHARED_DATA", KUSER_ADDR, 0x1000)
-        .expect("cannot create KUSER_SHARED_DATA");
-    
-    
     
     let teb_addr = emu
         .maps
