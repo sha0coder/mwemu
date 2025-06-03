@@ -3311,9 +3311,29 @@ impl Emu {
         // format
         self.instruction = Some(ins);
         self.decoder_position = position;
+
+        // Run pre-instruction hook
+        if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
+            if !hook_fn(self, self.regs.rip, &ins, sz) {
+                // update eip/rip
+                if self.force_reload {
+                    self.force_reload = false;
+                } else if self.cfg.is_64bits {
+                    self.regs.rip += sz as u64;
+                } else {
+                    self.regs.set_eip(self.regs.get_eip() + sz as u64);
+                }
+                return true; // skip instruction emulation
+            }
+        }
         // emulate
         let result_ok = engine::emulate_instruction(self, &ins, sz, true);
         self.last_instruction_size = sz;
+
+        // Run post-instruction hook
+        if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
+            hook_fn(self, self.regs.rip, &ins, sz, result_ok)
+        }
 
         // update eip/rip
         if self.force_reload {
