@@ -1,3 +1,4 @@
+use std::mem::MaybeUninit;
 use bitfield::bitfield;
 use crate::emu;
 use std::ptr;
@@ -5,7 +6,7 @@ const USER_KUSER_SHARED_ADDR: u64 = 0x7FFE0000;
 
 #[repr(u32)]
 #[derive(Clone, Copy)]
-pub enum ALTERNATIVE_ARCHITECTURE_TYPE {
+pub enum AlternativeArchitectureType {
     StandardDesign,
     Nec98x86,
     EndAlternatives,
@@ -13,24 +14,24 @@ pub enum ALTERNATIVE_ARCHITECTURE_TYPE {
 
 #[repr(u32)]
 #[derive(Clone, Copy)]
-pub enum NT_PRODUCT_TYPE {
+pub enum NtProductType {
     WinNt = 1,
     LanManNt,
     Server,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct KSYSTEM_TIME {
+pub struct KsystemTime {
     pub LowPart: u32,
     pub High1Time: i32,
     pub High2Time: i32,
 }
 
 bitfield! {
-    /// Represents the `KUSD_MITIGATION_POLICIES_UNION` from C.
+    /// Represents the `KusdMitigationPoliciesUnion` from C.
     /// Backed by a single `u8` with 4 x 2-bit fields.
     #[derive(Clone, Copy)]
-    pub struct KUSER_SHARED_DATA_0_0(u8);
+    pub struct KuserSharedData00(u8);
     u8;
 
     /// Bits 0-1: `NXSupportPolicy`
@@ -48,21 +49,21 @@ bitfield! {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union KUSD_MITIGATION_POLICIES_UNION {
+pub union KusdMitigationPoliciesUnion {
     pub MitigationPolicies: u8,
-    pub Anonymous: KUSER_SHARED_DATA_0_0,
+    pub Anonymous: KuserSharedData00,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union KUSD_VIRTUALIZATION_FLAGS_UNION {
+pub union KusdVirtualizationFlagsUnion {
     pub VirtualizationFlags: u8,
 }
 
 bitfield! {
     #[repr(transparent)]
     #[derive(Clone, Copy)]
-    pub struct KUSD_SHARED_DATA_FLAGS_BITS(u32);
+    pub struct KusdSharedDataFlagsBits(u32);
     u32;
 
     // Bit fields (total 32 bits)
@@ -84,9 +85,9 @@ bitfield! {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union KUSD_SHARED_DATA_FLAGS_UNION {
+pub union KusdSharedDataFlagsUnion {
     pub SharedDataFlags: u32,
-    pub bits: KUSD_SHARED_DATA_FLAGS_BITS,
+    pub bits: KusdSharedDataFlagsBits,
 }
 
 
@@ -99,29 +100,29 @@ pub struct OverlayStruct {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union KUSD_TICK_COUNT_UNION {
-    pub TickCount: KSYSTEM_TIME,
+pub union KusdTickCountUnion {
+    pub TickCount: KsystemTime,
     pub TickCountQuad: u64,
     pub Overlay: OverlayStruct,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union KUSD_QPC_DATA_UNION {
+pub union KusdQpcDataUnion {
     pub QpcData: u16,
-    pub anonymous: KUSD_QPC_DATA_ANON,
+    pub anonymous: KusdQpcDataAnon,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct KUSD_QPC_DATA_ANON {
+pub struct KusdQpcDataAnon {
     pub QpcBypassEnabled: u8,
     pub QpcReserved: u8,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct XSTATE_FEATURE {
+pub struct XstateFeature {
     pub Offset: u32,
     pub Size: u32,
 }
@@ -147,13 +148,13 @@ pub union ControlFlagsUnion {
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct XSTATE_CONFIGURATION {
+pub struct XstateConfiguration {
 
     pub EnabledFeatures: u64,
     pub EnabledVolatileFeatures: u64,
     pub Size: u32,
     pub Anonymous: ControlFlagsUnion,
-    pub Features: [XSTATE_FEATURE; 64],
+    pub Features: [XstateFeature; 64],
     pub EnabledSupervisorFeatures: u64,
     pub AlignedFeatures: u64,
     pub AllFeatureSize: u32,
@@ -166,17 +167,17 @@ pub struct XSTATE_CONFIGURATION {
 }
 
 /*
-The KUSER_SHARED_DATA is getting from windows 24h2 from  vergilusproject
+The KuserSharedData is getting from windows 24h2 from  vergilusproject
 https://www.vergiliusproject.com/kernels/x64/windows-11/24h2/_KUSER_SHARED_DATA
  */
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct KUSER_SHARED_DATA {
+pub struct KuserSharedData {
     pub TickCountLowDeprecated: u32,
     pub TickCountMultiplier: u32,
-    pub InterruptTime: KSYSTEM_TIME,
-    pub SystemTime: KSYSTEM_TIME,
-    pub TimeZoneBias: KSYSTEM_TIME,
+    pub InterruptTime: KsystemTime,
+    pub SystemTime: KsystemTime,
+    pub TimeZoneBias: KsystemTime,
     pub ImageNumberLow: u16,
     pub ImageNumberHigh: u16,
     pub NtSystemRoot: [u16; 260],
@@ -190,7 +191,7 @@ pub struct KUSER_SHARED_DATA {
     pub GlobalValidationRunlevel: u32,
     pub TimeZoneBiasStamp: i32,
     pub NtBuildNumber: u32,
-    pub NtProductType: NT_PRODUCT_TYPE,
+    pub NtProductType: NtProductType,
     pub ProductTypeIsValid: bool,
     pub Reserved0: [bool; 1],
     pub NativeProcessorArchitecture: u16,
@@ -200,12 +201,12 @@ pub struct KUSER_SHARED_DATA {
     pub Reserved1: u32,
     pub Reserved3: u32,
     pub TimeSlip: u32,
-    pub AlternativeArchitecture: ALTERNATIVE_ARCHITECTURE_TYPE,
+    pub AlternativeArchitecture: AlternativeArchitectureType,
     pub BootId: u32,
     pub SystemExpirationDate: i64,
     pub SuiteMask: u32,
     pub KdDebuggerEnabled: bool,
-    pub MitigationPolicies: KUSD_MITIGATION_POLICIES_UNION,
+    pub MitigationPolicies: KusdMitigationPoliciesUnion,
     pub CyclesPerYield: u16,
     pub ActiveConsoleId: u32,
     pub DismountCount: u32,
@@ -213,16 +214,16 @@ pub struct KUSER_SHARED_DATA {
     pub LastSystemRITEventTickCount: u32,
     pub NumberOfPhysicalPages: u32,
     pub SafeBootMode: bool,
-    pub VirtualizationFlags: KUSD_VIRTUALIZATION_FLAGS_UNION,
+    pub VirtualizationFlags: KusdVirtualizationFlagsUnion,
     pub Reserved12: [u8; 2],
-    pub SharedDataFlags: KUSD_SHARED_DATA_FLAGS_UNION,
+    pub SharedDataFlags: KusdSharedDataFlagsUnion,
     pub DataFlagsPad: [u32; 1],
     pub TestRetInstruction: u64,
     pub QpcFrequency: i64,
     pub SystemCall: u32,
     pub Reserved2: u32,
     pub SystemCallPad: [u64; 2],
-    pub TickCount: KUSD_TICK_COUNT_UNION,
+    pub TickCount: KusdTickCountUnion,
     pub Cookie: u32,
     pub CookiePad: [u32; 1],
     pub ConsoleSessionForegroundProcessId: i64,
@@ -245,11 +246,11 @@ pub struct KUSER_SHARED_DATA {
     pub ActiveProcessorCount: u32,
     pub ActiveGroupCount: u8,
     pub Reserved9: u8,
-    pub QpcData: KUSD_QPC_DATA_UNION,
+    pub QpcData: KusdQpcDataUnion,
     pub TimeZoneBiasEffectiveStart: i64,
     pub TimeZoneBiasEffectiveEnd: i64,
-    pub XState: XSTATE_CONFIGURATION,
-    pub FeatureConfigurationChangeStamp: KSYSTEM_TIME,
+    pub XState: XstateConfiguration,
+    pub FeatureConfigurationChangeStamp: KsystemTime,
     pub Spare: u32,
     pub UserPointerAuthMask: u64,
     pub Reserved10: [u32; 210],
@@ -257,10 +258,10 @@ pub struct KUSER_SHARED_DATA {
 
 pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     emu.maps
-        .create_map("ldr", USER_KUSER_SHARED_ADDR, 0x1000)
-        .expect("cannot create ldr map");
+        .create_map("KuserSharedData", USER_KUSER_SHARED_ADDR, 0x1000)
+        .expect("cannot create KuserSharedData map");
 
-    let mut kusd: KUSER_SHARED_DATA;
+    let mut kusd: KuserSharedData = unsafe {MaybeUninit::zeroed().assume_init()};
     kusd.TickCountMultiplier = 0x0fa00000;
     kusd.InterruptTime.LowPart = 0x17bd9547;
     kusd.InterruptTime.High1Time = 0x0000004b;
@@ -276,7 +277,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.RNGSeedVersion = 0x0000000000000013;
     kusd.TimeZoneBiasStamp = 0x00000004;
     kusd.NtBuildNumber = 0x00006c51;
-    kusd.NtProductType = NT_PRODUCT_TYPE::WinNt;
+    kusd.NtProductType = NtProductType::WinNt;
     kusd.ProductTypeIsValid = true;
     kusd.NativeProcessorArchitecture = 0x0009;
     kusd.NtMajorVersion = 0x0000000a;
@@ -324,13 +325,13 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     }
     kusd.QpcBias = 0x000000159530c4af;
 
-    let mut memory: [u8; std::mem::size_of::<KUSER_SHARED_DATA>()] = [0; std::mem::size_of::<KUSER_SHARED_DATA>()];
+    let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] = [0; std::mem::size_of::<KuserSharedData>()];
 
     unsafe {
         // Copy the struct into the allocated memory
-        let struct_ptr = &kusd as *const KUSER_SHARED_DATA as *const u8;
+        let struct_ptr = &kusd as *const KuserSharedData as *const u8;
         let memory_ptr = memory.as_mut_ptr();
-        ptr::copy_nonoverlapping(struct_ptr, memory_ptr, std::mem::size_of::<KUSER_SHARED_DATA>());
+        ptr::copy_nonoverlapping(struct_ptr, memory_ptr, std::mem::size_of::<KuserSharedData>());
     }
 
     emu.maps.write_bytes(USER_KUSER_SHARED_ADDR, memory.to_vec());

@@ -16,7 +16,7 @@ use crate::breakpoint::Breakpoint;
 use crate::colors::Colors;
 use crate::config::Config;
 use crate::console::Console;
-use crate::constants;
+use crate::{constants, kuser_shared};
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
 use crate::elf64;
@@ -621,6 +621,7 @@ impl Emu {
         std::env::set_current_dir(orig_path);
 
         peb64::init_peb(self);
+        kuser_shared::init_kuser_shared_data(self);
 
         winapi64::kernel32::load_library(self, "ntdll.dll");
         let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
