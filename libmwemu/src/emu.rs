@@ -18,7 +18,7 @@ use crate::config::Config;
 use crate::console::Console;
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
-use crate::elf64;
+//use crate::elf64;
 use crate::elf64::Elf64;
 use crate::engine;
 use crate::err::MwemuError;
@@ -468,10 +468,10 @@ impl Emu {
                 .expect("cannot create linux_dynamic_stack map");
             //self.maps.create_map("dso_dyn").load_at(0x7ffff7ffd0000);
             self.maps
-                .create_map("dso_dyn", 0x7ffff7ffd000, 0x100000)
+                .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffe000, 0x100000)
+                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000)
                 .expect("cannot create linker map");
         } else {
             self.regs.rsp = 0x7fffffffe270;
@@ -484,7 +484,7 @@ impl Emu {
         }
         let tls = self
             .maps
-            .create_map("tls", 0x7ffff7fff000, 0xfff)
+            .create_map("tls", 0x7ffff8fff000, 0xfff)
             .expect("cannot create tls map");
         tls.load("tls.bin");
 
@@ -1005,16 +1005,55 @@ impl Emu {
             );
             self.init_linux64(dyn_link);
 
-            if dyn_link {
-                let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
-                ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
-                log::info!("--- emulating ld-linux _start ---");
+            let mut text_addr = 0;
+            let mut text_sz = 0;
+            for i in 0..elf64.elf_shdr.len() {
+                let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
+                if sname == ".text" {
+                    text_addr = elf64.elf_shdr[i].sh_addr;
+                    text_sz = elf64.elf_shdr[i].sh_size;
+                    break;
+                }
+            }
 
-                self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
-                self.run(None);
+            if text_addr == 0 {
+                log::error!(".text not found on this elf");
+                return;
+            }
+
+            // relative entry point
+            if elf64.elf_hdr.e_entry < text_addr {
+                println!("elf64 entry logic1: relative entry:  e_entry={:x} .text={:x} total={:x}", elf64.elf_hdr.e_entry, text_addr, elf64.elf_hdr.e_entry + text_addr);
+                self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
+            } else {
+                if text_addr <= elf64.elf_hdr.e_entry && elf64.elf_hdr.e_entry < text_addr+text_sz {
+                    self.regs.rip = elf64.elf_hdr.e_entry;
+                } else {
+                    if self.cfg.entry_point != 0x3c0000 { // configured entry point
+                        self.regs.rip = self.cfg.entry_point;
+                    } else {
+                        log::error!("cannot calculate the entry point");
+                        return;
+                    }
+                }
+            }
+
+
+
+            /*
+            if dyn_link {
+                //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
+                //ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
+                //log::info!("--- emulating ld-linux _start ---");
+
+                self.regs.rip = elf64.elf_hdr.e_entry;
+
+                //TODO: emulate the linker
+                //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
+                //self.run(None); 
             } else {
                 self.regs.rip = elf64.elf_hdr.e_entry;
-            }
+            }*/
 
             /*
             for lib in elf64.get_dynamic() {
@@ -3347,6 +3386,16 @@ impl Emu {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
+        
+        match self.maps.get_mem_by_addr(self.regs.rip) {
+            Some(mem) =>  {
+            }
+            None => {
+                log::info!("Cannot start emulation, pc pointing to unmapped area");
+                return Err(MwemuError::new("program counter pointing to unmapped memory"))
+            }
+        };
+
 
         self.is_running.store(1, atomic::Ordering::Relaxed);
         let is_running2 = Arc::clone(&self.is_running);
@@ -3374,6 +3423,7 @@ impl Emu {
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs.rip);
+
                 let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
                     Some(c) => c,
                     None => {
@@ -3388,7 +3438,11 @@ impl Emu {
 
                 // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
-                let block = code.read_bytes(self.regs.rip, 0x300).to_vec();
+                let block_sz = 0x300;
+                let block = code.read_bytes(self.regs.rip, block_sz).to_vec();
+                if block.len() == 0 {
+                     return Err(MwemuError::new("cannot read code block, weird address."));
+                }
                 let mut decoder =
                     Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;

@@ -152,10 +152,16 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
+        if addr >= self.base_addr + self.mem.len() as u64 {
+            return &[0; 0];
+        }
+        if addr < self.base_addr {
+            return &[0; 0];
+        }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            return &[0; 0];
+            return self.mem.get(idx..self.mem.len()).unwrap();
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem") {
@@ -167,6 +173,8 @@ impl Mem64 {
         }
         r
     }
+
+
 
     #[inline(always)]
     pub fn read_byte(&self, addr: u64) -> u8 {
