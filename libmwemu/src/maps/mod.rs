@@ -315,10 +315,11 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr(&self, addr: u64) -> Option<&Mem64> {
-        match self.maps.range(..=addr).next_back() {
-            Some((_, v)) if v.inside(addr) => Some(v),
-            _ => None,
-        }
+        self.maps
+            .range(..=addr)
+            .next_back()
+            .map(|(_, v)| v)
+            .take_if(|v| v.inside(addr))
     }
 
     #[inline(always)]
