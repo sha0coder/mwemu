@@ -295,9 +295,9 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.LastSystemRITEventTickCount = 0x01ec1fd3;
     kusd.NumberOfPhysicalPages = 0x00bf0958;
     kusd.NumberOfPhysicalPages = 0x0000000000bf0958;
-    unsafe {
+    //unsafe {
         kusd.TickCount.TickCount.LowPart = 0x001f7f05;
-    }
+    //}
     kusd.TickCount.TickCountQuad = 0x00000000001f7f05;
     kusd.Cookie = 0x1c3471da;
     kusd.ConsoleSessionForegroundProcessId = 0x00000000000028f4;
@@ -320,9 +320,9 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.XState.EnabledVolatileFeatures = 0x000000000000000f;
     kusd.XState.Size = 0x000003c0;
     kusd.QpcData.QpcData = 0x0083;
-    unsafe {
+    //unsafe {
         kusd.QpcData.anonymous.QpcBypassEnabled= 0x83;
-    }
+    //}
     kusd.QpcBias = 0x000000159530c4af;
 
     let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] = [0; std::mem::size_of::<KuserSharedData>()];
