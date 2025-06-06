@@ -41,11 +41,12 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .maps
         .create_map("peb", peb_addr, PEB64::size() as u64)
         .expect("cannot create peb map");
+    // Create KuserSharedData map
     let process_parameters = 0x521e20;
     let peb = PEB64::new(0, ldr, process_parameters);
     peb.save(peb_map);
     emu.maps.write_byte(peb_addr + 2, 0); // not being_debugged
-
+    
     let teb_addr = emu
         .maps
         .lib64_alloc(TEB64::size() as u64)

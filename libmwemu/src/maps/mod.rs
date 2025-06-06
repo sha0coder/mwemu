@@ -11,7 +11,7 @@ use std::str;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
     pub banzai: bool,
-    pub maps2: BTreeMap<u64, Mem64>,
+    pub maps: BTreeMap<u64, Mem64>,
     pub name_map: AHashMap<String, u64>,
     pub is_64bits: bool,
 }
@@ -27,7 +27,7 @@ impl Maps {
 
     pub fn new() -> Maps {
         Maps {
-            maps2: BTreeMap::<u64, Mem64>::default(),
+            maps: BTreeMap::<u64, Mem64>::default(),
             name_map: AHashMap::<String, u64>::with_capacity(200),
             is_64bits: false,
             banzai: false,
@@ -39,12 +39,12 @@ impl Maps {
     }
 
     pub fn clear(&mut self) {
-        self.maps2.clear();
+        self.maps.clear();
         self.name_map.clear();
     }
 
     pub fn get_base(&self) -> Option<u64> {
-        self.maps2
+        self.maps
             .iter()
             .find(|map| map.1.get_name().ends_with(".pe"))
             .map(|map| map.1.get_base())
@@ -57,7 +57,7 @@ impl Maps {
 
     // slow, better hold the object
     pub fn get_map_by_name(&self, name: &str) -> Option<&Mem64> {
-        self.name_map.get(name).and_then(|v| self.maps2.get(v))
+        self.name_map.get(name).and_then(|v| self.maps.get(v))
     }
 
     pub fn get_map_by_name_mut(&mut self, name: &str) -> Option<&mut Mem64> {
@@ -65,11 +65,11 @@ impl Maps {
             .name_map
             .get(name)
             .expect(format!("Name {} doesn't exists in maps", name).as_str());
-        self.maps2.get_mut(name)
+        self.maps.get_mut(name)
     }
 
     pub fn get_mem_size(&self, addr: u64) -> Option<usize> {
-        self.maps2
+        self.maps
             .range(..=addr)
             .next_back()
             .map(|pair| pair.1.size())
@@ -95,8 +95,8 @@ impl Maps {
         mem.set_size(size);
 
         self.name_map.insert(name.to_string(), base);
-        self.maps2.insert(base, mem);
-        Ok(self.maps2.get_mut(&base).unwrap())
+        self.maps.insert(base, mem);
+        Ok(self.maps.get_mut(&base).unwrap())
     }
 
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
@@ -306,7 +306,7 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr_mut(&mut self, addr: u64) -> Option<&mut Mem64> {
-        self.maps2
+        self.maps
             .range_mut(..=addr)
             .next_back()
             .map(|(_, v)| v)
@@ -315,10 +315,11 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr(&self, addr: u64) -> Option<&Mem64> {
-        match self.maps2.range(..=addr).next_back() {
-            Some((_, v)) if v.inside(addr) => Some(v),
-            _ => None,
-        }
+        self.maps
+            .range(..=addr)
+            .next_back()
+            .map(|(_, v)| v)
+            .take_if(|v| v.inside(addr))
     }
 
     #[inline(always)]
@@ -740,7 +741,7 @@ impl Maps {
         let byte_pattern = self.spaced_bytes_to_bytes(sbs);
 
         // Find the memory region containing the start address
-        for (_, memory) in self.maps2.iter() {
+        for (_, memory) in self.maps.iter() {
             // Skip memory regions that don't contain the start address
             if saddr < memory.get_base() || saddr >= memory.get_bottom() {
                 continue;
@@ -766,7 +767,7 @@ impl Maps {
         let byte_pattern = self.spaced_bytes_to_bytes(spaced_bytes);
 
         // Find the memory region containing the start address
-        for (_, memory) in self.maps2.iter() {
+        for (_, memory) in self.maps.iter() {
             // Skip memory regions that don't contain the start address
             if start_address < memory.get_base() || start_address >= memory.get_bottom() {
                 continue;
@@ -796,7 +797,7 @@ impl Maps {
         let bytes = self.spaced_bytes_to_bytes(sbs);
         let mut found: Vec<u64> = Vec::new();
 
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             for addr in mem.get_base()..mem.get_bottom() {
                 if addr < 0x70000000 {
                     let mut c = 0;
@@ -827,7 +828,7 @@ impl Maps {
     //TODO: return a list with matches.
     pub fn search_string_in_all(&self, kw: String) {
         let mut found = false;
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             if mem.get_base() >= 0x7000000 {
                 continue;
             }
@@ -861,7 +862,7 @@ impl Maps {
     pub fn search_bytes(&self, bkw: Vec<u8>, map_name: &str) -> Vec<u64> {
         let mut addrs: Vec<u64> = Vec::new();
 
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             if mem.get_name() == map_name {
                 for addr in mem.get_base()..mem.get_bottom() {
                     let mut c = 0;
@@ -891,7 +892,7 @@ impl Maps {
 
     pub fn size(&self) -> usize {
         let mut sz: usize = 0;
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             sz += mem.size();
         }
         sz
@@ -907,7 +908,7 @@ impl Maps {
     }
 
     pub fn show_allocs(&self) {
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             let name = mem.get_name();
             if name.starts_with("alloc_") || name.starts_with("valloc_") {
                 log::info!(
@@ -922,7 +923,7 @@ impl Maps {
     }
 
     pub fn show_maps(&self) {
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             let name = mem.get_name();
             log::info!(
                 "{} 0x{:x} - 0x{:x} ({})",
@@ -939,14 +940,14 @@ impl Maps {
             .name_map
             .get(name)
             .expect(format!("map name {} not found", name).as_str());
-        self.maps2.remove(id);
+        self.maps.remove(id);
     }
 
     pub fn dealloc(&mut self, addr: u64) {
-        self.maps2
+        self.maps
             .get(&addr)
             .expect(format!("map base {} not found", addr).as_str());
-        self.maps2.remove(&addr);
+        self.maps.remove(&addr);
     }
 
     pub fn lib64_alloc(&self, sz: u64) -> Option<u64> {
@@ -980,7 +981,7 @@ impl Maps {
             log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
         }
 
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             let base = mem.get_base();
 
             if lib && base < bottom {
@@ -1032,7 +1033,7 @@ impl Maps {
     }
 
     pub fn save_all_allocs(&mut self, path: String) {
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             if mem.get_name().to_string().starts_with("alloc_") {
                 let mut ppath = path.clone();
                 ppath.push('/');
@@ -1044,7 +1045,7 @@ impl Maps {
     }
 
     pub fn save_all(&self, path: String) {
-        for (_, mem) in self.maps2.iter() {
+        for (_, mem) in self.maps.iter() {
             let mut ppath = path.clone();
             ppath.push('/');
             ppath.push_str(&format!("{:08x}-{}", mem.get_base(), mem.get_name()));
@@ -1117,10 +1118,10 @@ impl Maps {
     }
 
     pub fn mem_test(&self) -> bool {
-        for (_, mem1) in self.maps2.iter() {
+        for (_, mem1) in self.maps.iter() {
             let name1 = mem1.get_name();
 
-            for (_, mem2) in self.maps2.iter() {
+            for (_, mem2) in self.maps.iter() {
                 let name2 = mem2.get_name();
 
                 if name1 != name2 {

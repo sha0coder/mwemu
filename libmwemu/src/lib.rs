@@ -41,9 +41,11 @@ pub mod syscall32;
 pub mod syscall64;
 pub mod winapi32;
 pub mod winapi64;
+pub mod kuser_shared;
 
 #[cfg(test)]
 mod tests;
+
 
 use config::Config;
 use emu::Emu;
