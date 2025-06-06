@@ -16,7 +16,6 @@ use crate::breakpoint::Breakpoint;
 use crate::colors::Colors;
 use crate::config::Config;
 use crate::console::Console;
-use crate::constants;
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
 //use crate::elf64;
@@ -40,6 +39,7 @@ use crate::structures;
 use crate::structures::MemoryOperation;
 use crate::winapi32;
 use crate::winapi64;
+use crate::{constants, kuser_shared};
 use crate::{get_bit, set_bit, to32};
 
 pub struct Emu {
@@ -621,6 +621,7 @@ impl Emu {
         std::env::set_current_dir(orig_path);
 
         peb64::init_peb(self);
+        kuser_shared::init_kuser_shared_data(self);
 
         winapi64::kernel32::load_library(self, "ntdll.dll");
         let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
@@ -2846,61 +2847,55 @@ impl Emu {
             return 256;
         }
 
-        let size: u32 = match ins.op_kind(noperand) {
-            OpKind::NearBranch64 => 64,
-            OpKind::NearBranch32 => 32,
-            OpKind::NearBranch16 => 16,
-            OpKind::FarBranch32 => 32,
-            OpKind::FarBranch16 => 16,
+        match ins.op_kind(noperand) {
+            //TODO: OpKind::Immediate8to64 could be 8
+            OpKind::NearBranch64
+            | OpKind::Immediate64
+            | OpKind::Immediate32to64
+            | OpKind::Immediate8to64 => 64,
+            OpKind::NearBranch32
+            | OpKind::Immediate32
+            | OpKind::Immediate8to32
+            | OpKind::FarBranch32
+            | OpKind::MemoryESEDI
+            | OpKind::MemorySegESI => 32,
+            OpKind::NearBranch16
+            | OpKind::FarBranch16
+            | OpKind::Immediate16
+            | OpKind::Immediate8to16 => 16,
             OpKind::Immediate8 => 8,
-            OpKind::Immediate16 => 16,
-            OpKind::Immediate32 => 32,
-            OpKind::Immediate64 => 64,
-            OpKind::Immediate8to32 => 32,
-            OpKind::Immediate8to16 => 16,
-            OpKind::Immediate32to64 => 64,
-            OpKind::Immediate8to64 => 64, //TODO: this could be 8
             OpKind::Register => self.regs.get_size(ins.op_register(noperand)),
-            OpKind::MemoryESEDI => 32,
-            OpKind::MemorySegESI => 32,
-            OpKind::Memory => {
-                let size2: u32 = match ins.memory_size() {
-                    MemorySize::Float16 => 16,
-                    MemorySize::Float32 => 32,
-                    MemorySize::Float64 => 64,
-                    MemorySize::FpuEnv28 => 32,
-                    MemorySize::UInt64 => 64,
-                    MemorySize::UInt32 => 32,
-                    MemorySize::UInt16 => 16,
-                    MemorySize::UInt8 => 8,
-                    MemorySize::Int64 => 64,
-                    MemorySize::Int32 => 32,
-                    MemorySize::Int16 => 16,
-                    MemorySize::Int8 => 8,
-                    MemorySize::QwordOffset => 64,
-                    MemorySize::DwordOffset => 32,
-                    MemorySize::WordOffset => 16,
-                    MemorySize::Packed128_UInt64 => 64, // 128bits packed in 2 qwords
-                    MemorySize::Packed128_UInt32 => 32, // 128bits packed in 4 dwords
-                    MemorySize::Packed128_UInt16 => 16, // 128bits packed in 8 words
-                    MemorySize::Bound32_DwordDword => 32,
-                    MemorySize::Bound16_WordWord => 16,
-                    MemorySize::Packed64_Float32 => 32,
-                    MemorySize::Packed256_UInt16 => 16,
-                    MemorySize::Packed256_UInt32 => 32,
-                    MemorySize::Packed256_UInt64 => 64,
-                    MemorySize::Packed256_UInt128 => 128,
-                    MemorySize::Packed128_Float32 => 32,
-                    MemorySize::SegPtr32 => 32,
-                    _ => unimplemented!("memory size {:?}", ins.memory_size()),
-                };
-
-                size2
-            }
+            
+            OpKind::Memory => match ins.memory_size() {
+                MemorySize::Float16
+                | MemorySize::UInt16
+                | MemorySize::Int16
+                | MemorySize::WordOffset
+                | MemorySize::Packed128_UInt16
+                | MemorySize::Bound16_WordWord => 16,
+                MemorySize::Float32
+                | MemorySize::FpuEnv28
+                | MemorySize::UInt32
+                | MemorySize::Int32
+                | MemorySize::DwordOffset
+                | MemorySize::Packed128_UInt32
+                | MemorySize::Bound32_DwordDword
+                | MemorySize::Packed64_Float32
+                | MemorySize::Packed256_UInt32
+                | MemorySize::Packed128_Float32
+                | MemorySize::SegPtr32 => 32,
+                MemorySize::Float64
+                | MemorySize::UInt64
+                | MemorySize::Int64
+                | MemorySize::QwordOffset
+                | MemorySize::Packed128_UInt64
+                | MemorySize::Packed256_UInt64 => 64,
+                MemorySize::UInt8 | MemorySize::Int8 => 8,
+                MemorySize::Packed256_UInt128 => 128,
+                _ => unimplemented!("memory size {:?}", ins.memory_size()),
+            },
             _ => unimplemented!("operand type {:?}", ins.op_kind(noperand)),
-        };
-
-        size
+        }
     }
 
     #[inline]
