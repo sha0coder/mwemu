@@ -376,6 +376,7 @@ impl From<SerializableEmu> for Emu {
             base: serialized.base,
             call_stack: serialized.call_stack,
             formatter: Default::default(),
+            fileName: "".to_string(),
         }
     }
 }

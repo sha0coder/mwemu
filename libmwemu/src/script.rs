@@ -465,7 +465,7 @@ impl Script {
                         }
                     };
 
-                    let mem = emu.maps.get_mem(&name);
+                    let mem = emu.maps.get_mem_by_addr(addr).expect("address not found on any map");
                     if emu.cfg.is_64bits {
                         log::info!(
                             "map: {} 0x{:x}-0x{:x} ({})",

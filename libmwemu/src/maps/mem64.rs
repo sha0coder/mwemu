@@ -36,8 +36,8 @@ impl Mem64 {
     }
 
     #[inline(always)]
-    pub fn get_name(&self) -> String {
-        self.mem_name.clone()
+    pub fn get_name(&self) -> &str {
+        self.mem_name.as_str()
     }
 
     #[inline(always)]
