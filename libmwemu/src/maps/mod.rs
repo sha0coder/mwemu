@@ -447,7 +447,12 @@ impl Maps {
     }
 
     #[inline(always)]
-    pub fn get_addr_name(&self, addr: u64) -> Option<String> {
+    pub fn get_addr_name(&self, addr: u64) -> Option<&str> {
+        self.get_mem_by_addr(addr).map(|mem| mem.get_name())
+    }
+
+    #[inline(always)]
+    pub fn get_addr_name_mut(&mut self, addr: u64) -> Option<&str> {
         self.get_mem_by_addr(addr).map(|mem| mem.get_name())
     }
 
@@ -547,7 +552,7 @@ impl Maps {
                 None => break,
             };
 
-            let name = self.get_addr_name(value).unwrap_or_else(|| "".to_string());
+            let name = self.get_addr_name(value).unwrap_or_else(|| "");
 
             log::info!(
                 "0x{:x}: 0x{:x} ({}) '{}'",
@@ -573,7 +578,7 @@ impl Maps {
                 // only in 32bits make sense derreference dwords in memory
                 let name = self
                     .get_addr_name(value.into())
-                    .unwrap_or_else(|| "".to_string());
+                    .unwrap_or_else(|| "");
 
                 let mut s = "".to_string();
                 if !name.is_empty() {

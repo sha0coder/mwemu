@@ -605,7 +605,7 @@ impl Emu {
     /// Will cause an exception if the address is not allocated.
     pub fn get_addr_name(&self, addr: u64) -> PyResult<String> {
         match self.emu.maps.get_addr_name(addr) {
-            Some(v) => Ok(v),
+            Some(v) => Ok(v.to_string()),
             None => Err(PyValueError::new_err(
                 "the address doesnt pertain to an allocated block",
             )),

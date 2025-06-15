@@ -3941,11 +3941,10 @@ fn VirtualFree(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    match emu.maps.get_mem_by_addr_mut(addr) {
+    match emu.maps.get_mem_by_addr(addr) {
         Some(mem) => {
             emu.regs.rax = 1;
-            let name = mem.get_name();
-            emu.maps.free(&name);
+            emu.maps.dealloc(mem.get_base());
         }
         None => {
             emu.regs.rax = 0;
