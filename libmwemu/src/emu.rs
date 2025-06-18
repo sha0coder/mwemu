@@ -1,9 +1,6 @@
 use atty::Stream;
 use csv::ReaderBuilder;
-use iced_x86::{
-    Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind,
-    Register,
-};
+use iced_x86::{Code, Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind, Register};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write as _;
@@ -1101,6 +1098,7 @@ impl Emu {
 
             match self.pe64 {
                 Some(ref pe64) => {
+                    // start loading dll
                     if pe64.is_dll() {
                         self.regs.set_reg(Register::RCX, base);
                         self.regs.set_reg(Register::RDX, 1);
@@ -3564,7 +3562,12 @@ impl Emu {
                         }
                     }
 
-                    if ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix() {
+                    let is_ret = match ins.code() {
+                        Code::Retnw | Code::Retnd | Code::Retnq => true,
+                        _ => false
+                    };
+
+                    if !is_ret && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix()) {
                         if self.rep.is_none() {
                             self.rep = Some(0);
                         }
