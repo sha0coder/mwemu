@@ -107,11 +107,11 @@ impl Maps {
                 true
             }
             None if banzai => {
-                log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
                 false
             }
             _ => {
-                panic!("Writing word to unmapped region at 0x{:x}", addr);
+                panic!("Writing byte to unmapped region at 0x{:x}", addr);
             }
         }
     }
@@ -120,11 +120,11 @@ impl Maps {
         match self.get_mem_by_addr(addr) {
             Some(mem) => Some(mem.read_byte(addr)),
             None if banzai => {
-                log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                log::warn!("Reading byte from unmapped region at 0x{:x}", addr);
                 None
             }
             _ => {
-                panic!("Writing word to unmapped region at 0x{:x}", addr);
+                panic!("Reading byte from unmapped region at 0x{:x}", addr);
             }
         }
     }
@@ -138,11 +138,11 @@ impl Maps {
                 true
             }
             None if banzai => {
-                log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
                 false
             }
             _ => {
-                panic!("Writing word to unmapped region at 0x{:x}", addr);
+                panic!("Writing qword to unmapped region at 0x{:x}", addr);
             }
         }
     }
@@ -156,11 +156,11 @@ impl Maps {
                 true
             }
             None if banzai => {
-                log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
                 false
             }
             _ => {
-                panic!("Writing word to unmapped region at 0x{:x}", addr);
+                panic!("Writing dword to unmapped region at 0x{:x}", addr);
             }
         }
     }
