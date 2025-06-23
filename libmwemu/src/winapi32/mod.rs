@@ -18,9 +18,9 @@ mod ws2_32;
 
 use crate::emu;
 
-pub fn gateway(addr: u32, name: String, emu: &mut emu::Emu) {
+pub fn gateway(addr: u32, name: &str, emu: &mut emu::Emu) {
     emu.regs.sanitize32();
-    match name.as_str() {
+    match name {
         "kernel32.text" => kernel32::gateway(addr, emu),
         "kernel32.rdata" => kernel32::gateway(addr, emu),
         "ntdll.text" => ntdll::gateway(addr, emu),

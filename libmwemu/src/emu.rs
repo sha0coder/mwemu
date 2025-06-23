@@ -1,9 +1,6 @@
 use atty::Stream;
 use csv::ReaderBuilder;
-use iced_x86::{
-    Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind,
-    Register,
-};
+use iced_x86::{Code, Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind, Register};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write as _;
@@ -98,6 +95,7 @@ pub struct Emu {
     pub base: u64,
     pub call_stack: Vec<String>,
     pub formatter: IntelFormatter,
+    pub fileName: String,
 }
 
 impl Default for Emu {
@@ -167,6 +165,7 @@ impl Emu {
             trace_file: None,
             base: 0,
             call_stack: vec![],
+            fileName: String::new(),
         }
     }
 
@@ -653,6 +652,7 @@ impl Emu {
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
         let is_maps = filename.contains("maps32/");
         let map_name = self.filename_to_mapname(filename);
+        self.filename = map_name;
         let mut pe32 = PE32::load(filename);
         let base: u32;
 
@@ -737,7 +737,7 @@ impl Emu {
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", map_name),
+                &format!("{}.pe", self.filename),
                 base.into(),
                 pe32.opt.size_of_headers.into(),
             )
@@ -771,7 +771,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", map_name, sect_name),
+                &format!("{}{}", self.filename, sect_name),
                 base as u64 + sect.virtual_address as u64,
                 sz,
             ) {
@@ -779,7 +779,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section {} {} because overlaps",
-                        map_name,
+                        self.filename,
                         sect.get_name()
                     );
                     continue;
@@ -789,7 +789,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    map_name,
+                    self.filename,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -803,7 +803,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &map_name, 0, 0x2c1950);
+                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &self.filename.clone(), 0, 0x2c1950);
             peb32::update_ldr_entry_base("loader.exe", base as u64, self);
         }
 
@@ -816,6 +816,7 @@ impl Emu {
     pub fn load_pe64(&mut self, filename: &str, set_entry: bool, force_base: u64) -> (u64, u32) {
         let is_maps = filename.contains("maps64/");
         let map_name = self.filename_to_mapname(filename);
+        self.filename = map_name;
         let mut pe64 = PE64::load(filename);
         let base: u64;
 
@@ -881,7 +882,7 @@ impl Emu {
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", map_name),
+                &format!("{}.pe", self.filename),
                 base,
                 pe64.opt.size_of_headers.into(),
             )
@@ -915,7 +916,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", map_name, sect_name),
+                &format!("{}{}", self.filename, sect_name),
                 base + sect.virtual_address as u64,
                 sz,
             ) {
@@ -923,7 +924,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section because overlaps {} {}",
-                        map_name,
+                        self.filename,
                         sect.get_name()
                     );
                     continue;
@@ -933,7 +934,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    map_name,
+                    self.filename,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -948,7 +949,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb64::create_ldr_entry(self, base, self.regs.rip, &map_name, 0, 0x2c1950);
+                peb64::create_ldr_entry(self, base, self.regs.rip, &self.filename.clone(), 0, 0x2c1950);
             peb64::update_ldr_entry_base("loader.exe", base, self);
         }
 
@@ -1095,6 +1096,19 @@ impl Emu {
             let (base, pe_off) = self.load_pe64(filename, true, 0);
             let ep = self.regs.rip;
 
+            match self.pe64 {
+                Some(ref pe64) => {
+                    // start loading dll
+                    if pe64.is_dll() {
+                        self.regs.set_reg(Register::RCX, base);
+                        self.regs.set_reg(Register::RDX, 1);
+                        self.regs.set_reg(Register::R8L, 0);
+                    }
+                }
+                _ =>  {
+                    log::error!("No Pe64 found inside self");
+                }
+            }
             // emulating tls callbacks
             /*
             for i in 0..self.tls_callbacks.len() {
@@ -1190,10 +1204,7 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = match self.maps.get_addr_name(self.regs.get_esp()) {
-                Some(n) => n,
-                None => "not mapped".to_string(),
-            };
+            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1202,7 +1213,7 @@ impl Emu {
                 address: self.regs.get_esp() - 4,
                 old_value: self.maps.read_dword(self.regs.get_esp()).unwrap_or(0) as u64,
                 new_value: value as u64,
-                name: name.clone(),
+                name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
             log::debug!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
@@ -1253,10 +1264,7 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = match self.maps.get_addr_name(self.regs.rsp) {
-                Some(n) => n,
-                None => "not mapped".to_string(),
-            };
+            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1265,7 +1273,7 @@ impl Emu {
                 address: self.regs.rsp - 8,
                 old_value: self.maps.read_qword(self.regs.rsp).unwrap_or(0),
                 new_value: value,
-                name: name.clone(),
+                name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
             log::debug!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 64, self.regs.rsp, value, name);
@@ -1360,10 +1368,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = match self.maps.get_addr_name(self.regs.get_esp()) {
-                Some(n) => n,
-                None => "not mapped".to_string(),
-            };
+            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1372,7 +1377,7 @@ impl Emu {
                 address: self.regs.get_esp(),
                 old_value: 0, // not needed for read
                 new_value: value as u64,
-                name: name.clone(),
+                name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
             log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
@@ -1442,10 +1447,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = match self.maps.get_addr_name(self.regs.rsp) {
-                Some(n) => n,
-                None => "not mapped".to_string(),
-            };
+            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1454,7 +1456,7 @@ impl Emu {
                 address: self.regs.rsp,
                 old_value: 0, // not needed for read
                 new_value: value as u64,
-                name: name.clone(),
+                name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
             log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
@@ -1656,7 +1658,7 @@ impl Emu {
                     if self.cfg.trace_mem {
                         let name = match self.maps.get_addr_name(addr) {
                             Some(n) => n,
-                            None => "not mapped".to_string(),
+                            None => "not mapped",
                         };
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
@@ -1666,7 +1668,7 @@ impl Emu {
                             address: addr,
                             old_value: 0, // not needed for read?
                             new_value: v,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 64, addr, v, name);
@@ -1678,10 +1680,7 @@ impl Emu {
             32 => match self.maps.read_dword(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = match self.maps.get_addr_name(addr) {
-                            Some(n) => n,
-                            None => "not mapped".to_string(),
-                        };
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1690,7 +1689,7 @@ impl Emu {
                             address: addr,
                             old_value: 0, // not needed for read?
                             new_value: v as u64,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 32, addr, v, name);
@@ -1702,10 +1701,7 @@ impl Emu {
             16 => match self.maps.read_word(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = match self.maps.get_addr_name(addr) {
-                            Some(n) => n,
-                            None => "not mapped".to_string(),
-                        };
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1714,7 +1710,7 @@ impl Emu {
                             address: addr,
                             old_value: 0, // not needed for read?
                             new_value: v as u64,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 16, addr, v, name);
@@ -1726,10 +1722,7 @@ impl Emu {
             8 => match self.maps.read_byte(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = match self.maps.get_addr_name(addr) {
-                            Some(n) => n,
-                            None => "not mapped".to_string(),
-                        };
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1738,7 +1731,7 @@ impl Emu {
                             address: addr,
                             old_value: 0, // not needed for read?
                             new_value: v as u64,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 8, addr, v, name);
@@ -1765,10 +1758,7 @@ impl Emu {
         panic!("writting in non mapped memory");
         }*/
 
-        let name = match self.maps.get_addr_name(addr) {
-            Some(n) => n,
-            None => "error".to_string(),
-        };
+        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "error");
 
         if name == "code" {
             if self.cfg.verbose >= 1 {
@@ -1794,7 +1784,7 @@ impl Emu {
                     _ => unreachable!("weird size: {}", operand),
                 },
                 new_value: value,
-                name: name.clone(),
+                name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
             log::debug!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 32, addr, value, name);
@@ -1846,26 +1836,36 @@ impl Emu {
 
     //TODO: check this, this is used only on pyscemu
     pub fn handle_winapi(&mut self, addr: u64) {
-        let name = match self.maps.get_addr_name(addr) {
-            Some(n) => n,
-            None => {
-                log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
-                return;
-            }
-        };
+
+
         if self.cfg.is_64bits {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs.rip = self.gateway_return;
-            winapi64::gateway(addr, name, self);
+            let name = match self.maps.get_addr_name(addr) {
+                Some(n) => n,
+                None => {
+                    log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
+                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    return;
+                }
+            };
+            winapi64::gateway(addr, name.to_string().as_str(), self);
         } else {
             self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
             self.regs.rip = self.gateway_return;
-            winapi32::gateway(addr as u32, name, self);
+            let name = match self.maps.get_addr_name(addr) {
+                Some(n) => n,
+                None => {
+                    log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
+                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    return;
+                }
+            };
+            winapi32::gateway(addr as u32, name.to_string().as_str(), self);
         }
     }
 
-    pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
+    pub fn  set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
         self.force_reload = true;
 
         if addr == constants::RETURN_THREAD as u64 {
@@ -1883,7 +1883,7 @@ impl Emu {
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop64(false).unwrap_or(0);
                     self.regs.rip = self.gateway_return;
-                    winapi64::gateway(addr, "not_loaded".to_string(), self);
+                    winapi64::gateway(addr, "not_loaded", self);
                     self.force_break = true;
                     return true;
                 } else {
@@ -1894,7 +1894,7 @@ impl Emu {
             }
         };
 
-        let map_name = self.filename_to_mapname(&self.cfg.filename);
+        let map_name = self.filename.as_str();
         if addr < constants::LIBS64_MIN
             || name == "code"
             || (!map_name.is_empty() && name.starts_with(&map_name))
@@ -1922,7 +1922,8 @@ impl Emu {
             };
 
             if handle_winapi {
-                winapi64::gateway(addr, name, self);
+                let name = self.maps.get_addr_name(addr).expect("/!\\ changing RIP to non mapped addr 0x");
+                winapi64::gateway(addr, name.to_string().as_str(), self);
             }
             self.force_break = true;
         }
@@ -1948,7 +1949,7 @@ impl Emu {
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
                     self.regs.rip = self.gateway_return;
-                    winapi32::gateway(addr as u32, "not_loaded".to_string(), self);
+                    winapi32::gateway(addr as u32, "not_loaded", self);
                     self.force_break = true;
                     return true;
                 } else {
@@ -1986,7 +1987,8 @@ impl Emu {
             };
 
             if handle_winapi {
-                winapi32::gateway(to32!(addr), name, self);
+                let name = self.maps.get_addr_name(addr).unwrap();
+                winapi32::gateway(to32!(addr), name.to_string().as_str(), self);
             }
             self.force_break = true;
         }
@@ -2096,8 +2098,7 @@ impl Emu {
 
     pub fn disassemble(&mut self, addr: u64, amount: u32) -> String {
         let mut out = String::new();
-        let map_name = self.maps.get_addr_name(addr).expect("address not mapped");
-        let code = self.maps.get_mem(map_name.as_str());
+        let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
         let block = code.read_from(addr);
 
         let bits: u32 = if self.cfg.is_64bits { 64 } else { 32 };
@@ -2419,10 +2420,7 @@ impl Emu {
                     };
 
                     if self.cfg.trace_mem {
-                        let name = match self.maps.get_addr_name(mem_addr) {
-                            Some(n) => n,
-                            None => "not mapped".to_string(),
-                        };
+                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -2431,7 +2429,7 @@ impl Emu {
                             address: mem_addr,
                             old_value: 0, // not needed for read?
                             new_value: value,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value, name);
@@ -2619,10 +2617,7 @@ impl Emu {
                     }
 
                     if self.cfg.trace_mem {
-                        let name = match self.maps.get_addr_name(mem_addr) {
-                            Some(n) => n,
-                            None => "not mapped".to_string(),
-                        };
+                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -2631,7 +2626,7 @@ impl Emu {
                             address: mem_addr,
                             old_value,
                             new_value: value2,
-                            name: name.clone(),
+                            name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
                         log::debug!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value2, name);
@@ -3396,7 +3391,6 @@ impl Emu {
             }
         };
 
-
         self.is_running.store(1, atomic::Ordering::Relaxed);
         let is_running2 = Arc::clone(&self.is_running);
 
@@ -3436,13 +3430,13 @@ impl Emu {
                     }
                 };
 
-                // we just need to read 16 bytes because x86 require that the instruction is 16 bytes long
+                // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block_sz = 0x300;
                 let block = code.read_bytes(self.regs.rip, block_sz).to_vec();
                 if block.len() == 0 {
                      return Err(MwemuError::new("cannot read code block, weird address."));
-                }
+                } 
                 let mut decoder =
                     Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
@@ -3568,7 +3562,12 @@ impl Emu {
                         }
                     }
 
-                    if ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix() {
+                    let is_ret = match ins.code() {
+                        Code::Retnw | Code::Retnd | Code::Retnq => true,
+                        _ => false
+                    };
+
+                    if !is_ret && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix()) {
                         if self.rep.is_none() {
                             self.rep = Some(0);
                         }
@@ -3687,7 +3686,7 @@ impl Emu {
                     }
                 } // end decoder loop
             } // end running loop
-
+            
             self.is_running.store(1, atomic::Ordering::Relaxed);
             Console::spawn_console(self);
         } // end infinite loop

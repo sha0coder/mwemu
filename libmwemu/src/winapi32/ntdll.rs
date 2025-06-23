@@ -748,7 +748,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     let name = emu
         .maps
         .get_addr_name(base_addr)
-        .unwrap_or_else(String::new);
+        .unwrap_or("");
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
             log::info!("map not allocated, so cannot free it.");
@@ -758,7 +758,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     }
 
     if name.starts_with("alloc_") {
-        emu.maps.free(&name);
+        emu.maps.dealloc(base_addr);
         emu.regs.rax = 1;
     } else {
         emu.regs.rax = 0;
