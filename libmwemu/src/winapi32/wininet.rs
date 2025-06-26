@@ -641,6 +641,7 @@ fn HttpSendRequestA(emu: &mut emu::Emu) {
         .read_dword(emu.regs.get_esp() + 16)
         .expect("wininet!HttpSendRequestA cannot read opt_len");
 
+
     let hdrs = emu.maps.read_string(hdrs_ptr);
     let opt = emu.maps.read_string(opt_ptr);
 

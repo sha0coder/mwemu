@@ -711,6 +711,7 @@ impl Section {
 }
 
 pub struct PE32 {
+    pub filename: String,
     pub raw: Vec<u8>,
     pub dos: ImageDosHeader,
     pub nt: ImageNtHeaders,
@@ -765,7 +766,7 @@ impl PE32 {
         s.to_string()
     }
 
-    pub fn load_from_raw(raw: &[u8]) -> PE32 {
+    pub fn load_from_raw(filename: &str, raw: &[u8]) -> PE32 {
         let dos = ImageDosHeader::load(&raw, 0);
         let nt = ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
         let fh = ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
@@ -840,6 +841,7 @@ impl PE32 {
         }
 
         PE32 {
+            filename: filename.to_string(),
             raw: raw.to_vec(),
             dos,
             fh,
@@ -859,11 +861,15 @@ impl PE32 {
         fd.read_to_end(&mut raw)
             .expect("couldnt read the pe32 binary");
 
-        PE32::load_from_raw(&raw)
+        PE32::load_from_raw(filename, &raw)
     }
 
     pub fn size(&self) -> usize {
         self.raw.len()
+    }
+
+    pub fn get_filename(&self) -> String {
+        self.filename.clone()
     }
 
     pub fn mem_size(&self) -> usize {
@@ -1047,6 +1053,7 @@ impl PE32 {
 
     pub fn iat_binding(&mut self, emu: &mut emu::Emu) {
         let dbg = false;
+
         // https://docs.microsoft.com/en-us/archive/msdn-magazine/2002/march/inside-windows-an-in-depth-look-into-the-win32-portable-executable-file-format-part-2#Binding
 
         log::info!(
@@ -1114,7 +1121,7 @@ impl PE32 {
                 off_addr += 4;
             }
         }
-        log::info!("IAT Bound.");
+        log::info!("{} IAT Bound.", &self.filename);
     }
 
     pub fn import_addr_to_name(&self, paddr: u32) -> String {

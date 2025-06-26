@@ -206,6 +206,10 @@ impl Emu {
         self.cfg.maps_folder = folder.to_string();
     }
 
+    pub fn spawn_console(&mut self) {
+        Console::spawn_console(self);
+    }
+
     // spawn a console on the instruction number, ie: 1 at the beginning.
     pub fn spawn_console_at(&mut self, exp: u64) {
         self.exp = exp;
@@ -652,9 +656,11 @@ impl Emu {
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
         let is_maps = filename.contains("maps32/");
         let map_name = self.filename_to_mapname(filename);
-        self.filename = map_name;
+        let filename2 = map_name;
         let mut pe32 = PE32::load(filename);
         let base: u32;
+
+        println!("loading pe32 {}", filename);
 
         /* .rsrc extraction tests
         if set_entry {
@@ -709,6 +715,7 @@ impl Emu {
             }
         }
 
+
         if set_entry {
             // 2. pe binding
             if !is_maps {
@@ -716,6 +723,7 @@ impl Emu {
                 pe32.delay_load_binding(self);
                 self.base = base as u64;
             }
+
 
             // 3. entry point logic
             if self.cfg.entry_point == 0x3c0000 {
@@ -733,11 +741,13 @@ impl Emu {
             println!("base: 0x{:x}", base);
         }
 
+
         // 4. map pe and then sections
+        println!("mapeando PE de {}", filename2);
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", self.filename),
+                &format!("{}.pe", filename2),
                 base.into(),
                 pe32.opt.size_of_headers.into(),
             )
@@ -771,7 +781,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", self.filename, sect_name),
+                &format!("{}{}", filename2, sect_name),
                 base as u64 + sect.virtual_address as u64,
                 sz,
             ) {
@@ -779,7 +789,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section {} {} because overlaps",
-                        self.filename,
+                        filename2,
                         sect.get_name()
                     );
                     continue;
@@ -789,7 +799,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    self.filename,
+                    filename2,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -803,7 +813,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &self.filename.clone(), 0, 0x2c1950);
+                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &filename2.clone(), 0, 0x2c1950);
             peb32::update_ldr_entry_base("loader.exe", base as u64, self);
         }
 
@@ -816,7 +826,7 @@ impl Emu {
     pub fn load_pe64(&mut self, filename: &str, set_entry: bool, force_base: u64) -> (u64, u32) {
         let is_maps = filename.contains("maps64/");
         let map_name = self.filename_to_mapname(filename);
-        self.filename = map_name;
+        let filename2 = map_name;
         let mut pe64 = PE64::load(filename);
         let base: u64;
 
@@ -882,7 +892,7 @@ impl Emu {
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", self.filename),
+                &format!("{}.pe", filename2),
                 base,
                 pe64.opt.size_of_headers.into(),
             )
@@ -916,7 +926,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", self.filename, sect_name),
+                &format!("{}{}", filename2, sect_name),
                 base + sect.virtual_address as u64,
                 sz,
             ) {
@@ -924,7 +934,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section because overlaps {} {}",
-                        self.filename,
+                        filename2,
                         sect.get_name()
                     );
                     continue;
@@ -934,7 +944,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    self.filename,
+                    filename2,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -949,7 +959,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb64::create_ldr_entry(self, base, self.regs.rip, &self.filename.clone(), 0, 0x2c1950);
+                peb64::create_ldr_entry(self, base, self.regs.rip, &filename2.clone(), 0, 0x2c1950);
             peb64::update_ldr_entry_base("loader.exe", base, self);
         }
 
@@ -1865,7 +1875,7 @@ impl Emu {
         }
     }
 
-    pub fn  set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
+    pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
         self.force_reload = true;
 
         if addr == constants::RETURN_THREAD as u64 {

@@ -66,6 +66,7 @@ pub fn update_peb_image_base(emu: &mut emu::Emu, base: u32) {
 #[derive(Debug)]
 pub struct Flink {
     flink_addr: u64,
+    pub ldr_entry: LdrDataTableEntry,
     pub mod_base: u64,
     pub mod_name: String,
     pub pe_hdr: u64,
@@ -83,14 +84,18 @@ impl Flink {
     pub fn new(emu: &mut emu::Emu) -> Flink {
         let peb = emu.maps.get_mem("peb");
         let peb_base = peb.get_base();
-        let ldr = peb.read_dword(peb_base + 0x0c) as u64; // peb->ldr
+        let ldr_addr = peb.read_dword(peb_base + 0x0c) as u64; // peb->ldr
+        
+        let ldr = PebLdrData::load(ldr_addr, &emu.maps);
+
         let flink = emu
             .maps
-            .read_dword(ldr + 0x0c)
+            .read_dword(ldr.in_load_order_module_list.flink.into())
             .expect("peb32::new() error reading flink") as u64;
 
         Flink {
             flink_addr: flink,
+            ldr_entry: LdrDataTableEntry::load(flink, &emu.maps),
             mod_base: 0,
             mod_name: String::new(),
             pe_hdr: 0,
@@ -114,29 +119,37 @@ impl Flink {
         self.flink_addr = addr;
     }
 
-    pub fn load(&mut self, emu: &mut emu::Emu) {
+    pub fn load(&mut self, emu: &mut emu::Emu) -> bool {
         self.get_mod_base(emu);
         self.get_mod_name(emu);
         self.get_pe_hdr(emu);
-        self.get_export_table(emu);
+        self.get_export_table(emu)
     }
 
     pub fn get_mod_base(&mut self, emu: &mut emu::Emu) {
+        self.mod_base = self.ldr_entry.dll_base as u64;
+        /*
         self.mod_base = emu
             .maps
-            .read_dword(self.flink_addr + 0x18)
-            .expect("error reading mod_addr") as u64;
+            .read_dword(self.flink_addr + 0x18) // dll_base
+            .expect("error reading mod_addr") as u64;*/
     }
 
     pub fn set_mod_base(&mut self, base: u64, emu: &mut emu::Emu) {
-        emu.maps.write_dword(self.flink_addr + 0x18, base as u32);
+        self.ldr_entry.dll_base = base as u32;
+        emu.maps.write_dword(self.flink_addr + 0x18, base as u32); // dll_base
     }
 
     pub fn get_mod_name(&mut self, emu: &mut emu::Emu) {
+        let mod_name_ptr = self.ldr_entry.base_dll_name.buffer as u64;
+
+        /*
         let mod_name_ptr = emu
             .maps
-            .read_dword(self.flink_addr + 0x38) //0x28
-            .expect("error reading mod_name_ptr") as u64;
+            .read_dword(self.flink_addr + 0x28) //0x38) //0x28
+            .expect("error reading mod_name_ptr") as u64;*/
+
+
         self.mod_name = emu.maps.read_wide_string(mod_name_ptr);
     }
 
@@ -154,22 +167,26 @@ impl Flink {
         };
     }
 
-    pub fn get_export_table(&mut self, emu: &mut emu::Emu) {
+    pub fn get_export_table(&mut self, emu: &mut emu::Emu) -> bool {
         if self.pe_hdr == 0 {
-            return;
+            return false;
         }
 
-        //log::info!("base: 0x{:x} + pe_hdr {} + 0x78 = {}", self.mod_base, self.pe_hdr, self.mod_base + self.pe_hdr + 0x78);
+
+        if self.mod_base == 0 {
+            return false;
+        }
+
         self.export_table_rva = match emu.maps.read_dword(self.mod_base + self.pe_hdr + 0x78) {
             Some(v) => v as u64,
             None => {
                 // .expect("error reading export_table_rva") as u64;
-                return;
+                return false;
             }
         };
 
         if self.export_table_rva == 0 {
-            return;
+            return false;
         }
 
         self.export_table = self.export_table_rva + self.mod_base;
@@ -193,6 +210,8 @@ impl Flink {
                     .expect(" error reading func_name_tbl_rva") as u64;
             self.func_name_tbl = self.func_name_tbl_rva + self.mod_base;
         }
+
+        return true;
     }
 
     pub fn get_function_ordinal(&self, emu: &mut emu::Emu, function_id: u64) -> OrdinalTable {
@@ -206,6 +225,9 @@ impl Flink {
         if func_name_rva == 0 {
             ordinal.func_name = "-".to_string();
         } else {
+            if self.mod_base == 0 {
+                return ordinal;
+            }
             ordinal.func_name = emu.maps.read_string(func_name_rva + self.mod_base);
         }
 
@@ -250,6 +272,7 @@ impl Flink {
 
     pub fn next(&mut self, emu: &mut emu::Emu) {
         self.flink_addr = self.get_next_flink(emu);
+        self.ldr_entry = LdrDataTableEntry::load(self.flink_addr, &emu.maps);
         self.load(emu);
     }
 }
@@ -394,44 +417,6 @@ pub fn dynamic_link_module(base: u64, pe_off: u32, libname: &str, emu: &mut emu:
         .write_dword(first_flink + 0x10 + 4, (space_addr + 0x10) as u32); // in_initialization_order_links.blink
 
     //show_linked_modules(emu);
-}
-
-pub fn create_ldr_entry_prev(
-    emu: &mut emu::Emu,
-    base: u64,
-    pe_off: u32,
-    libname: &str,
-    next_flink: u64,
-    prev_flink: u64,
-) -> u64 {
-    // make space for ldr
-    let sz = LdrDataTableEntry::size() as u64 + 0x40 + 1024;
-    let space_addr = emu
-        .maps
-        .alloc(sz)
-        .expect("cannot alloc few bytes to put the LDR for LoadLibraryA");
-    let mut lib = libname.to_string();
-    lib.push_str(".ldr");
-    let mem = emu
-        .maps
-        .create_map(lib.as_str(), space_addr, sz)
-        .expect("cannot create ldr entry map");
-    mem.write_byte(space_addr + sz - 1, 0x61);
-
-    //mem.write_dword(space_addr, next_flink as u32);
-    mem.write_dword(space_addr, prev_flink as u32); //0x2c18c0);
-    mem.write_dword(space_addr + 4, next_flink as u32);
-    //mem.write_dword(space_addr+0x10, next_flink as u32); // in_memory_order_linked_list
-    mem.write_dword(space_addr + 0x10, base as u32); // in_memory_order_linked_list
-                                                     //
-    mem.write_dword(space_addr + 0x1c, base as u32); // entry_point?
-    mem.write_dword(space_addr + 0x3c, pe_off);
-    mem.write_dword(space_addr + 0x28, space_addr as u32 + 0x40); // libname ptr
-    mem.write_dword(space_addr + 0x30, space_addr as u32 + 0x40); // libname ptr
-    mem.write_wide_string(space_addr + 0x40, &(libname.to_string() + "\x00"));
-    mem.write_word(space_addr + 0x26, libname.len() as u16 * 2 + 2); // undocumented field used on a cobalt strike sample.
-
-    space_addr
 }
 
 pub fn create_ldr_entry(
