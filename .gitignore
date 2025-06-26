@@ -9,4 +9,4 @@ x
 test/
 .venv/
 dumps/
-test
+*.zip
