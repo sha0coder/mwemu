@@ -505,8 +505,8 @@ impl Emu {
 
         self.regs.rbp = 0;
 
-        self.fs.insert(0xffffffffffffffC8, 0); //0x4b6c50
-        self.fs.insert(0xffffffffffffffD0, 0);
+        self.fs.insert(0xffffffffffffffc8, 0); //0x4b6c50
+        self.fs.insert(0xffffffffffffffd0, 0);
         self.fs.insert(0xffffffffffffffd8, 0x4b27a0);
         self.fs.insert(0xffffffffffffffa0, 0x4b3980);
         self.fs.insert(0x18, 0);
@@ -1039,13 +1039,11 @@ impl Emu {
             } else {
                 if text_addr <= elf64.elf_hdr.e_entry && elf64.elf_hdr.e_entry < text_addr+text_sz {
                     self.regs.rip = elf64.elf_hdr.e_entry;
+                } else if self.cfg.entry_point != 0x3c0000 { // configured entry point
+                    self.regs.rip = self.cfg.entry_point;
                 } else {
-                    if self.cfg.entry_point != 0x3c0000 { // configured entry point
-                        self.regs.rip = self.cfg.entry_point;
-                    } else {
-                        log::error!("cannot calculate the entry point");
-                        return;
-                    }
+                    log::error!("cannot calculate the entry point");
+                    return;
                 }
             }
 

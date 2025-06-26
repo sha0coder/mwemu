@@ -307,7 +307,6 @@ pub fn get_crypto_key_len(value: u32) -> usize {
 }
 
 /// LINUX ////
-
 // elf
 pub const PT_LOAD: u32 = 1;
 

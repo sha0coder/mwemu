@@ -1213,32 +1213,28 @@ impl PE32 {
                 {
                     println!("name_id matched");
                     matched = true;
+                } else if level > 1 {
+                    matched = true;
                 } else {
-                    if level > 1 {
-                        matched = true;
-                    } else {
-                        matched = false;
-                    }
+                    matched = false;
                 }
+            } else if level == 0
+                && type_name.is_some()
+                && type_name.unwrap() == self.get_resource_name(&entry) {
+
+                println!("type_name matched");
+                matched = true;
+            } else if level == 1
+                && name.is_some()
+                && name.unwrap() == self.get_resource_name(&entry)
+            {
+                println!("name matched");
+                matched = true;
             } else {
-                if level == 0
-                    && type_name.is_some()
-                    && type_name.unwrap() == self.get_resource_name(&entry)
-                {
-                    println!("type_name matched");
-                    matched = true;
-                } else if level == 1
-                    && name.is_some()
-                    && name.unwrap() == self.get_resource_name(&entry)
-                {
-                    println!("name matched");
+                if level > 1 {
                     matched = true;
                 } else {
-                    if level > 1 {
-                        matched = true;
-                    } else {
-                        matched = false;
-                    }
+                    matched = false;
                 }
             }
 

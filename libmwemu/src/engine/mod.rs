@@ -84,6 +84,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
+            #[allow(clippy::collapsible_if)]
             if emu.regs.rip == addr - 5 {
                 if emu.cfg.verbose >= 1 {
                     log::info!("call next instruction, prolly call/pop");

@@ -338,10 +338,8 @@ impl Elf64 {
 
                     if sname == ".text" {
                         sh_addr = self.elf_hdr.e_entry;
-                    } else {
-                        if sh_addr <= self.elf_hdr.e_entry && self.elf_hdr.e_entry < sh_addr+sh_size+10 {
-                            must_alloc = true;
-                        }
+                    } else if sh_addr <= self.elf_hdr.e_entry && self.elf_hdr.e_entry < sh_addr+sh_size+10 {
+                        must_alloc = true;
                     }
 
                     if sh_addr < 0xf {
