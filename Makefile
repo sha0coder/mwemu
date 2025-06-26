@@ -3,5 +3,6 @@ all:
 tests:
 	wget https://github.com/sha0coder/mwemu/releases/download/maps/test.zip
 	unzip -P mwemuTestSystem test.zip
-	cargo test --release
+	rm test.zip
+	cargo test --release --verbose
 

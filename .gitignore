@@ -6,8 +6,8 @@ shellcodes64/
 x
 *.swp
 *.idb
-test/
 .venv/
 dumps/
 *.zip
 test
+test.zip*
