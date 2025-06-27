@@ -81,6 +81,7 @@ fn main() {
         .arg(clap_arg!("exit_position", "e", "exit", "exit position of the shellcode", "POSITION"))
         .arg(clap_arg!("code_base_address", "b", "base", "set base address for code", "ADDRESS"))
         .arg(clap_arg!("stack_address", "", "stack_address", "set stack address", "ADDRESS"))
+        .arg(clap_arg!("handle", "h", "handle", "handle Ctrl+C to spawn console"))
         .arg(clap_arg!("stack_trace", "p", "stack_trace", "trace stack on push/pop"))
         .arg(clap_arg!("test_mode", "t", "test", "test mode"))
         .arg(clap_arg!("banzai", "", "banzai", "skip unimplemented instructions, and keep up emulating what can be emulated"))
@@ -364,7 +365,7 @@ fn main() {
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
 
-    // script
+    // script 
     if matches.is_present("script") {
         emu.disable_ctrlc();
         let mut script = libmwemu::script::Script::new();
@@ -375,7 +376,11 @@ fn main() {
         );
         script.run(&mut emu);
     } else {
-        //emu.enable_ctrlc(); // TODO: make configurable with command line arg
+
+        if matches.is_present("handle") {
+            emu.enable_ctrlc();
+        }
+
         emu.run(None).unwrap();
     }
 }
