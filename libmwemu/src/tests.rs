@@ -142,6 +142,23 @@ mod tests {
         emu.step();
     }
 
+    #[test]
+    // enigma packer should be emulated at least 102,302,404 insturctions.
+    // this test is few seconds slow but will verify many cpu instructions.
+    fn exe64win_enigma() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/exe64win_enigma.bin";
+        emu.load_code(sample);
+        emu.run(Some(0x140578ad3));
+
+        assert!(emu.pos > 102302239);
+    }
+
 
     
     #[test]
