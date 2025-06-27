@@ -121,7 +121,7 @@ impl Maps {
                 None
             }
             _ => {
-                panic!("Reading byte from unmapped region at 0x{:x}", addr);
+                None
             }
         }
     }
