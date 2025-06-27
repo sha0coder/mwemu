@@ -61,10 +61,7 @@ impl Maps {
     }
 
     pub fn get_map_by_name_mut(&mut self, name: &str) -> Option<&mut Mem64> {
-        let name = self
-            .name_map
-            .get(name)
-            .expect(format!("Name {} doesn't exists in maps", name).as_str());
+        let name = self.name_map.get(name)?;
         self.maps.get_mut(name)
     }
 

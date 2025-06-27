@@ -1003,10 +1003,16 @@ impl Emu {
             self.cfg.is_64bits = true;
             self.maps.clear();
 
-            log::info!("elf64 detected.");
 
             let mut elf64 = Elf64::parse(filename).unwrap();
             let dyn_link = !elf64.get_dynamic().is_empty();
+
+            if dyn_link {
+                log::info!("dynamic elf64 detected.");
+            } else {
+                log::info!("static elf64 detected.");
+            }
+
             elf64.load(
                 &mut self.maps,
                 "elf64",
@@ -1042,7 +1048,7 @@ impl Emu {
                 } else if self.cfg.entry_point != 0x3c0000 { // configured entry point
                     self.regs.rip = self.cfg.entry_point;
                 } else {
-                    log::error!("cannot calculate the entry point");
+                    log::error!("cannot calculate the entry point, e_entry: 0x{:x} > text_addr: 0x{:x}", elf64.elf_hdr.e_entry, text_addr );
                     return;
                 }
             }
