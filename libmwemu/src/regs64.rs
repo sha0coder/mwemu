@@ -2302,11 +2302,11 @@ impl Regs64 {
     }
 
     pub fn show_r8(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8", self.r8, pos);
+        self.show_reg64(maps, "r8 ", self.r8, pos);
     }
 
     pub fn show_r9(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9", self.r9, pos);
+        self.show_reg64(maps, "r9 ", self.r9, pos);
     }
 
     pub fn show_r10(&self, maps: &Maps, pos: u64) {
