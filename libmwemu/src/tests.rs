@@ -101,22 +101,6 @@ mod tests {
     }
 
     #[test]
-    // this tests a windows 32bits executable, that require iat binding of multiple libs.
-    fn exe32win_minecraft() {
-        setup();
-
-        let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
-        emu.init(false, false);
-
-        let sample = "../test/exe32win_minecraft.bin";
-        emu.load_code(sample);
-        emu.run(Some(0x403740));
-
-        assert_eq!(emu.regs.get_ebx(), 2);
-    }
-
-    #[test]
     // this test a windows 64bits executable that calculates apis like shellcodes and does basic api calls.
     // aso read strings and patch string.
     fn exe64win_msgbox() {
@@ -143,6 +127,23 @@ mod tests {
     }
 
     #[test]
+    // this tests a windows 32bits executable, that require iat binding of multiple libs.
+    fn exe32win_minecraft() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/exe32win_minecraft.bin";
+        emu.load_code(sample);
+        emu.run(Some(0x403740));
+
+        assert_eq!(emu.regs.get_ebx(), 2);
+    }
+
+
+    #[test]
     // enigma packer should be emulated at least 102,302,404 insturctions.
     // this test is few seconds slow but will verify many cpu instructions.
     fn exe64win_enigma() {
@@ -159,11 +160,8 @@ mod tests {
         assert!(emu.pos > 102302239);
     }
 
-
-    
     #[test]
-    #[ignore]
-    // this tests a linux 64bits static binary.
+    // this tests a linux 64bits static ELF binary.
     fn elf64lin_static_helloworld() {
         setup();
 
@@ -171,10 +169,28 @@ mod tests {
         emu.cfg.maps_folder = "../maps64/".to_string();
         emu.init(false, false);
 
-        let sample = "../test/sc32win_peb_ldr_rot.bin";
+        let sample = "../test/elf64lin_static_helloworld.bin";
         emu.load_code(sample);
+        emu.run(Some(0x40425f));
+
+        assert_eq!(emu.regs.rax, 0xd80);
     }
 
+    #[test]
+    // this tests a linux 64bits raw arithmetic code.
+    fn sc64lin_arith_100iter() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/sc64lin_arith_100iter.bin";
+        emu.load_code(sample);
+        emu.run(Some(0x3c0040));
+
+        assert_eq!(emu.regs.rax, 0x4d9364d94bc0001e);
+    }
 
 
     #[test]

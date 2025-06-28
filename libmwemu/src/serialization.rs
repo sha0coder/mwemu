@@ -210,6 +210,7 @@ pub struct SerializableEmu {
     pub tick: usize,
     pub base: u64,
     pub call_stack: Vec<String>,
+    pub heap_addr: u64,
 }
 
 impl From<SerializableFPU> for FPU {
@@ -309,6 +310,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             tick: emu.tick,
             base: emu.base,
             call_stack: emu.call_stack.clone(),
+            heap_addr: emu.heap_addr,
         }
     }
 }
@@ -379,6 +381,7 @@ impl From<SerializableEmu> for Emu {
             call_stack: serialized.call_stack,
             formatter: Default::default(),
             fileName: "".to_string(),
+            heap_addr: serialized.heap_addr,
         }
     }
 }

@@ -224,19 +224,21 @@ pub fn gateway(emu: &mut emu::Emu) {
             let heap_base = 0x4b5b00;
             let heap_size = 0x4d8000 - 0x4b5000;
 
-            let heap = emu
+            /*
+            heap = emu
                 .maps
                 .create_map("heap", heap_base, heap_size)
                 .expect("cannot create heap map from brk syscall");
+            */
 
             if emu.regs.rdi == 0 {
                 emu.regs.r11 = 0x346;
                 emu.regs.rcx = 0x4679f7;
-                emu.regs.rax = heap.get_base();
+                emu.regs.rax = emu.heap_addr;
             } else {
                 let bottom = emu.regs.rdi;
                 let new_sz = bottom - heap_base;
-                heap.set_size(new_sz);
+                //heap.set_size(new_sz);
                 emu.regs.rax = emu.regs.rdi;
                 emu.regs.rcx = 0x4679f7;
                 emu.regs.rdx = 0x2f;

@@ -96,6 +96,7 @@ pub struct Emu {
     pub call_stack: Vec<String>,
     pub formatter: IntelFormatter,
     pub fileName: String,
+    pub heap_addr: u64,
 }
 
 impl Default for Emu {
@@ -166,6 +167,7 @@ impl Emu {
             base: 0,
             call_stack: vec![],
             fileName: String::new(),
+            heap_addr: 0,
         }
     }
 
@@ -496,9 +498,11 @@ impl Emu {
         if dyn_link {
             //heap.set_base(0x555555579000);
         } else {
+            let heap_sz = 0x4d8000 - 0x4b5000;
+            self.heap_addr = self.maps.alloc(heap_sz).expect("cannot allocate heap");
             let heap = self
                 .maps
-                .create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
+                .create_map("heap", self.heap_addr, heap_sz) //.create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
                 .expect("cannot create heap map");
             heap.load("heap.bin");
         }
@@ -679,7 +683,7 @@ impl Emu {
             }
 
         // base is setted by user
-        } else if !is_maps && self.cfg.code_base_addr != 0x3c0000 {
+        } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr as u32;
             if self.maps.overlaps(base as u64, pe32.size() as u64) {
                 panic!("the setted base address overlaps");
@@ -726,7 +730,7 @@ impl Emu {
 
 
             // 3. entry point logic
-            if self.cfg.entry_point == 0x3c0000 {
+            if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs.rip = base as u64 + pe32.opt.address_of_entry_point as u64;
                 log::info!("entry point at 0x{:x}", self.regs.rip);
             } else {
@@ -841,7 +845,7 @@ impl Emu {
             }
 
         // base is setted by user
-        } else if !is_maps && self.cfg.code_base_addr != 0x3c0000 {
+        } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr;
             if self.maps.overlaps(base, pe64.size()) {
                 panic!("the setted base address overlaps");
@@ -874,7 +878,7 @@ impl Emu {
             }
 
             // 3. entry point logic
-            if self.cfg.entry_point == 0x3c0000 {
+            if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs.rip = base + pe64.opt.address_of_entry_point as u64;
                 log::info!("entry point at 0x{:x}", self.regs.rip);
             } else {
@@ -969,6 +973,101 @@ impl Emu {
         (base, pe_hdr_off)
     }
 
+    pub fn load_elf64(&mut self, filename: &str) {
+        let mut elf64 = Elf64::parse(filename).unwrap();
+        let dyn_link = !elf64.get_dynamic().is_empty();
+
+        if dyn_link {
+            log::info!("dynamic elf64 detected.");
+        } else {
+            log::info!("static elf64 detected.");
+        }
+
+        elf64.load(
+            &mut self.maps,
+            "elf64",
+            false,
+            dyn_link,
+            self.cfg.code_base_addr,
+        );
+        self.init_linux64(dyn_link);
+
+        // Get .text addr and size
+        let mut text_addr:u64 = 0;
+        let mut text_sz = 0;
+        for i in 0..elf64.elf_shdr.len() {
+            let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
+            if sname == ".text" {
+                text_addr = elf64.elf_shdr[i].sh_addr;
+                text_sz = elf64.elf_shdr[i].sh_size;
+                break;
+            }
+        }
+
+        if text_addr == 0 {
+            panic!(".text not found on this elf64");
+        }
+
+        // entry point logic:
+
+        // 1. Configured entry point
+        if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
+            println!("forcing entry point to 0x{:x}", self.cfg.entry_point);
+            self.regs.rip = self.cfg.entry_point;
+
+        // 2. Entry point pointing inside .text
+        } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr+text_sz {
+            println!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
+            self.regs.rip = elf64.elf_hdr.e_entry;
+
+        // 3. Entry point points above .text, relative entry point
+        } else if elf64.elf_hdr.e_entry < text_addr {
+            self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
+            println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs.rip);
+
+        // 4. Entry point points below .text, weird case.
+        } else {
+            panic!("Entry points is pointing below .text 0x{:x}", elf64.elf_hdr.e_entry);
+        }
+
+
+        /*
+        if dyn_link {
+            //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
+            //ld.load(&mut self.maps, "ld-linux", true, dyn_link, constants::CFG_DEFAULT_BASE);
+            //log::info!("--- emulating ld-linux _start ---");
+
+            self.regs.rip = elf64.elf_hdr.e_entry;
+
+            //TODO: emulate the linker
+            //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
+            //self.run(None); 
+        } else {
+            self.regs.rip = elf64.elf_hdr.e_entry;
+        }*/
+
+        /*
+        for lib in elf64.get_dynamic() {
+            log::info!("dynamic library {}", lib);
+            let libspath = "/usr/lib/x86_64-linux-gnu/";
+            let libpath = format!("{}{}", libspath, lib);
+            let mut elflib = Elf64::parse(&libpath).unwrap();
+            elflib.load(&mut self.maps, &lib, true);
+
+            if lib.contains("libc") {
+                elflib.craft_libc_got(&mut self.maps, "elf64");
+            }
+
+            /*
+            match elflib.init {
+                Some(addr) => {
+                    self.call64(addr, &[]);
+                }
+                None => {}
+            }*/
+        }*/
+    }
+
     pub fn set_config(&mut self, cfg: Config) {
         self.cfg = cfg;
         if self.cfg.console {
@@ -1003,93 +1102,9 @@ impl Emu {
             self.cfg.is_64bits = true;
             self.maps.clear();
 
-
-            let mut elf64 = Elf64::parse(filename).unwrap();
-            let dyn_link = !elf64.get_dynamic().is_empty();
-
-            if dyn_link {
-                log::info!("dynamic elf64 detected.");
-            } else {
-                log::info!("static elf64 detected.");
-            }
-
-            elf64.load(
-                &mut self.maps,
-                "elf64",
-                false,
-                dyn_link,
-                self.cfg.code_base_addr,
-            );
-            self.init_linux64(dyn_link);
-
-            let mut text_addr = 0;
-            let mut text_sz = 0;
-            for i in 0..elf64.elf_shdr.len() {
-                let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
-                if sname == ".text" {
-                    text_addr = elf64.elf_shdr[i].sh_addr;
-                    text_sz = elf64.elf_shdr[i].sh_size;
-                    break;
-                }
-            }
-
-            if text_addr == 0 {
-                log::error!(".text not found on this elf");
-                return;
-            }
-
-            // relative entry point
-            if elf64.elf_hdr.e_entry < text_addr {
-                println!("elf64 entry logic1: relative entry:  e_entry={:x} .text={:x} total={:x}", elf64.elf_hdr.e_entry, text_addr, elf64.elf_hdr.e_entry + text_addr);
-                self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
-            } else {
-                if text_addr <= elf64.elf_hdr.e_entry && elf64.elf_hdr.e_entry < text_addr+text_sz {
-                    self.regs.rip = elf64.elf_hdr.e_entry;
-                } else if self.cfg.entry_point != 0x3c0000 { // configured entry point
-                    self.regs.rip = self.cfg.entry_point;
-                } else {
-                    log::error!("cannot calculate the entry point, e_entry: 0x{:x} > text_addr: 0x{:x}", elf64.elf_hdr.e_entry, text_addr );
-                    return;
-                }
-            }
+            let base = self.load_elf64(filename);
 
 
-
-            /*
-            if dyn_link {
-                //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
-                //ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
-                //log::info!("--- emulating ld-linux _start ---");
-
-                self.regs.rip = elf64.elf_hdr.e_entry;
-
-                //TODO: emulate the linker
-                //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
-                //self.run(None); 
-            } else {
-                self.regs.rip = elf64.elf_hdr.e_entry;
-            }*/
-
-            /*
-            for lib in elf64.get_dynamic() {
-                log::info!("dynamic library {}", lib);
-                let libspath = "/usr/lib/x86_64-linux-gnu/";
-                let libpath = format!("{}{}", libspath, lib);
-                let mut elflib = Elf64::parse(&libpath).unwrap();
-                elflib.load(&mut self.maps, &lib, true);
-
-                if lib.contains("libc") {
-                    elflib.craft_libc_got(&mut self.maps, "elf64");
-                }
-
-                /*
-                match elflib.init {
-                    Some(addr) => {
-                        self.call64(addr, &[]);
-                    }
-                    None => {}
-                }*/
-            }*/
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) {
             log::info!("PE32 header detected.");
             let (base, pe_off) = self.load_pe32(filename, true, 0);
@@ -1167,11 +1182,11 @@ impl Emu {
             code.extend(0xffff); // this could overlap an existing map
         }
 
-        if self.cfg.entry_point != 0x3c0000 {
+        if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
             self.regs.rip = self.cfg.entry_point;
         }
 
-        /*if self.cfg.code_base_addr != 0x3c0000 {
+        /*if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             let code = self.maps.get_mem("code");
             code.update_base(self.cfg.code_base_addr);
             code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
@@ -1182,7 +1197,7 @@ impl Emu {
         if self.cfg.verbose >= 1 {
             log::info!("Loading shellcode from bytes");
         }
-        if self.cfg.code_base_addr != 0x3c0000 {
+        if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             let code = self.maps.get_mem("code");
             code.update_base(self.cfg.code_base_addr);
             code.update_bottom(self.cfg.code_base_addr + code.size() as u64);

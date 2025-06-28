@@ -11,3 +11,4 @@ dumps/
 *.zip
 test
 test.zip*
+.gdb_history

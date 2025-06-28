@@ -58,6 +58,7 @@ pub const ELFCLASS64: u8 = 0x02;
 pub const DT_NEEDED: u64 = 1;
 pub const DT_NULL: u64 = 0;
 pub const DT_STRTAB: u64 = 5;
+pub const PT_DYNAMIC: u32 = 2;
 pub const STT_FUNC: u8 = 2;
 pub const STT_OBJECT: u8 = 1;
 pub const ELF64_DYN_BASE: u64 = 0x555555554000;
@@ -131,6 +132,11 @@ impl Elf64 {
             elf_dynstr_off: 0,
             elf_got_off: 0,
         })
+    }
+
+    pub fn is_static(&self) -> bool {
+        let is_dynamic = self.elf_phdr.iter().any(|ph| ph.p_type == PT_DYNAMIC);
+        !is_dynamic
     }
 
     pub fn is_loadable(&self, addr: u64) -> bool {
@@ -238,18 +244,24 @@ impl Elf64 {
         dynamic_linking: bool,
         force_base: u64,
     ) {
+        
+        let mut elf64_base: u64;
+
+
         if dynamic_linking {
+            elf64_base = ELF64_DYN_BASE;
             self.load_programs(maps, name, is_lib, dynamic_linking);
         } else {
-            let mut elf64_base = ELF64_STA_BASE;
-            if force_base != 0x3c0000 {
+            elf64_base = ELF64_STA_BASE;
+            if force_base != constants::CFG_DEFAULT_BASE {
                 elf64_base = force_base;
             }
+
             // elf executable need to map the header.
             let hdr = maps
-                .create_map("elf64.hdr", elf64_base, 0x4000)
+                .create_map("elf64.hdr", elf64_base, 512)
                 .expect("cannot create elf64.hdr map");
-            hdr.write_bytes(elf64_base, &self.bin[..0x4000]);
+            hdr.write_bytes(elf64_base, &self.bin[..512]);
         }
 
         // pre-load .dynstr
@@ -269,7 +281,7 @@ impl Elf64 {
 
             let sname = self.get_section_name(sh_name as usize);
 
-            log::info!("loading elf64 section {}", sname);
+            //log::info!("loading elf64 section {}", sname);
             if sname == ".comment" ||  sname.starts_with(".note") || sname == ".interp" || sname.starts_with(".gnu") {
                 continue;
             }
@@ -304,89 +316,56 @@ impl Elf64 {
                 }
             }
 
-            if !is_lib /*&& !dynamic_linking*/ {
-                //TODO: clean this block since is_lib cases are not reachable.
 
-                // map if its vaddr is on a PT_LOAD program
-                if self.is_loadable(sh_addr) {
-                    let map_name: String = if sname == ".text" && !is_lib {
-                        //maps.exists_mapname("code") {
-                        "code".to_string()
-                    } else {
-                        format!("{}{}", name, sname) //self.get_section_name(shdr.sh_name as usize));
-                    };
-                    if sname == ".init" {
-                        self.init = Some(sh_addr);
-                    }
-
-                    //log::info!("loading map {} 0x{:x} sz:{}", &map_name, shdr.sh_addr, shdr.sh_size);
-                    /*if dynamic_linking {
-                        if sh_addr < 0x8000 {
-                            base = sh_addr + ELF64_DYN_BASE + 0x4000;
-                        } else {
-                            base = sh_addr + ELF64_DYN_BASE;
-                        }
-                    } else {*/
-                    //}
-        
-                    if sh_size == 0 {
-                        log::info!("section {} size is zero, skipping.", sname);
-                        continue;
-                    }
-
-                    let mut must_alloc = false;
-
-                    if sname == ".text" {
-                        sh_addr = self.elf_hdr.e_entry;
-                    } else if sh_addr <= self.elf_hdr.e_entry && self.elf_hdr.e_entry < sh_addr+sh_size+10 {
-                        must_alloc = true;
-                    }
-
-                    if sh_addr < 0xf {
-                        must_alloc = true;
-                    }
-
-                    let mem;
-
-                    if must_alloc {
-                        sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
-                        mem = maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
-                    } else {
-                        mem = match maps.create_map(&map_name, sh_addr, sh_size+10) {
-                            Ok(m) => m,
-                            Err(_) => {
-                                sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
-                                maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
-                            }
-                        };
-                    }
-
-
-                    let mut end_off = (sh_offset + sh_size) as usize;
-                    if end_off > self.bin.len() {
-                        end_off = self.bin.len();
-                    }
-
-                    if end_off as u64 - sh_offset > sh_size {
-                        log::info!("no room at sh_size for all the data in the section, skipping {}", sname);
-                        continue;
-                    }
-
-                    let segment = &self.bin[sh_offset as usize..end_off];
-                    /*if dynamic_linking {
-                        if sh_addr < 0x8000 {
-                            mem.write_bytes(sh_addr + ELF64_DYN_BASE + 0x4000, segment);
-                        } else {
-                            mem.write_bytes(sh_addr + ELF64_DYN_BASE, segment);
-                        }
-                    } else {*/
-                        mem.write_bytes(sh_addr, segment);
-
-                    //}
-                    
-                   
-                    self.elf_shdr[i].sh_addr = sh_addr;
+            // map if its vaddr is on a PT_LOAD program
+            if self.is_loadable(sh_addr) || !dynamic_linking {
+                if sname == ".shstrtab" || sname == ".tbss" {
+                    continue;
                 }
+
+                let map_name: String = if sname == ".text" && !is_lib {
+                    "code".to_string()
+                } else {
+                    format!("{}{}", name, sname) //self.get_section_name(shdr.sh_name as usize));
+                };
+                if sname == ".init" {
+                    self.init = Some(sh_addr);
+                }
+
+                if sh_size == 0 {
+                    log::info!("section {} size is zero, skipping.", sname);
+                    continue;
+                }
+
+
+                let mem;
+
+                if sh_addr < elf64_base {
+                    sh_addr += elf64_base;
+                }
+                mem = match maps.create_map(&map_name, sh_addr, sh_size) {
+                    Ok(m) => m,
+                    Err(_) => {
+                        println!("elf64 {} overlappss 0x{:x} {}", map_name, sh_addr, sh_size);
+                        sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
+                        maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
+                    }
+                };
+
+                let mut end_off = (sh_offset + sh_size) as usize;
+                if end_off > self.bin.len() {
+                    end_off = self.bin.len();
+                }
+
+                if end_off as u64 - sh_offset > sh_size {
+                    log::info!("no room at sh_size for all the data in the section, skipping {}", sname);
+                    continue;
+                }
+
+                let segment = &self.bin[sh_offset as usize..end_off];
+                mem.write_bytes(sh_addr, segment);
+               
+                self.elf_shdr[i].sh_addr = sh_addr;
             }
         }
     }
