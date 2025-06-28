@@ -3360,7 +3360,11 @@ int MultiByteToWideChar(
   [out, optional] LPWSTR                            lpWideCharStr,
   [in]            int                               cchWideChar
 );
+
+TODO: recheck return logic, and test with enigma packed binary.
+https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
 */
+
 fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let code_page = emu.regs.rcx;
     let dw_flags = emu.regs.rdx;

@@ -280,6 +280,7 @@ impl FPU {
     pub fn check_pending_exceptions(self) {}
 
     pub fn set_streg(&mut self, reg: Register, value: f64) {
+        println!("{:?} {}", reg, value);
         match reg {
             Register::ST0 => self.st[0] = value,
             Register::ST1 => self.st[1] = value,

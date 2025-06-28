@@ -194,6 +194,72 @@ mod tests {
 
 
     #[test]
+    // this tests the fpu unit.
+    fn elf64lin_fpu() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/elf64lin_fpu.bin";
+        emu.load_code(sample);
+        emu.run_to(24);
+
+        // for now the test is just emulate that fpu instructions with no crash
+        // but calculations are not ok, will test also calculations.
+
+        /*
+        assert_eq!(emu.fpu.get_st(0), f640xffffc000000000000000);
+        assert_eq!(emu.fpu.get_st(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.get_st(6), 0xbfffddb2dbec0456f846);
+        assert_eq!(emu.fpu.get_st(7), 0xbfffddb2dbec0456f846);
+        */
+    }
+
+
+    #[test]
+    // this tests a linux 64bits flags
+    fn sc64lin_flags() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/sc64lin_flags.bin";
+        emu.load_code(sample);
+
+        emu.run(Some(0x3c0014));
+        assert_eq!(emu.regs.rax, 0x57);
+
+        emu.run(Some(0x3c002b));
+        assert_eq!(emu.regs.rax, 0x46);
+
+        emu.run(Some(0x3c0042));
+        assert_eq!(emu.regs.rax, 0x93);
+
+        emu.run(Some(0x3c0059));
+        assert_eq!(emu.regs.rax, 0x56);
+
+        emu.run(Some(0x3c0070));
+        assert_eq!(emu.regs.rax, 0x56);
+
+        emu.run(Some(0x3c008c));
+        assert_eq!(emu.regs.rax, 0x96);
+
+        emu.run(Some(0x3c00a3));
+        assert_eq!(emu.regs.rax, 0x56);
+
+        emu.run(Some(0x3c00bf));
+        assert_eq!(emu.regs.rax, 0x896);
+    }
+
+
+
+
+    #[test]
+    // test serialization
     fn should_serialize() {
         setup();
 
@@ -218,6 +284,25 @@ mod tests {
 
         // assert
         assert_eq!(emu.regs.rdx, 0x1);
+    }
+
+
+    #[test]
+    // the donut shellcode generator, with a 32bits truncated payload, emulate 30_862_819
+    // instructions and check.
+    fn sc32win_donut() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.init(false, false);
+
+        let sample = "../test/sc32win_donut.bin";
+        emu.load_code(sample);
+        emu.run_to(30_862_819);
+
+        assert_eq!(emu.regs.get_eax(), 0x7f937230);
+        assert_eq!(emu.regs.get_ebx(), 0xc);
     }
 
 }

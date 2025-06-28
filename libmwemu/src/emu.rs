@@ -60,6 +60,7 @@ pub struct Emu {
     pub cfg: Config,
     pub colors: Colors,
     pub pos: u64,
+    pub max_pos: Option<u64>,
     pub force_break: bool,
     pub force_reload: bool,
     pub tls_callbacks: Vec<u64>,
@@ -132,6 +133,7 @@ impl Emu {
             cfg: Config::new(),
             colors: Colors::new(),
             pos: 0,
+            max_pos: None,
             force_break: false,
             force_reload: false,
             tls_callbacks: Vec::new(),
@@ -3405,6 +3407,14 @@ impl Emu {
         result_ok
     }
 
+    pub fn run_to(&mut self, end_pos:u64) -> Result<u64, MwemuError> {
+        self.pos = 0;
+        self.max_pos = Some(end_pos);
+        let r = self.run(None);
+        self.max_pos = None;
+        return r;
+    }
+
     ///  RUN ENGINE ///
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
         //self.stack_lvl.clear();
@@ -3436,8 +3446,12 @@ impl Emu {
         //let mut prev_prev_addr:u64 = 0;
         let mut repeat_counter: u32 = 0;
 
-        if end_addr.is_none() {
+        if end_addr.is_none() && self.max_pos.is_none() {
             log::info!(" ----- emulation -----");
+        } else if !self.max_pos.is_none() {
+            log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
+        } else {
+            log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
         }
 
         //self.pos = 0;
@@ -3479,6 +3493,10 @@ impl Emu {
                         addr = ins.ip();
 
                         if end_addr.is_some() && Some(addr) == end_addr {
+                            return Ok(self.regs.rip);
+                        }
+
+                        if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
                             return Ok(self.regs.rip);
                         }
                     }
