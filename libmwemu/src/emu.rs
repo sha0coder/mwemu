@@ -2156,6 +2156,20 @@ impl Emu {
         out
     }
 
+    /*
+    pub fn get_operand_value_fpu(
+        &mut self,
+        ins: &Instruction,
+        noperand: u32,
+        do_derref: bool,
+    ) -> Option<u64> {
+        assert!(ins.op_count() > noperand);
+
+        let value: u64 = match ins.op_kind(noperand) {
+
+        };
+    }*/
+
     pub fn get_operand_value(
         &mut self,
         ins: &Instruction,
@@ -3408,7 +3422,6 @@ impl Emu {
     }
 
     pub fn run_to(&mut self, end_pos:u64) -> Result<u64, MwemuError> {
-        self.pos = 0;
         self.max_pos = Some(end_pos);
         let r = self.run(None);
         self.max_pos = None;

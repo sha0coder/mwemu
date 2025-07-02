@@ -1,5 +1,78 @@
 use crate::emu;
+use serde::{Serialize,Deserialize};
 use iced_x86::Register;
+
+pub const FPU_80_BITS_MAX: u128 = (1u128 << 80) - 1;
+pub const QNAN: u128 = 0xffffc000000000000000 & FPU_80_BITS_MAX;
+
+
+// ST Register object in BCD format 
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub struct STReg {
+    pub st:u128,
+}
+
+impl STReg {
+    pub fn new() -> Self {
+        STReg {
+            st: 0
+        }
+    }
+
+    pub fn get(&self) -> u128 {
+        self.st & FPU_80_BITS_MAX
+    }
+
+    pub fn set(&mut self, value:u128) {
+        self.st = value & FPU_80_BITS_MAX;
+    }
+
+    pub fn fix(&mut self) {
+        self.st = self.st & FPU_80_BITS_MAX;
+    }
+
+    pub fn set_f64(&mut self, value: f64) {
+       let bits = value.to_bits();
+       let sign = (bits >> 63) & 1;
+       let exp = ((bits >> 52) & 0x7FF) as u16;
+       let mantissa = bits & 0xFFFFFFFFFFFFF;
+       
+        if exp == 0 {
+            self.st = (sign as u128) << 79;
+        } else if exp == 0x7FF {
+            let extended_exp = 0x7FFFu128;
+            let extended_mantissa = (mantissa as u128) << 11;
+            self.st = ((sign as u128) << 79) | (extended_exp << 64) | extended_mantissa;
+        } else {
+            let extended_exp = (exp + (16383 - 1023)) as u128;
+            let extended_mantissa = ((1u64 << 63) | (mantissa << 11)) as u128;
+            self.st = ((sign as u128) << 79) | (extended_exp << 64) | extended_mantissa;
+        }
+    }
+   
+   pub fn get_f64(&self) -> f64 {
+       let value = self.get();
+       let sign = (value >> 79) & 1;
+       let exp = ((value >> 64) & 0x7FFF) as u16;
+       let mantissa = value & 0xFFFFFFFFFFFFFFFF;
+       
+        if exp == 0 {
+            f64::from_bits((sign << 63) as u64)
+        } else if exp == 0x7FFF {
+            let f64_mantissa = mantissa >> 11;
+            f64::from_bits(((sign << 63) | (0x7FF << 52) | f64_mantissa) as u64)
+        } else {
+            let f64_exp = exp.saturating_sub(16383 - 1023);
+            if f64_exp == 0 || f64_exp >= 0x7FF {
+                if f64_exp == 0 { 0.0 } else { f64::INFINITY }
+            } else {
+                let f64_mantissa = (mantissa >> 11) & 0xFFFFFFFFFFFFF;
+                f64::from_bits(((sign as u64) << 63) | ((f64_exp as u64) << 52) | (f64_mantissa as u64))
+            }
+        }
+    }
+}
+
 
 pub struct FPUState {
     pub fpu_control_word: u16, // Control Word
@@ -11,7 +84,7 @@ pub struct FPUState {
     pub rdp: u64,        // Data Pointer
     pub mxcsr: u32,      // SSE Control and Status
     pub mxcsr_mask: u32,
-    pub st: [u128; 8],        // FPU registers (packed in 128 bits each)
+    pub st: Vec<STReg>,        // FPU registers
     pub xmm: [u128; 16],      // XMM registers
     pub reserved2: [u8; 224], // Reserved
 }
@@ -28,7 +101,7 @@ impl FPUState {
             rdp: 0,
             mxcsr: 0,
             mxcsr_mask: 0,
-            st: [0; 8],
+            st: vec![STReg::new(); 8],
             xmm: [0; 16],
             reserved2: [0; 224],
         }
@@ -61,7 +134,7 @@ impl FPUState {
 
 #[derive(Clone)]
 pub struct FPU {
-    pub st: Vec<f64>,
+    pub st: Vec<STReg>,
     pub st_depth: u8,
     pub tag: u16,
     pub stat: u16,
@@ -95,7 +168,7 @@ impl Default for FPU {
 impl FPU {
     pub fn new() -> FPU {
         FPU {
-            st: vec![0.0; 8],
+            st: vec![STReg::new(); 8],
             st_depth: 0,
             tag: 0xffff,
             stat: 0,
@@ -124,7 +197,7 @@ impl FPU {
     pub fn clear(&mut self) {
         self.st.clear();
         self.st_depth = 0;
-        self.st = vec![0.0; 8];
+        self.st = vec![STReg::new(); 8];
         self.tag = 0xffff;
         self.stat = 0;
         self.ctrl = 0x037f;
@@ -191,7 +264,7 @@ impl FPU {
     pub fn print(&self) {
         log::info!("---- fpu ----");
         for i in 0..self.st.len() {
-            log::info!("st({}): {}", i, self.st[i]);
+            log::info!("st({}): {}", i, self.st[i].get());
         }
 
         log::info!("stat: 0x{:x}", self.stat);
@@ -202,12 +275,21 @@ impl FPU {
     }
 
     pub fn set_st(&mut self, i: usize, value: f64) {
-        self.st[i] = value;
+        self.st[i].set_f64(value);
+    }
+
+    pub fn set_st_u80(&mut self, i: usize, value: u128) {
+        self.st[i].set(value);
+    }
+
+    pub fn get_st_u80(&mut self, i: usize) -> u128 {
+        self.f_c4 = self.st_depth == 0;
+        return self.st[i].get();
     }
 
     pub fn get_st(&mut self, i: usize) -> f64 {
         self.f_c4 = self.st_depth == 0;
-        return self.st[i];
+        return self.st[i].get_f64();
     }
 
     pub fn xchg_st(&mut self, i: usize) {
@@ -216,19 +298,22 @@ impl FPU {
     }
 
     pub fn clear_st(&mut self, i: usize) {
-        self.st[i] = 0.0;
+        self.st[i].set(0);
     }
 
     pub fn move_to_st0(&mut self, i: usize) {
-        self.st[0] = self.st[i];
+        let v = self.st[i].get();
+        self.st[0].set(v);
     }
 
     pub fn add_to_st0(&mut self, i: usize) {
-        self.st[0] += self.st[i];
+        let v = self.st[0].get() + self.st[i].get();
+        self.st[0].set(v);
     }
 
     pub fn add(&mut self, i: usize, j: usize) {
-        self.st[i] += self.st[j];
+        let v = self.st[i].get() + self.st[j].get();
+        self.st[i].set(v);
     }
 
     pub fn push(&mut self, value: f64) {
@@ -245,7 +330,26 @@ impl FPU {
         self.st[3] = self.st[2];
         self.st[2] = self.st[1];
         self.st[1] = self.st[0];
-        self.st[0] = value;
+        self.st[0].set_f64(value);
+    }
+
+    pub fn pop2(&mut self) -> u128 {
+        if self.st_depth == 0 {
+            self.f_c1 = true;
+        } else {
+            self.st_depth -= 1;
+            self.f_c1 = false;
+        }
+        let result = self.st[0].get();
+        self.st[0] = self.st[1];
+        self.st[1] = self.st[2];
+        self.st[2] = self.st[3];
+        self.st[3] = self.st[4];
+        self.st[4] = self.st[5];
+        self.st[5] = self.st[6];
+        self.st[6] = self.st[7];
+        self.st[7].set(0);
+        result
     }
 
     pub fn pop(&mut self) -> f64 {
@@ -255,7 +359,7 @@ impl FPU {
             self.st_depth -= 1;
             self.f_c1 = false;
         }
-        let result = self.st[0];
+        let result = self.st[0].get_f64();
         self.st[0] = self.st[1];
         self.st[1] = self.st[2];
         self.st[2] = self.st[3];
@@ -263,33 +367,51 @@ impl FPU {
         self.st[4] = self.st[5];
         self.st[5] = self.st[6];
         self.st[6] = self.st[7];
-        self.st[7] = 0.0;
+        self.st[7].set(0);
         result
     }
 
     pub fn fyl2x(&mut self) {
-        self.st[1] *= self.st[0].log2();
+        let v = self.st[1].get_f64() * self.st[0].get_f64().log2();
+        self.st[1].set_f64(v);
         self.pop();
     }
 
     pub fn fyl2xp1(&mut self) {
-        self.st[1] *= self.st[0].log2() + 1.0;
+        let v = self.st[1].get_f64() * (self.st[0].get_f64().log2() + 1.0);
+        self.st[1].set_f64(v);
         self.pop();
     }
 
     pub fn check_pending_exceptions(self) {}
 
+
+    pub fn set_streg_u80(&mut self, reg: Register, value: u128) {
+        println!("{:?} {}", reg, value);
+        match reg {
+            Register::ST0 => self.st[0].set(value),
+            Register::ST1 => self.st[1].set(value),
+            Register::ST2 => self.st[2].set(value),
+            Register::ST3 => self.st[3].set(value),
+            Register::ST4 => self.st[4].set(value),
+            Register::ST5 => self.st[5].set(value),
+            Register::ST6 => self.st[6].set(value),
+            Register::ST7 => self.st[7].set(value),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn set_streg(&mut self, reg: Register, value: f64) {
         println!("{:?} {}", reg, value);
         match reg {
-            Register::ST0 => self.st[0] = value,
-            Register::ST1 => self.st[1] = value,
-            Register::ST2 => self.st[2] = value,
-            Register::ST3 => self.st[3] = value,
-            Register::ST4 => self.st[4] = value,
-            Register::ST5 => self.st[5] = value,
-            Register::ST6 => self.st[6] = value,
-            Register::ST7 => self.st[7] = value,
+            Register::ST0 => self.st[0].set_f64(value),
+            Register::ST1 => self.st[1].set_f64(value),
+            Register::ST2 => self.st[2].set_f64(value),
+            Register::ST3 => self.st[3].set_f64(value),
+            Register::ST4 => self.st[4].set_f64(value),
+            Register::ST5 => self.st[5].set_f64(value),
+            Register::ST6 => self.st[6].set_f64(value),
+            Register::ST7 => self.st[7].set_f64(value),
             _ => unreachable!(),
         }
     }
@@ -338,7 +460,8 @@ impl FPU {
         state.rdp = self.operand_ptr;
         state.mxcsr = self.mxcsr;
         state.mxcsr_mask = self.mxcsr;
-        state.st = self.convert_st(self.st.clone());
+        state.st = self.st.clone();
+        //state.st = self.convert_st(self.st.clone());
         state.xmm = self.xmm.clone();
         return state;
     }
@@ -353,9 +476,9 @@ impl FPU {
         self.mxcsr = state.mxcsr;
 
         // Convert the packed 128-bit ST registers back to f64 values
+
         for i in 0..8 {
-            let low_bits = (state.st[i] & 0xFFFFFFFFFFFFFFFF) as u64;
-            self.st[i] = f64::from_bits(low_bits);
+            self.st[i].fix();
         }
 
         self.xmm = state.xmm;

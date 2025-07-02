@@ -18,6 +18,7 @@ use crate::config::Config;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
+use crate::fpu::STReg;
 use crate::fpu::FPU;
 use crate::hooks::Hooks;
 use crate::maps::Maps;
@@ -58,9 +59,11 @@ impl SerializableInstant {
     }
 }
 
+
+
 #[derive(Serialize, Deserialize)]
 pub struct SerializableFPU {
-    pub st: Vec<f64>,
+    pub st: Vec<STReg>,
     pub st_depth: u8,
     pub tag: u16,
     pub stat: u16,
