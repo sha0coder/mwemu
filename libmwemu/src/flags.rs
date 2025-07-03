@@ -20,6 +20,25 @@ pub const MAX_I64: i64 = 0x7fffffffffffffff;
 pub const MIN_U64: u64 = 0;
 pub const MAX_U64: u64 = 0xffffffffffffffff;
 
+pub const PARITY_LOOKUP_TABLE: [u8;256] =
+    [1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1];
+
+
 macro_rules! get_bit {
     ($val:expr, $count:expr) => {
         ($val & (1 << $count)) >> $count
@@ -380,21 +399,17 @@ impl Flags {
             _ => unreachable!("weird size"),
         }
 
+        self.calc_pf(final_value as u8);
         self.f_zf = final_value == 0;
         self.f_tf = false;
     }
 
+    #[inline]
     pub fn calc_pf(&mut self, final_value: u8) {
-        let lsb = final_value as u8;
-        let mut count = 0;
-        for i in 0..8 {
-            if (lsb & (1 << i)) != 0 {
-                count += 1;
-            }
-        }
-        self.f_pf = count % 2 == 0;
+        self.f_pf = PARITY_LOOKUP_TABLE[(final_value & 0xff) as usize] == 1;
     }
 
+    #[inline]
     pub fn calc_af(&mut self, value1: u64, value2: u64, result: u64, bits: u64) {
         //let mask = bits*8-4;
         let mask = 1 << 4;
