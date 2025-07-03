@@ -1,78 +1,8 @@
+pub mod f80;
+
 use crate::emu;
-use serde::{Serialize,Deserialize};
 use iced_x86::Register;
-
-pub const FPU_80_BITS_MAX: u128 = (1u128 << 80) - 1;
-pub const QNAN: u128 = 0xffffc000000000000000 & FPU_80_BITS_MAX;
-
-
-// ST Register object in BCD format 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct STReg {
-    pub st:u128,
-}
-
-impl STReg {
-    pub fn new() -> Self {
-        STReg {
-            st: 0
-        }
-    }
-
-    pub fn get(&self) -> u128 {
-        self.st & FPU_80_BITS_MAX
-    }
-
-    pub fn set(&mut self, value:u128) {
-        self.st = value & FPU_80_BITS_MAX;
-    }
-
-    pub fn fix(&mut self) {
-        self.st = self.st & FPU_80_BITS_MAX;
-    }
-
-    pub fn set_f64(&mut self, value: f64) {
-       let bits = value.to_bits();
-       let sign = (bits >> 63) & 1;
-       let exp = ((bits >> 52) & 0x7FF) as u16;
-       let mantissa = bits & 0xFFFFFFFFFFFFF;
-       
-        if exp == 0 {
-            self.st = (sign as u128) << 79;
-        } else if exp == 0x7FF {
-            let extended_exp = 0x7FFFu128;
-            let extended_mantissa = (mantissa as u128) << 11;
-            self.st = ((sign as u128) << 79) | (extended_exp << 64) | extended_mantissa;
-        } else {
-            let extended_exp = (exp + (16383 - 1023)) as u128;
-            let extended_mantissa = ((1u64 << 63) | (mantissa << 11)) as u128;
-            self.st = ((sign as u128) << 79) | (extended_exp << 64) | extended_mantissa;
-        }
-    }
-   
-   pub fn get_f64(&self) -> f64 {
-       let value = self.get();
-       let sign = (value >> 79) & 1;
-       let exp = ((value >> 64) & 0x7FFF) as u16;
-       let mantissa = value & 0xFFFFFFFFFFFFFFFF;
-       
-        if exp == 0 {
-            f64::from_bits((sign << 63) as u64)
-        } else if exp == 0x7FFF {
-            let f64_mantissa = mantissa >> 11;
-            f64::from_bits(((sign << 63) | (0x7FF << 52) | f64_mantissa) as u64)
-        } else {
-            let f64_exp = exp.saturating_sub(16383 - 1023);
-            if f64_exp == 0 || f64_exp >= 0x7FF {
-                if f64_exp == 0 { 0.0 } else { f64::INFINITY }
-            } else {
-                let f64_mantissa = (mantissa >> 11) & 0xFFFFFFFFFFFFF;
-                f64::from_bits(((sign as u64) << 63) | ((f64_exp as u64) << 52) | (f64_mantissa as u64))
-            }
-        }
-    }
-}
-
+use f80::F80;
 
 pub struct FPUState {
     pub fpu_control_word: u16, // Control Word
@@ -84,7 +14,7 @@ pub struct FPUState {
     pub rdp: u64,        // Data Pointer
     pub mxcsr: u32,      // SSE Control and Status
     pub mxcsr_mask: u32,
-    pub st: Vec<STReg>,        // FPU registers
+    pub st: Vec<F80>,        // FPU registers
     pub xmm: [u128; 16],      // XMM registers
     pub reserved2: [u8; 224], // Reserved
 }
@@ -101,7 +31,7 @@ impl FPUState {
             rdp: 0,
             mxcsr: 0,
             mxcsr_mask: 0,
-            st: vec![STReg::new(); 8],
+            st: vec![F80::new(); 8],
             xmm: [0; 16],
             reserved2: [0; 224],
         }
@@ -134,7 +64,7 @@ impl FPUState {
 
 #[derive(Clone)]
 pub struct FPU {
-    pub st: Vec<STReg>,
+    pub st: Vec<F80>,
     pub st_depth: u8,
     pub tag: u16,
     pub stat: u16,
@@ -168,7 +98,7 @@ impl Default for FPU {
 impl FPU {
     pub fn new() -> FPU {
         FPU {
-            st: vec![STReg::new(); 8],
+            st: vec![F80::new(); 8],
             st_depth: 0,
             tag: 0xffff,
             stat: 0,
@@ -197,7 +127,7 @@ impl FPU {
     pub fn clear(&mut self) {
         self.st.clear();
         self.st_depth = 0;
-        self.st = vec![STReg::new(); 8];
+        self.st = vec![F80::new(); 8];
         self.tag = 0xffff;
         self.stat = 0;
         self.ctrl = 0x037f;
