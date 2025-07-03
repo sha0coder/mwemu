@@ -81,6 +81,7 @@ fn main() {
         .arg(clap_arg!("exit_position", "e", "exit", "exit position of the shellcode", "POSITION"))
         .arg(clap_arg!("code_base_address", "b", "base", "set base address for code", "ADDRESS"))
         .arg(clap_arg!("stack_address", "", "stack_address", "set stack address", "ADDRESS"))
+        .arg(clap_arg!("handle", "h", "handle", "handle Ctrl+C to spawn console"))
         .arg(clap_arg!("stack_trace", "p", "stack_trace", "trace stack on push/pop"))
         .arg(clap_arg!("test_mode", "t", "test", "test mode"))
         .arg(clap_arg!("banzai", "", "banzai", "skip unimplemented instructions, and keep up emulating what can be emulated"))
@@ -106,7 +107,7 @@ fn main() {
         .arg(clap_arg!("rflags", "", "rflags", "set rflags register", "RFLAGS"))
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
         .get_matches();
-    
+
     if !matches.is_present("filename") {
         log::error!("the filename is mandatory, try -f <FILENAME> or --help");
         return;
@@ -157,7 +158,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
     if matches.is_present("trace") {
         let trace_filename = matches
@@ -175,7 +176,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // console
@@ -227,7 +228,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         if !matches.is_present("entry_point") {
             log::error!("if the code base is selected, you have to select the entry point ie -b 0x600000 -a 0x600000");
             std::process::exit(1);
@@ -243,7 +244,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // register values
@@ -271,7 +272,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.flags.load(value as u32);
     }
     if matches.is_present("mxcsr") {
@@ -282,7 +283,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.fpu.mxcsr = value as u32;
     }
 
@@ -307,7 +308,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.spawn_console_at_addr(emu.cfg.console_addr);
     }
 
@@ -320,7 +321,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // exit position
@@ -328,7 +329,7 @@ fn main() {
         let exit_pos_str = matches
             .value_of("exit_position")
             .expect("select the exit position address -e");
-        
+
         emu.cfg.exit_position = if exit_pos_str.starts_with("0x") {
             // Handle hexadecimal format
             u64::from_str_radix(
@@ -364,7 +365,7 @@ fn main() {
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
 
-    // script
+    // script 
     if matches.is_present("script") {
         emu.disable_ctrlc();
         let mut script = libmwemu::script::Script::new();
@@ -375,7 +376,11 @@ fn main() {
         );
         script.run(&mut emu);
     } else {
-        //emu.enable_ctrlc(); // TODO: make configurable with command line arg
+
+        if matches.is_present("handle") {
+            emu.enable_ctrlc();
+        }
+
         emu.run(None).unwrap();
     }
 }

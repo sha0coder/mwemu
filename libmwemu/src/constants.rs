@@ -6,6 +6,8 @@
 //pub const LIBS32_BARRIER: u64 = 0x80000000;
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
+pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
+
 pub const LIBS32_MIN: u64 = 0x70000000;
 pub const LIBS32_MAX: u64 = 0x7FFFFFFF;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;
@@ -307,7 +309,6 @@ pub fn get_crypto_key_len(value: u32) -> usize {
 }
 
 /// LINUX ////
-
 // elf
 pub const PT_LOAD: u32 = 1;
 

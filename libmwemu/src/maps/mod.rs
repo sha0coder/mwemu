@@ -61,10 +61,7 @@ impl Maps {
     }
 
     pub fn get_map_by_name_mut(&mut self, name: &str) -> Option<&mut Mem64> {
-        let name = self
-            .name_map
-            .get(name)
-            .expect(format!("Name {} doesn't exists in maps", name).as_str());
+        let name = self.name_map.get(name)?;
         self.maps.get_mut(name)
     }
 
@@ -85,7 +82,7 @@ impl Maps {
         }
 
         if self.exists_mapname(name) {
-            self.show_maps();
+            //self.show_maps();
             return Err(format!("this map name {} already exists!", name));
         }
 
@@ -124,7 +121,7 @@ impl Maps {
                 None
             }
             _ => {
-                panic!("Reading byte from unmapped region at 0x{:x}", addr);
+                None
             }
         }
     }
@@ -192,7 +189,7 @@ impl Maps {
             Some(mem) if mem.inside(end_addr) => mem.write_bytes(addr, data.as_slice()),
             Some(_) => {
                 log::warn!(
-                    "Memory region boundary violation at 0x{:x} to 0x{:x}",
+                    "Memory region boundary violation at 0x{:x} to 0x{:x}\n(controlled warning, todo: improve maps.write_bytes)",
                     addr,
                     end_addr
                 );
@@ -622,6 +619,10 @@ impl Maps {
     }
 
     pub fn read_string(&self, addr: u64) -> String {
+        if addr == 0 {
+            return "".to_string();
+        }
+
         let mut bytes: Vec<char> = Vec::new();
         let mut b: u8;
         let mut i: u64 = 0;
@@ -645,9 +646,13 @@ impl Maps {
     }
 
     pub fn read_wide_string(&self, addr: u64) -> String {
+        if addr == 0 {
+            return "".to_string();
+        }
+
         let mem = self
             .get_mem_by_addr(addr)
-            .expect(format!("No memory map found {}", addr).as_str());
+            .expect(format!("No memory map found at 0x{:x}", addr).as_str());
         mem.read_wide_string(addr)
     }
 

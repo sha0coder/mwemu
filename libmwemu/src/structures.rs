@@ -76,19 +76,19 @@ impl ListEntry64 {
 
 #[derive(Debug)]
 pub struct LdrDataTableEntry {
-    pub in_load_order_links: ListEntry,
-    pub in_memory_order_links: ListEntry,         // +8
-    pub in_initialization_order_links: ListEntry, // +16
-    pub dll_base: u32,                            // +24 +0x18
-    pub entry_point: u32,                         // +28 +0x1c
-    pub size_of_image: u32,                       // +32 +0x20
-    pub full_dll_name: UnicodeString,             // ptr to string +36  +0x24
-    pub base_dll_name: UnicodeString,             // ptr to string +40  +0x28
-    pub flags: u32,                               // +44  +0x2c
-    pub load_count: u16,                          // +46  +0x2e
-    pub tls_index: u16,                           // +48  +0x30
-    pub hash_links: ListEntry,                    // +52  +0x34
-    pub time_date_stamp: u32,                     // +56  +0x38
+    pub in_load_order_links: ListEntry,           // +0x00 (8 bytes)
+    pub in_memory_order_links: ListEntry,         // +8  (8 bytes)
+    pub in_initialization_order_links: ListEntry, // +16 (8 bytes)
+    pub dll_base: u32,                            // +24 +0x18 (4 bytes)
+    pub entry_point: u32,                         // +28 +0x1C (4 bytes)
+    pub size_of_image: u32,                       // +32 +0x20 (4 bytes)
+    pub full_dll_name: UnicodeString,             // +36 +0x24 (8 bytes)
+    pub base_dll_name: UnicodeString,             // +44 +0x2C (8 bytes)
+    pub flags: u32,                               // +52 +0x34 (4 bytes)
+    pub load_count: u16,                          // +56 +0x38 (2 bytes)
+    pub tls_index: u16,                           // +58 +0x3A (2 bytes)
+    pub hash_links: ListEntry,                    // +60 +0x3C (8 bytes)
+    pub time_date_stamp: u32,                     // +68 +0x44 (4 bytes)
 }
 
 impl Default for LdrDataTableEntry {
@@ -99,7 +99,7 @@ impl Default for LdrDataTableEntry {
 
 impl LdrDataTableEntry {
     pub fn size() -> usize {
-        100 // really 80
+        72
     }
 
     pub fn new() -> LdrDataTableEntry {
@@ -122,37 +122,38 @@ impl LdrDataTableEntry {
 
     pub fn load(addr: u64, maps: &Maps) -> LdrDataTableEntry {
         LdrDataTableEntry {
-            in_load_order_links: ListEntry::load(addr, maps),
-            in_memory_order_links: ListEntry::load(addr + 8, maps),
-            in_initialization_order_links: ListEntry::load(addr + 16, maps),
-            dll_base: maps.read_dword(addr + 24).unwrap(),
-            entry_point: maps.read_dword(addr + 28).unwrap(),
-            size_of_image: maps.read_dword(addr + 32).unwrap(),
-            full_dll_name: UnicodeString::load(addr + 36, maps),
-            base_dll_name: UnicodeString::load(addr + 48, maps),
-            flags: maps.read_dword(addr + 60).unwrap(),
-            load_count: maps.read_word(addr + 64).unwrap(),
-            tls_index: maps.read_word(addr + 66).unwrap(),
-            hash_links: ListEntry::load(addr + 68, maps),
-            time_date_stamp: maps.read_dword(addr + 76).unwrap(),
+            in_load_order_links: ListEntry::load(addr, maps),            // +0x00
+            in_memory_order_links: ListEntry::load(addr + 8, maps),      // +0x08
+            in_initialization_order_links: ListEntry::load(addr + 16, maps), // +0x10
+            dll_base: maps.read_dword(addr + 24).unwrap(),               // +0x18
+            entry_point: maps.read_dword(addr + 28).unwrap(),            // +0x1C
+            size_of_image: maps.read_dword(addr + 32).unwrap(),          // +0x20
+            full_dll_name: UnicodeString::load(addr + 36, maps),         // +0x24
+            base_dll_name: UnicodeString::load(addr + 44, maps),         // +0x2C
+            flags: maps.read_dword(addr + 52).unwrap(),                  // +0x34
+            load_count: maps.read_word(addr + 56).unwrap(),              // +0x38
+            tls_index: maps.read_word(addr + 58).unwrap(),               // +0x3A
+            hash_links: ListEntry::load(addr + 60, maps),                // +0x3C
+            time_date_stamp: maps.read_dword(addr + 68).unwrap(),        // +0x44
         }
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        self.in_load_order_links.save(addr, maps);
-        self.in_memory_order_links.save(addr + 8, maps);
-        self.in_initialization_order_links.save(addr + 16, maps);
-        maps.write_dword(addr + 24, self.dll_base);
-        maps.write_dword(addr + 28, self.entry_point);
-        maps.write_dword(addr + 32, self.size_of_image);
-        self.full_dll_name.save(addr + 36, maps);
-        self.base_dll_name.save(addr + 48, maps);
-        maps.write_dword(addr + 60, self.flags);
-        maps.write_word(addr + 64, self.load_count);
-        maps.write_word(addr + 66, self.tls_index);
-        self.hash_links.save(addr + 68, maps);
-        maps.write_dword(addr + 76, self.time_date_stamp);
+        self.in_load_order_links.save(addr, maps);               // +0x00
+        self.in_memory_order_links.save(addr + 8, maps);         // +0x08
+        self.in_initialization_order_links.save(addr + 16, maps); // +0x10
+        maps.write_dword(addr + 24, self.dll_base);             // +0x18
+        maps.write_dword(addr + 28, self.entry_point);          // +0x1C
+        maps.write_dword(addr + 32, self.size_of_image);       // +0x20
+        self.full_dll_name.save(addr + 36, maps);               // +0x24
+        self.base_dll_name.save(addr + 44, maps);               // +0x2C
+        maps.write_dword(addr + 52, self.flags);               // +0x34
+        maps.write_word(addr + 56, self.load_count);           // +0x38
+        maps.write_word(addr + 58, self.tls_index);            // +0x3A
+        self.hash_links.save(addr + 60, maps);                  // +0x3C
+        maps.write_dword(addr + 68, self.time_date_stamp);     // +0x44
     }
+
 
     pub fn print(&self) {
         log::info!("{:#x?}", self);
@@ -1173,7 +1174,6 @@ impl TEB64 {
 pub struct UnicodeString {
     pub length: u16,         // 0x58          0x68
     pub maximum_length: u16, // 0x5a  0x6a
-    pub padding: u32,        // 0x5c         0x6c
     pub buffer: u32,         // 0x60         0x70
 }
 
@@ -1192,7 +1192,6 @@ impl UnicodeString {
         UnicodeString {
             length: 0,
             maximum_length: 0,
-            padding: 0,
             buffer: 0,
         }
     }
@@ -1201,16 +1200,14 @@ impl UnicodeString {
         UnicodeString {
             length: maps.read_word(addr).unwrap(),
             maximum_length: maps.read_word(addr + 2).unwrap(),
-            padding: maps.read_dword(addr + 4).unwrap(),
-            buffer: maps.read_dword(addr + 8).unwrap(),
+            buffer: maps.read_dword(addr + 4).unwrap(),
         }
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
         maps.write_word(addr, self.length);
         maps.write_word(addr + 2, self.maximum_length);
-        maps.write_dword(addr + 4, self.padding);
-        maps.write_dword(addr + 8, self.buffer);
+        maps.write_dword(addr + 4, self.buffer);
     }
 }
 

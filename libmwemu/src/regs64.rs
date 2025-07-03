@@ -2204,8 +2204,14 @@ impl Regs64 {
 
             maps.filter_string(&mut s);
 
+            // cut big strings in a safe way.
             if s.len() > 50 {
-                s = s[..50].to_string();
+                let truncated = s.char_indices()
+                    .take_while(|(i, _)| *i <= 50)
+                    .last()
+                    .map(|(i, _)| &s[..i])
+                    .unwrap_or(&s[..50]);
+                s = truncated.to_string();
             }
 
             let name = match maps.get_addr_name(value) {
@@ -2302,11 +2308,11 @@ impl Regs64 {
     }
 
     pub fn show_r8(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8", self.r8, pos);
+        self.show_reg64(maps, "r8 ", self.r8, pos);
     }
 
     pub fn show_r9(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9", self.r9, pos);
+        self.show_reg64(maps, "r9 ", self.r9, pos);
     }
 
     pub fn show_r10(&self, maps: &Maps, pos: u64) {

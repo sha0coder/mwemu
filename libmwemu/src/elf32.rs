@@ -110,7 +110,6 @@ impl Elf32 {
     }
 
     pub fn is_elf32(filename: &str) -> bool {
-        log::info!("checking if elf32: {}", filename);
         let mut fd = File::open(filename).expect("file not found");
         let mut raw = vec![0u8; 5];
         fd.read_exact(&mut raw).expect("couldnt read the file");

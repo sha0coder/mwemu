@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::constants;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -64,11 +65,11 @@ impl Config {
             maps_folder: "".to_string(),
             console2: false,
             console_addr: 0,
-            entry_point: 0x3c0000,
+            entry_point: constants::CFG_DEFAULT_BASE,
             exit_position: 0,
             dump_on_exit: true, // TODO: a way to make it false/set it through cli + lib
             dump_filename: Some("dumps/emu.bin".to_string()), // TODO: a way to set it through cli + lib
-            code_base_addr: 0x3c0000,
+            code_base_addr: constants::CFG_DEFAULT_BASE,
             is_64bits: false,
             stack_trace: false,
             test_mode: false,

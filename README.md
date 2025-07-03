@@ -128,6 +128,19 @@ OPTIONS:
     -S, --trace_start <TRACE_START>    start trace at specified position
 ```
 
+## Command line examples
+
+64bits needs the -6 flag, -vv for viewing asm, and -c for spawning console at specific moment:
+
+```bash
+cargo run --release -- -f /tmp/shellcode.bin -6 -vv -c 19291
+```
+
+## Testing
+
+make tests
+
+
 ## Some use cases
 
 mwemu emulates a simple shellcode detecting the execve() interrupt.
@@ -255,7 +268,7 @@ PEB {
 ...
 ```
 
-Displaying PEB_LDR_DATA structure:
+Displaying `PEB_LDR_DATA` structure:
 ```
 =>dt
 structure=>PEB_LDR_DATA
@@ -284,7 +297,7 @@ PebLdrData {
 =>
 ```
 
-Displaying LDR_DATA_TABLE_ENTRY and first module name
+Displaying `LDR_DATA_TABLE_ENTRY` and first module name
 ```
 =>dt
 structure=>LDR_DATA_TABLE_ENTRY

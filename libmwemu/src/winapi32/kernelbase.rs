@@ -4,7 +4,7 @@ use crate::emu;
 //use crate::context32;
 //use crate::peb32;
 //use crate::structures;
-//use crate::winapi32::helper;
+use crate::winapi32::helper;
 use crate::serialization;
 use crate::winapi32::kernel32;
 
@@ -14,6 +14,7 @@ use std::sync::Mutex;
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
     match api.as_str() {
+        "GetModuleHandleW" => GetModuleHandleW(emu),
         "LoadStringW" => LoadStringW(emu),
         "_initterm" => _initterm(emu),
         "_initterm_e" => _initterm_e(emu),
@@ -49,6 +50,44 @@ lazy_static! {
 }
 
 /// kernelbase API ////
+
+fn GetModuleHandleW(emu: &mut emu::Emu) {
+    let mod_name_ptr = emu
+        .maps
+        .read_dword(emu.regs.get_esp())
+        .expect("kernel32!GetModuleHandleW cannot read mod_name_ptr") as u64;
+
+    let mod_name: String;
+
+    if mod_name_ptr == 0 {
+        mod_name = "self".to_string();
+        emu.regs.rax = match emu.maps.get_base() {
+            Some(base) => base,
+            None => helper::handler_create(&mod_name),
+        }
+    } else {
+        mod_name = emu.maps.read_wide_string(mod_name_ptr).to_lowercase();
+        let mod_mem = match emu.maps.get_mem2(&mod_name) {
+            Some(m) => m,
+            None => {
+                emu.regs.rax = 0;
+                return;
+            }
+        };
+        emu.regs.rax = mod_mem.get_base();
+    }
+
+    log::info!(
+        "{}** {} kernel32!GetModuleHandleW '{}' {}",
+        emu.colors.light_red,
+        emu.pos,
+        mod_name,
+        emu.colors.nc
+    );
+
+    emu.stack_pop32(false);
+}
+
 
 fn LoadStringW(emu: &mut emu::Emu) {
     let hndl = emu

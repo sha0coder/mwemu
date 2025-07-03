@@ -1,9 +1,6 @@
 use atty::Stream;
 use csv::ReaderBuilder;
-use iced_x86::{
-    Code, Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic,
-    OpKind, Register,
-};
+use iced_x86::{Code, Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind, Register};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write as _;
@@ -63,6 +60,7 @@ pub struct Emu {
     pub cfg: Config,
     pub colors: Colors,
     pub pos: u64,
+    pub max_pos: Option<u64>,
     pub force_break: bool,
     pub force_reload: bool,
     pub tls_callbacks: Vec<u64>,
@@ -99,6 +97,7 @@ pub struct Emu {
     pub call_stack: Vec<String>,
     pub formatter: IntelFormatter,
     pub fileName: String,
+    pub heap_addr: u64,
 }
 
 impl Default for Emu {
@@ -134,6 +133,7 @@ impl Emu {
             cfg: Config::new(),
             colors: Colors::new(),
             pos: 0,
+            max_pos: None,
             force_break: false,
             force_reload: false,
             tls_callbacks: Vec::new(),
@@ -169,6 +169,7 @@ impl Emu {
             base: 0,
             call_stack: vec![],
             fileName: String::new(),
+            heap_addr: 0,
         }
     }
 
@@ -207,6 +208,10 @@ impl Emu {
         let mut f = folder.to_string();
         f.push('/');
         self.cfg.maps_folder = folder.to_string();
+    }
+
+    pub fn spawn_console(&mut self) {
+        Console::spawn_console(self);
     }
 
     // spawn a console on the instruction number, ie: 1 at the beginning.
@@ -473,7 +478,7 @@ impl Emu {
                 .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffd000 - 0x1000 - 0x10000, 0x10000)
+                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000)
                 .expect("cannot create linker map");
         } else {
             self.regs.rsp = 0x7fffffffe270;
@@ -495,17 +500,19 @@ impl Emu {
         if dyn_link {
             //heap.set_base(0x555555579000);
         } else {
+            let heap_sz = 0x4d8000 - 0x4b5000;
+            self.heap_addr = self.maps.alloc(heap_sz).expect("cannot allocate heap");
             let heap = self
                 .maps
-                .create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
+                .create_map("heap", self.heap_addr, heap_sz) //.create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
                 .expect("cannot create heap map");
             heap.load("heap.bin");
         }
 
         self.regs.rbp = 0;
 
-        self.fs.insert(0xffffffffffffffC8, 0); //0x4b6c50
-        self.fs.insert(0xffffffffffffffD0, 0);
+        self.fs.insert(0xffffffffffffffc8, 0); //0x4b6c50
+        self.fs.insert(0xffffffffffffffd0, 0);
         self.fs.insert(0xffffffffffffffd8, 0x4b27a0);
         self.fs.insert(0xffffffffffffffa0, 0x4b3980);
         self.fs.insert(0x18, 0);
@@ -655,9 +662,11 @@ impl Emu {
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
         let is_maps = filename.contains("maps32/");
         let map_name = self.filename_to_mapname(filename);
-        self.filename = map_name;
+        let filename2 = map_name;
         let mut pe32 = PE32::load(filename);
         let base: u32;
+
+        println!("loading pe32 {}", filename);
 
         /* .rsrc extraction tests
         if set_entry {
@@ -676,7 +685,7 @@ impl Emu {
             }
 
         // base is setted by user
-        } else if !is_maps && self.cfg.code_base_addr != 0x3c0000 {
+        } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr as u32;
             if self.maps.overlaps(base as u64, pe32.size() as u64) {
                 panic!("the setted base address overlaps");
@@ -712,6 +721,7 @@ impl Emu {
             }
         }
 
+
         if set_entry {
             // 2. pe binding
             if !is_maps {
@@ -720,8 +730,9 @@ impl Emu {
                 self.base = base as u64;
             }
 
+
             // 3. entry point logic
-            if self.cfg.entry_point == 0x3c0000 {
+            if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs.rip = base as u64 + pe32.opt.address_of_entry_point as u64;
                 log::info!("entry point at 0x{:x}", self.regs.rip);
             } else {
@@ -736,11 +747,13 @@ impl Emu {
             println!("base: 0x{:x}", base);
         }
 
+
         // 4. map pe and then sections
+        println!("mapeando PE de {}", filename2);
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", self.filename),
+                &format!("{}.pe", filename2),
                 base.into(),
                 pe32.opt.size_of_headers.into(),
             )
@@ -774,7 +787,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", self.filename, sect_name),
+                &format!("{}{}", filename2, sect_name),
                 base as u64 + sect.virtual_address as u64,
                 sz,
             ) {
@@ -782,7 +795,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section {} {} because overlaps",
-                        self.filename,
+                        filename2,
                         sect.get_name()
                     );
                     continue;
@@ -792,7 +805,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    self.filename,
+                    filename2,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -805,14 +818,8 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            let space_addr = peb32::create_ldr_entry(
-                self,
-                base,
-                self.regs.rip as u32,
-                &self.filename.clone(),
-                0,
-                0x2c1950,
-            );
+            let space_addr =
+                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &filename2.clone(), 0, 0x2c1950);
             peb32::update_ldr_entry_base("loader.exe", base as u64, self);
         }
 
@@ -825,7 +832,7 @@ impl Emu {
     pub fn load_pe64(&mut self, filename: &str, set_entry: bool, force_base: u64) -> (u64, u32) {
         let is_maps = filename.contains("maps64/");
         let map_name = self.filename_to_mapname(filename);
-        self.filename = map_name;
+        let filename2 = map_name;
         let mut pe64 = PE64::load(filename);
         let base: u64;
 
@@ -840,7 +847,7 @@ impl Emu {
             }
 
         // base is setted by user
-        } else if !is_maps && self.cfg.code_base_addr != 0x3c0000 {
+        } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr;
             if self.maps.overlaps(base, pe64.size()) {
                 panic!("the setted base address overlaps");
@@ -873,7 +880,7 @@ impl Emu {
             }
 
             // 3. entry point logic
-            if self.cfg.entry_point == 0x3c0000 {
+            if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs.rip = base + pe64.opt.address_of_entry_point as u64;
                 log::info!("entry point at 0x{:x}", self.regs.rip);
             } else {
@@ -891,7 +898,7 @@ impl Emu {
         let pemap = self
             .maps
             .create_map(
-                &format!("{}.pe", self.filename),
+                &format!("{}.pe", filename2),
                 base,
                 pe64.opt.size_of_headers.into(),
             )
@@ -925,7 +932,7 @@ impl Emu {
             }
 
             let map = match self.maps.create_map(
-                &format!("{}{}", self.filename, sect_name),
+                &format!("{}{}", filename2, sect_name),
                 base + sect.virtual_address as u64,
                 sz,
             ) {
@@ -933,7 +940,7 @@ impl Emu {
                 Err(e) => {
                     log::info!(
                         "weird pe, skipping section because overlaps {} {}",
-                        self.filename,
+                        filename2,
                         sect.get_name()
                     );
                     continue;
@@ -943,7 +950,7 @@ impl Emu {
             if ptr.len() > sz as usize {
                 panic!(
                     "overflow {} {} {} {}",
-                    self.filename,
+                    filename2,
                     sect.get_name(),
                     ptr.len(),
                     sz
@@ -957,14 +964,8 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            let space_addr = peb64::create_ldr_entry(
-                self,
-                base,
-                self.regs.rip,
-                &self.filename.clone(),
-                0,
-                0x2c1950,
-            );
+            let space_addr =
+                peb64::create_ldr_entry(self, base, self.regs.rip, &filename2.clone(), 0, 0x2c1950);
             peb64::update_ldr_entry_base("loader.exe", base, self);
         }
 
@@ -972,6 +973,101 @@ impl Emu {
         let pe_hdr_off = pe64.dos.e_lfanew;
         self.pe64 = Some(pe64);
         (base, pe_hdr_off)
+    }
+
+    pub fn load_elf64(&mut self, filename: &str) {
+        let mut elf64 = Elf64::parse(filename).unwrap();
+        let dyn_link = !elf64.get_dynamic().is_empty();
+
+        if dyn_link {
+            log::info!("dynamic elf64 detected.");
+        } else {
+            log::info!("static elf64 detected.");
+        }
+
+        elf64.load(
+            &mut self.maps,
+            "elf64",
+            false,
+            dyn_link,
+            self.cfg.code_base_addr,
+        );
+        self.init_linux64(dyn_link);
+
+        // Get .text addr and size
+        let mut text_addr:u64 = 0;
+        let mut text_sz = 0;
+        for i in 0..elf64.elf_shdr.len() {
+            let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
+            if sname == ".text" {
+                text_addr = elf64.elf_shdr[i].sh_addr;
+                text_sz = elf64.elf_shdr[i].sh_size;
+                break;
+            }
+        }
+
+        if text_addr == 0 {
+            panic!(".text not found on this elf64");
+        }
+
+        // entry point logic:
+
+        // 1. Configured entry point
+        if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
+            println!("forcing entry point to 0x{:x}", self.cfg.entry_point);
+            self.regs.rip = self.cfg.entry_point;
+
+        // 2. Entry point pointing inside .text
+        } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr+text_sz {
+            println!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
+            self.regs.rip = elf64.elf_hdr.e_entry;
+
+        // 3. Entry point points above .text, relative entry point
+        } else if elf64.elf_hdr.e_entry < text_addr {
+            self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
+            println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs.rip);
+
+        // 4. Entry point points below .text, weird case.
+        } else {
+            panic!("Entry points is pointing below .text 0x{:x}", elf64.elf_hdr.e_entry);
+        }
+
+
+        /*
+        if dyn_link {
+            //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
+            //ld.load(&mut self.maps, "ld-linux", true, dyn_link, constants::CFG_DEFAULT_BASE);
+            //log::info!("--- emulating ld-linux _start ---");
+
+            self.regs.rip = elf64.elf_hdr.e_entry;
+
+            //TODO: emulate the linker
+            //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
+            //self.run(None); 
+        } else {
+            self.regs.rip = elf64.elf_hdr.e_entry;
+        }*/
+
+        /*
+        for lib in elf64.get_dynamic() {
+            log::info!("dynamic library {}", lib);
+            let libspath = "/usr/lib/x86_64-linux-gnu/";
+            let libpath = format!("{}{}", libspath, lib);
+            let mut elflib = Elf64::parse(&libpath).unwrap();
+            elflib.load(&mut self.maps, &lib, true);
+
+            if lib.contains("libc") {
+                elflib.craft_libc_got(&mut self.maps, "elf64");
+            }
+
+            /*
+            match elflib.init {
+                Some(addr) => {
+                    self.call64(addr, &[]);
+                }
+                None => {}
+            }*/
+        }*/
     }
 
     pub fn set_config(&mut self, cfg: Config) {
@@ -1008,94 +1104,9 @@ impl Emu {
             self.cfg.is_64bits = true;
             self.maps.clear();
 
-            log::info!("elf64 detected.");
+            let base = self.load_elf64(filename);
 
-            let mut elf64 = Elf64::parse(filename).unwrap();
-            let dyn_link = !elf64.get_dynamic().is_empty();
-            elf64.load(
-                &mut self.maps,
-                "elf64",
-                false,
-                dyn_link,
-                self.cfg.code_base_addr,
-            );
-            self.init_linux64(dyn_link);
 
-            let mut text_addr = 0;
-            let mut text_sz = 0;
-            for i in 0..elf64.elf_shdr.len() {
-                let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
-                if sname == ".text" {
-                    text_addr = elf64.elf_shdr[i].sh_addr;
-                    text_sz = elf64.elf_shdr[i].sh_size;
-                    break;
-                }
-            }
-
-            if text_addr == 0 {
-                log::error!(".text not found on this elf");
-                return;
-            }
-
-            // relative entry point
-            if elf64.elf_hdr.e_entry < text_addr {
-                println!(
-                    "elf64 entry logic1: relative entry:  e_entry={:x} .text={:x} total={:x}",
-                    elf64.elf_hdr.e_entry,
-                    text_addr,
-                    elf64.elf_hdr.e_entry + text_addr
-                );
-                self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
-            } else {
-                if text_addr <= elf64.elf_hdr.e_entry && elf64.elf_hdr.e_entry < text_addr + text_sz
-                {
-                    self.regs.rip = elf64.elf_hdr.e_entry;
-                } else {
-                    if self.cfg.entry_point != 0x3c0000 {
-                        // configured entry point
-                        self.regs.rip = self.cfg.entry_point;
-                    } else {
-                        log::error!("cannot calculate the entry point");
-                        return;
-                    }
-                }
-            }
-
-            /*
-            if dyn_link {
-                //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
-                //ld.load(&mut self.maps, "ld-linux", true, dyn_link, 0x3c0000);
-                //log::info!("--- emulating ld-linux _start ---");
-
-                self.regs.rip = elf64.elf_hdr.e_entry;
-
-                //TODO: emulate the linker
-                //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
-                //self.run(None);
-            } else {
-                self.regs.rip = elf64.elf_hdr.e_entry;
-            }*/
-
-            /*
-            for lib in elf64.get_dynamic() {
-                log::info!("dynamic library {}", lib);
-                let libspath = "/usr/lib/x86_64-linux-gnu/";
-                let libpath = format!("{}{}", libspath, lib);
-                let mut elflib = Elf64::parse(&libpath).unwrap();
-                elflib.load(&mut self.maps, &lib, true);
-
-                if lib.contains("libc") {
-                    elflib.craft_libc_got(&mut self.maps, "elf64");
-                }
-
-                /*
-                match elflib.init {
-                    Some(addr) => {
-                        self.call64(addr, &[]);
-                    }
-                    None => {}
-                }*/
-            }*/
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) {
             log::info!("PE32 header detected.");
             let (base, pe_off) = self.load_pe32(filename, true, 0);
@@ -1125,7 +1136,7 @@ impl Emu {
                         self.regs.set_reg(Register::R8L, 0);
                     }
                 }
-                _ => {
+                _ =>  {
                     log::error!("No Pe64 found inside self");
                 }
             }
@@ -1173,11 +1184,11 @@ impl Emu {
             code.extend(0xffff); // this could overlap an existing map
         }
 
-        if self.cfg.entry_point != 0x3c0000 {
+        if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
             self.regs.rip = self.cfg.entry_point;
         }
 
-        /*if self.cfg.code_base_addr != 0x3c0000 {
+        /*if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             let code = self.maps.get_mem("code");
             code.update_base(self.cfg.code_base_addr);
             code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
@@ -1188,7 +1199,7 @@ impl Emu {
         if self.cfg.verbose >= 1 {
             log::info!("Loading shellcode from bytes");
         }
-        if self.cfg.code_base_addr != 0x3c0000 {
+        if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             let code = self.maps.get_mem("code");
             code.update_base(self.cfg.code_base_addr);
             code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
@@ -1224,10 +1235,7 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = self
-                .maps
-                .get_addr_name(self.regs.get_esp())
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1287,10 +1295,7 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = self
-                .maps
-                .get_addr_name(self.regs.rsp)
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1394,10 +1399,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self
-                .maps
-                .get_addr_name(self.regs.get_esp())
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1476,10 +1478,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self
-                .maps
-                .get_addr_name(self.regs.rsp)
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs.rip,
@@ -1712,10 +1711,7 @@ impl Emu {
             32 => match self.maps.read_dword(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self
-                            .maps
-                            .get_addr_name(addr)
-                            .unwrap_or_else(|| "not mapped");
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1736,10 +1732,7 @@ impl Emu {
             16 => match self.maps.read_word(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self
-                            .maps
-                            .get_addr_name(addr)
-                            .unwrap_or_else(|| "not mapped");
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1760,10 +1753,7 @@ impl Emu {
             8 => match self.maps.read_byte(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self
-                            .maps
-                            .get_addr_name(addr)
-                            .unwrap_or_else(|| "not mapped");
+                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -1877,6 +1867,8 @@ impl Emu {
 
     //TODO: check this, this is used only on pyscemu
     pub fn handle_winapi(&mut self, addr: u64) {
+
+
         if self.cfg.is_64bits {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs.rip = self.gateway_return;
@@ -1961,10 +1953,7 @@ impl Emu {
             };
 
             if handle_winapi {
-                let name = self
-                    .maps
-                    .get_addr_name(addr)
-                    .expect("/!\\ changing RIP to non mapped addr 0x");
+                let name = self.maps.get_addr_name(addr).expect("/!\\ changing RIP to non mapped addr 0x");
                 winapi64::gateway(addr, name.to_string().as_str(), self);
             }
             self.force_break = true;
@@ -2166,6 +2155,20 @@ impl Emu {
         }
         out
     }
+
+    /*
+    pub fn get_operand_value_fpu(
+        &mut self,
+        ins: &Instruction,
+        noperand: u32,
+        do_derref: bool,
+    ) -> Option<u64> {
+        assert!(ins.op_count() > noperand);
+
+        let value: u64 = match ins.op_kind(noperand) {
+
+        };
+    }*/
 
     pub fn get_operand_value(
         &mut self,
@@ -2462,10 +2465,7 @@ impl Emu {
                     };
 
                     if self.cfg.trace_mem {
-                        let name = self
-                            .maps
-                            .get_addr_name(mem_addr)
-                            .unwrap_or_else(|| "not mapped");
+                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -2662,10 +2662,7 @@ impl Emu {
                     }
 
                     if self.cfg.trace_mem {
-                        let name = self
-                            .maps
-                            .get_addr_name(mem_addr)
-                            .unwrap_or_else(|| "not mapped");
+                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs.rip,
@@ -2908,7 +2905,7 @@ impl Emu {
             | OpKind::Immediate8to16 => 16,
             OpKind::Immediate8 => 8,
             OpKind::Register => self.regs.get_size(ins.op_register(noperand)),
-
+            
             OpKind::Memory => match ins.memory_size() {
                 MemorySize::Float16
                 | MemorySize::UInt16
@@ -3424,19 +3421,25 @@ impl Emu {
         result_ok
     }
 
+    pub fn run_to(&mut self, end_pos:u64) -> Result<u64, MwemuError> {
+        self.max_pos = Some(end_pos);
+        let r = self.run(None);
+        self.max_pos = None;
+        return r;
+    }
+
     ///  RUN ENGINE ///
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
-
+        
         match self.maps.get_mem_by_addr(self.regs.rip) {
-            Some(mem) => {}
+            Some(mem) =>  {
+            }
             None => {
                 log::info!("Cannot start emulation, pc pointing to unmapped area");
-                return Err(MwemuError::new(
-                    "program counter pointing to unmapped memory",
-                ));
+                return Err(MwemuError::new("program counter pointing to unmapped memory"))
             }
         };
 
@@ -3456,8 +3459,12 @@ impl Emu {
         //let mut prev_prev_addr:u64 = 0;
         let mut repeat_counter: u32 = 0;
 
-        if end_addr.is_none() {
+        if end_addr.is_none() && self.max_pos.is_none() {
             log::info!(" ----- emulation -----");
+        } else if !self.max_pos.is_none() {
+            log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
+        } else {
+            log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
         }
 
         //self.pos = 0;
@@ -3484,8 +3491,8 @@ impl Emu {
                 let block_sz = 0x300;
                 let block = code.read_bytes(self.regs.rip, block_sz).to_vec();
                 if block.len() == 0 {
-                    return Err(MwemuError::new("cannot read code block, weird address."));
-                }
+                     return Err(MwemuError::new("cannot read code block, weird address."));
+                } 
                 let mut decoder =
                     Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
@@ -3499,6 +3506,10 @@ impl Emu {
                         addr = ins.ip();
 
                         if end_addr.is_some() && Some(addr) == end_addr {
+                            return Ok(self.regs.rip);
+                        }
+
+                        if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
                             return Ok(self.regs.rip);
                         }
                     }
@@ -3611,15 +3622,12 @@ impl Emu {
                         }
                     }
 
-                    // check for is rep ret
-                    let is_rep_ret = match ins.code() {
+                    let is_ret = match ins.code() {
                         Code::Retnw | Code::Retnd | Code::Retnq => true,
-                        _ => false,
+                        _ => false
                     };
 
-                    if !is_rep_ret
-                        && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix())
-                    {
+                    if !is_ret && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix()) {
                         if self.rep.is_none() {
                             self.rep = Some(0);
                         }
@@ -3738,7 +3746,7 @@ impl Emu {
                     }
                 } // end decoder loop
             } // end running loop
-
+            
             self.is_running.store(1, atomic::Ordering::Relaxed);
             Console::spawn_console(self);
         } // end infinite loop

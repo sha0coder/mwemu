@@ -1,6 +1,8 @@
 name: Rust CI
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -37,7 +39,7 @@ jobs:
         run: cargo clippy -- -D warnings || true
       
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --release --verbose
       
       - name: Run tests
-        run: cargo test --verbose
+        run: make tests 

@@ -18,6 +18,7 @@ use crate::config::Config;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
+use crate::fpu::STReg;
 use crate::fpu::FPU;
 use crate::hooks::Hooks;
 use crate::maps::Maps;
@@ -58,9 +59,11 @@ impl SerializableInstant {
     }
 }
 
+
+
 #[derive(Serialize, Deserialize)]
 pub struct SerializableFPU {
-    pub st: Vec<f64>,
+    pub st: Vec<STReg>,
     pub st_depth: u8,
     pub tag: u16,
     pub stat: u16,
@@ -117,18 +120,20 @@ impl From<FPU> for SerializableFPU {
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializablePE32 {
+    pub filename: String,
     pub raw: Vec<u8>,
 }
 
 impl From<PE32> for SerializablePE32 {
     fn from(pe32: PE32) -> Self {
-        SerializablePE32 { raw: pe32.raw }
+        SerializablePE32 { filename: pe32.filename, raw: pe32.raw }
     }
 }
 
 impl From<&PE32> for SerializablePE32 {
     fn from(pe32: &PE32) -> Self {
         SerializablePE32 {
+            filename: pe32.filename.clone(),
             raw: pe32.raw.clone(),
         }
     }
@@ -175,6 +180,7 @@ pub struct SerializableEmu {
     pub cfg: Config,
     pub colors: Colors,
     pub pos: u64,
+    pub max_pos: Option<u64>,
     pub force_break: bool,
     pub force_reload: bool,
     pub tls_callbacks: Vec<u64>,
@@ -208,6 +214,7 @@ pub struct SerializableEmu {
     pub tick: usize,
     pub base: u64,
     pub call_stack: Vec<String>,
+    pub heap_addr: u64,
 }
 
 impl From<SerializableFPU> for FPU {
@@ -242,7 +249,7 @@ impl From<SerializableFPU> for FPU {
 
 impl From<SerializablePE32> for PE32 {
     fn from(serialized: SerializablePE32) -> Self {
-        PE32::load_from_raw(&serialized.raw)
+        PE32::load_from_raw(&serialized.filename, &serialized.raw)
     }
 }
 
@@ -274,6 +281,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             cfg: emu.cfg.clone(),
             colors: emu.colors.clone(),
             pos: emu.pos,
+            max_pos: emu.max_pos,
             force_break: emu.force_break,
             force_reload: emu.force_reload,
             tls_callbacks: emu.tls_callbacks.clone(),
@@ -307,6 +315,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             tick: emu.tick,
             base: emu.base,
             call_stack: emu.call_stack.clone(),
+            heap_addr: emu.heap_addr,
         }
     }
 }
@@ -341,6 +350,7 @@ impl From<SerializableEmu> for Emu {
             cfg: serialized.cfg.clone(),
             colors: serialized.colors,
             pos: serialized.pos,
+            max_pos: serialized.max_pos,
             force_break: serialized.force_break,
             force_reload: serialized.force_reload,
             tls_callbacks: serialized.tls_callbacks,
@@ -377,6 +387,7 @@ impl From<SerializableEmu> for Emu {
             call_stack: serialized.call_stack,
             formatter: Default::default(),
             fileName: "".to_string(),
+            heap_addr: serialized.heap_addr,
         }
     }
 }
