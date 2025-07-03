@@ -195,15 +195,15 @@ mod tests {
     }
 
     #[test]
-    // this tests a linux 64bits raw arithmetic code.
-    fn sc32lin_raw() {
+    // this tests a metasploit rshell of 32bits linux, the tests verify the sockaddr and shell.
+    fn sc32lin_rshell() {
         setup();
 
         let mut emu = emu32();
         emu.cfg.maps_folder = "../maps32/".to_string();
         emu.init(false, false);
 
-        let sample = "../test/sc32lin_raw.bin";
+        let sample = "../test/sc32lin_rshell.bin";
         emu.load_code(sample);
         emu.run_to(31);
         let sockaddr = emu.maps.read_bytes(emu.regs.get_ecx(), 9);
