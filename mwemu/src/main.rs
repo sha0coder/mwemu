@@ -107,7 +107,7 @@ fn main() {
         .arg(clap_arg!("rflags", "", "rflags", "set rflags register", "RFLAGS"))
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
         .get_matches();
-    
+
     if !matches.is_present("filename") {
         log::error!("the filename is mandatory, try -f <FILENAME> or --help");
         return;
@@ -158,7 +158,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
     if matches.is_present("trace") {
         let trace_filename = matches
@@ -176,7 +176,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // console
@@ -228,7 +228,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         if !matches.is_present("entry_point") {
             log::error!("if the code base is selected, you have to select the entry point ie -b 0x600000 -a 0x600000");
             std::process::exit(1);
@@ -244,7 +244,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // register values
@@ -272,7 +272,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.flags.load(value as u32);
     }
     if matches.is_present("mxcsr") {
@@ -283,7 +283,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.fpu.mxcsr = value as u32;
     }
 
@@ -308,7 +308,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
         emu.spawn_console_at_addr(emu.cfg.console_addr);
     }
 
@@ -321,7 +321,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-        .expect("invalid address");
+            .expect("invalid address");
     }
 
     // exit position
@@ -329,7 +329,7 @@ fn main() {
         let exit_pos_str = matches
             .value_of("exit_position")
             .expect("select the exit position address -e");
-        
+
         emu.cfg.exit_position = if exit_pos_str.starts_with("0x") {
             // Handle hexadecimal format
             u64::from_str_radix(

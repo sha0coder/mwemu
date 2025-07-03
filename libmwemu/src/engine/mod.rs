@@ -16,24 +16,60 @@ use iced_x86::{Formatter, Instruction, Mnemonic, Register};
 
 #[macro_export]
 macro_rules! color {
-    ("Black") => { "\x1b[0;30m" };
-    ("Red") => { "\x1b[0;31m" };
-    ("Green") => { "\x1b[0;32m" };
-    ("Orange") => { "\x1b[0;33m" };
-    ("Blue") => { "\x1b[0;34m" };
-    ("Purple") => { "\x1b[0;35m" };
-    ("Cyan") => { "\x1b[0;36m" };
-    ("LightGray") => { "\x1b[0;37m" };
-    ("DarkGray") => { "\x1b[1;30m" };
-    ("LightRed") => { "\x1b[1;31m" };
-    ("LightGreen") => { "\x1b[1;32m" };
-    ("Yellow") => { "\x1b[1;33m" };
-    ("LightBlue") => { "\x1b[1;34m" };
-    ("LightPurple") => { "\x1b[1;35m" };
-    ("LightCyan") => { "\x1b[1;36m" };
-    ("White") => { "\x1b[1;37m" };
-    ("nc") => { "\x1b[0m" };
-    ("ClearScreen") => { "\x1bc" };
+    ("Black") => {
+        "\x1b[0;30m"
+    };
+    ("Red") => {
+        "\x1b[0;31m"
+    };
+    ("Green") => {
+        "\x1b[0;32m"
+    };
+    ("Orange") => {
+        "\x1b[0;33m"
+    };
+    ("Blue") => {
+        "\x1b[0;34m"
+    };
+    ("Purple") => {
+        "\x1b[0;35m"
+    };
+    ("Cyan") => {
+        "\x1b[0;36m"
+    };
+    ("LightGray") => {
+        "\x1b[0;37m"
+    };
+    ("DarkGray") => {
+        "\x1b[1;30m"
+    };
+    ("LightRed") => {
+        "\x1b[1;31m"
+    };
+    ("LightGreen") => {
+        "\x1b[1;32m"
+    };
+    ("Yellow") => {
+        "\x1b[1;33m"
+    };
+    ("LightBlue") => {
+        "\x1b[1;34m"
+    };
+    ("LightPurple") => {
+        "\x1b[1;35m"
+    };
+    ("LightCyan") => {
+        "\x1b[1;36m"
+    };
+    ("White") => {
+        "\x1b[1;37m"
+    };
+    ("nc") => {
+        "\x1b[0m"
+    };
+    ("ClearScreen") => {
+        "\x1bc"
+    };
     ($unknown:tt) => {
         compile_error!(concat!(
             "Unknown color name: '",
@@ -84,7 +120,6 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            #[allow(clippy::collapsible_if)]
             if emu.regs.rip == addr - 5 {
                 if emu.cfg.verbose >= 1 {
                     log::info!("call next instruction, prolly call/pop");
@@ -1088,8 +1123,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::ror(emu, value0, 1, sz);
-                emu.flags.calc_flags(result, sz);
+                result = emu.flags.ror(value0, 1, sz);
 
                 if emu.cfg.test_mode && result != inline::ror(value0, 1, sz) {
                     panic!(
@@ -1110,7 +1144,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::ror(emu, value0, value1, sz);
+                result = emu.flags.ror(value0, value1, sz);
 
                 if emu.cfg.test_mode && result != inline::ror(value0, value1, sz) {
                     panic!(
@@ -1118,28 +1152,6 @@ pub fn emulate_instruction(
                         result,
                         inline::ror(value0, value1, sz)
                     )
-                }
-
-                let masked_counter = if sz == 64 {
-                    value1 & 0b111111
-                } else {
-                    value1 & 0b11111
-                };
-
-                if masked_counter > 0 {
-                    if masked_counter == 1 {
-                        // the OF flag is set to the exclusive OR of the two most-significant bits of the result.
-                        let of = match sz {
-                            64 => (result >> 62) ^ ((result >> 63) & 0b1),
-                            32 => (result >> 31) ^ ((result >> 30) & 0b1),
-                            16 => (result >> 15) ^ ((result >> 14) & 0b1),
-                            8 => (result >> 7) ^ ((result >> 6) & 0b1),
-                            _ => panic!("weird size"),
-                        };
-                        emu.flags.f_of = of == 1;
-                    } else {
-                        // OF flag is undefined?
-                    }
                 }
             }
 
@@ -1163,9 +1175,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::rcr(emu, value0, 1, sz);
-                emu.flags.rcr_of_and_cf(value0, 1, sz);
-                emu.flags.calc_flags(result, sz);
+                result = emu.flags.rcr(value0, 1, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1177,19 +1187,8 @@ pub fn emulate_instruction(
                     Some(v) => v,
                     None => return false,
                 };
-
-                result = logic::rcr(emu, value0, value1, sz);
-                emu.flags.rcr_of_and_cf(value0, value1, sz);
-
-                let masked_counter = if sz == 64 {
-                    value1 & 0b111111
-                } else {
-                    value1 & 0b11111
-                };
-
-                if masked_counter > 0 {
-                    emu.flags.calc_flags(result, sz);
-                }
+                
+                result = emu.flags.rcr(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1212,8 +1211,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::rol(emu, value0, 1, sz);
-
+                result = emu.flags.rol(value0, 1, sz);
                 if emu.cfg.test_mode && result != inline::rol(value0, 1, sz) {
                     panic!(
                         "0x{:x} should be 0x{:x}",
@@ -1221,8 +1219,6 @@ pub fn emulate_instruction(
                         inline::rol(value0, 1, sz)
                     );
                 }
-
-                emu.flags.calc_flags(result, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1235,9 +1231,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                let pre_cf = if emu.flags.f_cf { 1 } else { 0 };
-
-                result = logic::rol(emu, value0, value1, sz);
+                result = emu.flags.rol(value0, value1, sz);
 
                 if emu.cfg.test_mode && result != inline::rol(value0, value1, sz) {
                     panic!(
@@ -1245,32 +1239,6 @@ pub fn emulate_instruction(
                         result,
                         inline::rol(value0, value1, sz)
                     );
-                }
-
-                let masked_counter = if sz == 64 {
-                    value1 & 0b111111
-                } else {
-                    value1 & 0b11111
-                };
-
-                // If the masked count is 0, the flags are not affected.
-                // If the masked count is 1, then the OF flag is affected, otherwise (masked count is greater than 1) the OF flag is undefined.
-                // The CF flag is affected when the masked count is nonzero.
-                // The SF, ZF, AF, and PF flags are always unaffected.
-                if masked_counter > 0 {
-                    if masked_counter == 1 {
-                        // the OF flag is set to the exclusive OR of the two most-significant bits of the result.
-                        let of = match sz {
-                            64 => (result >> 62) ^ pre_cf,
-                            32 => (result >> 31) ^ pre_cf,
-                            16 => (result >> 15) ^ pre_cf,
-                            8 => (result >> 7) ^ pre_cf,
-                            _ => panic!("weird size"),
-                        };
-                        emu.flags.f_of = of == 1;
-                    } else {
-                        // OF flag is undefined?
-                    }
                 }
             }
 
@@ -1294,8 +1262,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::rcl(emu, value0, 1, sz);
-                emu.flags.calc_flags(result, sz);
+                result = emu.flags.rcl(value0, 1, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1308,17 +1275,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = logic::rcl(emu, value0, value1, sz);
-
-                let masked_counter = if sz == 64 {
-                    value1 & 0b111111
-                } else {
-                    value1 & 0b11111
-                };
-
-                if masked_counter > 0 {
-                    emu.flags.calc_flags(result, sz);
-                }
+                result = emu.flags.rcl(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {

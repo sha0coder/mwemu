@@ -463,26 +463,36 @@ mod tests {
         let sample = "../test/sc64lin_flags.bin";
         emu.load_code(sample);
 
+        // test instruction add
         emu.run(Some(0x3c0014));
         assert_eq!(emu.regs.rax, 0x57);
 
+        // test instruction sub
         emu.run(Some(0x3c002b));
         assert_eq!(emu.regs.rax, 0x46);
 
+        // test instruction cmp
         emu.run(Some(0x3c0042));
         assert_eq!(emu.regs.rax, 0x93);
 
+        // test instruction test
         emu.run(Some(0x3c0059));
         assert_eq!(emu.regs.rax, 0x56);
 
+        // test and
         emu.run(Some(0x3c0070));
         assert_eq!(emu.regs.rax, 0x56);
 
+        // test or with 0x0
         emu.run(Some(0x3c008c));
         assert_eq!(emu.regs.rax, 0x96);
 
+        // test shl
         emu.run(Some(0x3c00a3));
-        assert_eq!(emu.regs.rax, 0x56);
+        assert_eq!(emu.flags.f_cf, true);
+        assert_eq!(emu.flags.f_of, true);
+        assert_eq!(emu.flags.f_zf, true);
+        assert_eq!(emu.flags.f_sf, false);
 
         emu.run(Some(0x3c00bf));
         assert_eq!(emu.regs.rax, 0x896);
