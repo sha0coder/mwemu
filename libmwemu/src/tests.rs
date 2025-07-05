@@ -465,27 +465,53 @@ mod tests {
 
         // test instruction add
         emu.run(Some(0x3c0014));
-        assert_eq!(emu.regs.rax, 0x57);
+        assert_eq!(emu.flags.f_cf, true);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, true);
+        assert_eq!(emu.flags.f_sf, false);
+        assert_eq!(emu.flags.f_pf, true);
 
         // test instruction sub
         emu.run(Some(0x3c002b));
-        assert_eq!(emu.regs.rax, 0x46);
+        assert_eq!(emu.flags.f_cf, false);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, true);
+        assert_eq!(emu.flags.f_sf, false);
+        assert_eq!(emu.flags.f_pf, true);
 
         // test instruction cmp
         emu.run(Some(0x3c0042));
-        assert_eq!(emu.regs.rax, 0x93);
+        assert_eq!(emu.flags.f_cf, true);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, false);
+        assert_eq!(emu.flags.f_sf, true);
+        assert_eq!(emu.flags.f_pf, false);
+
 
         // test instruction test
         emu.run(Some(0x3c0059));
-        assert_eq!(emu.regs.rax, 0x56);
+        assert_eq!(emu.flags.f_cf, false);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, true);
+        assert_eq!(emu.flags.f_sf, false);
+        assert_eq!(emu.flags.f_pf, true);
 
         // test and
         emu.run(Some(0x3c0070));
-        assert_eq!(emu.regs.rax, 0x56);
+        assert_eq!(emu.flags.f_cf, false);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, true);
+        assert_eq!(emu.flags.f_sf, false);
+        assert_eq!(emu.flags.f_pf, true);
+
 
         // test or with 0x0
         emu.run(Some(0x3c008c));
-        assert_eq!(emu.regs.rax, 0x96);
+        assert_eq!(emu.flags.f_cf, false);
+        assert_eq!(emu.flags.f_of, false);
+        assert_eq!(emu.flags.f_zf, false);
+        assert_eq!(emu.flags.f_sf, true);
+        assert_eq!(emu.flags.f_pf, true);
 
         // test shl
         emu.run(Some(0x3c00a3));
@@ -493,9 +519,15 @@ mod tests {
         assert_eq!(emu.flags.f_of, true);
         assert_eq!(emu.flags.f_zf, true);
         assert_eq!(emu.flags.f_sf, false);
+        assert_eq!(emu.flags.f_pf, true);
 
+        // test add
         emu.run(Some(0x3c00bf));
-        assert_eq!(emu.regs.rax, 0x896);
+        assert_eq!(emu.flags.f_cf, false);
+        assert_eq!(emu.flags.f_of, true);
+        assert_eq!(emu.flags.f_zf, false);
+        assert_eq!(emu.flags.f_sf, true);
+        assert_eq!(emu.flags.f_pf, true);
     }
 
 
