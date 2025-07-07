@@ -530,9 +530,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
     }
 
-
-
-
+    
     #[test]
     // test serialization
     fn should_serialize() {

@@ -20,23 +20,40 @@ pub const MAX_I64: i64 = 0x7fffffffffffffff;
 pub const MIN_U64: u64 = 0;
 pub const MAX_U64: u64 = 0xffffffffffffffff;
 
-pub const PARITY_LOOKUP_TABLE: [u8;256] =
-    [1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-    1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1];
+pub const PARITY_LOOKUP_TABLE: [bool; 256] = [
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+    true, false, false, true, false, true, true, false,
+    false, true, true, false, true, false, false, true,
+    false, true, true, false, true, false, false, true,
+    true, false, false, true, false, true, true, false,
+];
 
 
 macro_rules! get_bit {
@@ -406,7 +423,7 @@ impl Flags {
 
     #[inline]
     pub fn calc_pf(&mut self, final_value: u8) {
-        self.f_pf = PARITY_LOOKUP_TABLE[(final_value & 0xff) as usize] == 1;
+        self.f_pf = PARITY_LOOKUP_TABLE[(final_value & 0xff) as usize];
     }
 
     #[inline]
@@ -494,17 +511,9 @@ impl Flags {
     }
 
     pub fn add8(&mut self, value1: u8, value2: u8, cf: bool, include_carry: bool) -> u64 {
-        let result = if include_carry {
-            value1.wrapping_add(value2).wrapping_add(cf as u8)
-        } else {
-            value1.wrapping_add(value2)
-        };
-
-        let sum = if include_carry {
-            value1 as u16 + value2 as u16 + cf as u16
-        } else {
-            value1 as u16 + value2 as u16
-        };
+        let c = if include_carry { cf as u8 } else { 0 };
+        let result = value1.wrapping_add(value2).wrapping_add(c);
+        let sum = value1 as u16 + value2 as u16 + cf as u16;
 
         self.f_cf = sum > 0xFF;
         self.f_sf = (result as i8) < 0;
@@ -1061,7 +1070,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 << count) & 0xffffffffffffffff;
         self.f_cf = ((value0 >> (64 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 63)) == 0x1;
@@ -1074,7 +1083,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 << count) & 0xffffffff;
         self.f_cf = ((value0 >> (32 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 31)) == 0x1;
@@ -1087,7 +1096,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 << count) & 0xffff;
         self.f_cf = ((value0 >> (16 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 15)) == 0x1;
@@ -1100,7 +1109,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 << count) & 0xff;
         self.f_cf = ((value0 >> (8 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 7)) == 0x1;
@@ -1146,7 +1155,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xffffffffffffffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = ((value0 << 1) ^ value0) == 0x1;
@@ -1159,7 +1168,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xffffffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = ((value0 << 1) ^ value0) == 0x1;
@@ -1172,7 +1181,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = ((value0 << 1) ^ value0) == 0x1;
@@ -1185,7 +1194,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x3f;
+        let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = ((value0 << 1) ^ value0) == 0x1;
