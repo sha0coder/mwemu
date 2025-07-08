@@ -3650,7 +3650,7 @@ impl Emu {
                             continue;
                         }
                     }
-
+                    
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
                     /*************************************/

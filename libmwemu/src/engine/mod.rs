@@ -1838,10 +1838,6 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            if !emu.set_operand_value(ins, 1, value0) {
-                return false;
-            }
-
             let res: u64 = match emu.get_operand_sz(ins, 1) {
                 64 => emu.flags.add64(value0, value1, emu.flags.f_cf, false),
                 32 => emu.flags.add32(
@@ -1865,7 +1861,16 @@ pub fn emulate_instruction(
                 _ => unreachable!("weird size"),
             };
 
+            // set the dest to the sum
             if !emu.set_operand_value(ins, 0, res) {
+                return false;
+            }
+
+            // and then set the src to dest
+            // doing in reverse can cause some error for example
+            // xadd  [rsp+r9*4+16h],r9
+            // which if we assign r9 first then resolve for address make the memory operations fail
+            if !emu.set_operand_value(ins, 1, value0) {
                 return false;
             }
         }
