@@ -2512,12 +2512,12 @@ impl Emu {
             }
 
             OpKind::Memory => {
-                let mut write = true;
+                let write = true;
                 let mem_base = ins.memory_base();
                 let mem_index = ins.memory_index();
                 let mem_displace = ins.memory_displacement32() as i32 as u64; // we need this for signed extension from 32bit to 64bit
 
-                let temp_displace = if (mem_index == Register::None) {
+                let temp_displace = if mem_index == Register::None {
                     mem_displace
                 } else {
                     let scale_index = ins.memory_index_scale();

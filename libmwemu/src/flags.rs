@@ -20,40 +20,19 @@ pub const MAX_I64: i64 = 0x7fffffffffffffff;
 pub const MIN_U64: u64 = 0;
 pub const MAX_U64: u64 = 0xffffffffffffffff;
 
-pub const PARITY_LOOKUP_TABLE: [bool; 256] = [
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-    true, false, false, true, false, true, true, false,
-    false, true, true, false, true, false, false, true,
-    false, true, true, false, true, false, false, true,
-    true, false, false, true, false, true, true, false,
-];
+// instead of table we generate the table at compile time to make sure it is correct
+// the parity table calculate true if the number of zero-bit in the lsb 8-bit is even and false otherwise.
+const fn build_parity_table() -> [bool; 256] {
+    let mut table = [false; 256];
+    let mut i = 0;
+    while i < 256 {
+        table[i] = i.count_ones() % 2 == 0;
+        i += 1;
+    }
+    table
+}
+
+pub const PARITY_LOOKUP_TABLE: [bool; 256] = build_parity_table();
 
 
 macro_rules! get_bit {
@@ -816,251 +795,136 @@ impl Flags {
     //// sal sar signed ////
 
     pub fn sal2p64(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s64 = value0 as i64;
-        let sign_mask = 0x3f;
-
-        for _ in 0..(value1 & sign_mask) {
-            self.f_cf = get_bit!(s64, 63) == 1;
-            s64 <<= 1;
-        }
-
-        let result = s64 as u64;
-        self.calc_flags(result, 64);
-        result
+        self.shl2p64(value0, value1)
     }
 
     pub fn sal2p32(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s32 = value0 as u32 as i32;
-        let sign_mask = 0x1f;
-
-        for _ in 0..(value1 & sign_mask) {
-            self.f_cf = get_bit!(s32, 31) == 1;
-            s32 <<= 1;
-        }
-
-        let result = s32 as u32 as u64;
-        self.calc_flags(result, 32);
-        result
+        self.shl2p32(value0, value1)
     }
 
     pub fn sal2p16(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s16 = value0 as u16 as i16;
-        let sign_mask = 0x1f;
-
-        for _ in 0..(value1 & sign_mask) {
-            self.f_cf = get_bit!(s16, 15) == 1;
-            s16 <<= 1;
-        }
-
-        let result = s16 as u16 as u64;
-        self.calc_flags(result, 16);
-        result
+        self.shl2p16(value0, value1)
     }
 
     pub fn sal2p8(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s8 = value0 as u8 as i8;
-        let sign_mask = 0x1f;
-
-        for _ in 0..(value1 & sign_mask) {
-            self.f_cf = get_bit!(s8, 7) == 1;
-            s8 <<= 1;
-        }
-
-        let result = s8 as u8 as u64;
-        self.calc_flags(result, 8);
-        result
+        self.shl2p8(value0, value1)
     }
 
     pub fn sal1p64(&mut self, value: u64) -> u64 {
-        let mut s64 = value as i64;
-
-        self.f_cf = get_bit!(s64, 63) == 1;
-
-        s64 <<= 1;
-
-        let res = s64 as u64;
-        self.calc_flags(res, 64);
-        if self.f_cf && get_bit!(s64, 63) == 1 {
-            self.f_of = false;
-        } else {
-            self.f_of = !(!self.f_cf && get_bit!(s64, 63) == 0)
-        };
-        res
+        self.shl1p64(value)
     }
 
     pub fn sal1p32(&mut self, value: u64) -> u64 {
-        let mut s32 = value as u32 as i32;
-
-        self.f_cf = get_bit!(s32, 31) == 1;
-
-        s32 <<= 1;
-
-        let res = s32 as u32 as u64;
-        self.calc_flags(res, 32);
-        if self.f_cf && get_bit!(s32, 31) == 1 {
-            self.f_of = false;
-        } else {
-            self.f_of = !(!self.f_cf && get_bit!(s32, 31) == 0)
-        };
-        res
+        self.shl1p32(value)
     }
 
     pub fn sal1p16(&mut self, value: u64) -> u64 {
-        let mut s16 = value as u16 as i16;
-
-        self.f_cf = get_bit!(s16, 15) == 1;
-
-        s16 <<= 1;
-
-        let res = s16 as u16 as u64;
-        self.calc_flags(res, 16);
-        if self.f_cf && get_bit!(s16, 15) == 1 {
-            self.f_of = false;
-        } else {
-            self.f_of = !(!self.f_cf && get_bit!(s16, 15) == 0)
-        };
-        res
+        self.shl1p16(value)
     }
 
     pub fn sal1p8(&mut self, value: u64) -> u64 {
-        let mut s8 = value as u8 as i8;
-
-        self.f_cf = get_bit!(s8, 0) == 1;
-
-        s8 <<= 1;
-
-        let res = s8 as u8 as u64;
-        self.calc_flags(res, 8);
-        if self.f_cf && get_bit!(s8, 7) == 1 {
-            self.f_of = false;
-        } else {
-            self.f_of = !(!self.f_cf && get_bit!(s8, 7) == 0)
-        };
-        res
+        self.shl1p8(value)
     }
 
     pub fn sar2p64(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s64: i64 = value0 as i64;
-        let sign_bit = get_bit!(value0, 63);
-        let count_mask = 0x3f;
-
-        for _ in 0..(value1 & count_mask) {
-            self.f_cf = get_bit!(s64, 0) == 1;
-            s64 >>= 1;
-            set_bit!(s64, 63, sign_bit);
+        let s64: i64 = value0 as i64;
+        if value1 == 0 {
+            return value0;
         }
 
-        let result = s64 as u64;
+        let count = value1 & 0x3f;
+        let sResult = s64 >> count;
+        let result = sResult as u64;
+        self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
+        self.f_of = false;
         self.calc_flags(result, 64);
         result
     }
 
     pub fn sar2p32(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s32: i32 = value0 as u32 as i32;
-        let sign_bit = get_bit!(value0, 31);
-        let count_mask = 0x1f;
-
-        for _ in 0..(value1 & count_mask) {
-            self.f_cf = get_bit!(s32, 0) == 1;
-            s32 >>= 1;
-            set_bit!(s32, 31, sign_bit);
+        let s32: i32 = value0 as u32 as i32;
+        if value1 == 0 {
+            return value0;
         }
 
-        let result = s32 as u32 as u64;
+        let count = value1 & 0x1f;
+        let sResult = s32 >> count;
+        let result = sResult as u32 as u64;
+        self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
+        self.f_of = false;
         self.calc_flags(result, 32);
         result
     }
 
     pub fn sar2p16(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s16: u16 = value0 as u16;
-        let sign_bit = get_bit!(value0, 15);
-        let count_mask = 0x1f;
-
-        for _ in 0..(value1 & count_mask) {
-            self.f_cf = get_bit!(s16, 0) == 1;
-            s16 >>= 1;
-            set_bit!(s16, 15, sign_bit);
+        let s16: u16 = value0 as u16;
+        if value1 == 0 {
+            return value0;
         }
 
-        let result = s16 as u64;
+        let count = value1 & 0x1f;
+        let sResult = s16 >> count;
+        let result = sResult as u16 as u64;
+        self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
+        self.f_of = false;
         self.calc_flags(result, 16);
         result
     }
 
     pub fn sar2p8(&mut self, value0: u64, value1: u64) -> u64 {
-        let mut s8: i8 = value0 as u8 as i8;
-        let sign_bit = get_bit!(value0, 7);
-        let count_mask = 0x1f;
-
-        for _ in 0..(value1 & count_mask) {
-            self.f_cf = get_bit!(s8, 0) == 1;
-            s8 >>= 1;
-            set_bit!(s8, 7, sign_bit);
+        let s8: i8 = value0 as u8 as i8;
+        if value1 == 0 {
+            return value0;
         }
 
-        let result = s8 as u8 as u64;
+        let count = value1 & 0x1f;
+        let sResult = s8 >> count;
+        let result = sResult as u8 as u64;
+        self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
+        self.f_of = false;
         self.calc_flags(result, 8);
         result
     }
 
     pub fn sar1p64(&mut self, value: u64) -> u64 {
-        let mut s64 = value as i64;
-        let sign_bit = get_bit!(s64, 63);
+        let s64 = value as i64;
 
-        self.f_cf = get_bit!(s64, 0) == 1;
-
-        s64 >>= 1;
-        set_bit!(s64, 63, sign_bit);
-
-        let res = s64 as u64;
-        self.calc_flags(res, 64);
+        let sResult = s64 >> 1;
+        let result = sResult as u64;
+        self.f_cf = (value & 0x1) == 0x1;
         self.f_of = false;
-        res
+        self.calc_flags(result, 64);
+        result
     }
 
     pub fn sar1p32(&mut self, value: u64) -> u64 {
-        let mut s32 = value as u32 as i32;
-        let sign_bit = get_bit!(s32, 31);
-
-        self.f_cf = get_bit!(s32, 0) == 1;
-
-        s32 >>= 1;
-        set_bit!(s32, 31, sign_bit);
-
-        let res = s32 as u32 as u64;
-        self.calc_flags(res, 32);
+        let s32 = value as u32 as i32;
+        let sResult = s32 >> 1;
+        let result = sResult as u32 as u64;
+        self.f_cf = (value & 0x1) == 0x1;
         self.f_of = false;
-        res
+        self.calc_flags(result, 32);
+        result
     }
 
     pub fn sar1p16(&mut self, value: u64) -> u64 {
-        let mut s16 = value as u16 as i16;
-        let sign_bit = get_bit!(s16, 15);
-
-        self.f_cf = get_bit!(s16, 0) == 1;
-
-        s16 >>= 1;
-        set_bit!(s16, 15, sign_bit);
-
-        let res = s16 as u16 as u64;
-        self.calc_flags(res, 16);
+        let s16 = value as u16 as i16;
+        let sResult = s16 >> 1;
+        let result = sResult as u16 as u64;
+        self.f_cf = (value & 0x1) == 0x1;
         self.f_of = false;
-        res
+        self.calc_flags(result, 16);
+        result
     }
 
     pub fn sar1p8(&mut self, value: u64) -> u64 {
-        let mut s8 = value as u8 as i8;
-        let sign_bit = get_bit!(s8, 7);
-
-        self.f_cf = get_bit!(s8, 0) == 1;
-
-        s8 >>= 1;
-        set_bit!(s8, 7, sign_bit);
-
-        let res = s8 as u8 as u64;
-        self.calc_flags(res, 8);
+        let s16 = value as u8 as i16;
+        let sResult = s16 >> 1;
+        let result = sResult as u8 as u64;
+        self.f_cf = (value & 0x1) == 0x1;
         self.f_of = false;
-        res
+        self.calc_flags(result, 8);
+        result
     }
 
     //// shr shl unsigned ////
@@ -1070,7 +934,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x1f;
+        let count = value1 & 0x3f;
         let result = (value0 << count) & 0xffffffffffffffff;
         self.f_cf = ((value0 >> (64 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 63)) == 0x1;
@@ -1155,7 +1019,7 @@ impl Flags {
             return value0;
         }
 
-        let count = value1 & 0x1f;
+        let count = value1 & 0x3f;
         let result = (value0 >> count) & 0xffffffffffffffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = ((value0 << 1) ^ value0) == 0x1;
@@ -1331,7 +1195,12 @@ impl Flags {
     }
 
     pub fn rcr(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        let count = value1 & 0x3f;
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+        let count = value1 & mask;
         let res = if count == 1 {
             ((value0 >> count) | ((self.f_cf as u64) << (sz - 1))) & (u64::pow(2, sz) - 1)
         } else {
@@ -1346,7 +1215,12 @@ impl Flags {
     }
 
     pub fn rcl(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        let count = value1 & 0x3f;
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+        let count = value1 & mask;
         let res = if count == 1 {
             ((value0 << count) | self.f_cf as u64) & (u64::pow(2, sz) - 1)
         } else {
@@ -1361,8 +1235,21 @@ impl Flags {
     }
 
     pub fn ror(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        let count =  value1 & 0x1f;
-        let res = (value0 >> count) | (value0 << (sz as u64 - count));
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+
+        // input size can be only 64 32 16 and 8
+        let res_mask = match sz {
+            64 => 0xffffffffffffffff,
+            32 => 0xffffffff,
+            16 => 0xffff,
+            _ => 0xff,
+        };
+        let count =  value1 & mask;
+        let res = (value0 >> count) | (value0 << (sz as u64 - count)) & res_mask;
         self.f_cf = (res >> (sz- 1)) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> (sz - 1))) == 1;
         self.calc_flags(res, sz);
@@ -1370,8 +1257,19 @@ impl Flags {
     }
 
     pub fn rol(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        let count =  value1 & 0x1f;
-        let res = (value0 << count) | (value0 >> (sz as u64 - count));
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+        let res_mask = match sz {
+            64 => 0xffffffffffffffff,
+            32 => 0xffffffff,
+            16 => 0xffff,
+            _ => 0xff,
+        };
+        let count =  value1 & mask;
+        let res = (value0 << count) | (value0 >> (sz as u64 - count)) & res_mask;
         self.f_cf = (res & 0x1) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> (sz - 1))) == 1;
         self.calc_flags(res, sz);
