@@ -2512,7 +2512,7 @@ impl Emu {
             }
 
             OpKind::Memory => {
-                let write = true;
+                let mut write = true;
                 let mem_base = ins.memory_base();
                 let mem_index = ins.memory_index();
                 let mem_displace = ins.memory_displacement32() as i32 as u64; // we need this for signed extension from 32bit to 64bit
@@ -2521,29 +2521,30 @@ impl Emu {
                     mem_displace
                 } else {
                     let scale_index = ins.memory_index_scale();
-                    let scale_factor = self.regs.get_reg(mem_index) * scale_index as u64;
+                    let scale_factor = self.regs.get_reg(mem_index).wrapping_mul(scale_index as u64);
                     mem_displace.wrapping_add(scale_factor)
                 };
                 let mem_addr = self.regs.get_reg(mem_base).wrapping_add(temp_displace);
-                /* I don't think we can ever set fs and gs memory location and we have the faster method from above instead of calling virtual_address and switch statement
+
                 if mem_base == Register::FS || mem_base == Register::GS {
                     write = false;
                     if self.linux {
                         if self.cfg.verbose > 0 {
-                            log::info!("writting FS[0x{:x}] = 0x{:x}", idx, value);
+                            log::info!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
                         }
                         if value == 0x4b6c50 {
                             self.fs.insert(0xffffffffffffffc8, 0x4b6c50);
                         }
-                        self.fs.insert(idx as u64, value);
+                        self.fs.insert(temp_displace as u64, value);
                     } else {
                         if self.cfg.verbose >= 1 {
-                            log::info!("fs:{:x} setting SEH to 0x{:x}", idx, value);
+                            log::info!("fs:{:x} setting SEH to 0x{:x}", temp_displace, value);
                         }
                         self.seh = value;
                     }
                 }
 
+                /* I don't think we can ever set fs and gs memory location and we have the faster method from above instead of calling virtual_address and switch statement
                 let mem_addr = ins
                     .virtual_address(noperand, 0, |reg, idx, _sz| {
                         Some(self.regs.get_reg(reg))

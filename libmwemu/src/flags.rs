@@ -492,7 +492,7 @@ impl Flags {
     pub fn add8(&mut self, value1: u8, value2: u8, cf: bool, include_carry: bool) -> u64 {
         let c = if include_carry { cf as u8 } else { 0 };
         let result = value1.wrapping_add(value2).wrapping_add(c);
-        let sum = value1 as u16 + value2 as u16 + cf as u16;
+        let sum = value1 as u16 + value2 as u16 + c as u16;
 
         self.f_cf = sum > 0xFF;
         self.f_sf = (result as i8) < 0;
@@ -605,11 +605,13 @@ impl Flags {
             self.f_zf = true;
             self.f_pf = true;
             self.f_af = true;
+            self.f_sf = false;
+            self.f_of = false;
             return 0;
         }
 
         self.f_of = value == 0x7fffffff_ffffffff;
-        self.f_sf = value > 0x7fffffff_ffffffff;
+        self.f_sf = value+1 > 0x7fffffff_ffffffff;
         self.calc_pf((value + 1) as u8);
         self.f_zf = false;
         value + 1
@@ -620,10 +622,12 @@ impl Flags {
             self.f_zf = true;
             self.f_pf = true;
             self.f_af = true;
+            self.f_sf = false;
+            self.f_of = false;
             return 0;
         }
         self.f_of = value == 0x7fffffff;
-        self.f_sf = value > 0x7fffffff;
+        self.f_sf = value+1 > 0x7fffffff;
         self.calc_pf((value + 1) as u8);
         //self.f_pf = (((value as i32) +1) & 0xff) % 2 == 0;
         self.f_zf = false;
@@ -635,10 +639,12 @@ impl Flags {
             self.f_zf = true;
             self.f_pf = true;
             self.f_af = true;
+            self.f_sf = false;
+            self.f_of = false;
             return 0;
         }
         self.f_of = value == 0x7fff;
-        self.f_sf = value > 0x7fff;
+        self.f_sf = value+1 > 0x7fff;
         self.calc_pf((value + 1) as u8);
         //self.f_pf = (((value as i32) +1) & 0xff) % 2 == 0;
         self.f_zf = false;
@@ -650,10 +656,12 @@ impl Flags {
             self.f_zf = true;
             self.f_pf = true;
             self.f_af = true;
+            self.f_sf = false;
+            self.f_of = false;
             return 0;
         }
         self.f_of = value == 0x7f;
-        self.f_sf = value > 0x7f;
+        self.f_sf = value+1 > 0x7f;
         self.calc_pf((value + 1) as u8);
         //self.f_pf = (((value as i32) +1) & 0xff) % 2 == 0;
         self.f_zf = false;
@@ -665,6 +673,7 @@ impl Flags {
             self.f_pf = true;
             self.f_af = true;
             self.f_sf = true;
+            self.f_of = false;
             return 0xffffffffffffffff;
         }
         self.f_of = value == 0x8000000000000000;
@@ -682,6 +691,7 @@ impl Flags {
             self.f_pf = true;
             self.f_af = true;
             self.f_sf = true;
+            self.f_of = false;
             return 0xffffffff;
         }
         self.f_of = value == 0x80000000;
@@ -699,6 +709,7 @@ impl Flags {
             self.f_pf = true;
             self.f_af = true;
             self.f_sf = true;
+            self.f_of = false;
             return 0xffff;
         }
         self.f_of = value == 0x8000;
@@ -716,6 +727,7 @@ impl Flags {
             self.f_pf = true;
             self.f_af = true;
             self.f_sf = true;
+            self.f_of = false;
             return 0xff;
         }
         self.f_of = value == 0x80;
@@ -857,7 +869,7 @@ impl Flags {
     }
 
     pub fn sar2p16(&mut self, value0: u64, value1: u64) -> u64 {
-        let s16: u16 = value0 as u16;
+        let s16 = value0 as u16 as i16;
         if value1 == 0 {
             return value0;
         }
@@ -1022,7 +1034,7 @@ impl Flags {
         let count = value1 & 0x3f;
         let result = (value0 >> count) & 0xffffffffffffffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
-        self.f_of = ((value0 << 1) ^ value0) == 0x1;
+        self.f_of = (((value0 << 1) ^ value0) & 0x1) == 0x1;
         self.calc_flags(result, 64);
         result
     }
@@ -1035,7 +1047,7 @@ impl Flags {
         let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xffffffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
-        self.f_of = ((value0 << 1) ^ value0) == 0x1;
+        self.f_of = (((value0 << 1) ^ value0) & 0x1) == 0x1;
         self.calc_flags(result, 32);
         result
     }
@@ -1048,7 +1060,7 @@ impl Flags {
         let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xffff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
-        self.f_of = ((value0 << 1) ^ value0) == 0x1;
+        self.f_of = (((value0 << 1) ^ value0) & 0x1) == 0x1;
         self.calc_flags(result, 16);
         result
     }
@@ -1061,7 +1073,7 @@ impl Flags {
         let count = value1 & 0x1f;
         let result = (value0 >> count) & 0xff;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
-        self.f_of = ((value0 << 1) ^ value0) == 0x1;
+        self.f_of = (((value0 << 1) ^ value0) & 0x1) == 0x1;
         self.calc_flags(result, 8);
         result
     }
@@ -1069,7 +1081,7 @@ impl Flags {
     pub fn shr1p64(&mut self, value: u64) -> u64 {
         let result = (value >> 1) & 0xffffffffffffffff;
         self.f_cf = (value & 0x1) == 0x1;
-        self.f_of = ((value << 1) ^ value) == 0x1;
+        self.f_of = (((value << 1) ^ value) & 0x1) == 0x1;
         self.calc_flags(result, 64);
         result
     }
@@ -1077,7 +1089,7 @@ impl Flags {
     pub fn shr1p32(&mut self, value: u64) -> u64 {
         let result = (value >> 1) & 0xffffffff;
         self.f_cf = (value & 0x1) == 0x1;
-        self.f_of = ((value << 1) ^ value) == 0x1;
+        self.f_of = (((value << 1) ^ value) & 0x1) == 0x1;
         self.calc_flags(result, 32);
         result
     }
@@ -1085,7 +1097,7 @@ impl Flags {
     pub fn shr1p16(&mut self, value: u64) -> u64 {
         let result = (value >> 1) & 0xffff;
         self.f_cf = (value & 0x1) == 0x1;
-        self.f_of = ((value << 1) ^ value) == 0x1;
+        self.f_of = (((value << 1) ^ value) & 0x1) == 0x1;
         self.calc_flags(result, 16);
         result
     }
@@ -1093,7 +1105,7 @@ impl Flags {
     pub fn shr1p8(&mut self, value: u64) -> u64 {
         let result = (value >> 1) & 0xff;
         self.f_cf = (value & 0x1) == 0x1;
-        self.f_of = ((value << 1) ^ value) == 0x1;
+        self.f_of = (((value << 1) ^ value) & 0x1) == 0x1;
         self.calc_flags(result, 8);
         result
     }
@@ -1210,7 +1222,7 @@ impl Flags {
 
         self.f_cf = ((value0 >> (count - 1) ) &  1) == 1;
         self.f_of = ((res ^ (res << 1)) >> (sz-1)) == 1;
-        self.calc_flags(res, sz);
+        // don't calculate the flag zf, sf doesn't got effect
         res
     }
 
@@ -1230,7 +1242,7 @@ impl Flags {
 
         self.f_cf = ((value0 >> (sz as u64 - count) ) &  1) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> 31)) == 1;
-        self.calc_flags(res, sz);
+        // don't calculate the flag zf, sf doesn't got effect
         res
     }
 
@@ -1250,9 +1262,12 @@ impl Flags {
         };
         let count =  value1 & mask;
         let res = (value0 >> count) | (value0 << (sz as u64 - count)) & res_mask;
-        self.f_cf = (res >> (sz- 1)) == 1;
-        self.f_of = (self.f_cf as u64 ^ (res >> (sz - 1))) == 1;
-        self.calc_flags(res, sz);
+        let bit63 = (res >> (sz-1)) & 1;
+        let bit62 = (res >> (sz-2)) & 1;
+
+        self.f_cf = bit63 == 1;
+        self.f_of = bit63 != bit62; // take this for grant
+        // don't calculate the flag zf, sf doesn't got effect
         res
     }
 
@@ -1272,7 +1287,7 @@ impl Flags {
         let res = (value0 << count) | (value0 >> (sz as u64 - count)) & res_mask;
         self.f_cf = (res & 0x1) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> (sz - 1))) == 1;
-        self.calc_flags(res, sz);
+        // don't calculate the flag zf, sf doesn't got effect
         res
     }
 }
