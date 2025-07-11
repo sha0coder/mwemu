@@ -2517,14 +2517,24 @@ impl Emu {
                 let mem_index = ins.memory_index();
                 let mem_displace = ins.memory_displacement32() as i32 as u64; // we need this for signed extension from 32bit to 64bit
 
+
                 let temp_displace = if mem_index == Register::None {
                     mem_displace
-                } else {
+                }  else {
                     let scale_index = ins.memory_index_scale();
                     let scale_factor = self.regs.get_reg(mem_index).wrapping_mul(scale_index as u64);
                     mem_displace.wrapping_add(scale_factor)
                 };
-                let mem_addr = self.regs.get_reg(mem_base).wrapping_add(temp_displace);
+
+                // case when address is relative to rip then just return temp_displace
+                let displace = self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+                // do this for cmov optimization
+                
+                let mem_addr = if mem_base == Register::RIP {
+                    temp_displace
+                } else {
+                    displace
+                };
 
                 if mem_base == Register::FS || mem_base == Register::GS {
                     write = false;
