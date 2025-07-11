@@ -2516,7 +2516,7 @@ impl Emu {
                 let mem_base = ins.memory_base();
                 let mem_index = ins.memory_index();
                 let mem_displace = ins.memory_displacement32() as i32 as u64; // we need this for signed extension from 32bit to 64bit
-
+                let mem_seg = ins.memory_segment();
 
                 let temp_displace = if mem_index == Register::None {
                     mem_displace
@@ -2526,16 +2526,7 @@ impl Emu {
                     mem_displace.wrapping_add(scale_factor)
                 };
 
-                // case when address is relative to rip then just return temp_displace
-                let displace = self.regs.get_reg(mem_base).wrapping_add(temp_displace);
-                // do this for cmov optimization
-                let mem_addr = if mem_base == Register::RIP {
-                    temp_displace
-                } else {
-                    displace
-                };
-
-                if mem_base == Register::FS || mem_base == Register::GS {
+                if mem_seg == Register::FS || mem_base == Register::GS {
                     write = false;
                     if self.linux {
                         if self.cfg.verbose > 0 {
@@ -2552,7 +2543,6 @@ impl Emu {
                         self.seh = value;
                     }
                 }
-
                 /* I don't think we can ever set fs and gs memory location and we have the faster method from above instead of calling virtual_address and switch statement
                 let mem_addr = ins
                     .virtual_address(noperand, 0, |reg, idx, _sz| {
@@ -2565,6 +2555,15 @@ impl Emu {
                 }
                 */
                 if write {
+                    // case when address is relative to rip then just return temp_displace
+                    let displace = self.regs.get_reg(mem_base).wrapping_add(temp_displace);
+                    // do this for cmov optimization
+                    let mem_addr = if mem_base == Register::RIP {
+                        temp_displace
+                    } else {
+                        displace
+                    };
+
                     let sz = self.get_operand_sz(ins, noperand);
 
                     let value2 = match self.hooks.hook_on_memory_write {
