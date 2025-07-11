@@ -12,6 +12,6 @@ opt-level = 3
 panic = 'unwind'
 
 [profile.dev]
-debug = "full"
-opt-level = 0
+debug = 2
+opt-level = 1
 panic = 'unwind'
