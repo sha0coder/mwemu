@@ -2527,9 +2527,8 @@ impl Emu {
                 };
 
                 // case when address is relative to rip then just return temp_displace
-                let displace = self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+                let displace = self.regs.get_reg(mem_base).wrapping_add(temp_displace);
                 // do this for cmov optimization
-                
                 let mem_addr = if mem_base == Register::RIP {
                     temp_displace
                 } else {
