@@ -2512,10 +2512,14 @@ impl Emu {
             }
 
             OpKind::Memory => {
-                let mut write = true;
                 let mem_base = ins.memory_base();
                 let mem_index = ins.memory_index();
-                let mem_displace = ins.memory_displacement32() as i32 as u64; // we need this for signed extension from 32bit to 64bit
+                let mem_displace = if self.cfg.is_64bits {
+                    ins.memory_displacement64()
+                } else {
+                    ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
+                };
+
                 let mem_seg = ins.memory_segment();
 
                 let temp_displace = if mem_index == Register::None {
@@ -2527,7 +2531,6 @@ impl Emu {
                 };
 
                 if mem_seg == Register::FS || mem_base == Register::GS {
-                    write = false;
                     if self.linux {
                         if self.cfg.verbose > 0 {
                             log::info!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
@@ -2542,6 +2545,8 @@ impl Emu {
                         }
                         self.seh = value;
                     }
+
+                    return true;
                 }
                 /* I don't think we can ever set fs and gs memory location and we have the faster method from above instead of calling virtual_address and switch statement
                 let mem_addr = ins
@@ -2554,130 +2559,129 @@ impl Emu {
                     panic!("something wrong");
                 }
                 */
-                if write {
-                    // case when address is relative to rip then just return temp_displace
-                    let displace = if mem_base == Register::None {
-                        temp_displace
-                    } else {
-                        self.regs.get_reg(mem_base).wrapping_add(temp_displace)
-                    };
+                // case when address is relative to rip then just return temp_displace
+                let displace = if mem_base == Register::None {
+                    temp_displace
+                } else {
+                    self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+                };
 
-                    // do this for cmov optimization
-                    let mem_addr = if mem_base == Register::RIP {
-                        temp_displace
-                    } else {
-                        displace
-                    };
+                // do this for cmov optimization
+                let mem_addr = if mem_base == Register::RIP {
+                    temp_displace
+                } else {
+                    displace
+                };
 
-                    let sz = self.get_operand_sz(ins, noperand);
+                let sz = self.get_operand_sz(ins, noperand);
 
-                    let value2 = match self.hooks.hook_on_memory_write {
-                        Some(hook_fn) => {
-                            hook_fn(self, self.regs.rip, mem_addr, sz, value as u128) as u64
-                        }
-                        None => value,
-                    };
+                let value2 = match self.hooks.hook_on_memory_write {
+                    Some(hook_fn) => {
+                        hook_fn(self, self.regs.rip, mem_addr, sz, value as u128) as u64
+                    }
+                    None => value,
+                };
 
-                    let old_value = if self.cfg.trace_mem {
-                        match sz {
-                            64 => self.maps.read_qword(mem_addr).unwrap_or(0),
-                            32 => self.maps.read_dword(mem_addr).unwrap_or(0) as u64,
-                            16 => self.maps.read_word(mem_addr).unwrap_or(0) as u64,
-                            8 => self.maps.read_byte(mem_addr).unwrap_or(0) as u64,
-                            _ => unreachable!("weird size: {}", sz),
-                        }
-                    } else {
-                        0
-                    };
-
+                let old_value = if self.cfg.trace_mem {
                     match sz {
-                        64 => {
-                            if !self.maps.write_qword(mem_addr, value2) {
-                                if self.cfg.skip_unimplemented {
-                                    let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(&map_name, mem_addr, 100)
-                                        .expect("cannot create banzai map");
-                                    map.write_qword(mem_addr, value2);
-                                    return true;
-                                } else {
-                                    log::info!(
-                                        "/!\\ exception dereferencing bad address. 0x{:x}",
-                                        mem_addr
-                                    );
-                                    self.exception(
-                                        exception_type::ExceptionType::BadAddressDereferencing,
-                                    );
-                                    return false;
-                                }
+                        64 => self.maps.read_qword(mem_addr).unwrap_or(0),
+                        32 => self.maps.read_dword(mem_addr).unwrap_or(0) as u64,
+                        16 => self.maps.read_word(mem_addr).unwrap_or(0) as u64,
+                        8 => self.maps.read_byte(mem_addr).unwrap_or(0) as u64,
+                        _ => unreachable!("weird size: {}", sz),
+                    }
+                } else {
+                    0
+                };
+
+                match sz {
+                    64 => {
+                        if !self.maps.write_qword(mem_addr, value2) {
+                            if self.cfg.skip_unimplemented {
+                                let map_name = format!("banzai_{:x}", mem_addr);
+                                let map = self
+                                    .maps
+                                    .create_map(&map_name, mem_addr, 100)
+                                    .expect("cannot create banzai map");
+                                map.write_qword(mem_addr, value2);
+                                return true;
+                            } else {
+                                log::info!(
+                                    "/!\\ exception dereferencing bad address. 0x{:x}",
+                                    mem_addr
+                                );
+                                self.exception(
+                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                );
+                                return false;
                             }
                         }
-                        32 => {
-                            if !self.maps.write_dword(mem_addr, to32!(value2)) {
-                                if self.cfg.skip_unimplemented {
-                                    let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(&map_name, mem_addr, 100)
-                                        .expect("cannot create banzai map");
-                                    map.write_dword(mem_addr, to32!(value2));
-                                    return true;
-                                } else {
-                                    log::info!(
-                                        "/!\\ exception dereferencing bad address. 0x{:x}",
-                                        mem_addr
-                                    );
-                                    self.exception(
-                                        exception_type::ExceptionType::BadAddressDereferencing,
-                                    );
-                                    return false;
-                                }
+                    }
+                    32 => {
+                        if !self.maps.write_dword(mem_addr, to32!(value2)) {
+                            if self.cfg.skip_unimplemented {
+                                let map_name = format!("banzai_{:x}", mem_addr);
+                                let map = self
+                                    .maps
+                                    .create_map(&map_name, mem_addr, 100)
+                                    .expect("cannot create banzai map");
+                                map.write_dword(mem_addr, to32!(value2));
+                                return true;
+                            } else {
+                                log::info!(
+                                    "/!\\ exception dereferencing bad address. 0x{:x}",
+                                    mem_addr
+                                );
+                                self.exception(
+                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                );
+                                return false;
                             }
                         }
-                        16 => {
-                            if !self.maps.write_word(mem_addr, value2 as u16) {
-                                if self.cfg.skip_unimplemented {
-                                    let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(&map_name, mem_addr, 100)
-                                        .expect("cannot create banzai map");
-                                    map.write_word(mem_addr, value2 as u16);
-                                    return true;
-                                } else {
-                                    log::info!(
-                                        "/!\\ exception dereferencing bad address. 0x{:x}",
-                                        mem_addr
-                                    );
-                                    self.exception(
-                                        exception_type::ExceptionType::BadAddressDereferencing,
-                                    );
-                                    return false;
-                                }
+                    }
+                    16 => {
+                        if !self.maps.write_word(mem_addr, value2 as u16) {
+                            if self.cfg.skip_unimplemented {
+                                let map_name = format!("banzai_{:x}", mem_addr);
+                                let map = self
+                                    .maps
+                                    .create_map(&map_name, mem_addr, 100)
+                                    .expect("cannot create banzai map");
+                                map.write_word(mem_addr, value2 as u16);
+                                return true;
+                            } else {
+                                log::info!(
+                                    "/!\\ exception dereferencing bad address. 0x{:x}",
+                                    mem_addr
+                                );
+                                self.exception(
+                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                );
+                                return false;
                             }
                         }
-                        8 => {
-                            if !self.maps.write_byte(mem_addr, value2 as u8) {
-                                if self.cfg.skip_unimplemented {
-                                    let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(&map_name, mem_addr, 100)
-                                        .expect("cannot create banzai map");
-                                    map.write_byte(mem_addr, value2 as u8);
-                                    return true;
-                                } else {
-                                    log::info!(
-                                        "/!\\ exception dereferencing bad address. 0x{:x}",
-                                        mem_addr
-                                    );
-                                    self.exception(
-                                        exception_type::ExceptionType::BadAddressDereferencing,
-                                    );
-                                    return false;
-                                }
+                    }
+                    8 => {
+                        if !self.maps.write_byte(mem_addr, value2 as u8) {
+                            if self.cfg.skip_unimplemented {
+                                let map_name = format!("banzai_{:x}", mem_addr);
+                                let map = self
+                                    .maps
+                                    .create_map(&map_name, mem_addr, 100)
+                                    .expect("cannot create banzai map");
+                                map.write_byte(mem_addr, value2 as u8);
+                                return true;
+                            } else {
+                                log::info!(
+                                    "/!\\ exception dereferencing bad address. 0x{:x}",
+                                    mem_addr
+                                );
+                                self.exception(
+                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                );
+                                return false;
                             }
+                        }
                         }
                         _ => unimplemented!("weird size"),
                     }
@@ -2720,7 +2724,6 @@ impl Emu {
                         }
                     }
                 }
-            }
 
             _ => unimplemented!("unimplemented operand type"),
         };
