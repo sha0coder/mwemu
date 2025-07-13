@@ -509,7 +509,7 @@ dependencies = [
 
 [[package]]
 name = "mwemu"
-version = "0.7.10"
+version = "0.7.11"
 dependencies = [
  "clap",
  "env_logger",
