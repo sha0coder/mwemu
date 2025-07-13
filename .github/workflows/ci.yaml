@@ -50,9 +50,8 @@ jobs:
       - name: Run coverage
         run: cargo tarpaulin --out Xml --output coverage.xml
 
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.xml
+          slug: sha0coder/mwemu
