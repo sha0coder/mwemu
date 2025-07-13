@@ -2566,11 +2566,17 @@ impl Emu {
                     self.regs.get_reg(mem_base).wrapping_add(temp_displace)
                 };
 
+                let displace_result = if !self.cfg.is_64bits {
+                    displace & 0xffffffff
+                } else {
+                    displace
+                };
+
                 // do this for cmov optimization
                 let mem_addr = if mem_base == Register::RIP {
                     temp_displace
                 } else {
-                    displace
+                    displace_result
                 };
 
                 let sz = self.get_operand_sz(ins, noperand);
