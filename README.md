@@ -2,7 +2,9 @@
 x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
 
 [![Rust CI](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml/badge.svg)](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml)
-[![Crates.io](https://img.shields.io/crates/v/libmwemu.svg)](https://crates.io/crates/libmwemu)
+[![PyPI version](https://img.shields.io/pypi/v/pymwemu.svg)](https://pypi.org/project/pymwemu/)
+[![libmwemu crates.io](https://img.shields.io/crates/v/libmwemu.svg)](https://crates.io/crates/libmwemu)
+[![mwemu rates.io](https://img.shields.io/crates/v/mwemu.svg)](https://crates.io/crates/mwemu)
 [![Docs.rs](https://docs.rs/libmwemu/badge.svg)](https://docs.rs/libmwemu)
 [![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
 

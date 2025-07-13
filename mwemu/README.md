@@ -41,7 +41,7 @@ memroy trace:
 cargo run --release -- -f test/sc32win_donut.bin -vvv -c 121 --memory
 
 register trace:
-cargo run --release -- -f test/sc32win_donut.bin -vvv -c 121 --reg rax,rbx
+cargo run --release -- -f test/sc32win_donut.bin -vvv -c 121 --reg eax,ebx
 
 stack trace:
 cargo run --release -- -f test/sc32win_donut.bin --stack_trace
@@ -55,7 +55,7 @@ cargo run --release -- -f test/sc32win_donut.bin -i 'dword ptr [ebp + 0x24]'
 ## --help
 
 ```
-MWEMU emulator for malware 0.7.10
+MWEMU emulator for malware
 @sha0coder
 
 USAGE:
