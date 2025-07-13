@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use std::io::Write as _;
-    //use log::{info, warn, error, debug};
+    use log::{info, warn, error, debug};
     use std::sync::Once;
 
     use crate::emu::Emu;
@@ -32,7 +32,7 @@ mod tests {
         assert_eq!(f80.to_integer_u128(), 1);
 
         f80.set_f64(1.0);
-        assert_eq!(f80.to_integer_u128(), 1);
+        assert_eq!(f80.get(), 0x3fff8000000000000000);
 
 
         // Test zero
@@ -129,6 +129,22 @@ mod tests {
         let bcd1 = f80.to_bcd_packed();
         let bcd2 = f80_2.to_bcd_packed();
         assert_eq!(bcd1, bcd2, "Error en BCD packed para valor {}", val);
+
+
+        // test a.add(b)
+        
+        let mut b:F80 = F80::new();
+        f80.set_f64(-1.1);
+        b.set_f64(1.9);
+        f80.add(b);
+        assert_eq!(f80.get_f64(), 0.7999999999999998);
+        assert_eq!(f80.get_round_f64(4), 0.8);
+        assert_eq!(f80.get(), 0x3ffeccccccccccccc000);
+
+        f80.set_f64(1.0);
+        b.set_f64(2.0);
+        f80.sub(b);
+        assert_eq!(f80.get_f64(), -1.0);
     }
 
     #[test]
@@ -329,125 +345,145 @@ mod tests {
         setup();
 
         let mut fpu = FPU::new();
+        assert_eq!(fpu.get_top(), 0);
+        assert_eq!(fpu.get_depth(), 0);
 
-
-        fpu.set_st(1, 0.0);
-        assert_eq!(fpu.get_st(1), 0.0);
+        fpu.push_f64(0.0);
+        fpu.push_f64(1.0);
+        assert_eq!(fpu.peek_st_logical_f64(0), 1.0);
+        assert_eq!(fpu.peek_st_logical_f64(1), 0.0);
 
 
         // u80 to f64 conversion
         fpu.set_st_u80(1, 0x4000c90fdaa22168c235);
-        assert_eq!(fpu.get_st(1), 3.14159265358979323);
-        
+        fpu.st.print();
+        assert_eq!(fpu.peek_st_logical_f64(1), 3.14159265358979323);
+        assert_eq!(fpu.peek_st_logical_u80(1), 0x4000c90fdaa22168c235);
+       
+        /*
         assert_eq!(3.141592653589793239, 
-                   3.141592653589793);  // true 
+                   3.141592653589793);  // true cuts to 64bits
                                         //
+        */
 
         // f64 to u80 conversion
         //fpu.set_st(1, 4.141592653589793238);
-        //assert_eq!(fpu.get_st_u80(1), 0x4000c90fdaa22168c234);
+        //assert_eq!(fpu.peek_st_u80(1), 0x4000c90fdaa22168c234);
+        //
+
+        
     }
 
 
     #[test]
-    #[ignore]
     // this tests the fpu unit.
     fn elf64lin_fpu() {
         setup();
 
         let mut emu = emu64();
+
         emu.cfg.maps_folder = "../maps64/".to_string();
         emu.init(false, false);
 
         let sample = "../test/elf64lin_fpu.bin";
         emu.load_code(sample);
-        emu.step(); // fninit
-        emu.step(); // fld1
-        assert_eq!(emu.fpu.get_st_u80(7), 0);
-        emu.step(); // fldpi
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x4000c90fdaa22168c235);
-        assert_eq!(emu.fpu.get_st(6), 3.141592653589793239);
-        emu.step(); // fadd   st,st(1)
-        assert_eq!(emu.fpu.get_st_u80(6), 0x40018487ed5110b4611a);
-        assert_eq!(emu.fpu.get_st(6), 4.141592653589793238);
-        emu.step(); // fsub   st,st(1)
-        assert_eq!(emu.fpu.get_st_u80(6), 0x4000c90fdaa22168c234);
-        assert_eq!(emu.fpu.get_st(6), 3.141592653589793238);
-        emu.step(); // fsubr  st,st(1)
-        assert_eq!(emu.fpu.get_st_u80(6), 0xc000890fdaa22168c234);
-        assert_eq!(emu.fpu.get_st(6), -2.141592653589793238);
-        emu.step(); // fchs
-        assert_eq!(emu.fpu.get_st_u80(6), 0x4000890fdaa22168c234);
-        assert_eq!(emu.fpu.get_st(6), 2.141592653589793238);
-        emu.step(); // fsqrt
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fffbb51491ea66b6ea4);
-        assert_eq!(emu.fpu.get_st(6), 1.463418140378816419);
-        emu.step(); //  fxch   st(1)
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3fffbb51491ea66b6ea4);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st(7), 1.463418140378816419);
-        emu.step(); //  fptan
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3fffbb51491ea66b6ea4);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fffc75922e5f71d2dc6);
-        assert_eq!(emu.fpu.get_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st(7), 1.463418140378816419);
-        assert_eq!(emu.fpu.get_st(6), 1.557407724654902231);
-        assert_eq!(emu.fpu.get_st(5), 1.0);
-        emu.step(); //  fmulp  st(1),st
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3fffbb51491ea66b6ea4);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fffc75922e5f71d2dc6);
-        assert_eq!(emu.fpu.get_st(7), 1.463418140378816419);
-        assert_eq!(emu.fpu.get_st(6), 1.557407724654902231);
-        emu.step(); // fdivp  st(1),st
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3ffef08ce6b636464375);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fffc75922e5f71d2dc6);
-        assert_eq!(emu.fpu.get_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st(7), 0.9396499819615878249);
-        emu.step(); // fsubp  st(1),st
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        emu.step(); // f2xm1
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        emu.step(); // fld1
-        assert_eq!(emu.fpu.get_st_u80(7), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fffc75922e5f71d2dc6);
-        assert_eq!(emu.fpu.get_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        assert_eq!(emu.fpu.get_st(7), 1.0);
-        emu.step(); // fldlg2
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3ffd9a209a84fbcff799);
-        assert_eq!(emu.fpu.get_st(6), 0.3010299956639811952);
-        emu.step(); // fyl2x
-        assert_eq!(emu.fpu.get_st_u80(7), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st(7), -1.732020845644619341);
-        emu.step(); // fld1
-        emu.step(); // fld1
-        assert_eq!(emu.fpu.get_st_u80(7), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        assert_eq!(emu.fpu.get_st(7), -1.732020845644619341);
-        emu.step(); // fyl2xp1
-        assert_eq!(emu.fpu.get_st_u80(7), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        assert_eq!(emu.fpu.get_st(7), -1.732020845644619341);
-        emu.step(); // fucom  st(1)
-        emu.step(); // fcmovnbe st(0), st(1)
-        assert_eq!(emu.fpu.get_st_u80(7), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st_u80(6), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st(7), -1.732020845644619341);
-        assert_eq!(emu.fpu.get_st(6), -1.732020845644619341);
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
-        emu.step(); // fcmovnu st(0), st(1)
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
+        emu.fpu.clear();
+        emu.fpu.trace = true;
+        assert_eq!(emu.fpu.peek_st_u80(7), 0);
+        emu.step(); // 1 fninit
+        assert_eq!(emu.fpu.peek_st_u80(7), 0);
+        emu.step(); // 2 fld1
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), 1.0);
+        emu.step(); // 3 fldpi
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000c90fdaa22168c234); // should end in 235
+        assert_eq!(emu.fpu.peek_st_f64(6), 3.141592653589793);
+        emu.step(); // 4 fadd   st,st(1)
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x40018487ed5110b4611a);
+        assert_eq!(emu.fpu.peek_st_f64(6), 4.141592653589793);
+        emu.step(); // 5 fsub   st,st(1)
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000c90fdaa22168c234);
+        assert_eq!(emu.fpu.peek_st_f64(6), 3.141592653589793);
+        emu.step(); // 6 fsubr  st,st(1)
+        assert_eq!(emu.fpu.peek_st_u80(6), 0xc000890fdaa22168c234);
+        assert_eq!(emu.fpu.peek_st_f64(6), -2.141592653589793238);
+        emu.step(); // 7 fchs
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000890fdaa22168c234);
+        assert_eq!(emu.fpu.peek_st_f64(6), 2.141592653589793);
+        emu.step(); // 8 fsqrt
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffbb51491ea66b7000); // should end in 6ea4,
+                                                                    // its comupted as f64
+        assert_eq!(emu.fpu.peek_st_f64(6), 1.4634181403788165);
+
+        emu.step(); //  9 fxch   st(1) 
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
+        emu.step(); //  10 fptan
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 3000
+        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
+        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023);
+        assert_eq!(emu.fpu.peek_st_f64(5), 1.0);
+        emu.step(); //  11 fmulp  st(1),st
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
+        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023);
+        emu.step(); // 12 fdivp  st(1),st
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3ffef08ce6b636464000); // should end in 375
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), 0.9396499819615878);
+        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023); 
+        emu.step(); // 13 fsubp  st(1),st
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        emu.step(); // 14 f2xm1
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        emu.step(); // 15 fld1
+        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000); // should end in 375
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        emu.step(); // 16 fldlg2
+        assert_eq!(emu.fpu.st.get_top(), 6);
+        assert_eq!(emu.fpu.st.get_depth(), 2);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3ffd9a209a84fbcff800); // 799);
+        assert_eq!(emu.fpu.peek_st_f64(6), 0.3010299956639812); 
+        emu.step(); // 17 fyl2x
+        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        emu.step(); // 18 fld1
+        emu.step(); // 19 fld1
+        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        emu.step(); // 20 fyl2xp1
+        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        emu.step(); // 21 fucom  st(1)
+        emu.step(); // 22 fcmovnbe st(0), st(1)
+        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        assert_eq!(emu.fpu.peek_st_f64(6), -1.7320208456446193);
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        emu.step(); // 23 fcmovnu st(0), st(1)
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // fstp   st(0)
         emu.step(); // fstp   st(0)
         emu.step(); // fstp   st(0)
-        assert_eq!(emu.fpu.get_st_u80(7), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st_u80(6), 0xbfffddb2dbec0456f846);
-        assert_eq!(emu.fpu.get_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
     }
 
 

@@ -112,6 +112,7 @@ impl Maps {
             }
         }
     }
+
     pub fn read_byte(&self, addr: u64) -> Option<u8> {
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
@@ -124,6 +125,14 @@ impl Maps {
                 None
             }
         }
+    }
+
+    pub fn read_f64(&self, addr: u64) -> Option<f64> {
+        self.read_qword(addr).map(|v| f64::from_bits(v))
+    }
+
+    pub fn read_f32(&self, addr: u64) -> Option<f32> {
+        self.read_dword(addr).map(|v| f32::from_bits(v))
     }
 
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {

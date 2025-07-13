@@ -5,6 +5,7 @@ use crate::emu::Emu;
 use crate::exception;
 use crate::exception_type;
 use crate::fpu::FPUState;
+use crate::fpu::f80::F80;
 use crate::inline;
 use crate::ntapi32;
 use crate::regs64;
@@ -4385,11 +4386,15 @@ pub fn emulate_instruction(
 
         ///// FPU /////  https://github.com/radare/radare/blob/master/doc/xtra/fpu
         Mnemonic::Fninit => {
+            emu.show_instruction(color!("Green"), ins);
             emu.fpu.clear();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Finit => {
+            emu.show_instruction(color!("Green"), ins);
             emu.fpu.clear();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Ffree => {
@@ -4431,6 +4436,7 @@ pub fn emulate_instruction(
             };
 
             emu.fpu.set_ctrl(value);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fnstenv => {
@@ -4466,49 +4472,49 @@ pub fn emulate_instruction(
         Mnemonic::Fldz => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(0.0);
+            emu.fpu.push_f64(0.0);
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fld1 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(1.0);
+            emu.fpu.push_f64(1.0);
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldpi => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(std::f64::consts::PI);
+            emu.fpu.push_f80(F80::PI());
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldl2t => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(10f64.log2());
+            emu.fpu.push_f64(10f64.log2());
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldlg2 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(2f64.log10());
+            emu.fpu.push_f64(2f64.log10());
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldln2 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(2f64.log(std::f64::consts::E));
+            emu.fpu.push_f64(2f64.log(std::f64::consts::E));
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fldl2e => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.push(std::f64::consts::E.log2());
+            emu.fpu.push_f64(std::f64::consts::E.log2());
             emu.fpu.set_ip(emu.regs.rip);
         }
 
@@ -4520,52 +4526,65 @@ pub fn emulate_instruction(
             if !emu.set_operand_value(ins, 0, res) {
                 return false;
             }
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fsubrp => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu.get_st(0);
-            let st1 = emu.fpu.get_st(1);
-            let result = st1 - st0;
-
-            emu.fpu.set_st(1, result);
-            emu.fpu.pop();
+            emu.fpu.subr(1, 0);
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fstp => {
             emu.show_instruction(color!("Green"), ins);
 
-            let res = emu.fpu.get_st(0) as u64;
+            log::info!("count: {}", ins.op_count()); 
+            if ins.op_register(0) == Register::ST0 {
+               log::info!("  param0 is st0"); 
+            }
+            if ins.op_kind(0) == iced_x86::OpKind::Memory {
+                log::info!("  param0 is mem"); 
+                let res = emu.fpu.get_st(0) as u64;
 
-            if !emu.set_operand_value(ins, 0, res) {
-                return false;
+                if !emu.set_operand_value(ins, 0, res) {
+                    return false;
+                }
+            }
+            if ins.op_count() > 1 && ins.op_kind(1) == iced_x86::OpKind::Memory {
+                unreachable!("Fstp: param1 is mem");
             }
 
-            emu.fpu.pop();
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fincstp => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.f_c1 = false;
-            emu.fpu.inc_top();
+            emu.fpu.set_status_c1(false);
+            emu.fpu.st.inc_top();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fild => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu.dec_top();
+            if emu.fpu.st.get_depth() >= 8 {
+                emu.fpu.set_status_c1(true);
+            } else {
+                emu.fpu.set_status_c1(false);
+                emu.fpu.st.dec_top();
 
-            //C1  Set to 1 if stack overflow occurred; set to 0 otherwise.
+                let value1 = match emu.get_operand_value(ins, 0, true) {
+                    Some(v) => v as i64 as f64,
+                    None => return false,
+                };
 
-            //log::info!("operands: {}", ins.op_count());
-            let value1 = match emu.get_operand_value(ins, 0, true) {
-                Some(v) => v as i64 as f64,
-                None => return false,
-            };
-
-            emu.fpu.set_st(0, value1);
+                emu.fpu.st.push_f64(value1);
+                emu.fpu.set_ip(emu.regs.rip);
+            }
         }
 
         Mnemonic::Fist => {
@@ -4579,6 +4598,7 @@ pub fn emulate_instruction(
                 _ => return false,
             };
             emu.set_operand_value(ins, 0, value2);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fxtract => {
@@ -4586,7 +4606,8 @@ pub fn emulate_instruction(
             let st0 = emu.fpu.get_st(0);
             let (mantissa, exponent) = emu.fpu.frexp(st0);
             emu.fpu.set_st(0, mantissa);
-            emu.fpu.push(exponent as f64);
+            emu.fpu.push_f64(exponent as f64);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fxsave => {
@@ -4599,6 +4620,7 @@ pub fn emulate_instruction(
 
             let state = emu.fpu.fxsave();
             state.save(addr, emu);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fxrstor => {
@@ -4612,6 +4634,7 @@ pub fn emulate_instruction(
             let state = FPUState::load(addr, emu);
 
             emu.fpu.fxrstor(state);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fistp => {
@@ -4628,26 +4651,15 @@ pub fn emulate_instruction(
                 return false;
             }
 
-            emu.fpu.pop();
-            emu.fpu.set_st(0, 0.0);
-            emu.fpu.inc_top();
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fcmove => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags.f_zf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4657,17 +4669,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags.f_cf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4677,17 +4679,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags.f_cf || emu.flags.f_zf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4697,17 +4689,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags.f_pf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4717,17 +4699,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags.f_cf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4737,17 +4709,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags.f_zf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4757,17 +4719,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
@@ -4777,24 +4729,16 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags.f_pf {
-                match ins.op_register(0) {
-                    Register::ST0 => emu.fpu.move_to_st0(0),
-                    Register::ST1 => emu.fpu.move_to_st0(1),
-                    Register::ST2 => emu.fpu.move_to_st0(2),
-                    Register::ST3 => emu.fpu.move_to_st0(3),
-                    Register::ST4 => emu.fpu.move_to_st0(4),
-                    Register::ST5 => emu.fpu.move_to_st0(5),
-                    Register::ST6 => emu.fpu.move_to_st0(6),
-                    Register::ST7 => emu.fpu.move_to_st0(7),
-                    _ => unimplemented!("impossible case"),
-                }
+                emu.fpu.move_reg_to_st0(ins.op_register(1));
             }
 
             emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fxch => {
-            emu.show_instruction(color!("Blue"), ins);
+            emu.show_instruction(color!("Green"), ins);
+            assert_eq!(ins.op_count(), 2);
+            assert_eq!(ins.op_register(0), Register::ST0);
             match ins.op_register(1) {
                 Register::ST0 => emu.fpu.xchg_st(0),
                 Register::ST1 => emu.fpu.xchg_st(1),
@@ -4814,23 +4758,32 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu.get_st(0);
 
-            emu.fpu.set_st(0, st0.sqrt());
+            if st0 < 0.0 {
+                if emu.cfg.verbose >= 1 {
+                    log::info!("/!\\ sqrt of negative float");
+                }
+                emu.fpu.set_st_u80(0, F80::QNaN().get());
+            } else {
+                emu.fpu.set_st(0, st0.sqrt());
+            }
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fchs => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu.get_st(0);
-
-            emu.fpu.set_st(0, st0 * -1f64);
-            emu.fpu.f_c0 = false;
+           
+            emu.fpu.neg_st(0);
+            emu.fpu.set_status_c0(false);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fptan => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu.get_st(0);
-
-            emu.fpu.set_st(0, st0.tan());
-            emu.fpu.push(1.0);
+            emu.fpu.push_f64(1.0);
+            emu.fpu.set_st(1, st0.tan());
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fmulp => {
@@ -4839,100 +4792,120 @@ pub fn emulate_instruction(
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
             let result = emu.fpu.get_st(value1) * emu.fpu.get_st(value0);
 
-            emu.fpu.set_st(value1, result);
-            emu.fpu.pop();
+            emu.fpu.set_st(1, result);
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fdivp => {
             emu.show_instruction(color!("Green"), ins);
-            let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
-            let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
-            let result = emu.fpu.get_st(value1) / emu.fpu.get_st(value0);
 
-            emu.fpu.set_st(value1, result);
-            emu.fpu.pop();
+            let st0 = emu.fpu.get_st(0);     // ST(0) = divisor
+            let st1 = emu.fpu.get_st(1);     // ST(1) = dividend
+
+            let result = st1 / st0;          // ST(1) = ST(1) / ST(0)
+            emu.fpu.set_st(1, result);
+
+            emu.fpu.pop_f64();               // Remove ST(0)
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fsubp => {
             emu.show_instruction(color!("Green"), ins);
-            let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
-            let value1 = 0;
-            let result = emu.fpu.get_st(value0) - emu.fpu.get_st(value1);
 
-            emu.fpu.set_st(value0, result);
-            emu.fpu.pop();
+            let st0_idx = 0; // src, always ST(0)
+            let st1_idx = emu.get_operand_value(ins, 0, false).unwrap_or(1) as usize; // dest
+            log::info!("st0_idx: {}, st1_idx: {}", st0_idx, st1_idx);
+
+
+            let st0 = emu.fpu.get_st_f80_copy(st0_idx);
+            let st1 = emu.fpu.get_st_f80_copy(st1_idx);
+            log::info!("st0: {:x}, st1: {:x}", st0.get(), st1.get());
+
+            if st0.is_empty() || st1.is_empty() {
+                emu.fpu.set_st(st1_idx, F80::QNaN().get_f64());
+            } else {
+                emu.fpu.sub(st1_idx, st0_idx);
+            }
+
+            emu.fpu.pop_f64(); // pops ST(0) properly
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fsubr => {
             emu.show_instruction(color!("Green"), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
-            let result = emu.fpu.get_st(value1) - emu.fpu.get_st(value0);
-
-            emu.fpu.set_st(value1, result);
+            
+            emu.fpu.subr(value0 as usize, value1 as usize);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fsub => {
             emu.show_instruction(color!("Green"), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0);
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
-            let stA = emu.fpu.get_st(value0 as usize);
-            let stB = emu.fpu.get_st(value1 as usize);
-            emu.fpu.set_st(value0 as usize, stA - stB);
+
+            emu.fpu.sub(value0 as usize, value1 as usize);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fadd => {
             emu.show_instruction(color!("Green"), ins);
-            //assert!(ins.op_count() == 2); there are with 1 operand
+            
+            if ins.op_count() == 2 {
+                let i = emu.fpu.reg_to_id(ins.op_register(0));
+                let j = emu.fpu.reg_to_id(ins.op_register(1));
+                emu.fpu.add(i,j);
 
-            if ins.op_register(0) == Register::ST0 {
-                match ins.op_register(1) {
-                    Register::ST0 => emu.fpu.add_to_st0(0),
-                    Register::ST1 => emu.fpu.add_to_st0(1),
-                    Register::ST2 => emu.fpu.add_to_st0(2),
-                    Register::ST3 => emu.fpu.add_to_st0(3),
-                    Register::ST4 => emu.fpu.add_to_st0(4),
-                    Register::ST5 => emu.fpu.add_to_st0(5),
-                    Register::ST6 => emu.fpu.add_to_st0(6),
-                    Register::ST7 => emu.fpu.add_to_st0(7),
-                    _ => emu.fpu.add_to_st0(0),
+            } else if ins.op_count() == 1 {
+                if ins.op_kind(0) == iced_x86::OpKind::Memory {
+                    let mem_size = ins.memory_size();
+                    let mem_addr = emu.get_operand_value(ins, 0, false).expect("Fadd bad mem addr");
+
+                    let value = match mem_size {
+                        iced_x86::MemorySize::Float32 => emu.maps.read_f32(mem_addr).unwrap() as f64,
+                        iced_x86::MemorySize::Float64 => emu.maps.read_f64(mem_addr).unwrap(),
+                        _ => unreachable!(),
+                    };
+
+                    emu.fpu.set_st(0, value);
+
+                } else {
+                    unreachable!();
                 }
+
             } else {
-                let i = match ins.op_register(0) {
-                    Register::ST0 => 0,
-                    Register::ST1 => 1,
-                    Register::ST2 => 2,
-                    Register::ST3 => 3,
-                    Register::ST4 => 4,
-                    Register::ST5 => 5,
-                    Register::ST6 => 6,
-                    Register::ST7 => 7,
-                    _ => 0,
-                };
-
-                let j = match ins.op_register(1) {
-                    Register::ST0 => 0,
-                    Register::ST1 => 1,
-                    Register::ST2 => 2,
-                    Register::ST3 => 3,
-                    Register::ST4 => 4,
-                    Register::ST5 => 5,
-                    Register::ST6 => 6,
-                    Register::ST7 => 7,
-                    _ => 0,
-                };
-
-                emu.fpu.add(i, j);
+                unreachable!();
             }
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fucom => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu.get_st(0);
             let st1 = emu.fpu.get_st(1);
-            emu.fpu.f_c0 = st0 < st1;
-            emu.fpu.f_c2 = st0.is_nan() || st1.is_nan();
-            emu.fpu.f_c3 = st0 == st1;
+
+            if st0.is_nan() || st1.is_nan() {
+                emu.fpu.set_status_c0(true);
+                emu.fpu.set_status_c2(true);
+                emu.fpu.set_status_c3(true);
+            } else if st0 == st1 {
+                emu.fpu.set_status_c0(false);
+                emu.fpu.set_status_c2(false);
+                emu.fpu.set_status_c3(true);
+            } else if st0 > st1 {
+                emu.fpu.set_status_c0(true);
+                emu.fpu.set_status_c2(false);
+                emu.fpu.set_status_c3(false);
+            } else {
+                // st0 < st1
+                emu.fpu.set_status_c0(false);
+                emu.fpu.set_status_c2(false);
+                emu.fpu.set_status_c3(false);
+            }
+
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::F2xm1 => {
@@ -4941,21 +4914,179 @@ pub fn emulate_instruction(
             let st0 = emu.fpu.get_st(0);
             let result = (2.0f64.powf(st0)) - 1.0;
             emu.fpu.set_st(0, result);
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fyl2x => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu.fyl2x();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
         Mnemonic::Fyl2xp1 => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu.fyl2xp1();
+            emu.fpu.set_ip(emu.regs.rip);
         }
 
-        // end fpu
+        Mnemonic::Faddp => {
+            emu.show_instruction(color!("Green"), ins);
+
+            if ins.op_count() == 2 {
+                let i = emu.fpu.reg_to_id(ins.op_register(0));
+                let j = emu.fpu.reg_to_id(ins.op_register(1));
+                emu.fpu.add(i, j);
+                emu.fpu.pop_f64();
+            } else {
+                unreachable!();
+            }
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fnclex => {
+            emu.show_instruction(color!("Green"), ins);
+            emu.fpu.stat &= !(0b10000011_11111111);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fcom => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+
+            let value1 = match emu.get_operand_value(ins, 1, false) {
+                Some(v1) => v1,
+                None => 0,
+            };
+
+            let st4 = emu.fpu.get_st(value1 as usize);
+
+            if st0.is_nan() || st4.is_nan() {
+                emu.fpu.set_status_c0(false);
+                emu.fpu.set_status_c2(true);
+                emu.fpu.set_status_c3(false);
+            } else {
+                emu.fpu.set_status_c0(st0 < st4);
+                emu.fpu.set_status_c2(false);
+                emu.fpu.set_status_c3(st0 == st4);
+            }
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fmul => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+
+            let value1 = match emu.get_operand_value(ins, 1, false) {
+                Some(v1) => v1,
+                None => 0,
+            };
+
+            let stn = emu.fpu.get_st(value1 as usize);
+            emu.fpu.set_st(0, st0 * stn);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fabs => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+            emu.fpu.set_st(0, st0.abs());
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fsin => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+            emu.fpu.set_st(0, st0.sin());
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fcos => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+            emu.fpu.set_st(0, st0.cos());
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fdiv => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+
+            let value1 = match emu.get_operand_value(ins, 1, false) {
+                Some(v1) => v1,
+                None => 0,
+            };
+
+            let stn = emu.fpu.get_st(value1 as usize);
+            emu.fpu.set_st(0, st0 / stn);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fdivr => {
+            emu.show_instruction(color!("Green"), ins);
+            let st0 = emu.fpu.get_st(0);
+            let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
+            let stn = emu.fpu.get_st(value1 as usize);
+            emu.fpu.set_st(0, stn / st0);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fdivrp => {
+            emu.show_instruction(color!("Green"), ins);
+            let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
+            let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
+            let st0 = emu.fpu.get_st(value0);
+            let st7 = emu.fpu.get_st(value1);
+
+            let result = st7 / st0;
+
+            emu.fpu.set_st(value1, result);
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fpatan => {
+            emu.show_instruction(color!("Green"), ins);
+
+            let st0 = emu.fpu.get_st(0);
+            let st1 = emu.fpu.get_st(1);
+            let result = (st1 / st0).atan();
+            emu.fpu.set_st(1, result);
+            emu.fpu.pop_f64();
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fprem => {
+            emu.show_instruction(color!("Green"), ins);
+
+            let st0 = emu.fpu.get_st(0);
+            let st1 = emu.fpu.get_st(1);
+
+            let quotient = (st0 / st1).floor();
+            let result = st0 - quotient * st1;
+
+            emu.fpu.set_st(0, result);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        Mnemonic::Fprem1 => {
+            emu.show_instruction(color!("Green"), ins);
+
+            let st0 = emu.fpu.get_st(0);
+            let st1 = emu.fpu.get_st(1);
+
+            let quotient = (st0 / st1).round();
+            let remainder = st0 - quotient * st1;
+
+            emu.fpu.set_st(0, remainder);
+            emu.fpu.set_ip(emu.regs.rip);
+        }
+
+        ////////// end fpu //////////
+
+
+
         Mnemonic::Popf => {
             emu.show_instruction(color!("Blue"), ins);
 
@@ -7355,11 +7486,11 @@ pub fn emulate_instruction(
             let sti = emu.fpu.get_st(value0);
             let stj = emu.fpu.get_st(value2);
 
-            emu.fpu.f_c0 = sti < stj;
-            emu.fpu.f_c2 = sti.is_nan() || stj.is_nan();
-            emu.fpu.f_c3 = sti == stj;
+            emu.fpu.set_status_c0(sti < stj);
+            emu.fpu.set_status_c2(sti.is_nan() || stj.is_nan());
+            emu.fpu.set_status_c3(sti == stj);
 
-            emu.fpu.pop();
+            emu.fpu.pop_f64();
         }
 
         Mnemonic::Psrlq => {
@@ -7401,7 +7532,7 @@ pub fn emulate_instruction(
             let cos_value = st0.cos();
 
             emu.fpu.set_st(0, sin_value);
-            emu.fpu.push(cos_value);
+            emu.fpu.push_f64(cos_value);
         }
 
         Mnemonic::Packuswb => {
@@ -7879,16 +8010,16 @@ pub fn emulate_instruction(
 
         Mnemonic::Fdecstp => {
             emu.show_instruction(color!("Green"), ins);
-            emu.fpu.dec_top();
+            emu.fpu.st.inc_top();
         }
 
         Mnemonic::Ftst => {
             emu.show_instruction(color!("Green"), ins);
 
             let st0 = emu.fpu.get_st(0);
-            emu.fpu.f_c0 = st0 < 0.0;
-            emu.fpu.f_c2 = st0.is_nan();
-            emu.fpu.f_c3 = st0 == 0.0;
+            emu.fpu.set_status_c0(st0 < 0.0);
+            emu.fpu.set_status_c2(st0.is_nan());
+            emu.fpu.set_status_c3(st0 == 0.0);
         }
 
         Mnemonic::Emms => {
@@ -7900,17 +8031,33 @@ pub fn emulate_instruction(
 
             let st0: f64 = emu.fpu.get_st(0);
 
-            emu.fpu.f_c0 = st0 < 0f64;
-
-            emu.fpu.f_c1 = false;
-
             if st0.is_nan() {
-                emu.fpu.f_c2 = true;
-                emu.fpu.f_c3 = true;
+                // Undefined (QNaN)
+                emu.fpu.set_status_c0(true);
+                emu.fpu.set_status_c1(true);
+                emu.fpu.set_status_c2(true);
+            } else if st0 == 0.0 {
+                // Zero or negative zero
+                emu.fpu.set_status_c1(true);
+                emu.fpu.set_status_c2(false);
+                emu.fpu.set_status_c0(st0.is_sign_negative());
+            } else if st0.is_infinite() {
+                // Positive or negative Infinite
+                emu.fpu.set_status_c1(false);
+                emu.fpu.set_status_c2(true);
+                emu.fpu.set_status_c0(st0.is_sign_negative());
+            } else if st0.abs() < std::f64::MIN_POSITIVE {
+                // Denormal
+                emu.fpu.set_status_c0(true);
+                emu.fpu.set_status_c1(true);
+                emu.fpu.set_status_c2(false);
             } else {
-                emu.fpu.f_c2 = false;
-                emu.fpu.f_c3 = false;
+                // Normal positive or negative
+                emu.fpu.set_status_c0(st0.is_sign_negative());
+                emu.fpu.set_status_c1(false);
+                emu.fpu.set_status_c2(false);
             }
+
         }
 
         Mnemonic::Pcmpgtw => {
@@ -7977,14 +8124,6 @@ pub fn emulate_instruction(
             emu.set_operand_xmm_value_128(ins, 0, result);
         }
 
-        Mnemonic::Faddp => {
-            emu.show_instruction(color!("Green"), ins);
-
-            let st0 = emu.fpu.pop();
-            let st1 = emu.fpu.pop();
-
-            emu.fpu.push(st0 + st1);
-        }
 
         Mnemonic::Pcmpeqw => {
             emu.show_instruction(color!("Green"), ins);
@@ -8063,131 +8202,6 @@ pub fn emulate_instruction(
             }
         }
 
-        Mnemonic::Fnclex => {
-            emu.show_instruction(color!("Green"), ins);
-            emu.fpu.stat &= !(0b10000011_11111111);
-        }
-
-        Mnemonic::Fcom => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-
-            let value1 = match emu.get_operand_value(ins, 1, false) {
-                Some(v1) => v1,
-                None => 0,
-            };
-
-            let st4 = emu.fpu.get_st(value1 as usize);
-
-            if st0.is_nan() || st4.is_nan() {
-                emu.fpu.f_c0 = false;
-                emu.fpu.f_c2 = true;
-                emu.fpu.f_c3 = false;
-            } else {
-                emu.fpu.f_c0 = st0 < st4;
-                emu.fpu.f_c2 = false;
-                emu.fpu.f_c3 = st0 == st4;
-            }
-        }
-
-        Mnemonic::Fmul => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-
-            let value1 = match emu.get_operand_value(ins, 1, false) {
-                Some(v1) => v1,
-                None => 0,
-            };
-
-            let stn = emu.fpu.get_st(value1 as usize);
-            emu.fpu.set_st(0, st0 * stn);
-        }
-
-        Mnemonic::Fabs => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-            emu.fpu.set_st(0, st0.abs());
-        }
-
-        Mnemonic::Fsin => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-            emu.fpu.set_st(0, st0.sin());
-        }
-
-        Mnemonic::Fcos => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-            emu.fpu.set_st(0, st0.cos());
-        }
-
-        Mnemonic::Fdiv => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-
-            let value1 = match emu.get_operand_value(ins, 1, false) {
-                Some(v1) => v1,
-                None => 0,
-            };
-
-            let stn = emu.fpu.get_st(value1 as usize);
-            emu.fpu.set_st(0, st0 / stn);
-        }
-
-        Mnemonic::Fdivr => {
-            emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu.get_st(0);
-            let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
-            let stn = emu.fpu.get_st(value1 as usize);
-            emu.fpu.set_st(0, stn / st0);
-        }
-
-        Mnemonic::Fdivrp => {
-            emu.show_instruction(color!("Green"), ins);
-            let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
-            let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
-            let st0 = emu.fpu.get_st(value0);
-            let st7 = emu.fpu.get_st(value1);
-
-            let result = st7 / st0;
-
-            emu.fpu.set_st(value1, result);
-            emu.fpu.pop();
-        }
-
-        Mnemonic::Fpatan => {
-            emu.show_instruction(color!("Green"), ins);
-
-            let st0 = emu.fpu.get_st(0);
-            let st1 = emu.fpu.get_st(1);
-            let result = (st1 / st0).atan();
-            emu.fpu.set_st(1, result);
-            emu.fpu.pop();
-        }
-
-        Mnemonic::Fprem => {
-            emu.show_instruction(color!("Green"), ins);
-
-            let st0 = emu.fpu.get_st(0);
-            let st1 = emu.fpu.get_st(1);
-
-            let quotient = (st0 / st1).floor();
-            let result = st0 - quotient * st1;
-
-            emu.fpu.set_st(0, result);
-        }
-
-        Mnemonic::Fprem1 => {
-            emu.show_instruction(color!("Green"), ins);
-
-            let st0 = emu.fpu.get_st(0);
-            let st1 = emu.fpu.get_st(1);
-
-            let quotient = (st0 / st1).round();
-            let remainder = st0 - quotient * st1;
-
-            emu.fpu.set_st(0, remainder);
-        }
 
         Mnemonic::Pcmpgtd => {
             emu.show_instruction(color!("Green"), ins);

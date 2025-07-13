@@ -2156,20 +2156,6 @@ impl Emu {
         out
     }
 
-    /*
-    pub fn get_operand_value_fpu(
-        &mut self,
-        ins: &Instruction,
-        noperand: u32,
-        do_derref: bool,
-    ) -> Option<u64> {
-        assert!(ins.op_count() > noperand);
-
-        let value: u64 = match ins.op_kind(noperand) {
-
-        };
-    }*/
-
     pub fn get_operand_value(
         &mut self,
         ins: &Instruction,

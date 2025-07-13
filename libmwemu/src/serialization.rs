@@ -18,7 +18,7 @@ use crate::config::Config;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
-use crate::fpu::f80::F80;
+use crate::fpu::fpu_stack::FPUStack;
 use crate::fpu::FPU;
 use crate::hooks::Hooks;
 use crate::maps::Maps;
@@ -63,7 +63,8 @@ impl SerializableInstant {
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableFPU {
-    pub st: Vec<F80>,
+    pub st: FPUStack,
+    pub status: u16,
     pub st_depth: u8,
     pub tag: u16,
     pub stat: u16,
@@ -77,21 +78,17 @@ pub struct SerializableFPU {
     pub reserved: Vec<u8>,  // not a slice
     pub reserved2: Vec<u8>, // not a slice
     pub xmm: Vec<u128>,     // not a slice
-    pub top: i8,
-    pub f_c0: bool, // overflow
-    pub f_c1: bool, // underflow
-    pub f_c2: bool, // div by zero
-    pub f_c3: bool, // precission
-    pub f_c4: bool, // stack fault
     pub mxcsr: u32,
     pub fpu_control_word: u16,
     pub opcode: u16,
+    pub trace: bool,
 }
 
 impl From<FPU> for SerializableFPU {
     fn from(fpu: FPU) -> Self {
         SerializableFPU {
             st: fpu.st,
+            status: fpu.status,
             st_depth: fpu.st_depth,
             tag: fpu.tag,
             stat: fpu.stat,
@@ -105,15 +102,10 @@ impl From<FPU> for SerializableFPU {
             reserved: fpu.reserved.to_vec(),
             reserved2: fpu.reserved2.to_vec(),
             xmm: fpu.xmm.to_vec(),
-            top: fpu.top,
-            f_c0: fpu.f_c0,
-            f_c1: fpu.f_c1,
-            f_c2: fpu.f_c2,
-            f_c3: fpu.f_c3,
-            f_c4: fpu.f_c4,
             mxcsr: fpu.mxcsr,
             fpu_control_word: fpu.fpu_control_word,
             opcode: fpu.opcode,
+            trace: fpu.trace,
         }
     }
 }
@@ -221,6 +213,7 @@ impl From<SerializableFPU> for FPU {
     fn from(serialized: SerializableFPU) -> Self {
         FPU {
             st: serialized.st,
+            status: serialized.status,
             st_depth: serialized.st_depth,
             tag: serialized.tag,
             stat: serialized.stat,
@@ -234,15 +227,10 @@ impl From<SerializableFPU> for FPU {
             reserved: serialized.reserved.try_into().unwrap(),
             reserved2: serialized.reserved2.try_into().unwrap(),
             xmm: serialized.xmm.try_into().unwrap(),
-            top: serialized.top,
-            f_c0: serialized.f_c0,
-            f_c1: serialized.f_c1,
-            f_c2: serialized.f_c2,
-            f_c3: serialized.f_c3,
-            f_c4: serialized.f_c4,
             mxcsr: serialized.mxcsr,
             fpu_control_word: serialized.fpu_control_word,
             opcode: serialized.opcode,
+            trace: serialized.trace,
         }
     }
 }

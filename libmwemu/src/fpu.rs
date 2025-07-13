@@ -1,8 +1,10 @@
 pub mod f80;
+pub mod fpu_stack;
 
 use crate::emu;
 use iced_x86::Register;
 use f80::F80;
+use fpu_stack::FPUStack;
 
 pub struct FPUState {
     pub fpu_control_word: u16, // Control Word
@@ -14,7 +16,7 @@ pub struct FPUState {
     pub rdp: u64,        // Data Pointer
     pub mxcsr: u32,      // SSE Control and Status
     pub mxcsr_mask: u32,
-    pub st: Vec<F80>,        // FPU registers
+    pub st: FPUStack,        // FPU registers
     pub xmm: [u128; 16],      // XMM registers
     pub reserved2: [u8; 224], // Reserved
 }
@@ -31,7 +33,7 @@ impl FPUState {
             rdp: 0,
             mxcsr: 0,
             mxcsr_mask: 0,
-            st: vec![F80::new(); 8],
+            st: FPUStack::new(),
             xmm: [0; 16],
             reserved2: [0; 224],
         }
@@ -64,8 +66,9 @@ impl FPUState {
 
 #[derive(Clone)]
 pub struct FPU {
-    pub st: Vec<F80>,
+    pub st: FPUStack,
     pub st_depth: u8,
+    pub status: u16,
     pub tag: u16,
     pub stat: u16,
     pub ctrl: u16,
@@ -78,15 +81,10 @@ pub struct FPU {
     pub reserved: [u8; 14],
     pub reserved2: [u8; 96],
     pub xmm: [u128; 16],
-    pub top: i8,
-    pub f_c0: bool, // overflow
-    pub f_c1: bool, // underflow
-    pub f_c2: bool, // div by zero
-    pub f_c3: bool, // precission
-    pub f_c4: bool, // stack fault
     pub mxcsr: u32,
     pub fpu_control_word: u16,
     pub opcode: u16,
+    pub trace: bool,
 }
 
 impl Default for FPU {
@@ -98,7 +96,8 @@ impl Default for FPU {
 impl FPU {
     pub fn new() -> FPU {
         FPU {
-            st: vec![F80::new(); 8],
+            st: FPUStack::new(),
+            status: 0,
             st_depth: 0,
             tag: 0xffff,
             stat: 0,
@@ -112,22 +111,16 @@ impl FPU {
             reserved: [0; 14],
             reserved2: [0; 96],
             xmm: [0; 16],
-            top: 0,
-            f_c0: false, // overflow
-            f_c1: false, // underflow
-            f_c2: false, // div by zero
-            f_c3: false, // precision
-            f_c4: false, // stack fault
             mxcsr: 0,
             fpu_control_word: 0,
             opcode: 0,
+            trace: false,
         }
     }
 
     pub fn clear(&mut self) {
-        self.st.clear();
         self.st_depth = 0;
-        self.st = vec![F80::new(); 8];
+        self.st = FPUStack::new();
         self.tag = 0xffff;
         self.stat = 0;
         self.ctrl = 0x037f;
@@ -143,6 +136,74 @@ impl FPU {
         self.fpu_control_word = 0;
     }
 
+    pub fn get_status_c0(&self) -> bool {
+        (self.status & (1 << 8)) != 0
+    }
+
+    pub fn get_status_c1(&self) -> bool {
+        (self.status & (1 << 9)) != 0
+    }
+
+    pub fn get_status_c2(&self) -> bool {
+        (self.status & (1 << 10)) != 0
+    }
+
+    pub fn get_status_c3(&self) -> bool {
+        (self.status & (1 << 14)) != 0
+    }
+
+    pub fn get_status_busy(&self) -> bool {
+        (self.status & (1 << 15)) != 0
+    }
+
+    pub fn set_status_c0(&mut self, val: bool) {
+        if val {
+            self.status |= 1 << 8;
+        } else {
+            self.status &= !(1 << 8);
+        }
+    }
+
+    pub fn set_status_c1(&mut self, val: bool) {
+        if val {
+            self.status |= 1 << 9;
+        } else {
+            self.status &= !(1 << 9);
+        }
+    }
+
+    pub fn set_status_c2(&mut self, val: bool) {
+        if val {
+            self.status |= 1 << 10;
+        } else {
+            self.status &= !(1 << 10);
+        }
+    }
+
+    pub fn set_status_c3(&mut self, val: bool) {
+        if val {
+            self.status |= 1 << 14;
+        } else {
+            self.status &= !(1 << 14);
+        }
+    }
+
+    pub fn set_status_busy(&mut self, val: bool) {
+        if val {
+            self.status |= 1 << 15;
+        } else {
+            self.status &= !(1 << 15);
+        }
+    }
+
+    pub fn get_top(&mut self) -> u8 {
+        self.st.get_top()
+    }
+
+    pub fn get_depth(&mut self) -> u8 {
+        self.st.get_depth()
+    }
+
     pub fn set_ctrl(&mut self, ctrl: u16) {
         self.ctrl = ctrl;
     }
@@ -151,19 +212,14 @@ impl FPU {
         self.ctrl
     }
 
+    pub fn do_trace(&mut self) {
+        self.trace = true;
+    }
+
     pub fn set_ip(&mut self, ip: u64) {
         self.ip = ip;
-    }
-
-    pub fn inc_top(&mut self) {
-        self.top = (self.top + 1) % 8;
-    }
-
-    pub fn dec_top(&mut self) {
-        if self.top == 0 {
-            self.top = 7;
-        } else {
-            self.top -= 1;
+        if self.trace {
+            self.st.print();
         }
     }
 
@@ -191,10 +247,10 @@ impl FPU {
         r
     }
 
-    pub fn print(&self) {
+    pub fn print(&mut self) {
         log::info!("---- fpu ----");
         for i in 0..self.st.len() {
-            log::info!("st({}): {}", i, self.st[i].get());
+            log::info!("st({}): {}", i, self.st.get(i).get());
         }
 
         log::info!("stat: 0x{:x}", self.stat);
@@ -205,21 +261,40 @@ impl FPU {
     }
 
     pub fn set_st(&mut self, i: usize, value: f64) {
-        self.st[i].set_f64(value);
+        self.st.get_mut(i).map(|st| st.set_f64(value));
     }
 
     pub fn set_st_u80(&mut self, i: usize, value: u128) {
-        self.st[i].set(value);
+        self.st.get_mut(i).map(|st| st.set(value));
     }
 
+    // only use from test.rs 
+    pub fn peek_st_f64(&mut self, i: usize) -> f64 {
+        self.st.peek(i).get_f64()
+    }
+
+    // only use from test.rs 
+    pub fn peek_st_u80(&mut self, i: usize) -> u128 {
+        self.st.peek(i).get()
+    }
+
+    pub fn peek_st_logical_f64(&mut self, n: usize) -> f64 {
+        let idx = (self.st.get_top() as usize + n) % 8;
+        self.peek_st_f64(idx)
+    }
+
+    pub fn peek_st_logical_u80(&mut self, n: usize) -> u128 {
+        let idx = (self.st.get_top() as usize + n) % 8;
+        self.peek_st_u80(idx)
+    }
+
+
     pub fn get_st_u80(&mut self, i: usize) -> u128 {
-        self.f_c4 = self.st_depth == 0;
-        return self.st[i].get();
+        return self.st.get(i).get();
     }
 
     pub fn get_st(&mut self, i: usize) -> f64 {
-        self.f_c4 = self.st_depth == 0;
-        return self.st[i].get_f64();
+        return self.st.get(i).get_f64();
     }
 
     pub fn xchg_st(&mut self, i: usize) {
@@ -228,122 +303,147 @@ impl FPU {
     }
 
     pub fn clear_st(&mut self, i: usize) {
-        self.st[i].set(0);
+        self.st.get_mut(i).map(|st| st.set(0));
+    }
+
+    pub fn neg_st(&mut self, i: usize) {
+        self.st.get_mut(i).map(|st| st.neg());
     }
 
     pub fn move_to_st0(&mut self, i: usize) {
-        let v = self.st[i].get();
-        self.st[0].set(v);
+        let v = self.st.get(i).get();
+        self.st.get_mut(0).map(|st| st.set(v));
     }
 
     pub fn add_to_st0(&mut self, i: usize) {
-        let v = self.st[0].get() + self.st[i].get();
-        self.st[0].set(v);
+        let v = self.st.get(0);
+        self.st.get_mut(0).map(|st| st.add(v));
     }
 
     pub fn add(&mut self, i: usize, j: usize) {
-        let v = self.st[i].get() + self.st[j].get();
-        self.st[i].set(v);
+        assert!(i != j);
+        let v = self.st.get(j);
+        self.st.get_mut(i).map(|st| st.add(v));
     }
 
-    pub fn push(&mut self, value: f64) {
-        if self.st_depth >= 8 {
-            self.f_c0 = true; // overflow
-        } else {
-            self.st_depth += 1;
-            self.f_c0 = false;
-        }
-        self.st[7] = self.st[6];
-        self.st[6] = self.st[5];
-        self.st[5] = self.st[4];
-        self.st[4] = self.st[3];
-        self.st[3] = self.st[2];
-        self.st[2] = self.st[1];
-        self.st[1] = self.st[0];
-        self.st[0].set_f64(value);
+    pub fn sub(&mut self, i: usize, j: usize) {
+        assert!(i != j);
+        let v = self.st.get(j);
+        self.st.get_mut(i).map(|st| st.sub(v));
+    }
+
+    pub fn subr(&mut self, i: usize, j: usize) {
+        assert!(i != j);
+        let a = self.st.get(i).clone();
+        let mut b = self.st.get(j).clone();
+        b.sub(a);
+        self.st.get_mut(i).map(|st| st.set(b.get()));
+    }
+
+    pub fn push_f64(&mut self, value: f64) {
+        self.st.push_f64(value);
+    }
+
+    pub fn push_f80(&mut self, value: F80) {
+        self.st.push_f80(value);
+    }
+
+    pub fn get_st_f80_ref(&mut self, n: usize) -> &F80 {
+        self.st.get_ref(n)
+    }
+
+    pub fn get_st_f80_copy(&mut self, n: usize) -> F80 {
+        self.st.get(n)     
+    }
+
+    pub fn is_empty(&mut self, a: usize) -> bool {
+        self.st.get(a).is_empty()
     }
 
     pub fn pop2(&mut self) -> u128 {
-        if self.st_depth == 0 {
-            self.f_c1 = true;
-        } else {
-            self.st_depth -= 1;
-            self.f_c1 = false;
-        }
-        let result = self.st[0].get();
-        self.st[0] = self.st[1];
-        self.st[1] = self.st[2];
-        self.st[2] = self.st[3];
-        self.st[3] = self.st[4];
-        self.st[4] = self.st[5];
-        self.st[5] = self.st[6];
-        self.st[6] = self.st[7];
-        self.st[7].set(0);
-        result
+        let v = match self.st.pop() {
+            Some(f80val) => f80val.get(),
+            None => 0,
+        };
+        v
     }
 
-    pub fn pop(&mut self) -> f64 {
-        if self.st_depth == 0 {
-            self.f_c1 = true;
-        } else {
-            self.st_depth -= 1;
-            self.f_c1 = false;
-        }
-        let result = self.st[0].get_f64();
-        self.st[0] = self.st[1];
-        self.st[1] = self.st[2];
-        self.st[2] = self.st[3];
-        self.st[3] = self.st[4];
-        self.st[4] = self.st[5];
-        self.st[5] = self.st[6];
-        self.st[6] = self.st[7];
-        self.st[7].set(0);
-        result
+    pub fn pop_f64(&mut self) -> f64 {
+        let v = match self.st.pop() {
+            Some(f80val) => f80val.get_f64(),
+            None => 0.0,
+        };
+        v
     }
 
     pub fn fyl2x(&mut self) {
-        let v = self.st[1].get_f64() * self.st[0].get_f64().log2();
-        self.st[1].set_f64(v);
-        self.pop();
+        let v = self.st.get(1).get_f64() * self.st.get(0).get_f64().log2();
+        self.st.get_mut(1).map(|st| st.set_f64(v));
+        self.st.pop();
     }
 
     pub fn fyl2xp1(&mut self) {
-        let v = self.st[1].get_f64() * (self.st[0].get_f64().log2() + 1.0);
-        self.st[1].set_f64(v);
-        self.pop();
+        let v = self.st.get(1).get_f64() * (self.st.get(0).get_f64().log2() + 1.0);
+        self.st.get_mut(1).map(|st| st.set_f64(v));
+        self.st.pop();
     }
 
     pub fn check_pending_exceptions(self) {}
 
 
-    pub fn set_streg_u80(&mut self, reg: Register, value: u128) {
-        println!("{:?} {}", reg, value);
+    pub fn move_reg_to_st0(&mut self, reg: Register) {
         match reg {
-            Register::ST0 => self.st[0].set(value),
-            Register::ST1 => self.st[1].set(value),
-            Register::ST2 => self.st[2].set(value),
-            Register::ST3 => self.st[3].set(value),
-            Register::ST4 => self.st[4].set(value),
-            Register::ST5 => self.st[5].set(value),
-            Register::ST6 => self.st[6].set(value),
-            Register::ST7 => self.st[7].set(value),
-            _ => unreachable!(),
+            Register::ST0 => self.move_to_st0(0),
+            Register::ST1 => self.move_to_st0(1),
+            Register::ST2 => self.move_to_st0(2),
+            Register::ST3 => self.move_to_st0(3),
+            Register::ST4 => self.move_to_st0(4),
+            Register::ST5 => self.move_to_st0(5),
+            Register::ST6 => self.move_to_st0(6),
+            Register::ST7 => self.move_to_st0(7),
+            _ => unimplemented!("impossible case"),
         }
     }
 
-    pub fn set_streg(&mut self, reg: Register, value: f64) {
-        println!("{:?} {}", reg, value);
+    pub fn reg_to_id(&self, reg: Register) -> usize {
         match reg {
-            Register::ST0 => self.st[0].set_f64(value),
-            Register::ST1 => self.st[1].set_f64(value),
-            Register::ST2 => self.st[2].set_f64(value),
-            Register::ST3 => self.st[3].set_f64(value),
-            Register::ST4 => self.st[4].set_f64(value),
-            Register::ST5 => self.st[5].set_f64(value),
-            Register::ST6 => self.st[6].set_f64(value),
-            Register::ST7 => self.st[7].set_f64(value),
+            Register::ST0 => 0,
+            Register::ST1 => 1,
+            Register::ST2 => 2,
+            Register::ST3 => 3,
+            Register::ST4 => 4,
+            Register::ST5 => 5,
+            Register::ST6 => 6,
+            Register::ST7 => 7,
             _ => unreachable!(),
-        }
+        } 
+    }
+
+    pub fn reg_to_idx(&self, reg: Register) -> usize {
+        match reg {
+            Register::ST0 => 0,
+            Register::ST1 => 1,
+            Register::ST2 => 2,
+            Register::ST3 => 3,
+            Register::ST4 => 4,
+            Register::ST5 => 5,
+            Register::ST6 => 6,
+            Register::ST7 => 7,
+            _ => unreachable!(),
+        } 
+    }
+
+
+    pub fn set_streg_f80(&mut self, reg: Register, value: u128) {
+        //println!("{:?} {}", reg, value);
+        let idx = self.reg_to_idx(reg);
+        self.st.get_mut(idx).map(|st| st.set(value));
+    }
+
+    pub fn set_streg(&mut self, reg: Register, value: f64) {
+        //println!("{:?} {}", reg, value);
+        let idx = self.reg_to_idx(reg);
+        self.st.get_mut(idx).map(|st| st.set_f64(value));
     }
 
     pub fn frexp(&self, value: f64) -> (f64, i32) {
@@ -380,6 +480,7 @@ impl FPU {
         result
     }
 
+
     pub fn fxsave(&self) -> FPUState {
         let mut state = FPUState::new();
         state.fpu_control_word = self.fpu_control_word;
@@ -408,7 +509,7 @@ impl FPU {
         // Convert the packed 128-bit ST registers back to f64 values
 
         for i in 0..8 {
-            self.st[i].fix();
+            self.st.get_mut(i).map(|st| st.fix());
         }
 
         self.xmm = state.xmm;

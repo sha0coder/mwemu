@@ -88,6 +88,7 @@ fn main() {
         .arg(clap_arg!("script", "x", "script", "launch an emulation script, see scripts_examples folder", "SCRIPT"))
         .arg(clap_arg!("trace", "T", "trace", "output trace to specified file", "TRACE_FILENAME"))
         .arg(clap_arg!("trace_start", "S", "trace_start", "start trace at specified position", "TRACE_START"))
+        .arg(clap_arg!("fpu","F", "fpu", "trace the fpu states."))
         .arg(clap_arg!("rax", "", "rax", "set rax register", "RAX"))
         .arg(clap_arg!("rbx", "", "rbx", "set rbx register", "RBX"))
         .arg(clap_arg!("rcx", "", "rcx", "set rcx register", "RCX"))
@@ -350,6 +351,11 @@ fn main() {
     // test mode
     if matches.is_present("test_mode") {
         emu.cfg.test_mode = true;
+    }
+
+    // trace fpu
+    if matches.is_present("fpu") {
+        emu.fpu.trace = true;
     }
 
     // load code

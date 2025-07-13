@@ -1,16 +1,24 @@
 use serde::{Serialize,Deserialize};
 
 pub const FPU_80_BITS_MAX: u128 = (1u128 << 80) - 1;
-pub const QNAN: u128 = 0xffffc000000000000000 & FPU_80_BITS_MAX;
+pub const REAL_INDEFINITE: u128 = 0xffff_c000_0000_0000_0000 & FPU_80_BITS_MAX;
+pub const QNAN: u128 = 0x7fff_c000_0000_0000_0000 & FPU_80_BITS_MAX;
+pub const F80_PI: u128 = 0x4000c90fdaa22168c234 & FPU_80_BITS_MAX;
 pub const SIGN_MASK: u128 = 1 << 79;
 pub const EXP_MASK: u128 = 0x7FFF;
+pub const EXP_MASK2: u128 = 0x7FFF << 64;
 pub const MANTISSA_MASK: u128 = (1u128 << 64) - 1;
 pub const MANTISSA_MASK_NOINT: u128 = 0x7FFF_FFFF_FFFF_FFFF;
 pub const INT_BIT_MASK: u128 = 1 << 63;
+pub const INT_BIT_MASK64: u64 = 1 << 63;
 pub const BCD_SIGN_POSITIVE: u8 = 0x0A;
 pub const BCD_SIGN_NEGATIVE: u8 = 0x0B;
 pub const F64_EXP_BIAS: i32 = 1023;
 pub const F80_EXP_BIAS: i32 = 16383;
+pub const MANTISSA_BITS: u32 = 64;
+pub const SIGN_SHIFT: u32 = 79;
+pub const EXP_SHIFT: u32 = 64;
+pub const INT_BIT_SHIFT: u32 = 63;
 
 // f80 emulation
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -23,6 +31,42 @@ impl F80 {
         F80 {
             st: 0
         }
+    }
+
+    pub fn PI() -> Self {
+        F80 {
+            st: F80_PI
+        }
+    }
+
+    pub fn QNaN() -> Self {
+        F80 {
+            st: QNAN
+        }
+    }
+
+    pub fn set_PI(&mut self) {
+        self.st = F80_PI;
+    }
+
+    pub fn set_QNaN(&mut self) {
+        self.st = QNAN;
+    }
+
+    pub fn set_real_indefinite(&mut self) {
+        self.st = REAL_INDEFINITE;
+    }
+
+
+    pub fn is_invalid(&self) -> bool {
+        let exp = self.get_exponent();
+        let frac = self.get_fraction();
+
+        exp == 0x7FFF && frac != 0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.is_zero() && self.is_invalid()
     }
 
     pub fn set_bytes(&mut self, bytes: &[u8; 10]) {
@@ -42,12 +86,17 @@ impl F80 {
         bytes
     }
 
-    // I keep this getter, but it make no sense, fpu instruccions will write to memory in bytes.
+    pub fn get_round_f64(&self, decimals: u32) -> f64 {
+
+        let value = self.get_f64();
+        let factor = 10f64.powi(decimals as i32);
+        (value * factor).round() / factor
+    }
+
     pub fn get(&self) -> u128 {
         self.st & FPU_80_BITS_MAX
     }
 
-    // I keep this getter, but it make no sense, fpu instruccions will derref memory in bytes.
     pub fn set(&mut self, value:u128) {
         self.st = value & FPU_80_BITS_MAX;
     }
@@ -60,28 +109,195 @@ impl F80 {
         self.st & SIGN_MASK != 0
     }
 
+    pub fn get_sign(&self) -> bool {
+        (self.st >> SIGN_SHIFT) & 1 != 0
+    }
+
+    pub fn neg(&mut self) {
+        self.st ^= SIGN_MASK;
+    }
+
+    pub fn set_sign(&mut self, sign: bool) {
+        self.st = (self.st & !SIGN_MASK) | ((sign as u128) << 79);
+    }
+
     pub fn is_zero(&self) -> bool {
         let exponent = (self.st >> 64) & 0x7FFF;
         let mantissa = self.st & ((1u128 << 64) - 1);
         exponent == 0 && mantissa == 0
     }
 
-    pub fn get_exponent(self) -> u16 {
-        // Bits 78–64: exponent con bias 16383
-        (self.st >> 64 & EXP_MASK) as u16
+    pub fn get_integer_bit(&self) -> u64 {
+        ((self.st >> INT_BIT_SHIFT) & 1) as u64
+    }
+
+    pub fn get_fraction(&self) -> u64 {
+        (self.st & ((1u128 << 63) - 1)) as u64
+    }
+
+    pub fn get_exponent(&self) -> u16 {
+        ((self.st >> EXP_SHIFT) & 0x7FFF) as u16
+        //((self.st >> 64) & EXP_MASK) as u16
+    }
+
+    pub fn set_exponent(&mut self, exponent: u16) {
+        self.st = (self.st & !EXP_MASK2) | ((exponent as u128) << 64);
     }
 
     pub fn get_mantissa(&self) -> u64 {
-        let mantissa = (self.st >> 11) &  MANTISSA_MASK_NOINT;
-        let bit_integer = (self.st >> 63) & 1;
-        (mantissa | (bit_integer << 52)) as u64
+        (self.get_integer_bit() << 63) | self.get_fraction()
+        /*
+        let mantissa = (self.st & MANTISSA_MASK_NOINT) >> 11;
+        let bit_integer = (self.st & INT_BIT_MASK) >> 63;
+        ((bit_integer << 52) | mantissa) as u64*/
+    }
+
+    pub fn set_mantissa(&mut self, mantissa: u64) {
+        let int_bit = (mantissa >> 63) as u128;
+        let fraction = (mantissa & 0x7FFF_FFFF_FFFF_FFFF) as u128;
+        self.st &= !( (1u128 << INT_BIT_SHIFT) | ((1u128 << 63) -1)); 
+        self.st |= (int_bit << INT_BIT_SHIFT) | fraction;
+
+        /*
+        let bit_integer = ((mantissa >> 52) & 1) as u128;
+        let fraction = (mantissa & 0x000F_FFFF_FFFF_FFFF) as u128; // solo los 52 bits bajos
+        self.st &= !MANTISSA_MASK;
+        self.st |= (bit_integer << 63) | (fraction << 11);*/
     }
 
     fn get_mantissa_with_integer_bit(&self) -> u64 {
-        let mantissa = (self.st & ((1u128 << 63) - 1)) as u64; // 63 bits
-        let bit_integer = ((self.st >> 63) & 1) as u64;
-        mantissa | (bit_integer << 63)
+        let mantissa = (self.st & MANTISSA_MASK_NOINT) >> 0;
+        let int_bit = ((self.st & INT_BIT_MASK) >> 63) as u64;
+        (mantissa as u64) | (int_bit << 63)
     }
+
+    fn normalize_add(&self, mantissa: u64, exponent: u16) -> (u64, u16) {
+        let mut man = mantissa;
+        let mut exp = exponent;
+        if man == 0 {
+            return (0, 0);
+        }
+        while (man & INT_BIT_MASK64) == 0 {
+            man <<= 1;
+            exp -= 1;
+        }
+        (man, exp)
+    }
+
+    pub fn add(&mut self, b: F80) {
+        let a_sign = self.get_sign();
+        let b_sign = b.get_sign();
+
+        let mut a_exp = self.get_exponent();
+        let b_exp = b.get_exponent();
+
+        let mut a_man = self.get_mantissa() as u128;
+        let mut b_man = b.get_mantissa() as u128;
+
+        if a_exp > b_exp {
+            let shift = (a_exp - b_exp) as u32;
+            b_man >>= shift;
+        } else if b_exp > a_exp {
+            let shift = (b_exp - a_exp) as u32;
+            a_man >>= shift;
+            a_exp = b_exp;
+        }
+
+        let mut result_sign;
+        let mut result_exp = a_exp;
+        let mut result_man: u128;
+
+        if a_sign == b_sign {
+            result_man = a_man + b_man;
+            if (result_man & (1u128 << 64)) != 0 {
+                result_man >>= 1;
+                result_exp += 1;
+            }
+            result_sign = a_sign;
+        } else {
+            if a_man >= b_man {
+                result_man = a_man - b_man;
+                result_sign = a_sign;
+            } else {
+                result_man = b_man - a_man;
+                result_sign = b_sign;
+            }
+            let (norm_man, norm_exp) = self.normalize_add(result_man as u64, result_exp);
+            result_man = norm_man as u128;
+            result_exp = norm_exp;
+
+            if result_man == 0 {
+                result_sign = false;
+                result_exp = 0;
+            }
+        }
+
+        self.set_sign(result_sign);
+        self.set_exponent(result_exp);
+        self.set_mantissa(result_man as u64);
+    }
+
+    pub fn sub(&mut self, b: F80) {
+        let a_sign = self.get_sign();
+        let b_sign = b.get_sign();
+
+        let mut a_exp = self.get_exponent();
+        let b_exp = b.get_exponent();
+
+        let mut a_man = self.get_mantissa() as u128;
+        let mut b_man = b.get_mantissa() as u128;
+
+        if a_exp > b_exp {
+            let shift = (a_exp - b_exp) as u32;
+            b_man >>= shift;
+        } else if b_exp > a_exp {
+            let shift = (b_exp - a_exp) as u32;
+            a_man >>= shift;
+            a_exp = b_exp;
+        }
+
+        let mut result_sign;
+        let mut result_exp = a_exp;
+        let mut result_man: u128;
+
+        if a_sign != b_sign {
+            result_man = a_man + b_man;
+            if (result_man & (1u128 << 64)) != 0 {
+                result_man >>= 1;
+                result_exp += 1;
+            }
+            result_sign = a_sign;
+        } else {
+            if a_man >= b_man {
+                result_man = a_man - b_man;
+                result_sign = a_sign;
+            } else {
+                result_man = b_man - a_man;
+                result_sign = !a_sign;
+            }
+            let (norm_man, norm_exp) = self.normalize_sub(result_man as u64, result_exp);
+            result_man = norm_man as u128;
+            result_exp = norm_exp;
+
+            if result_man == 0 {
+                result_sign = false; // +0
+                result_exp = 0;
+            }
+        }
+
+        self.set_sign(result_sign);
+        self.set_exponent(result_exp);
+        self.set_mantissa(result_man as u64);
+    }
+
+    fn normalize_sub(&self, mut mant: u64, mut exp: u16) -> (u64, u16) {
+        while mant != 0 && (mant & (1 << 63)) == 0 {
+            mant <<= 1;
+            exp -= 1;
+        }
+        (mant, exp)
+    }
+
 
 
     pub fn is_integer(&self) -> bool {
