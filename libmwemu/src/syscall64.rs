@@ -236,9 +236,9 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.regs.rcx = 0x4679f7;
                 emu.regs.rax = emu.heap_addr;
             } else {
-                let bottom = emu.regs.rdi;
-                let new_sz = bottom - heap_base;
-                //heap.set_size(new_sz);
+                // let bottom = emu.regs.rdi;
+                // let new_sz = bottom - heap_base;
+                // heap.set_size(new_sz);
                 emu.regs.rax = emu.regs.rdi;
                 emu.regs.rcx = 0x4679f7;
                 emu.regs.rdx = 0x2f;

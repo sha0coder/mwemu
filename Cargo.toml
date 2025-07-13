@@ -10,3 +10,8 @@ members = [
 debug = 1
 opt-level = 3
 panic = 'unwind'
+
+[profile.dev]
+debug = 2
+opt-level = 1
+panic = 'unwind'

@@ -261,6 +261,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
         .create_map("KuserSharedData", USER_KUSER_SHARED_ADDR, 0x1000)
         .expect("cannot create KuserSharedData map");
 
+    // The KUSER_SHARED_DATA is getting from: https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
     let mut kusd: KuserSharedData = unsafe {MaybeUninit::zeroed().assume_init()};
     kusd.TickCountMultiplier = 0x0fa00000;
     kusd.InterruptTime.LowPart = 0x17bd9547;
@@ -295,9 +296,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.LastSystemRITEventTickCount = 0x01ec1fd3;
     kusd.NumberOfPhysicalPages = 0x00bf0958;
     kusd.NumberOfPhysicalPages = 0x0000000000bf0958;
-    //unsafe {
-        kusd.TickCount.TickCount.LowPart = 0x001f7f05;
-    //}
+    kusd.TickCount.TickCount.LowPart = 0x001f7f05;
     kusd.TickCount.TickCountQuad = 0x00000000001f7f05;
     kusd.Cookie = 0x1c3471da;
     kusd.ConsoleSessionForegroundProcessId = 0x00000000000028f4;
@@ -320,9 +319,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.XState.EnabledVolatileFeatures = 0x000000000000000f;
     kusd.XState.Size = 0x000003c0;
     kusd.QpcData.QpcData = 0x0083;
-    //unsafe {
-        kusd.QpcData.anonymous.QpcBypassEnabled= 0x83;
-    //}
+    kusd.QpcData.anonymous.QpcBypassEnabled= 0x83;
     kusd.QpcBias = 0x000000159530c4af;
 
     let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] = [0; std::mem::size_of::<KuserSharedData>()];
