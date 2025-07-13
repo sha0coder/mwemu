@@ -1,6 +1,11 @@
 # mwemu
 x86 32/64bits emulator, for securely emulating malware and other stuff. 
 
+[![Rust CI](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml/badge.svg)](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml)
+[![Crates.io](https://img.shields.io/crates/v/mwemu.svg)](https://crates.io/crates/mwemu)
+[![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
+
+
 ![MWEMU Logo](./pics/mwemu_logo.png)
 
 ## Some Videos

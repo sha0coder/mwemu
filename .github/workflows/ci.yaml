@@ -43,3 +43,16 @@ jobs:
       
       - name: Run tests
         run: make tests 
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Run coverage
+        run: cargo tarpaulin --out Xml --output coverage.xml
+
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
