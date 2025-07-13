@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use std::io::Write as _;
-    use log::{info, warn, error, debug};
+    //use log::{info, warn, error, debug};
     use std::sync::Once;
 
     use crate::emu::Emu;
