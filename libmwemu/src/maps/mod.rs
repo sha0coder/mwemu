@@ -72,6 +72,10 @@ impl Maps {
             .map(|pair| pair.1.size())
     }
 
+    pub fn is_allocated(&self, addr: u64) -> bool {
+        self.get_mem_by_addr(addr).is_some()
+    }
+
     pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
         //if size == 0 {
         //    return Err(format!("map size cannot be 0"));
@@ -986,6 +990,16 @@ impl Maps {
     }
 
     fn _alloc(&self, mut sz: u64, bottom: u64, top: u64, lib: bool) -> Option<u64> {
+        /*
+         *  params:
+         *    sz: size to allocate, this number will be aligned.
+         *    bottom: minimum address to allocate
+         *    top: max address
+         *    lib: allocating a library?
+         *  vars:
+         *    prev: is an aligned address, start with bottom and iterates every map bottom.
+         *    base: base address of specific map.
+        */
         let mut prev: u64 = self.align_up(bottom, Self::DEFAULT_ALIGNMENT);
         let debug = false;
 
@@ -1014,7 +1028,7 @@ impl Maps {
                 log::info!("base: 0x{:x} prev: 0x{:x} sz: 0x{:x}", base, prev, sz);
             }
             if prev > base {
-                panic!("alloc error");
+                panic!("alloc error prev:0x{:x} < base:0x{:x}", prev, base);
             }
             if debug {
                 log::info!("space: 0x{:x}", base - prev);
