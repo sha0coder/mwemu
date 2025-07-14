@@ -30,7 +30,7 @@ Rust apps https://crates.io/crates/libmwemu
 	- All dependencies are in rust.
 - ⚡ very fast emulation (much faster than unicorn) 
     - [benchmarks](BENCHMARK.md)
-	- 14,000,000 instructions/second
+	- 18,000,000 instructions/second
 	- 408,000 instructions/second printing every instruction -vv.
 - powered by iced-x86 rust dissasembler awesome library.
 - commandline tool, rust library, and python library.
