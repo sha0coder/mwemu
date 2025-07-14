@@ -2171,6 +2171,7 @@ impl Emu {
             OpKind::FarBranch32 => ins.far_branch32().into(),
             OpKind::FarBranch16 => ins.far_branch16().into(),
 
+
             OpKind::Immediate64 => ins.immediate64(),
             OpKind::Immediate8 => ins.immediate8() as u64,
             OpKind::Immediate16 => ins.immediate16() as u64,
