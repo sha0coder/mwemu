@@ -791,38 +791,53 @@ fn OpenProcess(emu: &mut emu::Emu) {
 fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu.regs.rcx;
     let size = emu.regs.rdx;
-    let typ = emu.regs.r8;
-    let prot = emu.regs.r9;
+    let typ = emu.regs.r8 as u32;
+    let prot = emu.regs.r9 as u32;
+    let mem_reserve = (typ & constants::MEM_RESERVE) != 0;
 
     if size == 0 {
         log::info!(
-            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0 {}",
+            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0 mem_reserve: {} {}",
             emu.colors.light_red,
             emu.pos,
             addr,
             size,
+            mem_reserve,
             emu.colors.nc
         );
         emu.regs.rax = 0
     } else {
-        let base = emu
-            .maps
-            .alloc(size)
-            .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size));
+
+        let base = if mem_reserve {
+            emu
+                .maps
+                .alloc(size)
+                .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size))
+        } else {
+            if emu.maps.is_allocated(addr) {
+                addr
+            } else {
+                0
+            }
+        };
+
 
         log::info!(
-            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0x{:x} {}",
+            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0x{:x} mem_reserve: {} {}",
             emu.colors.light_red,
             emu.pos,
             addr,
             size,
             base,
+            mem_reserve,
             emu.colors.nc
         );
 
-        emu.maps
-            .create_map(format!("alloc_{:x}", base).as_str(), base, size)
-            .expect("kernel32!VirtualAlloc out of memory");
+        if mem_reserve {
+            emu.maps
+                .create_map(format!("alloc_{:x}", base).as_str(), base, size)
+                .expect("kernel32!VirtualAlloc out of memory");
+        }
 
         emu.regs.rax = base;
     }

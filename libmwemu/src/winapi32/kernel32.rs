@@ -677,20 +677,33 @@ fn VirtualAlloc(emu: &mut emu::Emu) {
         .read_dword(emu.regs.get_esp() + 12)
         .expect("kernel32!VirtualAlloc error reading protect");
 
-    let base = emu
-        .maps
-        .alloc(size)
-        .expect("kernel32!VirtualAlloc out of memory");
-    emu.maps
-        .create_map(format!("alloc_{:x}", base).as_str(), base, size)
-        .expect("kernel32!VirtualAlloc out of memory");
+    let mem_reserve = (atype & constants::MEM_RESERVE) != 0;
+
+
+    let base:u64 = if mem_reserve {
+        let base = emu
+            .maps
+            .alloc(size)
+            .expect("kernel32!VirtualAlloc out of memory");
+        emu.maps
+            .create_map(format!("alloc_{:x}", base).as_str(), base, size)
+            .expect("kernel32!VirtualAlloc out of memory");
+        base
+    } else {
+        if emu.maps.is_allocated(addr) {
+            addr
+        } else {
+            0
+        }
+    };
 
     log::info!(
-        "{}** {} kernel32!VirtualAlloc sz: {} addr: 0x{:x} {}",
+        "{}** {} kernel32!VirtualAlloc sz: {} addr: 0x{:x} mem_reserve: {} {}",
         emu.colors.light_red,
         emu.pos,
         size,
         base,
+        mem_reserve,
         emu.colors.nc
     );
 
