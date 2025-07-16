@@ -27,6 +27,8 @@ serde = { version = "1.0.217", features = ["derive"] }
 bitcode = { version = "0.6.3", features = ["std", "serde"] }
 ahash = { version = "0.8.12", features = ["serde"] }
 bitfield = "0.19.1"
+ureq = { version = "2.10", default-features = false, features = ["tls"] }
+zip = "0.6"
 
 [dev-dependencies]
 env_logger = "0.11.8"
