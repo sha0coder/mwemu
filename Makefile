@@ -6,7 +6,5 @@ tests:
 	rm test.zip
 	cargo test --release --package libmwemu --verbose
 pytests:
-	cargo test --release --package pymwemu --verbose
-pytests2:
 	cd pymwemu && ./test_all.sh
 
