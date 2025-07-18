@@ -41,11 +41,14 @@ jobs:
       - name: Build
         run: cargo build --release --verbose
       
-      - name: Run tests
+      - name: Run libmwemu tests
         run: make tests 
 
-      - name: Run Python Tests
+      - name: Run pymwemu tests
         run: make pytests
+
+      - name: Run Python Tests
+        run: make pytests2
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
