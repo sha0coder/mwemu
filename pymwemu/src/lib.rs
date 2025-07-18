@@ -392,6 +392,14 @@ impl Emu {
         }
     }
 
+    /// Emulate until reaching a specific instruction position (number of instructions).
+    fn run_to(&mut self, position: u64) -> PyResult<u64> {
+        match self.emu.run_to(position) {
+            Ok(pc) => Ok(pc),
+            Err(e) => Err(PyValueError::new_err(e.message)),
+        }
+    }
+
     /// read the number of instructions emulated since now.
     fn get_position(&mut self) -> PyResult<u64> {
         Ok(self.emu.pos)

@@ -69,7 +69,15 @@ impl Maps {
         self.maps
             .range(..=addr)
             .next_back()
-            .map(|pair| pair.1.size())
+            .and_then(|(start, region)| {
+                let start = *start;
+                let size = region.size() as u64;
+                if addr >= start && addr < start + size {
+                    Some(region.size())
+                } else {
+                    None
+                }
+            })
     }
 
     pub fn is_allocated(&self, addr: u64) -> bool {
@@ -103,16 +111,25 @@ impl Maps {
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
         let banzai = self.banzai;
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) => {
+            Some(mem) if mem.inside(addr) => {
                 mem.write_byte(addr, value);
                 true
             }
-            None if banzai => {
-                log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
+            Some(_) => {
+                if banzai {
+                    log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing byte to unmapped region at 0x{:x}", addr);
+                }
                 false
             }
-            _ => {
-                panic!("Writing byte to unmapped region at 0x{:x}", addr);
+            None => {
+                if banzai {
+                    log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing byte to unmapped region at 0x{:x}", addr);
+                }
+                false
             }
         }
     }
@@ -147,12 +164,21 @@ impl Maps {
                 mem.write_qword(addr, value);
                 true
             }
-            None if banzai => {
-                log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
+            Some(_) => {
+                if banzai {
+                    log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing qword to unmapped region at 0x{:x}", addr);
+                }
                 false
             }
-            _ => {
-                panic!("Writing qword to unmapped region at 0x{:x}", addr);
+            None => {
+                if banzai {
+                    log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing qword to unmapped region at 0x{:x}", addr);
+                }
+                false
             }
         }
     }
@@ -165,12 +191,21 @@ impl Maps {
                 mem.write_dword(addr, value);
                 true
             }
-            None if banzai => {
-                log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
+            Some(_) => {
+                if banzai{  
+                    log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing dword to unmapped region at 0x{:x}", addr);
+                }
                 false
             }
-            _ => {
-                panic!("Writing dword to unmapped region at 0x{:x}", addr);
+            None => {
+                if banzai{  
+                    log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing dword to unmapped region at 0x{:x}", addr);
+                }
+                false
             }
         }
     }
@@ -184,12 +219,21 @@ impl Maps {
                 mem.write_word(addr, value);
                 true
             }
-            None if banzai => {
-                log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+            Some(_) => {
+                if banzai {
+                    log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing word to unmapped region at 0x{:x}", addr);
+                }
                 false
             }
-            _ => {
-                panic!("Writing word to unmapped region at 0x{:x}", addr);
+            None => {
+                if banzai {
+                    log::warn!("Writing word to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing word to unmapped region at 0x{:x}", addr);
+                }
+                false
             }
         }
     }

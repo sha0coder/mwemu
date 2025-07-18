@@ -5,4 +5,6 @@ tests:
 	unzip -o -P mwemuTestSystem test.zip
 	rm test.zip
 	cargo test --release --verbose
+pytests:
+	cd pymwemu && ./test_all.sh
 

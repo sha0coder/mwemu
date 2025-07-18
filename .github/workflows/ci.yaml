@@ -44,6 +44,9 @@ jobs:
       - name: Run tests
         run: make tests 
 
+      - name: Run Python Tests
+        run: make pytests
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 

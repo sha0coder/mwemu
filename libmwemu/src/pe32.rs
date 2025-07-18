@@ -727,16 +727,32 @@ pub struct PE32 {
 impl PE32 {
     pub fn is_pe32(filename: &str) -> bool {
         //log::info!("checking if pe32: {}", filename);
-        let mut fd = File::open(filename).expect("file not found");
+        let mut fd = match File::open(filename) {
+            Ok(file) => file,
+            Err(_) => return false,
+        };
+
+        let file_size = match fd.metadata() {
+            Ok(metadata) => metadata.len(),
+            Err(_) => return false,
+        };
+
+        if file_size < ImageDosHeader::size() as u64 {
+            return false;
+        }
+
         let mut raw = vec![0u8; ImageDosHeader::size()];
-        fd.read_exact(&mut raw).expect("couldnt read the file");
+        if fd.read_exact(&mut raw).is_err() {
+            return false;
+        }
+
         let dos = ImageDosHeader::load(&raw, 0);
 
         if dos.e_magic != 0x5a4d {
             return false;
         }
 
-        if dos.e_lfanew >= fd.metadata().unwrap().len() as u32 {
+        if dos.e_lfanew >= file_size as u32 {
             return false;
         }
 
