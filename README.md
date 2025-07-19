@@ -82,7 +82,7 @@ Rust apps https://crates.io/crates/libmwemu
 
 ## Usage
 ```
-MWEMU emulator for malware 0.7.10
+MWEMU emulator for malware
 @sha0coder
 
 USAGE:
@@ -91,7 +91,9 @@ USAGE:
 FLAGS:
     -6, --64bits         enable 64bits architecture emulation
         --banzai         skip unimplemented instructions, and keep up emulating what can be emulated
-    -h, --help           Prints help information
+    -F, --fpu            trace the fpu states.
+    -h, --handle         handle Ctrl+C to spawn console
+        --help           Prints help information
     -l, --loops          show loop interations, it is slow.
     -m, --memory         trace all the memory accesses read and write.
     -n, --nocolors       print without colors for redirectin to a file >out
