@@ -151,7 +151,7 @@ impl Emu {
             filename: String::new(),
             enabled_ctrlc: false, // TODO: make configurable with command line arg
             run_until_ret: false,
-            running_script: false,
+            running_script: true,
             banzai: Banzai::new(),
             mnemonic: String::new(),
             dbg: false,

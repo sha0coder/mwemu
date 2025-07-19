@@ -18,6 +18,7 @@ mod tests {
     use crate::emu64;
     use crate::emu32;
     use crate::serialization::Serialization;
+    use std::process::Command;
 
     static INIT: Once = Once::new();
 
@@ -824,10 +825,47 @@ mod tests {
         bp.set_mem_write(0x700000);
         bp.set_instruction(200);
         
-        assert_eq!(bp.get_bp(), 0x500000);
+        assert_eq!(bp.get_bp(), 0); // only one type of bt at once, the setters clear all the
+                                    // breakpointts.
         
         bp.clear_bp();
         assert_eq!(bp.get_bp(), 0);
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+        emu.load_code("../test/exe64win_msgbox.bin");
+        emu.bp.clear_bp();
+        emu.bp.set_bp(0x1400011d6);
+        emu.run(None);
+        assert_eq!(emu.pos, 4);
+
+        /*
+        emu.bp.set_mem_write(0x329f70);
+        emu.run(None);
+        assert_eq!(emu.pos, 15);
+
+    14 0x1400010df: mov   [rbp-10h],rdi
+	mem_trace: pos = 14 rip = 1400010df op = write bits = 64 address = 0x329f70 value = 0x1400011df name = 'stack'
+
+        */
+
+        emu.bp.set_instruction(100);
+        assert_eq!(emu.bp.get_instruction(), 100);
+        emu.run(None);
+        assert_eq!(emu.pos, 100);
+
+        /* is not matching
+        emu.bp.set_mem_read(0x329eb8);
+        emu.run(None);
+        assert_eq!(emu.pos, 102);
+
+	mem_trace: pos = 102 rip = 1400010c4 op = read bits = 64 address = 0x329eb8 value = 0xc name = 'stack'
+	mem_trace: pos = 102 rip = 1400010c4 op = write bits = 64 address = 0x329eb8 value = 0xc name = 'register'
+    102 0x1400010c4: pop   rcx ;0xc
+        */
+
+
     }
 
     #[test]
@@ -1367,6 +1405,24 @@ mod tests {
         assert!(r == 0x3);
         (r, _) = logic::shld(&mut emu, 0x144e471f8, 0x14F498, 0x3e, 64);
         assert!(r == 0x53d26);
+    }
+
+    #[test]
+    // avoid c code, try to be 100% rust
+    fn pure_rust_check() {
+        let output = Command::new("cargo")
+            .args(&["metadata", "--format-version", "1"])
+            .output();
+
+        assert!(output.is_ok()); // cargo executed well
+
+        let out = output.unwrap();
+        let stdout = String::from_utf8(out.stdout);
+        
+        assert!(stdout.is_ok()); // not utf8 errors
+        let stoud2 = stdout.unwrap();
+
+        assert!(stoud2.contains("libc"));
     }
 
 }

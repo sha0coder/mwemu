@@ -239,6 +239,66 @@ pub fn emulate_instruction(
             emu.regs.set_eax(poped);
         }
 
+        Mnemonic::Popcnt => {
+             emu.show_instruction(color!("Blue"), ins);
+
+             let src = match emu.get_operand_value(ins, 1, true) {
+                 Some(v) => v,
+                 None => return false,
+             };
+                
+             let res = src.count_ones();
+             if !emu.set_operand_value(ins, 0, res as u64) {
+                 return false;
+             }
+
+        }
+
+        Mnemonic::Lzcnt => {
+            emu.show_instruction(color!("Blue"), ins);
+
+            let src = match emu.get_operand_value(ins, 1, true) {
+                Some(v) => v,
+                None => return false,
+            };
+            let lz = src.leading_zeros() as u64;
+
+            if !emu.set_operand_value(ins, 0, lz) {
+                return false;
+            }
+        }
+
+        Mnemonic::Pdep => {
+            emu.show_instruction(color!("Blue"), ins);
+
+            let mut val:u64 = match emu.get_operand_value(ins, 1, true) {
+                Some(v) => v,
+                None => return false,
+            };
+            let mut mask:u64 = match emu.get_operand_value(ins, 2, true) {
+                Some(v) => v,
+                None => return false,
+            };
+
+            let mut result = 0;
+            let mut bit = 0;
+
+            while mask != 0 {
+                if mask & 1 != 0 {
+                    if val & 1 != 0 {
+                        result |= 1 << bit;
+                    }
+                    val >>= 1;
+                }
+                bit += 1;
+                mask >>= 1;
+            }
+
+            if !emu.set_operand_value(ins, 0, result) {
+                return false;
+            }
+        }
+
         Mnemonic::Cdqe => {
             emu.show_instruction(color!("Blue"), ins);
 

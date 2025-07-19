@@ -125,6 +125,8 @@ fn main() {
         emu.cfg.is_64bits = false;
     }
 
+    emu.running_script = false;
+
     // filename
     let filename = matches
         .value_of("filename")
