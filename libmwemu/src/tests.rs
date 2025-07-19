@@ -10,9 +10,11 @@ mod tests {
     use std::sync::Once;
     use crate::constants;
     use crate::winapi64;
+    use crate::winapi32;
     use crate::emu::Emu;
     use crate::fpu::FPU;
     use crate::fpu::f80::F80;
+    use crate::engine::logic;
     use crate::emu64;
     use crate::emu32;
     use crate::serialization::Serialization;
@@ -1180,8 +1182,8 @@ mod tests {
     }
 
     #[test]
-    // test maps
-    fn maps_allocator_test() {
+    // test 64bits allocators
+    fn allocator64_test() {
         setup();
 
         let mut emu = emu64();
@@ -1196,7 +1198,6 @@ mod tests {
         for _ in 0..1000 {
             assert_eq!(emu.maps.alloc(1024).is_some(), true);
             assert_eq!(emu.maps.lib64_alloc(1024).is_some(), true);
-            assert_eq!(emu.maps.lib32_alloc(1024).is_some(), true);
         }
 
         assert_eq!(emu.maps.mem_test(), true);
@@ -1225,6 +1226,147 @@ mod tests {
         assert_eq!(emu.regs.rax, 0x30000000);
 
         assert_eq!(emu.maps.is_allocated(0x30000000), true);
+        assert_eq!(emu.maps.mem_test(), true);
+    }
+
+    #[test]
+    // test 32bits allocators
+    fn allocator32_test() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.maps.clear();
+        emu.init(false, false);
+
+        assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
+        assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);
+        assert_eq!(emu.maps.exists_mapname("notexist"), false);
+        assert_eq!(emu.maps.get_map_by_name("notexist").is_some(), false);
+
+        for _ in 0..1000 {
+            assert_eq!(emu.maps.alloc(1024).is_some(), true);
+            assert_eq!(emu.maps.lib32_alloc(1024).is_some(), true);
+        }
+
+        assert_eq!(emu.maps.mem_test(), true);
+
+        emu.stack_push32(0x40); // rwx
+        emu.stack_push32(constants::MEM_RESERVE);
+        emu.stack_push32(1024); // sz
+        emu.stack_push32(0); // addr
+        winapi32::kernel32::VirtualAlloc(&mut emu);
+        assert_eq!(emu.maps.is_allocated(emu.regs.rax), true);
+
+        emu.stack_push32(0x40); // rwx
+        emu.stack_push32(constants::MEM_RESERVE | constants::MEM_COMMIT);
+        emu.stack_push32(1024); // sz
+        emu.stack_push32(0x30000000); // addr
+        winapi32::kernel32::VirtualAlloc(&mut emu);
+
+        emu.stack_push32(0x40); // rwx
+        emu.stack_push32(constants::MEM_COMMIT);
+        emu.stack_push32(1024); // sz
+        emu.stack_push32(0x30000000); // addr
+        winapi32::kernel32::VirtualAlloc(&mut emu);
+        assert_eq!(emu.regs.rax, 0x30000000);
+
+        assert!(emu.maps.is_allocated(0x30000000));
+        assert!(emu.maps.mem_test());
+    }
+
+    #[test]
+    // stack32 tests
+    fn stack32_test() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.init(false, false);
+        let stack_check = emu.maps.get_map_by_name("stack");
+        assert!(stack_check.is_some());
+        let stack = stack_check.unwrap();
+        let base = stack.get_base();
+
+        assert!(emu.regs.get_esp() < emu.regs.get_ebp());
+        assert!(emu.regs.get_esp() > stack.get_base());
+        assert!(emu.regs.get_esp() < stack.get_bottom());
+        assert!(emu.regs.get_ebp() > stack.get_base());
+        assert!(emu.regs.get_ebp() < stack.get_bottom());
+        assert!(stack.inside(emu.regs.get_esp()));
+        assert!(stack.inside(emu.regs.get_ebp()));
+
+        for i in 0..5000 {
+            emu.stack_push32(i as u32);
+        }
+        emu.stack_pop32(false);
+
+        assert!(emu.regs.get_esp() > base);
+    }
+
+    #[test]
+    // stack64 tests
+    fn stack64_test() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+        let stack_check = emu.maps.get_map_by_name("stack");
+        assert!(stack_check.is_some());
+        let stack = stack_check.unwrap();
+        let base = stack.get_base();
+
+        assert!(emu.regs.rsp < emu.regs.rbp);
+        assert!(emu.regs.rsp > stack.get_base());
+        assert!(emu.regs.rsp < stack.get_bottom());
+        assert!(emu.regs.rbp > stack.get_base());
+        assert!(emu.regs.rbp < stack.get_bottom());
+        assert!(stack.inside(emu.regs.rsp));
+        assert!(stack.inside(emu.regs.rbp));
+
+        for i in 0..5000 {
+            emu.stack_push64(i as u64);
+        }
+        emu.stack_pop64(false);
+
+        assert!(emu.regs.rsp > base);
+    }
+
+    #[test]
+    // logic tests
+    fn logic_test() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let num: u64 = 0x1234_5678_9ABC_DEF0;
+        let shift:u64 = 12;
+        let size:u32 = 32;
+        let src: u64 = num >> (size as u64 - shift);
+        let num2 = logic::shld(&mut emu, num, src, shift, size).0;
+        assert_eq!(
+            logic::shrd(&mut emu, num2, src, shift, size),
+            (num, false)
+        );
+
+        let mut r: u64;
+        (r, _) = logic::shrd(&mut emu, 0x9fd88893, 0x1b, 0x6, 32);
+        assert!(r == 0x6e7f6222);
+        (r, _) = logic::shrd(&mut emu, 0x6fdcb03, 0x0, 0x6, 32);
+        assert!(r == 0x1bf72c);
+        (r, _) = logic::shrd(&mut emu, 0x91545f1d, 0x6fe2, 0x6, 32);
+        assert!(r == 0x8a45517c);
+        (r, _) = logic::shld(&mut emu, 0x1b, 0xf1a7eb1d, 0xa, 32);
+        assert!(r == 0x6fc6);
+        (r, _) = logic::shld(&mut emu, 0x1, 0xffffffff, 4, 32);
+        assert!(r == 0x1f);
+        (r, _) = logic::shld(&mut emu, 0x1, 0xffffffff, 33, 32);
+        assert!(r == 0x3);
+        (r, _) = logic::shld(&mut emu, 0x144e471f8, 0x14F498, 0x3e, 64);
+        assert!(r == 0x53d26);
     }
 
 }
