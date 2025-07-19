@@ -8,7 +8,8 @@ mod tests {
     use crate::maps::mem64::Mem64;
     //use log::{info, warn, error, debug};
     use std::sync::Once;
-    
+    use crate::constants;
+    use crate::winapi64;
     use crate::emu::Emu;
     use crate::fpu::FPU;
     use crate::fpu::f80::F80;
@@ -1176,6 +1177,54 @@ mod tests {
         mem2.load("../test/sc32win_donut.bin");
         let md5 = format!("{:x}", mem2.md5());
         assert_eq!(md5, "66d6376c2dd0b8d4d35461844e5b0e6c");
+    }
+
+    #[test]
+    // test maps
+    fn maps_allocator_test() {
+        setup();
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
+        assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);
+        assert_eq!(emu.maps.exists_mapname("notexist"), false);
+        assert_eq!(emu.maps.get_map_by_name("notexist").is_some(), false);
+
+        for _ in 0..1000 {
+            assert_eq!(emu.maps.alloc(1024).is_some(), true);
+            assert_eq!(emu.maps.lib64_alloc(1024).is_some(), true);
+            assert_eq!(emu.maps.lib32_alloc(1024).is_some(), true);
+        }
+
+        assert_eq!(emu.maps.mem_test(), true);
+
+        emu.maps.clear();
+
+
+        emu.regs.rcx = 0; // addr
+        emu.regs.rdx = 1024; // sz
+        emu.regs.r8 = constants::MEM_RESERVE as u64;
+        emu.regs.r9 = 0x40; // rwx
+        winapi64::kernel32::VirtualAlloc(&mut emu);
+        assert_eq!(emu.maps.is_allocated(emu.regs.rax), true);
+
+        emu.regs.rcx = 0x30000000; // addr
+        emu.regs.rdx = 1024; // sz
+        emu.regs.r8 = (constants::MEM_RESERVE | constants::MEM_COMMIT) as u64;
+        emu.regs.r9 = 0x40; // rwx
+        winapi64::kernel32::VirtualAlloc(&mut emu);
+
+        emu.regs.rcx = 0x30000000; // addr
+        emu.regs.rdx = 1024; // sz
+        emu.regs.r8 = constants::MEM_COMMIT as u64;
+        emu.regs.r9 = 0x40; // rwx
+        winapi64::kernel32::VirtualAlloc(&mut emu);
+        assert_eq!(emu.regs.rax, 0x30000000);
+
+        assert_eq!(emu.maps.is_allocated(0x30000000), true);
     }
 
 }
