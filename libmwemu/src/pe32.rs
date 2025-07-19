@@ -773,7 +773,7 @@ impl PE32 {
 
         match std::str::from_utf8(&raw[off..end]) {
             Ok(s) => s.to_string(),
-            Err(_) => "noname".to_string(),
+            Err(_) => "".to_string(),
         }
     }
 
