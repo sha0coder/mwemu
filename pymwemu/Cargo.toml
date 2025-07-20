@@ -7,7 +7,7 @@ description = "x86 32/64bits and system internals emulator, for securely emulati
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "pymwemu"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = "0.18.1"

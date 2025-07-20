@@ -130,4 +130,31 @@ Executed in    2,22 secs    fish           external
 
 
 
+## max-speed, 32bits with no API calls
+
+18M i 1second
+
+```bash
+time cargo run --release -- -f  test/sc32win_donut.bin -e 18000001
+________________________________________________________
+Executed in    1,04 secs      fish           external
+   usr time  762,69 millis    0,00 micros  762,69 millis
+   sys time  144,85 millis  473,00 micros  144,37 millis
+________________________________________________________
+Executed in  983,67 millis    fish           external
+   usr time  747,82 millis    0,00 micros  747,82 millis
+   sys time  131,10 millis  779,00 micros  130,32 millis
+________________________________________________________
+Executed in    1,01 secs      fish           external
+   usr time  778,74 millis    0,00 micros  778,74 millis
+   sys time  130,27 millis  812,00 micros  129,46 millis
+________________________________________________________
+Executed in    1,01 secs      fish           external
+   usr time  766,83 millis    0,00 micros  766,83 millis
+   sys time  137,09 millis  657,00 micros  136,44 millis
+________________________________________________________
+Executed in  985,74 millis    fish           external
+   usr time  758,16 millis  498,00 micros  757,66 millis
+   sys time  135,46 millis  159,00 micros  135,30 millis
+```
 

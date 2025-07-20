@@ -55,7 +55,7 @@ macro_rules! clap_arg {
 }
 
 fn main() {
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
 
@@ -124,6 +124,8 @@ fn main() {
         emu = emu32();
         emu.cfg.is_64bits = false;
     }
+
+    emu.running_script = false;
 
     // filename
     let filename = matches

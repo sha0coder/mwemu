@@ -727,26 +727,60 @@ pub struct PE32 {
 impl PE32 {
     pub fn is_pe32(filename: &str) -> bool {
         //log::info!("checking if pe32: {}", filename);
-        let mut fd = File::open(filename).expect("file not found");
+        let mut fd = match File::open(filename) {
+            Ok(file) => file,
+            Err(_) => return false,
+        };
+
+        let file_size = match fd.metadata() {
+            Ok(metadata) => metadata.len(),
+            Err(_) => return false,
+        };
+
+        if file_size < ImageDosHeader::size() as u64 {
+            return false;
+        }
+
         let mut raw = vec![0u8; ImageDosHeader::size()];
-        fd.read_exact(&mut raw).expect("couldnt read the file");
+        if fd.read_exact(&mut raw).is_err() {
+            return false;
+        }
+
         let dos = ImageDosHeader::load(&raw, 0);
 
         if dos.e_magic != 0x5a4d {
             return false;
         }
 
-        if dos.e_lfanew >= fd.metadata().unwrap().len() as u32 {
+        if dos.e_lfanew >= file_size as u32 {
             return false;
         }
 
         true
     }
 
+    // this approach sume that the string exist there and will find the \x00
     pub fn read_string(raw: &[u8], off: usize) -> String {
+        if off >= raw.len() {
+            return String::new();
+        }
+
+        let end = raw[off..]
+            .iter()
+            .position(|&b| b == 0)
+            .map(|pos| off + pos)
+            .unwrap_or(raw.len());
+
+        match std::str::from_utf8(&raw[off..end]) {
+            Ok(s) => s.to_string(),
+            Err(_) => "".to_string(),
+        }
+    }
+
+    // prevous approach that use a max 200 bytes buffer
+    pub fn read_string_200(raw: &[u8], off: usize) -> String {
         let mut last = 0;
 
-        // TODO: bounds error?
         if raw.len() < off + 200 {
             return String::new();
         }

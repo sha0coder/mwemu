@@ -35,6 +35,10 @@ impl Mem64 {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.mem.clear();
+    }
+
     #[inline(always)]
     pub fn get_name(&self) -> &str {
         self.mem_name.as_str()
@@ -326,6 +330,20 @@ impl Mem64 {
     }
 
     #[inline(always)]
+    pub fn write_oword(&mut self, addr: u64, value: u128) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem") {
+            log::trace!(
+                "mem: write_qword: 0x{:x?} = 0x{:x}",
+                self.build_addresses(addr, 8),
+                value
+            );
+        }
+    }
+
+    #[inline(always)]
     pub fn write_string(&mut self, addr: u64, s: &str) {
         let mut v = s.as_bytes().to_vec();
         v.push(0);
@@ -338,6 +356,22 @@ impl Mem64 {
                 s
             );
         }
+    }
+
+    #[inline(always)]
+    pub fn read_string(&self, addr: u64) -> String {
+        let MAX_SIZE_STR = 1_000_000;
+        let mut s: Vec<u8> = Vec::new();
+        let mut idx = addr;
+        while idx < addr+MAX_SIZE_STR {
+            let b = self.read_byte(idx);
+            if b == 0 {
+                break;
+            }
+            s.push(b);
+            idx += 1;
+        }
+        String::from_utf8(s).expect("invalid utf-8")
     }
 
     #[inline(always)]
@@ -368,7 +402,7 @@ impl Mem64 {
         let MAX_SIZE_STR = 1_000_000;
         let mut s: Vec<u16> = Vec::new();
         let mut idx = addr;
-        while idx < MAX_SIZE_STR {
+        while idx < addr+MAX_SIZE_STR {
             let b = self.read_word(idx);
             if b == 0 {
                 break;
@@ -442,6 +476,7 @@ impl Mem64 {
         let len = f.metadata().unwrap().len();
         self.bottom_addr = self.base_addr + len;
         let mut reader = BufReader::new(&f);
+        self.mem.clear();
         reader
             .read_to_end(&mut self.mem)
             .expect("cannot load map file");

@@ -7,8 +7,11 @@ x
 *.swp
 *.idb
 .venv/
+.env/
+deps/
 dumps/
 *.zip
 test
 test.zip*
 .gdb_history
+*.zip

@@ -1,13 +1,12 @@
 # mwemu
-x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
-
 [![Rust CI](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml/badge.svg)](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml)
 [![PyPI version](https://img.shields.io/pypi/v/pymwemu.svg)](https://pypi.org/project/pymwemu/)
 [![libmwemu crates.io](https://img.shields.io/crates/v/libmwemu.svg)](https://crates.io/crates/libmwemu)
 [![mwemu rates.io](https://img.shields.io/crates/v/mwemu.svg)](https://crates.io/crates/mwemu)
-[![PyPI version](https://img.shields.io/pypi/v/pymwemu.svg)](https://pypi.org/project/pymwemu/)
 [![Docs.rs](https://docs.rs/libmwemu/badge.svg)](https://docs.rs/libmwemu)
 [![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
+
+x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
 
 
 
@@ -30,7 +29,7 @@ Rust apps https://crates.io/crates/libmwemu
 	- All dependencies are in rust.
 - ⚡ very fast emulation (much faster than unicorn) 
     - [benchmarks](BENCHMARK.md)
-	- 14,000,000 instructions/second
+	- 18,000,000 instructions/second
 	- 408,000 instructions/second printing every instruction -vv.
 - powered by iced-x86 rust dissasembler awesome library.
 - commandline tool, rust library, and python library.
@@ -83,7 +82,7 @@ Rust apps https://crates.io/crates/libmwemu
 
 ## Usage
 ```
-MWEMU emulator for malware 0.7.10
+MWEMU emulator for malware
 @sha0coder
 
 USAGE:
@@ -92,7 +91,9 @@ USAGE:
 FLAGS:
     -6, --64bits         enable 64bits architecture emulation
         --banzai         skip unimplemented instructions, and keep up emulating what can be emulated
-    -h, --help           Prints help information
+    -F, --fpu            trace the fpu states.
+    -h, --handle         handle Ctrl+C to spawn console
+        --help           Prints help information
     -l, --loops          show loop interations, it is slow.
     -m, --memory         trace all the memory accesses read and write.
     -n, --nocolors       print without colors for redirectin to a file >out

@@ -659,12 +659,12 @@ fn WaitForSingleObject(emu: &mut emu::Emu) {
     emu.regs.rax = constants::WAIT_TIMEOUT;
 }
 
-fn VirtualAlloc(emu: &mut emu::Emu) {
+pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu
         .maps
         .read_dword(emu.regs.get_esp())
         .expect("kernel32!VirtualAlloc error reading addr") as u64;
-    let size = emu
+    let mut size = emu
         .maps
         .read_dword(emu.regs.get_esp() + 4)
         .expect("kernel32!VirtualAlloc error reading size ptr") as u64;
@@ -677,23 +677,30 @@ fn VirtualAlloc(emu: &mut emu::Emu) {
         .read_dword(emu.regs.get_esp() + 12)
         .expect("kernel32!VirtualAlloc error reading protect");
 
+
     let mem_reserve = (atype & constants::MEM_RESERVE) != 0;
+    let mem_commit = (atype & constants::MEM_COMMIT) != 0;
+    let base: u64;
+    let page_size = 0x1000;
+    size = (size + page_size - 1) & !(page_size - 1);
 
-
-    let base:u64 = if mem_reserve {
-        let base = emu
-            .maps
-            .alloc(size)
-            .expect("kernel32!VirtualAlloc out of memory");
+    if mem_reserve {
+        if mem_commit && addr > 0 {
+            base = addr;
+        } else {
+            base = emu
+                .maps
+                .alloc(size)
+                .expect("kernel32!VirtualAlloc out of memory");
+        }
         emu.maps
             .create_map(format!("alloc_{:x}", base).as_str(), base, size)
             .expect("kernel32!VirtualAlloc out of memory");
-        base
     } else {
-        if emu.maps.is_allocated(addr) {
-            addr
+        if mem_commit && emu.maps.is_allocated(addr) {
+            base = addr
         } else {
-            0
+            base = 0
         }
     };
 

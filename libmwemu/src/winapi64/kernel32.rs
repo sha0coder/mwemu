@@ -789,7 +789,7 @@ fn OpenProcess(emu: &mut emu::Emu) {
     emu.regs.rax = helper::handler_create(&uri);
 }
 
-fn VirtualAlloc(emu: &mut emu::Emu) {
+pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu.regs.rcx;
     let size = emu.regs.rdx;
     let typ = emu.regs.r8 as u32;
@@ -819,10 +819,14 @@ fn VirtualAlloc(emu: &mut emu::Emu) {
 
 
         if status_need_allocate {
-            base = emu
-                    .maps
-                    .alloc(size)
-                    .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size));
+            if addr == 0 {
+                base = emu
+                        .maps
+                        .alloc(size)
+                        .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size));
+            } else {
+                base = addr;
+            }
 
             emu.maps
                 .create_map(format!("alloc_{:x}", base).as_str(), base, size)
