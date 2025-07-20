@@ -781,9 +781,12 @@ impl PE32 {
     pub fn read_string_200(raw: &[u8], off: usize) -> String {
         let mut last = 0;
 
+        // TODO: bounds error?
+        /*
         if raw.len() < off + 200 {
             return String::new();
         }
+         */
 
         for (i, byte) in raw.iter().enumerate().skip(off).take(200) {
             if *byte == 0 {

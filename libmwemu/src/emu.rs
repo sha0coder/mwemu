@@ -1959,8 +1959,6 @@ impl Emu {
 
     //TODO: check this, this is used only on pyscemu
     pub fn handle_winapi(&mut self, addr: u64) {
-
-
         if self.cfg.is_64bits {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs.rip = self.gateway_return;

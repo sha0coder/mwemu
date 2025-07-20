@@ -339,7 +339,7 @@ impl PE64 {
             sect_hdr: sect,
             delay_load_dir,
             image_import_descriptor, //import_dir: importd,
-                                     //export_dir: exportd,
+            //export_dir: exportd,
         }
     }
 
