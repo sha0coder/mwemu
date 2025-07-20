@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/mwemu/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/pymwemu/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/pymwemu/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/pymwemu/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
