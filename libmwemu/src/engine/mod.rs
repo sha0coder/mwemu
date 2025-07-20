@@ -3904,8 +3904,12 @@ pub fn emulate_instruction(
                     emu.regs.rax = 0x906ed; // Version Information (Type, Family, Model, and Stepping ID)
                     emu.regs.rbx = 0x5100800;
                     emu.regs.rcx = 0x7ffafbbf;
-                    emu.regs.rdx = 0xbfebfbff; // feature
-                }
+                    emu.regs.rdx = 0xbfebfbff; // feature  
+                    set_bit!(emu.regs.rdx, 0, 1);  // FPU = true
+                        set_bit!(emu.regs.rdx, 23, 1); // MMX = true
+                    set_bit!(emu.regs.rdx, 25, 1); // SSE = true
+                    set_bit!(emu.regs.rdx, 26, 1); // SSE2 = true
+                    }
                 0x02 => {
                     emu.regs.rax = 0x76036301;
                     emu.regs.rbx = 0xf0b5ff;
