@@ -7,11 +7,11 @@ members = [
 ]
 
 [profile.release]
-debug = 1
+debug = 0
 opt-level = 3
 panic = 'unwind'
 
 [profile.dev]
-debug = 2
+debug = "full"
 opt-level = 1
 panic = 'unwind'

@@ -2345,13 +2345,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmova => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_cf && !emu.flags.f_zf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2360,13 +2366,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovae => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_cf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2375,13 +2387,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovb => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_cf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2390,13 +2408,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovbe => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_cf || emu.flags.f_zf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2405,13 +2429,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmove => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_zf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2420,13 +2450,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovg => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_zf && emu.flags.f_sf == emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2435,13 +2471,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovge => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_sf == emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2450,13 +2492,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovl => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_sf != emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2465,13 +2513,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovle => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_zf || emu.flags.f_sf != emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2480,13 +2534,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovno => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2495,13 +2555,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovne => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_zf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2510,13 +2576,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovp => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_pf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2526,13 +2598,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovnp => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_pf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2541,23 +2619,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovs => {
             emu.show_instruction(color!("Orange"), ins);
 
-            let value0 = match emu.get_operand_value(ins, 0, true) {
+            let value1 = match emu.get_operand_value(ins, 0, true) {
                 Some(v) => v,
-                None => return false,
+                _ => return false
             };
-
-            let value1 = match emu.get_operand_value(ins, 1, true) {
-                Some(v) => v,
-                None => return false,
-            };
-
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_sf {
-                if !emu.set_operand_value(ins, 0, value1) {
-                    return false;
-                }
-            } else {
-                // clear upper bits of register?
-                if !emu.set_operand_value(ins, 0, value0) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
+                    Some(v) => v,
+                    _ => return false
+                };
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2566,13 +2640,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovns => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if !emu.flags.f_sf {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }
@@ -2581,13 +2661,19 @@ pub fn emulate_instruction(
         Mnemonic::Cmovo => {
             emu.show_instruction(color!("Orange"), ins);
 
+            let value1 = match emu.get_operand_value(ins, 0, true) {
+                Some(v) => v,
+                _ => return false
+            };
+            let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
+            emu.set_operand_value(ins, 0, value);
             if emu.flags.f_of {
-                let value1 = match emu.get_operand_value(ins, 1, true) {
+                let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
-                    None => return false,
+                    _ => return false
                 };
-
-                if !emu.set_operand_value(ins, 0, value1) {
+                let value_new = if ins.op0_register().is_gpr64() {value2} else {value2 & 0xffffffff};
+                if !emu.set_operand_value(ins, 0, value_new) {
                     return false;
                 }
             }

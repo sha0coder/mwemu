@@ -820,9 +820,9 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         if status_need_allocate {
             if addr == 0 {
                 base = emu
-                        .maps
-                        .alloc(size)
-                        .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size));
+                    .maps
+                    .alloc(size)
+                    .unwrap_or_else(|| panic!("kernel32!VirtualAlloc out of memory size:{}", size));
             } else {
                 base = addr;
             }
@@ -2928,7 +2928,7 @@ fn TlsAlloc(emu: &mut emu::Emu) {
     emu.regs.rax = (emu.tls64.len() - 1) as u64;  // Return index of newly allocated slot
 }
 
-/* 
+/*
 BOOL TlsFree(
   [in] DWORD dwTlsIndex
 );
@@ -3006,7 +3006,7 @@ fn TlsGetValue(emu: &mut emu::Emu) {
 
     emu.regs.rax = val;
 
-    log_red!(emu, "** {} kernel32!TlsGetValue idx: {} =0x{:x}", 
+    log_red!(emu, "** {} kernel32!TlsGetValue idx: {} =0x{:x}",
         emu.pos,
         idx,
         val
@@ -3033,8 +3033,8 @@ HANDLE GetStdHandle(
 );
 */
 fn GetStdHandle(emu: &mut emu::Emu) {
-    let nstd = emu.regs.rcx as usize;  // Parameter passed in RCX in x64    
-    log_red!(emu, "** {} kernel32!GetStdHandle nstd: {}", 
+    let nstd = emu.regs.rcx as usize;  // Parameter passed in RCX in x64
+    log_red!(emu, "** {} kernel32!GetStdHandle nstd: {}",
         emu.pos,
         nstd
     );
@@ -3230,7 +3230,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs.r8 as usize;
     let cch_data = emu.regs.r9 as usize;
 
-    log_red!(emu, "** {} kernel32!GetLocaleInfoW locale: {} lctype: {} lp_lc_data: 0x{:x} cch_data: {}", 
+    log_red!(emu, "** {} kernel32!GetLocaleInfoW locale: {} lctype: {} lp_lc_data: 0x{:x} cch_data: {}",
         emu.pos,
         locale,
         lctype,
@@ -3297,7 +3297,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp + 0x38)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
-    log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}", 
+    log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}",
         emu.pos,
         emu.regs.rip,
         code_page,
@@ -3468,7 +3468,7 @@ UINT GetWindowsDirectoryA(
 fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
     let lp_buffer = emu.regs.rcx as usize;
     let u_size = emu.regs.rdx as usize;
-    log_red!(emu, "** {} kernel32!GetWindowsDirectoryA lp_buffer: 0x{:x} u_size: {}", 
+    log_red!(emu, "** {} kernel32!GetWindowsDirectoryA lp_buffer: 0x{:x} u_size: {}",
         emu.pos,
         lp_buffer,
         u_size
@@ -3523,7 +3523,7 @@ fn GetModuleFileNameW(emu: &mut emu::Emu) {
     let module = emu.regs.rcx as usize;
     let lp_filename = emu.regs.rdx as usize;
     let n_size = emu.regs.r8 as usize;
-    log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}", 
+    log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}",
         emu.pos,
         module,
         lp_filename,
@@ -3569,7 +3569,7 @@ ATOM GlobalAddAtomA(
 */
 fn GlobalAddAtomA(emu: &mut emu::Emu) {
     let lp_string = emu.regs.rcx as usize;
-    log_red!(emu, "** {} kernel32!GlobalAddAtomA lp_string: 0x{:x}", 
+    log_red!(emu, "** {} kernel32!GlobalAddAtomA lp_string: 0x{:x}",
         emu.pos,
         lp_string
     );
@@ -3866,7 +3866,7 @@ fn GetConsoleMode(emu: &mut emu::Emu) {
     let h_console_handle = emu.regs.rcx;
     let lp_mode = emu.regs.rdx as usize;
     log_red!(emu, "** {} kernel32!GetConsoleMode {:x} {:x}", emu.pos, h_console_handle, lp_mode);
-    // TODO: implement this    
+    // TODO: implement this
     emu.maps.write_dword(lp_mode as u64, 0x00000003); //TODO: not sure what this is
     emu.regs.rax = 1;
 }
@@ -3901,8 +3901,8 @@ fn WriteConsoleW(emu: &mut emu::Emu) {
     // Convert UTF-16 to String for logging
     let s1 = String::from_utf16_lossy(&wide_chars);
 
-    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}", 
-        emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write, 
+    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}",
+        emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write,
         lp_number_of_chars_written, lp_reserved, s1);
 
     // Write back the number of characters written
