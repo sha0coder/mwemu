@@ -16,3 +16,9 @@ panic = 'unwind'
 debug = "full"
 opt-level = 1
 panic = 'unwind'
+
+[profile.profiler]
+inherits  = 'dev'
+debug = 2
+opt-level = 2
+panic = 'unwind'

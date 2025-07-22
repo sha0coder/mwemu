@@ -2246,6 +2246,13 @@ impl Emu {
         out
     }
 
+    pub fn get_jump_value(&mut self, ins: &Instruction, noperand: u32) -> Option<u64> {
+        match ins.op_kind(noperand) {
+            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => Some(ins.near_branch_target()),
+            _ => Some(ins.far_branch32() as u64)
+        }
+    }
+
     pub fn get_operand_value(
         &mut self,
         ins: &Instruction,
