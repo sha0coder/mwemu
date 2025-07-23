@@ -12,7 +12,7 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
         .maps
         .lib32_alloc(ldr_sz as u64)
         .expect("cannot alloc the LDR");
-    println!("LDR ALLOCATED AT: 0x{:x}", ldr_addr);
+    log::debug!("LDR ALLOCATED AT: 0x{:x}", ldr_addr);
     emu.maps
         .create_map("ldr", ldr_addr, ldr_sz as u64)
         .expect("cannot create ldr map");
@@ -447,7 +447,7 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_dword(base as u64 + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        println!("creating ldr entry for {} with base 0x1000 by default", libname); 
+        log::debug!("creating ldr entry for {} with base 0x1000 by default", libname); 
         base_addr = 0x1000;
     }
     let mem = emu

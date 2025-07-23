@@ -432,7 +432,7 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_qword(base + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        println!("creating ldr entry for {} with base 0x1000 by default", libname);
+        log::debug!("creating ldr entry for {} with base 0x1000 by default", libname);
         base_addr = 0x1000;
     }
     let mem = emu
