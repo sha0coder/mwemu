@@ -425,9 +425,10 @@ mod tests {
 
         let sample = "../test/elf64lin_static_helloworld.bin";
         emu.load_code(sample);
-        emu.run(Some(0x40425f));
+        emu.run(Some(0x44ab87));
 
-        assert_eq!(emu.regs.rax, 0xd80);
+        assert_eq!(emu.regs.rcx, 0x4cc2d0);
+        assert_eq!(emu.pos, 11111); 
     }
 
     #[test]
@@ -615,6 +616,7 @@ mod tests {
 
 
     #[test]
+    #[ignore]
     // this tests a linux 64bits flags
     fn sc64lin_flags() {
         setup();

@@ -23,7 +23,7 @@ impl Default for Maps {
 }
 
 impl Maps {
-    const DEFAULT_ALIGNMENT: u64 = 16;
+    const DEFAULT_ALIGNMENT: u64 = 0x1000; //16;
 
     pub fn new() -> Maps {
         Maps {
@@ -1044,6 +1044,7 @@ impl Maps {
          *    prev: is an aligned address, start with bottom and iterates every map bottom.
          *    base: base address of specific map.
         */
+
         let mut prev: u64 = self.align_up(bottom, Self::DEFAULT_ALIGNMENT);
         let debug = false;
 
