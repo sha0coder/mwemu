@@ -1,20 +1,30 @@
 pub mod mem64;
+pub mod tlb;
 
+use std::cell::RefCell;
 use crate::constants;
 use ahash::AHashMap;
 use mem64::Mem64;
+use tlb::TLB;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use slab::Slab;
 use std::str;
+use crate::maps::tlb::LPF_OF;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
     pub banzai: bool,
-    pub maps: BTreeMap<u64, Mem64>,
-    pub name_map: AHashMap<String, u64>,
+    // adding slab so that it is easier to manage memory, now every other place contain the
+    // key to the memory slab
+    pub mem_slab: Slab<Mem64>,
+    pub maps: BTreeMap<u64, usize>,
+    pub name_map: AHashMap<String, usize>,
     pub is_64bits: bool,
+    tlb: RefCell<TLB>,
 }
+
 
 impl Default for Maps {
     fn default() -> Self {
@@ -23,14 +33,16 @@ impl Default for Maps {
 }
 
 impl Maps {
-    const DEFAULT_ALIGNMENT: u64 = 16;
+    const DEFAULT_ALIGNMENT: u64 = 0x1000; // normal alignment for windows
 
     pub fn new() -> Maps {
         Maps {
-            maps: BTreeMap::<u64, Mem64>::default(),
-            name_map: AHashMap::<String, u64>::with_capacity(200),
+            mem_slab: Slab::with_capacity(200),
+            maps: BTreeMap::<u64, usize>::default(),
+            name_map: AHashMap::<String, usize>::with_capacity(200),
             is_64bits: false,
             banzai: false,
+            tlb: RefCell::new(TLB::new()),
         }
     }
 
@@ -44,7 +56,7 @@ impl Maps {
     }
 
     pub fn get_base(&self) -> Option<u64> {
-        self.maps
+        self.mem_slab
             .iter()
             .find(|map| map.1.get_name().ends_with(".pe"))
             .map(|map| map.1.get_base())
@@ -57,19 +69,20 @@ impl Maps {
 
     // slow, better hold the object
     pub fn get_map_by_name(&self, name: &str) -> Option<&Mem64> {
-        self.name_map.get(name).and_then(|v| self.maps.get(v))
+        self.name_map.get(name).and_then(|v| self.mem_slab.get(*v))
     }
 
     pub fn get_map_by_name_mut(&mut self, name: &str) -> Option<&mut Mem64> {
-        let name = self.name_map.get(name)?;
-        self.maps.get_mut(name)
+        let name_key = self.name_map.get(name)?;
+        self.mem_slab.get_mut(*name_key)
     }
 
     pub fn get_mem_size(&self, addr: u64) -> Option<usize> {
         self.maps
             .range(..=addr)
             .next_back()
-            .and_then(|(start, region)| {
+            .and_then(|(start, region_key)| {
+                let region = self.mem_slab.get(*region_key)?;
                 let start = *start;
                 let size = region.size() as u64;
                 if addr >= start && addr < start + size {
@@ -103,9 +116,10 @@ impl Maps {
         mem.set_base(base);
         mem.set_size(size);
 
-        self.name_map.insert(name.to_string(), base);
-        self.maps.insert(base, mem);
-        Ok(self.maps.get_mut(&base).unwrap())
+        let base_key = self.mem_slab.insert(mem);
+        self.name_map.insert(name.to_string(), base_key);
+        self.maps.insert(base, base_key);
+        Ok(self.mem_slab.get_mut(base_key).unwrap())
     }
 
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
@@ -192,7 +206,7 @@ impl Maps {
                 true
             }
             Some(_) => {
-                if banzai{  
+                if banzai{
                     log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
                 } else {
                     panic!("Writing dword to unmapped region at 0x{:x}", addr);
@@ -200,7 +214,7 @@ impl Maps {
                 false
             }
             None => {
-                if banzai{  
+                if banzai{
                     log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
                 } else {
                     panic!("Writing dword to unmapped region at 0x{:x}", addr);
@@ -360,20 +374,71 @@ impl Maps {
 
     #[inline(always)]
     pub fn get_mem_by_addr_mut(&mut self, addr: u64) -> Option<&mut Mem64> {
-        self.maps
-            .range_mut(..=addr)
+        let tlb_entry_mut = self.tlb.get_mut().get_entry_of_mut(addr, 0);
+        let mem_key = tlb_entry_mut.get_mem();
+        match self.mem_slab.get(mem_key) {
+            Some(mem) => {
+                if mem.inside(addr) {
+                    return self.mem_slab.get_mut(tlb_entry_mut.mem64); // Clone the &Mem64
+                }
+            },
+            _ => {
+                tlb_entry_mut.invalidate();
+            } // Remove the tlb entry
+        };
+
+        // TLB miss now search in the maps
+        let mem_key_option = self.maps
+            .range(..=addr)
             .next_back()
-            .map(|(_, v)| v)
-            .take_if(|v| v.inside(addr))
+            .map(|(_start_addr, &key)| key);
+
+        let mem_key = mem_key_option?;
+        let mem_ref_mut = self.mem_slab.get_mut(mem_key)?;
+        if !mem_ref_mut.inside(addr) {
+            return None;
+        }
+
+        // Update TLB
+        tlb_entry_mut.lpf = LPF_OF(addr);
+        tlb_entry_mut.mem64 = mem_key;
+
+        // Return back the memref
+        Some(mem_ref_mut)
     }
 
     #[inline(always)]
     pub fn get_mem_by_addr(&self, addr: u64) -> Option<&Mem64> {
-        self.maps
+        let mut binding = self.tlb.borrow_mut();
+        let entry = binding.get_entry_of(addr, 0);
+
+        let mem_key = entry.get_mem();
+        match self.mem_slab.get(mem_key) {
+            Some(mem) => {
+                if mem.inside(addr) {
+                    return Some(&mem); // Clone the &Mem64
+                }
+            },
+            _ => () // TLB miss now search in maps
+        };
+
+        let mem_key_option = self.maps
             .range(..=addr)
             .next_back()
-            .map(|(_, v)| v)
-            .take_if(|v| v.inside(addr))
+            .map(|(_k, &v)| v);
+
+        let mem_key = mem_key_option?; // Return None if not found
+
+        let mem_ref = self.mem_slab.get(mem_key)?;
+        if !mem_ref.inside(addr) {
+            return None;
+        }
+
+        // --- Update TLB ---
+        let tlb_entry_mut = binding.get_entry_of_mut(addr, 0);
+        tlb_entry_mut.lpf = LPF_OF(addr);
+        tlb_entry_mut.mem64 = mem_key;
+        Some(mem_ref)
     }
 
     #[inline(always)]
@@ -808,7 +873,7 @@ impl Maps {
         let byte_pattern = self.spaced_bytes_to_bytes(sbs);
 
         // Find the memory region containing the start address
-        for (_, memory) in self.maps.iter() {
+        for (_, memory) in self.mem_slab.iter() {
             // Skip memory regions that don't contain the start address
             if saddr < memory.get_base() || saddr >= memory.get_bottom() {
                 continue;
@@ -834,7 +899,7 @@ impl Maps {
         let byte_pattern = self.spaced_bytes_to_bytes(spaced_bytes);
 
         // Find the memory region containing the start address
-        for (_, memory) in self.maps.iter() {
+        for (_, memory) in self.mem_slab.iter() {
             // Skip memory regions that don't contain the start address
             if start_address < memory.get_base() || start_address >= memory.get_bottom() {
                 continue;
@@ -864,7 +929,7 @@ impl Maps {
         let bytes = self.spaced_bytes_to_bytes(sbs);
         let mut found: Vec<u64> = Vec::new();
 
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             for addr in mem.get_base()..mem.get_bottom() {
                 if addr < 0x70000000 {
                     let mut c = 0;
@@ -895,7 +960,7 @@ impl Maps {
     //TODO: return a list with matches.
     pub fn search_string_in_all(&self, kw: String) {
         let mut found = false;
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             if mem.get_base() >= 0x7000000 {
                 continue;
             }
@@ -929,7 +994,7 @@ impl Maps {
     pub fn search_bytes(&self, bkw: Vec<u8>, map_name: &str) -> Vec<u64> {
         let mut addrs: Vec<u64> = Vec::new();
 
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             if mem.get_name() == map_name {
                 for addr in mem.get_base()..mem.get_bottom() {
                     let mut c = 0;
@@ -959,7 +1024,7 @@ impl Maps {
 
     pub fn size(&self) -> usize {
         let mut sz: usize = 0;
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             sz += mem.size();
         }
         sz
@@ -975,7 +1040,7 @@ impl Maps {
     }
 
     pub fn show_allocs(&self) {
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             let name = mem.get_name();
             if name.starts_with("alloc_") || name.starts_with("valloc_") {
                 log::info!(
@@ -990,7 +1055,7 @@ impl Maps {
     }
 
     pub fn show_maps(&self) {
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             let name = mem.get_name();
             log::info!(
                 "{} 0x{:x} - 0x{:x} ({})",
@@ -1007,13 +1072,23 @@ impl Maps {
             .name_map
             .get(name)
             .expect(format!("map name {} not found", name).as_str());
-        self.maps.remove(id);
+        let mem = self.mem_slab.get_mut(*id).unwrap();
+        mem.clear();
+        self.maps.remove(&mem.get_base());
+        self.mem_slab.remove(*id);
+        self.tlb.borrow_mut().flush();
+        self.name_map.remove(name);
     }
 
     pub fn dealloc(&mut self, addr: u64) {
-        self.maps
+        let mem_key = self.maps
             .get(&addr)
             .expect(format!("map base {} not found", addr).as_str());
+        let mem = self.mem_slab.get_mut(*mem_key).unwrap();
+        self.name_map.remove(mem.get_name());
+        mem.clear();
+        self.mem_slab.remove(*mem_key);
+        self.tlb.borrow_mut().flush();
         self.maps.remove(&addr);
     }
 
@@ -1058,7 +1133,7 @@ impl Maps {
             log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
         }
 
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             let base = mem.get_base();
 
             if lib && base < bottom {
@@ -1110,7 +1185,7 @@ impl Maps {
     }
 
     pub fn save_all_allocs(&mut self, path: String) {
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             if mem.get_name().to_string().starts_with("alloc_") {
                 let mut ppath = path.clone();
                 ppath.push('/');
@@ -1122,7 +1197,7 @@ impl Maps {
     }
 
     pub fn save_all(&self, path: String) {
-        for (_, mem) in self.maps.iter() {
+        for (_, mem) in self.mem_slab.iter() {
             let mut ppath = path.clone();
             ppath.push('/');
             ppath.push_str(&format!("{:08x}-{}", mem.get_base(), mem.get_name()));
@@ -1195,10 +1270,10 @@ impl Maps {
     }
 
     pub fn mem_test(&self) -> bool {
-        for (_, mem1) in self.maps.iter() {
+        for (_, mem1) in self.mem_slab.iter() {
             let name1 = mem1.get_name();
 
-            for (_, mem2) in self.maps.iter() {
+            for (_, mem2) in self.mem_slab.iter() {
                 let name2 = mem2.get_name();
 
                 if name1 != name2 {

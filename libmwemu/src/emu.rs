@@ -2249,8 +2249,320 @@ impl Emu {
     pub fn get_jump_value(&mut self, ins: &Instruction, noperand: u32) -> Option<u64> {
         match ins.op_kind(noperand) {
             OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => Some(ins.near_branch_target()),
+            OpKind::FarBranch16 => Some(ins.far_branch16() as u64),
             _ => Some(ins.far_branch32() as u64)
         }
+    }
+
+    fn handle_memory_get_operand(&mut self, ins: &Instruction, noperand: u32, do_derref: bool) -> Option<u64> {
+        let mem_seg = ins.memory_segment();
+        let fs = mem_seg == Register::FS;
+        let gs = mem_seg == Register::GS;
+        let derref = if mem_seg == Register::FS || mem_seg == Register::GS {false} else {do_derref};
+
+        let mem_base = ins.memory_base();
+        let mem_index = ins.memory_index();
+        let mem_displace = if self.cfg.is_64bits {
+            ins.memory_displacement64()
+        } else {
+            ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
+        };
+
+        let temp_displace = if mem_index == Register::None {
+            mem_displace
+        }  else {
+            let scale_index = ins.memory_index_scale();
+            let scale_factor = self.regs.get_reg(mem_index).wrapping_mul(scale_index as u64);
+            mem_displace.wrapping_add(scale_factor)
+        };
+
+        // case when address is relative to rip then just return temp_displace
+        let displace = if mem_base == Register::None {
+            temp_displace
+        } else {
+            self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+        };
+
+        let displace_result = if !self.cfg.is_64bits {
+            displace & 0xffffffff
+        } else {
+            displace
+        };
+
+        // do this for cmov optimization
+        let mem_addr = if mem_base == Register::RIP {
+            temp_displace
+        } else {
+            displace_result
+        };
+
+
+        if fs {
+            if self.linux {
+                if let Some(val) = self.fs.get(&mem_addr) {
+                    if self.cfg.verbose > 0 {
+                        log::info!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
+                    }
+                    if *val == 0 {
+                        return Some(0); //0x7ffff7ff000);
+                    }
+                    return Some(*val);
+                } else {
+                    if self.cfg.verbose > 0 {
+                        log::info!("reading FS[0x{:x}] -> 0", mem_addr);
+                    }
+                    return Some(0); //0x7ffff7fff000);
+                }
+            }
+
+            let value1: u64 = match mem_addr {
+                0xc0 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!(
+                                    "{} Reading ISWOW64 is 32bits on a 64bits system?",
+                                    self.pos
+                                );
+                    }
+                    if self.cfg.is_64bits {
+                        0
+                    } else {
+                        1
+                    }
+                }
+                0x14 => {
+                    let teb = self.maps.get_mem("teb");
+                    let tib = teb.get_base(); // tib is first element.
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading NtTIB 0x{:x}", self.pos, tib);
+                    }
+                    tib
+                }
+                0x30 => {
+                    let peb = self.maps.get_mem("peb");
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
+                    }
+                    peb.get_base()
+                }
+                0x20 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading PID 0x{:x}", self.pos, 10);
+                    }
+                    10
+                }
+                0x24 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading TID 0x{:x}", self.pos, 101);
+                    }
+                    101
+                }
+                0x34 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading last error value 0", self.pos);
+                    }
+                    0
+                }
+                0x18 => {
+                    let teb = self.maps.get_mem("teb");
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
+                    }
+                    teb.get_base()
+                }
+                0x00 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("Reading SEH 0x{:x}", self.seh);
+                    }
+                    self.seh
+                }
+                0x28 => {
+                    // TODO  linux TCB
+                    0
+                }
+                0x2c => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("Reading local ");
+                    }
+                    let locale = self.alloc("locale", 100);
+                    self.maps.write_dword(locale, constants::EN_US_LOCALE);
+                    //TODO: return a table of locales
+                    /*
+                    13071 0x41026e: mov   eax,[edx+eax*4]
+                    =>r edx
+                        edx: 0xc8 200 (locale)
+                    =>r eax
+                        eax: 0x409 1033
+                    */
+
+                    locale
+                }
+                _ => {
+                    log::info!("unimplemented fs:[{}]", mem_addr);
+                    return None;
+                }
+            };
+            return Some(value1);
+        }
+
+        if gs {
+            let value1: u64 = match mem_addr {
+                0x60 => {
+                    let peb = self.maps.get_mem("peb");
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
+                    }
+                    peb.get_base()
+                }
+                0x30 => {
+                    let teb = self.maps.get_mem("teb");
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
+                    }
+                    teb.get_base()
+                }
+                0x40 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading PID 0x{:x}", self.pos, 10);
+                    }
+                    10
+                }
+                0x48 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading TID 0x{:x}", self.pos, 101);
+                    }
+                    101
+                }
+                0x10 => {
+                    let stack = self.maps.get_mem("stack");
+                    if self.cfg.verbose >= 1 {
+                        log::info!("{} Reading StackLimit 0x{:x}", self.pos, &stack.size());
+                    }
+                    stack.size() as u64
+                }
+                0x14 => {
+                    unimplemented!("GS:[14]  get stack canary")
+                }
+                0x1488 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("Reading SEH 0x{:x}", self.seh);
+                    }
+                    self.seh
+                }
+                0x8 => {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("Reading SEH 0x{:x}", self.seh);
+                    }
+                    if self.cfg.is_64bits {
+                        self.maps.get_mem("peb").get_base()
+                    } else {
+                        let teb = self.maps.get_mem("teb");
+                        let teb_struct = structures::TEB::new(teb.get_base() as u32);
+                        teb_struct.thread_id as u64
+                    }
+                }
+                0x58 => {
+                    // Get or create static TLS array (for __declspec(thread) variables)
+                    let static_tls = match self.maps.get_mem2("static_tls_array") {
+                        Some(mem) => mem.get_base(),
+                        None => {
+                            // This should be sized based on the number of modules with .tls sections
+                            // For now, allocate space for a few module entries
+                            let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
+                            let tls_array = self.alloc("static_tls_array", size);
+
+                            // Initialize to null pointers
+                            self.maps.write_bytes(tls_array, vec![0; size as usize]);
+
+                            tls_array
+                        }
+                    };
+
+                    static_tls
+                }
+                _ => {
+                    log::info!("unimplemented gs:[0x{:x}]", mem_addr);
+                    return None;
+                }
+            };
+            return Some(value1);
+        }
+
+        let value: u64;
+        if derref {
+            let sz = self.get_operand_sz(ins, noperand);
+
+            if let Some(hook_fn) = self.hooks.hook_on_memory_read {
+                hook_fn(self, self.regs.rip, mem_addr, sz)
+            }
+
+            value = match sz {
+                64 => match self.maps.read_qword(mem_addr) {
+                    Some(v) => v,
+                    None => {
+                        log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
+                        self.exception(exception_type::ExceptionType::QWordDereferencing);
+                        return None;
+                    }
+                },
+
+                32 => match self.maps.read_dword(mem_addr) {
+                    Some(v) => v.into(),
+                    None => {
+                        log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
+                        self.exception(exception_type::ExceptionType::DWordDereferencing);
+                        return None;
+                    }
+                },
+
+                16 => match self.maps.read_word(mem_addr) {
+                    Some(v) => v.into(),
+                    None => {
+                        log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
+                        self.exception(exception_type::ExceptionType::WordDereferencing);
+                        return None;
+                    }
+                },
+
+                8 => match self.maps.read_byte(mem_addr) {
+                    Some(v) => v.into(),
+                    None => {
+                        log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
+                        self.exception(exception_type::ExceptionType::ByteDereferencing);
+                        return None;
+                    }
+                },
+
+                _ => unimplemented!("weird size"),
+            };
+
+            if self.cfg.trace_mem {
+                let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
+                let memory_operation = MemoryOperation {
+                    pos: self.pos,
+                    rip: self.regs.rip,
+                    op: "read".to_string(),
+                    bits: sz,
+                    address: mem_addr,
+                    old_value: 0, // not needed for read?
+                    new_value: value,
+                    name: name.to_string(),
+                };
+                self.memory_operations.push(memory_operation);
+                log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value, name);
+            }
+
+            if mem_addr == self.bp.get_mem_read() {
+                log::info!("Memory breakpoint on read 0x{:x}", mem_addr);
+                if self.running_script {
+                    self.force_break = true;
+                } else {
+                    Console::spawn_console(self);
+                }
+            }
+        } else {
+            value = mem_addr;
+        }
+        Some(value)
     }
 
     pub fn get_operand_value(
@@ -2262,12 +2574,6 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         let value: u64 = match ins.op_kind(noperand) {
-            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => {
-                ins.near_branch_target()
-            }
-            OpKind::FarBranch32 => ins.far_branch32().into(),
-            OpKind::FarBranch16 => ins.far_branch16().into(),
-
 
             OpKind::Immediate64 => ins.immediate64(),
             OpKind::Immediate8 => ins.immediate8() as u64,
@@ -2278,305 +2584,8 @@ impl Emu {
             OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
             OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
 
-            /*OpKind::Immediate64 => ins.immediate64(),
-            OpKind::Immediate8 => ins.immediate8().into(),
-            OpKind::Immediate16 => ins.immediate16().into(),
-            OpKind::Immediate32 => ins.immediate32() as u32 as u64,
-            OpKind::Immediate8to64 => ins.immediate8to64() as u64,
-            OpKind::Immediate32to64 => ins.immediate32to64() as u64,
-            OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
-            OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
-            */
             OpKind::Register => self.regs.get_reg(ins.op_register(noperand)),
-            OpKind::Memory => {
-                let mut derref = do_derref;
-                let mut fs = false;
-                let mut gs = false;
-
-                let mut mem_addr = ins
-                    .virtual_address(noperand, 0, |reg, idx, _sz| {
-                        if reg == Register::FS {
-                            derref = false;
-                            fs = true;
-
-                            Some(0)
-                        } else if reg == Register::GS {
-                            derref = false;
-                            gs = true;
-
-                            Some(0)
-                        } else {
-                            Some(self.regs.get_reg(reg))
-                        }
-                    })
-                    .expect("error reading memory");
-
-                if fs {
-                    if self.linux {
-                        if let Some(val) = self.fs.get(&mem_addr) {
-                            if self.cfg.verbose > 0 {
-                                log::info!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
-                            }
-                            if *val == 0 {
-                                return Some(0); //0x7ffff7ff000);
-                            }
-                            return Some(*val);
-                        } else {
-                            if self.cfg.verbose > 0 {
-                                log::info!("reading FS[0x{:x}] -> 0", mem_addr);
-                            }
-                            return Some(0); //0x7ffff7fff000);
-                        }
-                    }
-
-                    let value: u64 = match mem_addr {
-                        0xc0 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!(
-                                    "{} Reading ISWOW64 is 32bits on a 64bits system?",
-                                    self.pos
-                                );
-                            }
-                            if self.cfg.is_64bits {
-                                0
-                            } else {
-                                1
-                            }
-                        }
-                        0x14 => {
-                            let teb = self.maps.get_mem("teb");
-                            let tib = teb.get_base(); // tib is first element.
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading NtTIB 0x{:x}", self.pos, tib);
-                            }
-                            tib
-                        }
-                        0x30 => {
-                            let peb = self.maps.get_mem("peb");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
-                            }
-                            peb.get_base()
-                        }
-                        0x20 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading PID 0x{:x}", self.pos, 10);
-                            }
-                            10
-                        }
-                        0x24 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading TID 0x{:x}", self.pos, 101);
-                            }
-                            101
-                        }
-                        0x34 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading last error value 0", self.pos);
-                            }
-                            0
-                        }
-                        0x18 => {
-                            let teb = self.maps.get_mem("teb");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
-                            }
-                            teb.get_base()
-                        }
-                        0x00 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("Reading SEH 0x{:x}", self.seh);
-                            }
-                            self.seh
-                        }
-                        0x28 => {
-                            // TODO  linux TCB
-                            0
-                        }
-                        0x2c => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("Reading local ");
-                            }
-                            let locale = self.alloc("locale", 100);
-                            self.maps.write_dword(locale, constants::EN_US_LOCALE);
-                            //TODO: return a table of locales
-                            /*
-                            13071 0x41026e: mov   eax,[edx+eax*4]
-                            =>r edx
-                                edx: 0xc8 200 (locale)
-                            =>r eax
-                                eax: 0x409 1033
-                            */
-
-                            locale
-                        }
-                        _ => {
-                            log::info!("unimplemented fs:[{}]", mem_addr);
-                            return None;
-                        }
-                    };
-                    mem_addr = value;
-                }
-                if gs {
-                    let value: u64 = match mem_addr {
-                        0x60 => {
-                            let peb = self.maps.get_mem("peb");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
-                            }
-                            peb.get_base()
-                        }
-                        0x30 => {
-                            let teb = self.maps.get_mem("teb");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
-                            }
-                            teb.get_base()
-                        }
-                        0x40 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading PID 0x{:x}", self.pos, 10);
-                            }
-                            10
-                        }
-                        0x48 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading TID 0x{:x}", self.pos, 101);
-                            }
-                            101
-                        }
-                        0x10 => {
-                            let stack = self.maps.get_mem("stack");
-                            if self.cfg.verbose >= 1 {
-                                log::info!("{} Reading StackLimit 0x{:x}", self.pos, &stack.size());
-                            }
-                            stack.size() as u64
-                        }
-                        0x14 => {
-                            unimplemented!("GS:[14]  get stack canary")
-                        }
-                        0x1488 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("Reading SEH 0x{:x}", self.seh);
-                            }
-                            self.seh
-                        }
-                        0x8 => {
-                            if self.cfg.verbose >= 1 {
-                                log::info!("Reading SEH 0x{:x}", self.seh);
-                            }
-                            if self.cfg.is_64bits {
-                                self.maps.get_mem("peb").get_base()
-                            } else {
-                                let teb = self.maps.get_mem("teb");
-                                let teb_struct = structures::TEB::new(teb.get_base() as u32);
-                                teb_struct.thread_id as u64
-                            }
-                        }
-                        0x58 => {
-                            // Get or create static TLS array (for __declspec(thread) variables)
-                            let static_tls = match self.maps.get_mem2("static_tls_array") {
-                                Some(mem) => mem.get_base(),
-                                None => {
-                                    // This should be sized based on the number of modules with .tls sections
-                                    // For now, allocate space for a few module entries
-                                    let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
-                                    let tls_array = self.alloc("static_tls_array", size);
-
-                                    // Initialize to null pointers
-                                    self.maps.write_bytes(tls_array, vec![0; size as usize]);
-
-                                    tls_array
-                                }
-                            };
-
-                            static_tls
-                        }
-                        _ => {
-                            log::info!("unimplemented gs:[0x{:x}]", mem_addr);
-                            return None;
-                        }
-                    };
-                    mem_addr = value;
-                }
-
-                let value: u64;
-                if derref {
-                    let sz = self.get_operand_sz(ins, noperand);
-
-                    if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                        hook_fn(self, self.regs.rip, mem_addr, sz)
-                    }
-
-                    value = match sz {
-                        64 => match self.maps.read_qword(mem_addr) {
-                            Some(v) => v,
-                            None => {
-                                log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
-                                self.exception(exception_type::ExceptionType::QWordDereferencing);
-                                return None;
-                            }
-                        },
-
-                        32 => match self.maps.read_dword(mem_addr) {
-                            Some(v) => v.into(),
-                            None => {
-                                log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
-                                self.exception(exception_type::ExceptionType::DWordDereferencing);
-                                return None;
-                            }
-                        },
-
-                        16 => match self.maps.read_word(mem_addr) {
-                            Some(v) => v.into(),
-                            None => {
-                                log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
-                                self.exception(exception_type::ExceptionType::WordDereferencing);
-                                return None;
-                            }
-                        },
-
-                        8 => match self.maps.read_byte(mem_addr) {
-                            Some(v) => v.into(),
-                            None => {
-                                log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
-                                self.exception(exception_type::ExceptionType::ByteDereferencing);
-                                return None;
-                            }
-                        },
-
-                        _ => unimplemented!("weird size"),
-                    };
-
-                    if self.cfg.trace_mem {
-                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
-                        let memory_operation = MemoryOperation {
-                            pos: self.pos,
-                            rip: self.regs.rip,
-                            op: "read".to_string(),
-                            bits: sz,
-                            address: mem_addr,
-                            old_value: 0, // not needed for read?
-                            new_value: value,
-                            name: name.to_string(),
-                        };
-                        self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value, name);
-                    }
-
-                    if mem_addr == self.bp.get_mem_read() {
-                        log::info!("Memory breakpoint on read 0x{:x}", mem_addr);
-                        if self.running_script {
-                            self.force_break = true;
-                        } else {
-                            Console::spawn_console(self);
-                        }
-                    }
-                } else {
-                    value = mem_addr;
-                }
-                value
-            }
+            OpKind::Memory => self.handle_memory_get_operand(ins, noperand, do_derref).unwrap(),
 
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };

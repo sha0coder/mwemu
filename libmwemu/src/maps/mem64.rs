@@ -16,7 +16,7 @@ pub struct Mem64 {
     mem_name: String,
     base_addr: u64,
     bottom_addr: u64,
-    pub mem: Vec<u8>,
+    mem: Vec<u8>,
 }
 
 impl Default for Mem64 {
@@ -36,6 +36,9 @@ impl Mem64 {
     }
 
     pub fn clear(&mut self) {
+        self.mem_name = "".to_string();
+        self.base_addr = 0;
+        self.bottom_addr = 0;
         self.mem.clear();
     }
 
