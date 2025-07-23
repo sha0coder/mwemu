@@ -7,7 +7,7 @@ use crate::structures::PEB;
 use crate::structures::TEB;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
-    let ldr_sz = PebLdrData::size();
+    let ldr_sz = PebLdrData::size() + 100;
     let ldr_addr = emu
         .maps
         .lib32_alloc(ldr_sz as u64)
@@ -61,7 +61,7 @@ pub fn init_peb(emu: &mut emu::Emu) {
 pub fn update_peb_image_base(emu: &mut emu::Emu, base: u32) {
     let peb = emu.maps.get_mem("peb");
     let peb_base = peb.get_base();
-    emu.maps.write_dword(peb_base + 0x10, base);
+    emu.maps.write_dword(peb_base + 0x8, base);
 }
 
 #[derive(Debug)]

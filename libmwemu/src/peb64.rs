@@ -6,7 +6,7 @@ use crate::structures::PEB64;
 use crate::structures::TEB64;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
-    let ldr_sz = PebLdrData64::size();
+    let ldr_sz = PebLdrData64::size() + 100;
     let ldr_addr = emu
         .maps
         .lib64_alloc(ldr_sz as u64)
