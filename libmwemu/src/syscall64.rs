@@ -38,7 +38,9 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            std::process::exit(1);
+            //std::process::exit(0);  
+            // dont exit, continue emulation until crash, exit break tests, and is not good to
+            // interrupt process.
         }
 
         constants::NR64_FORK => {

@@ -357,6 +357,10 @@ impl Elf64 {
                     end_off = self.bin.len();
                 }
 
+                if sh_offset > end_off as u64 {
+                    log::info!("invalid section {}: sh_offset > end_off", sname);
+                    continue;
+                }
                 if end_off as u64 - sh_offset > sh_size {
                     log::info!("no room at sh_size for all the data in the section, skipping {}", sname);
                     continue;

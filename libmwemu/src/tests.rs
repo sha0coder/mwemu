@@ -616,20 +616,19 @@ mod tests {
 
 
     #[test]
-    #[ignore]
     // this tests a linux 64bits flags
-    fn sc64lin_flags() {
+    fn elf64lin_flags() {
         setup();
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
         emu.init(false, false);
 
-        let sample = "../test/sc64lin_flags.bin";
+        let sample = "../test/elf64lin_flags.bin";
         emu.load_code(sample);
 
         // test instruction add
-        emu.run(Some(0x3c0014));
+        emu.run(Some(0x401014));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -637,7 +636,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test instruction sub
-        emu.run(Some(0x3c002b));
+        emu.run(Some(0x40102a));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -645,7 +644,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test instruction cmp
-        emu.run(Some(0x3c0042));
+        emu.run(Some(0x401040));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, false);
@@ -654,7 +653,7 @@ mod tests {
 
 
         // test instruction test
-        emu.run(Some(0x3c0059));
+        emu.run(Some(0x401056));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -662,7 +661,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test and
-        emu.run(Some(0x3c0070));
+        emu.run(Some(0x40106c));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -671,7 +670,7 @@ mod tests {
 
 
         // test or with 0x0
-        emu.run(Some(0x3c008c));
+        emu.run(Some(0x401087));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, false);
@@ -679,7 +678,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test shl
-        emu.run(Some(0x3c00a3));
+        emu.run(Some(0x40109d));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, true);
         assert_eq!(emu.flags.f_zf, true);
@@ -687,7 +686,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test add
-        emu.run(Some(0x3c00bf));
+        emu.run(Some(0x4010b8));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, true);
         assert_eq!(emu.flags.f_zf, false);
