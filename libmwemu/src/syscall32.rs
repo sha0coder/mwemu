@@ -28,7 +28,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            std::process::exit(1);
+            std::process::exit(emu.regs.get_ebx() as i32);
         }
 
         2 => {
