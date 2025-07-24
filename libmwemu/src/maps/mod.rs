@@ -1150,7 +1150,9 @@ impl Maps {
                 log::info!("base: 0x{:x} prev: 0x{:x} sz: 0x{:x}", base, prev, sz);
             }
             if prev > base {
-                panic!("alloc error prev:0x{:x} < base:0x{:x}", prev, base);
+                // we shouldn't care about this we just skip this memory region
+                continue;
+                // panic!("alloc error prev:0x{:x} > base:0x{:x}", prev, base);
             }
             if debug {
                 log::info!("space: 0x{:x}", base - prev);

@@ -14,6 +14,11 @@ panic = 'unwind'
 
 [profile.dev]
 debug = "full"
+opt-level = 1
+panic = 'unwind'
+
+[profile.dev-debug]
+inherits = 'dev'
 opt-level = 0
 panic = 'unwind'
 

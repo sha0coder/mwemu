@@ -4140,7 +4140,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };
@@ -4191,7 +4191,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };
@@ -4242,7 +4242,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };

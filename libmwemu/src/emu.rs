@@ -3593,6 +3593,10 @@ impl Emu {
         //self.pos = 0;
         let arch = if self.cfg.is_64bits { 64 } else { 32 };
         let mut ins: Instruction = Instruction::default();
+        // we using a single block to store all the instruction to optimize for without
+        // the need of Reallocate everytime
+        let mut block: Vec<u8> = Vec::with_capacity(0x301);
+        block.resize(0x300, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs.rip);
@@ -3612,7 +3616,8 @@ impl Emu {
                 // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block_sz = 0x300;
-                let block = code.read_bytes(self.regs.rip, block_sz).to_vec();
+                let block_temp = code.read_bytes(self.regs.rip, block_sz);
+                block.clone_from_slice(block_temp);
                 if block.len() == 0 {
                      return Err(MwemuError::new("cannot read code block, weird address."));
                 } 
