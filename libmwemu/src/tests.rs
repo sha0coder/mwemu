@@ -6,7 +6,6 @@ mod tests {
     use iced_x86::Register;
     use crate::regs64::U256;
     use crate::maps::mem64::Mem64;
-    //use log::{info, warn, error, debug};
     use std::sync::Once;
     use crate::constants;
     use crate::winapi64;
@@ -1423,6 +1422,16 @@ mod tests {
 
         assert!(stoud2.contains("libc"));
     }
+
+    #[test]
+    fn elf64lin_cpu_arithmetics() {
+        setup();
+
+        let mut emu = emu64();
+        emu.load_code("../test/elf64lin_cpu_arithmetics.bin")
+    }
+
+//        0x60bd8200
 
     #[test]
     // peb/teb/ldr basic tests

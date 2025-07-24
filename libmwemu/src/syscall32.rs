@@ -1,4 +1,4 @@
-use crate::console::Console;
+//use crate::console::Console;
 use crate::constants;
 use crate::emu;
 //use crate::endpoint;
@@ -38,7 +38,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            Console::spawn_console(emu);
+            //Console::spawn_console(emu);
         }
 
         3 => {
