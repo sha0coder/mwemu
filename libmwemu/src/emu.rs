@@ -3617,6 +3617,9 @@ impl Emu {
                 // reading anymore would be a waste of time
                 let block_sz = 0x300;
                 let block_temp = code.read_bytes(self.regs.rip, block_sz);
+                if block_temp.len() != block.len() {
+                    block.resize(block_temp.len(), 0);
+                }
                 block.clone_from_slice(block_temp);
                 if block.len() == 0 {
                      return Err(MwemuError::new("cannot read code block, weird address."));

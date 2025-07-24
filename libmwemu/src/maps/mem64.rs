@@ -163,12 +163,13 @@ impl Mem64 {
             return &[0; 0];
         }
         if addr < self.base_addr {
-            return &[0; 0];
+            return&[0; 0];
         }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            return self.mem.get(idx..self.mem.len()).unwrap();
+            let addr =  self.mem.get(idx..self.mem.len()).unwrap();
+            return addr;
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem") {
