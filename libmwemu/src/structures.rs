@@ -450,6 +450,10 @@ impl TEB {
         }
     }
 
+    pub fn set_last_error(&mut self, err: u32) {
+        self.last_error_value = err;
+    }
+
     pub fn load(addr: u64, maps: &Maps) -> TEB {
         TEB {
             nt_tib: NtTib32::load(addr, maps),
@@ -536,8 +540,8 @@ pub struct PEB {
     pub being_debugged: u8,
     speer_bool: u8,
     padding: u32,
-    image_base_addr: u32,
-    ldr: u32, // ptr to PEB_LDR_DATA  +0x0c
+    pub image_base_addr: u32,
+    pub ldr: u32, // ptr to PEB_LDR_DATA  +0x0c
     process_parameters: u32,
     reserved4: [u32; 3],
     alt_thunk_list_ptr: u32,
@@ -656,12 +660,12 @@ impl PEB {
 pub struct PEB64 {
     inheritet_addr_space: u8,
     read_img_file_exec_options: u8,
-    being_debugged: u8,
+    pub being_debugged: u8,
     system_dependent_01: u8,
     dummy_align: u32,
     mutant: u64,
-    image_base_addr: u64,
-    ldr: u64,
+    pub image_base_addr: u64,
+    pub ldr: u64,
     process_parameters: u64,
     subsystem_data: u64,
     process_heap: u64,
@@ -1038,24 +1042,24 @@ impl NtTib64 {
 #[derive(Debug)]
 pub struct TEB64 {
     pub nt_tib: NtTib64,
-    environment_pointer: u64,
-    process_id: u64,
-    thread_id: u64,
-    active_rpc_handle: u64,
-    thread_local_storage_pointer: u64,
-    process_environment_block: u64, // PEB64
-    last_error_value: u32,
-    count_of_owned_critical_sections: u32,
-    csr_client_thread: u64,
-    win32_thread_info: u64,
-    user32_reserved: [u32; 26],
-    user_reserved: [u32; 6],
-    wow32_reserved: u64,
-    current_locale: u32,
-    fp_software_status_register: u32,
-    system_reserved1: [u64; 54],
-    exception_code: u32,
-    activation_context_stack_pointer: u64,
+    pub environment_pointer: u64,
+    pub process_id: u64,
+    pub thread_id: u64,
+    pub active_rpc_handle: u64,
+    pub thread_local_storage_pointer: u64,
+    pub process_environment_block: u64, // PEB64
+    pub last_error_value: u32,
+    pub count_of_owned_critical_sections: u32,
+    pub csr_client_thread: u64,
+    pub win32_thread_info: u64,
+    pub user32_reserved: [u32; 26],
+    pub user_reserved: [u32; 6],
+    pub wow32_reserved: u64,
+    pub current_locale: u32,
+    pub fp_software_status_register: u32,
+    pub system_reserved1: [u64; 54],
+    pub exception_code: u32,
+    pub activation_context_stack_pointer: u64,
 }
 
 impl TEB64 {
@@ -1109,6 +1113,9 @@ impl TEB64 {
             exception_code: maps.read_dword(addr + 0x2c0).unwrap(),
             activation_context_stack_pointer: maps.read_qword(addr + 0x2c8).unwrap(),
         }
+    }
+    pub fn set_last_error(&mut self, err: u32) {
+        self.last_error_value = err;
     }
 
     pub fn load_map(addr: u64, map: &Mem64) -> TEB64 {

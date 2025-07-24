@@ -3406,9 +3406,13 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         .read_qword(emu.regs.rsp + 0x28)
         .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
 
+    let mut utf8: String = String::new();
+
     // Read exact number of bytes specified
-    let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
-    let utf8 = String::from_utf8_lossy(&bytes).to_string();
+    if utf8_ptr > 0 {
+        let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
+        utf8 = String::from_utf8_lossy(&bytes).to_string();
+    }
 
     log::info!(
         "{}** {}:{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}{}",
@@ -3424,15 +3428,6 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    log::info!(
-        "{}** {} kernel32!MultiByteToWideChar '{}' dst:0x{:x} cch_wide_char:{} {}",
-        emu.colors.light_red,
-        emu.pos,
-        utf8,
-        wide_ptr,
-        cch_wide_char,
-        emu.colors.nc
-    );
 
     // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)
     let wide: Vec<u16> = utf8.encode_utf16().collect();

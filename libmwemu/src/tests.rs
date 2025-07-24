@@ -18,6 +18,7 @@ mod tests {
     use crate::emu64;
     use crate::emu32;
     use crate::serialization::Serialization;
+    use crate::structures;
     use std::process::Command;
 
     static INIT: Once = Once::new();
@@ -425,9 +426,10 @@ mod tests {
 
         let sample = "../test/elf64lin_static_helloworld.bin";
         emu.load_code(sample);
-        emu.run(Some(0x40425f));
+        emu.run(Some(0x44ab87));
 
-        assert_eq!(emu.regs.rax, 0xd80);
+        assert_eq!(emu.regs.rcx, 0x4cc2d0);
+        assert_eq!(emu.pos, 11111); 
     }
 
     #[test]
@@ -616,18 +618,18 @@ mod tests {
 
     #[test]
     // this tests a linux 64bits flags
-    fn sc64lin_flags() {
+    fn elf64lin_flags() {
         setup();
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
         emu.init(false, false);
 
-        let sample = "../test/sc64lin_flags.bin";
+        let sample = "../test/elf64lin_flags.bin";
         emu.load_code(sample);
 
         // test instruction add
-        emu.run(Some(0x3c0014));
+        emu.run(Some(0x401014));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -635,7 +637,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test instruction sub
-        emu.run(Some(0x3c002b));
+        emu.run(Some(0x40102a));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -643,7 +645,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test instruction cmp
-        emu.run(Some(0x3c0042));
+        emu.run(Some(0x401040));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, false);
@@ -652,7 +654,7 @@ mod tests {
 
 
         // test instruction test
-        emu.run(Some(0x3c0059));
+        emu.run(Some(0x401056));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -660,7 +662,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test and
-        emu.run(Some(0x3c0070));
+        emu.run(Some(0x40106c));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, true);
@@ -669,7 +671,7 @@ mod tests {
 
 
         // test or with 0x0
-        emu.run(Some(0x3c008c));
+        emu.run(Some(0x401087));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, false);
         assert_eq!(emu.flags.f_zf, false);
@@ -677,7 +679,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test shl
-        emu.run(Some(0x3c00a3));
+        emu.run(Some(0x40109d));
         assert_eq!(emu.flags.f_cf, true);
         assert_eq!(emu.flags.f_of, true);
         assert_eq!(emu.flags.f_zf, true);
@@ -685,7 +687,7 @@ mod tests {
         assert_eq!(emu.flags.f_pf, true);
 
         // test add
-        emu.run(Some(0x3c00bf));
+        emu.run(Some(0x4010b8));
         assert_eq!(emu.flags.f_cf, false);
         assert_eq!(emu.flags.f_of, true);
         assert_eq!(emu.flags.f_zf, false);
@@ -835,9 +837,11 @@ mod tests {
         emu.cfg.maps_folder = "../maps64/".to_string();
         emu.init(false, false);
         emu.load_code("../test/exe64win_msgbox.bin");
+        assert!(!emu.maps.is_allocated(0));
         emu.bp.clear_bp();
         emu.bp.set_bp(0x1400011d6);
         emu.run(None);
+        assert!(!emu.maps.is_allocated(0));
         assert_eq!(emu.pos, 4);
 
         /*
@@ -1425,4 +1429,125 @@ mod tests {
         assert!(stoud2.contains("libc"));
     }
 
+    #[test]
+    // peb/teb/ldr basic tests
+    fn peb_teb_ldr_structures_test() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.init(false, false);
+
+        let peb = emu.maps.get_mem("peb");
+        let peb_addr = peb.get_base();
+        assert!(peb_addr > 0x1000);
+        assert!(emu.maps.is_allocated(peb_addr));
+        let teb = emu.maps.get_mem("teb");
+        let teb_addr = teb.get_base();
+        assert!(teb_addr > 0x1000);
+        assert!(emu.maps.is_allocated(teb_addr));
+        let ldr = emu.maps.get_mem("ldr");
+        let ldr_addr = ldr.get_base();
+        assert!(ldr_addr > 0x1000);
+        assert!(emu.maps.is_allocated(ldr_addr));
+
+        let peb_struct = structures::PEB::load(peb_addr, &mut emu.maps);
+        let teb_struct = structures::TEB::load(teb_addr, &mut emu.maps);
+        let ldr_struct = structures::LdrDataTableEntry::load(ldr_addr, &mut emu.maps);
+
+        let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
+        
+        assert_eq!(peb_struct.image_base_addr, ntdll_addr as u32);
+        assert_eq!(peb_struct.ldr, ldr_addr as u32);
+        assert_eq!(peb_struct.being_debugged, 0);
+
+        assert!(teb_struct.process_id > 0);
+        assert!(teb_struct.thread_id > 0);
+
+        assert_eq!(teb_struct.process_environment_block, peb_addr as u32);
+        assert_eq!(teb_struct.last_error_value, 0);
+        //assert!(teb_struct.environment_pointer > 0);  TODO: implement this
+        //assert_eq!(ldr_struct.dll_base, ntdll_addr as u32); TODO: fix ldr.dll_base
+
+        /*
+           full_dll_name: UnicodeString {
+                length: 0x1000,
+                maximum_length: 0x0,
+                buffer: 0x0,
+            },
+            base_dll_name: UnicodeString {
+                length: 0x0,
+                maximum_length: 0x0,
+                buffer: 0x0,
+            },
+
+        let ntdll_str_ptr = ldr_struct.base_dll_name.buffer as u64;
+        assert!(ntdll_str_ptr > 0);
+        let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
+        assert_eq!(ntdll_str, "ntdll.dll");
+        */
+
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
+
+        let peb = emu.maps.get_mem("peb");
+        let peb_addr = peb.get_base();
+        assert!(peb_addr > 0x1000);
+        assert!(emu.maps.is_allocated(peb_addr));
+        let teb = emu.maps.get_mem("teb");
+        let teb_addr = teb.get_base();
+        assert!(teb_addr > 0x1000);
+        assert!(emu.maps.is_allocated(teb_addr));
+        let ldr = emu.maps.get_mem("ldr");
+        let ldr_addr = ldr.get_base();
+        assert!(ldr_addr > 0x1000);
+        assert!(emu.maps.is_allocated(ldr_addr));
+
+        let peb_struct = structures::PEB64::load(peb_addr, &mut emu.maps);
+        let teb_struct = structures::TEB64::load(teb_addr, &mut emu.maps);
+        let ldr_struct = structures::LdrDataTableEntry64::load(ldr_addr, &mut emu.maps);
+
+        let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
+        
+        assert_eq!(peb_struct.image_base_addr, ntdll_addr);
+        assert_eq!(peb_struct.ldr, ldr_addr);
+        assert_eq!(peb_struct.being_debugged, 0);
+
+        assert!(teb_struct.process_id > 0);
+        assert!(teb_struct.thread_id > 0);
+
+        assert_eq!(teb_struct.process_environment_block, peb_addr);
+        assert_eq!(teb_struct.last_error_value, 0);
+        //assert!(teb_struct.environment_pointer > 0);
+        //assert_eq!(ldr_struct.dll_base, ntdll_addr); 
+
+
+        /*
+         * TODO: recheck this, because structure is already ok:
+
+          full_dll_name: UnicodeString {
+                length: 0x0,
+                maximum_length: 0x0,
+                buffer: 0x1010,
+            },
+            base_dll_name: UnicodeString {
+                length: 0x0,
+                maximum_length: 0x0,
+                buffer: 0x1020,
+            },
+
+        let ntdll_str_ptr = ldr_struct.base_dll_name.buffer as u64;
+        assert!(ntdll_str_ptr > 0);
+        let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
+        assert_eq!(ntdll_str, "ntdll.dll");
+
+        let ntdll_str_ptr = ldr_struct.full_dll_name.buffer as u64;
+        assert!(ntdll_str_ptr > 0);
+        let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
+        assert_eq!(ntdll_str, "ntdll.dll");
+        */
+
+
+    }
 }

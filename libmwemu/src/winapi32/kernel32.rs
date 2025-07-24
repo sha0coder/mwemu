@@ -431,6 +431,7 @@ fn GetProcAddress(emu: &mut emu::Emu) {
 pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     let mut dll = libname.to_string().to_lowercase();
 
+
     if dll.is_empty() {
         emu.regs.rax = 0;
         return 0;

@@ -6,7 +6,7 @@ use crate::structures::PEB64;
 use crate::structures::TEB64;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
-    let ldr_sz = PebLdrData64::size();
+    let ldr_sz = PebLdrData64::size() + 100;
     let ldr_addr = emu
         .maps
         .lib64_alloc(ldr_sz as u64)
@@ -126,6 +126,9 @@ impl Flink {
             .maps
             .read_qword(self.flink_addr + 0x30)
             .expect("error reading mod_addr");
+        if self.mod_base == 0 {
+            panic!("modbase is zero");
+        }
     }
 
     pub fn set_mod_base(&mut self, base: u64, emu: &mut emu::Emu) {
@@ -413,6 +416,8 @@ pub fn create_ldr_entry(
     next_flink: u64,
     prev_flink: u64,
 ) -> u64 {
+    let base_addr;
+
     // make space for ldr
     let sz = LdrDataTableEntry64::size() + 0x40 + (1024 * 2);
     let space_addr = emu
@@ -425,6 +430,10 @@ pub fn create_ldr_entry(
     if base > 0 {
         let pe_hdr = emu.maps.read_dword(base + 0x3c).unwrap() as u64;
         image_sz = emu.maps.read_qword(base + pe_hdr + 0x50).unwrap() as u64;
+        base_addr = base;
+    } else {
+        log::debug!("creating ldr entry for {} with base 0x1000 by default", libname);
+        base_addr = 0x1000;
     }
     let mem = emu
         .maps
@@ -455,7 +464,7 @@ pub fn create_ldr_entry(
         ldr.hash_links.flink = space_addr + 0x7f;
         ldr.hash_links.blink = space_addr + 0x7f;
     }
-    ldr.dll_base = base;
+    ldr.dll_base = base_addr;
     ldr.entry_point = entry_point;
     ldr.size_of_image = image_sz;
     ldr.full_dll_name.length = full_libname.len() as u16 * 2;

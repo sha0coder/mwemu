@@ -7,11 +7,12 @@ use crate::structures::PEB;
 use crate::structures::TEB;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
-    let ldr_sz = PebLdrData::size();
+    let ldr_sz = PebLdrData::size() + 100;
     let ldr_addr = emu
         .maps
         .lib32_alloc(ldr_sz as u64)
         .expect("cannot alloc the LDR");
+    log::debug!("LDR ALLOCATED AT: 0x{:x}", ldr_addr);
     emu.maps
         .create_map("ldr", ldr_addr, ldr_sz as u64)
         .expect("cannot create ldr map");
@@ -60,7 +61,7 @@ pub fn init_peb(emu: &mut emu::Emu) {
 pub fn update_peb_image_base(emu: &mut emu::Emu, base: u32) {
     let peb = emu.maps.get_mem("peb");
     let peb_base = peb.get_base();
-    emu.maps.write_dword(peb_base + 0x10, base);
+    emu.maps.write_dword(peb_base + 0x8, base);
 }
 
 #[derive(Debug)]
@@ -128,6 +129,9 @@ impl Flink {
 
     pub fn get_mod_base(&mut self, emu: &mut emu::Emu) {
         self.mod_base = self.ldr_entry.dll_base as u64;
+        if self.mod_base == 0 {
+            panic!("modbase is zero");
+        }
         /*
         self.mod_base = emu
             .maps
@@ -427,6 +431,8 @@ pub fn create_ldr_entry(
     next_flink: u32,
     prev_flink: u32,
 ) -> u64 {
+    let base_addr;
+
     // make space for ldr
     let sz = (LdrDataTableEntry::size() + 0x40 + (1024 * 2)) as u64;
     let space_addr = emu
@@ -439,6 +445,10 @@ pub fn create_ldr_entry(
     if base > 0 {
         let pe_hdr = emu.maps.read_dword(base as u64 + 0x3c).unwrap() as u64;
         image_sz = emu.maps.read_dword(base as u64 + pe_hdr + 0x50).unwrap() as u64;
+        base_addr = base;
+    } else {
+        log::debug!("creating ldr entry for {} with base 0x1000 by default", libname); 
+        base_addr = 0x1000;
     }
     let mem = emu
         .maps
@@ -467,7 +477,7 @@ pub fn create_ldr_entry(
         ldr.hash_links.flink = space_addr as u32 + 0x44;
         ldr.hash_links.blink = space_addr as u32 + 0x44;
     }
-    ldr.dll_base = base;
+    ldr.dll_base = base_addr;
     ldr.entry_point = entry_point;
     ldr.size_of_image = image_sz as u32;
     ldr.full_dll_name.length = full_libname.len() as u16 * 2;
