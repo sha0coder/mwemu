@@ -447,8 +447,11 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_dword(base as u64 + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        log::debug!("creating ldr entry for {} with base 0x1000 by default", libname); 
-        base_addr = 0x1000;
+        let addr = emu.maps.alloc(sz).expect("out of memory, cannot create the .ldr entry");
+        if addr > u32::MAX as u64 {
+            panic!("allocating .ldr  > u32::MAX");
+        }
+        base_addr = addr as u32;
     }
     let mem = emu
         .maps

@@ -1526,7 +1526,7 @@ mod tests {
         /*
          * TODO: recheck this, because structure is already ok:
 
-          full_dll_name: UnicodeString {
+           full_dll_name: UnicodeString {
                 length: 0x0,
                 maximum_length: 0x0,
                 buffer: 0x1010,
