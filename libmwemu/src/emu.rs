@@ -1251,9 +1251,10 @@ impl Emu {
             self.regs.rip = ep;
         } else {
             // shellcode
-
             log::info!("shellcode detected.");
-
+            let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
+            let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
+            self.init(clear_registers, clear_flags);
             if self.cfg.is_64bits {
                 let (base, pe_off) = self.load_pe64(
                     &format!("{}/{}", self.cfg.maps_folder, "loader.exe"),
