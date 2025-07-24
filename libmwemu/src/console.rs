@@ -492,7 +492,6 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.maps.show_addr_names(addr);
                     let name = match emu.maps.get_addr_name(addr) {
                         Some(n) => n,
                         None => {

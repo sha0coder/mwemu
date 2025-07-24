@@ -14,7 +14,7 @@ panic = 'unwind'
 
 [profile.dev]
 debug = "full"
-opt-level = 1
+opt-level = 0
 panic = 'unwind'
 
 [profile.profiler]
