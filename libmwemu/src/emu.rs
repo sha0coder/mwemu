@@ -2250,7 +2250,8 @@ impl Emu {
         match ins.op_kind(noperand) {
             OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => Some(ins.near_branch_target()),
             OpKind::FarBranch16 => Some(ins.far_branch16() as u64),
-            _ => Some(ins.far_branch32() as u64)
+            OpKind::FarBranch32 => Some(ins.far_branch32() as u64),
+            _ => self.get_operand_value(ins, 0, true),
         }
     }
 
@@ -2574,7 +2575,6 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         let value: u64 = match ins.op_kind(noperand) {
-
             OpKind::Immediate64 => ins.immediate64(),
             OpKind::Immediate8 => ins.immediate8() as u64,
             OpKind::Immediate16 => ins.immediate16() as u64,

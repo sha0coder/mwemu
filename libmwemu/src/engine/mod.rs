@@ -97,6 +97,7 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of jmp");
             }
 
+
             let addr = match emu.get_jump_value(ins, 0) {
                 Some(a) => a,
                 None => return false,
@@ -116,7 +117,7 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of call");
             }
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(a) => a,
                 None => return false,
             };
