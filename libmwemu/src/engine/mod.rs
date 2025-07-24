@@ -97,7 +97,8 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of jmp");
             }
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(a) => a,
                 None => return false,
             };
@@ -116,7 +117,7 @@ pub fn emulate_instruction(
                 unimplemented!("weird variant of call");
             }
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(a) => a,
                 None => return false,
             };
@@ -3571,7 +3572,7 @@ pub fn emulate_instruction(
             if emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
 
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3592,7 +3593,7 @@ pub fn emulate_instruction(
             if !emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
 
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3612,7 +3613,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_sf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3632,7 +3633,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_sf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3652,7 +3653,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_zf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3672,7 +3673,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_zf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3692,7 +3693,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_cf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3712,7 +3713,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_cf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3732,7 +3733,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_cf || emu.flags.f_zf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3752,7 +3753,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_cf && !emu.flags.f_zf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3772,7 +3773,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_sf != emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3792,7 +3793,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_sf == emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3812,7 +3813,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_zf || emu.flags.f_sf != emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3832,7 +3833,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_zf && emu.flags.f_sf == emu.flags.f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3852,7 +3853,7 @@ pub fn emulate_instruction(
 
             if emu.flags.f_pf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3872,7 +3873,7 @@ pub fn emulate_instruction(
 
             if !emu.flags.f_pf {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3892,7 +3893,7 @@ pub fn emulate_instruction(
 
             if emu.regs.get_cx() == 0 {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3912,7 +3913,7 @@ pub fn emulate_instruction(
 
             if emu.regs.get_cx() == 0 {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -3930,7 +3931,7 @@ pub fn emulate_instruction(
         Mnemonic::Jrcxz => {
             if emu.regs.rcx == 0 {
                 emu.show_instruction_taken(color!("Orange"), ins);
-                let addr = match emu.get_operand_value(ins, 0, true) {
+                let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
                     None => return false,
                 };
@@ -4139,7 +4140,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };
@@ -4190,7 +4191,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };
@@ -4241,7 +4242,7 @@ pub fn emulate_instruction(
 
             assert!(ins.op_count() == 1);
 
-            let addr = match emu.get_operand_value(ins, 0, true) {
+            let addr = match emu.get_jump_value(ins, 0) {
                 Some(v) => v,
                 None => return false,
             };

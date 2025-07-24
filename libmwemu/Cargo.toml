@@ -29,6 +29,8 @@ ahash = { version = "0.8.12", features = ["serde"] }
 bitfield = "0.19.1"
 ureq = { version = "2.10", default-features = false, features = ["tls"] }
 zip = "0.6"
+serde_arrays = "0.2.0"
+slab = { version = "0.4.10", features=["serde"]}
 
 [dev-dependencies]
 env_logger = "0.11.8"

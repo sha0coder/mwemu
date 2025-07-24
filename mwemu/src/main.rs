@@ -290,11 +290,6 @@ fn main() {
         emu.fpu.mxcsr = value as u32;
     }
 
-    // init
-    let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
-    let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
-    emu.init(clear_registers, clear_flags);
-
     // endpoint
     if matches.is_present("endpoint") {
         //TODO: emu::endpoint::warning();

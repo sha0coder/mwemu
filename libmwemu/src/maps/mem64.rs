@@ -16,7 +16,7 @@ pub struct Mem64 {
     mem_name: String,
     base_addr: u64,
     bottom_addr: u64,
-    pub mem: Vec<u8>,
+    mem: Vec<u8>,
 }
 
 impl Default for Mem64 {
@@ -36,6 +36,9 @@ impl Mem64 {
     }
 
     pub fn clear(&mut self) {
+        self.mem_name = "".to_string();
+        self.base_addr = 0;
+        self.bottom_addr = 0;
         self.mem.clear();
     }
 
@@ -160,12 +163,13 @@ impl Mem64 {
             return &[0; 0];
         }
         if addr < self.base_addr {
-            return &[0; 0];
+            return&[0; 0];
         }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            return self.mem.get(idx..self.mem.len()).unwrap();
+            let addr =  self.mem.get(idx..self.mem.len()).unwrap();
+            return addr;
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem") {
