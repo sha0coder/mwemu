@@ -1180,6 +1180,7 @@ impl Emu {
         //self.cfg.filename = map_name;
 
         if Elf32::is_elf32(filename) {
+
             self.linux = true;
             self.cfg.is_64bits = false;
 
@@ -1201,6 +1202,9 @@ impl Emu {
 
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) {
             log::info!("PE32 header detected.");
+            let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
+            let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
+            self.init(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe32(filename, true, 0);
             let ep = self.regs.rip;
             // emulating tls callbacks
@@ -1216,6 +1220,9 @@ impl Emu {
             self.regs.rip = ep;
         } else if self.cfg.is_64bits && PE64::is_pe64(filename) {
             log::info!("PE64 header detected.");
+            let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
+            let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
+            self.init(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe64(filename, true, 0);
             let ep = self.regs.rip;
 

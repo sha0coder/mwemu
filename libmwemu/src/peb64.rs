@@ -432,7 +432,7 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_qword(base + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        base_addr = emu.maps.alloc(sz).expect("out of memory, cannot create the .ldr entry");
+        base_addr = space_addr
     }
     let mem = emu
         .maps
