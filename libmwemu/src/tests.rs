@@ -1316,8 +1316,8 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.init(false, false);
         emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.init(false, false);
         
         let stack_check = emu.maps.get_map_by_name("stack");
         assert!(stack_check.is_some());
