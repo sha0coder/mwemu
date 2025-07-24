@@ -1134,7 +1134,9 @@ impl Maps {
             log::info!("allocating {} bytes from 0x{:x} to 0x{:x}", sz, bottom, top);
         }
 
-        for (_, mem) in self.mem_slab.iter() {
+        // Here we assume that we go from the bottom to the most
+        for (_, mem_key) in self.maps.iter() {
+            let mem = self.mem_slab.get(*mem_key).unwrap();
             let base = mem.get_base();
 
             if lib && base < bottom {
