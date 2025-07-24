@@ -1223,7 +1223,7 @@ mod tests {
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
-        
+        emu.init(false, false);
 
         assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
         assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);
@@ -1272,7 +1272,7 @@ mod tests {
         let mut emu = emu32();
         emu.cfg.maps_folder = "../maps32/".to_string();
         emu.maps.clear();
-        
+        emu.init(false, false);
 
         assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
         assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);
@@ -1316,6 +1316,7 @@ mod tests {
         setup();
 
         let mut emu = emu32();
+        emu.init(false, false);
         emu.cfg.maps_folder = "../maps32/".to_string();
         
         let stack_check = emu.maps.get_map_by_name("stack");
@@ -1346,7 +1347,8 @@ mod tests {
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
-        
+        emu.init(false, false);
+
         let stack_check = emu.maps.get_map_by_name("stack");
         assert!(stack_check.is_some());
         let stack = stack_check.unwrap();
@@ -1429,7 +1431,7 @@ mod tests {
 
         let mut emu = emu32();
         emu.cfg.maps_folder = "../maps32/".to_string();
-        
+        emu.init(false, false);
 
         let peb = emu.maps.get_mem("peb");
         let peb_addr = peb.get_base();
@@ -1482,6 +1484,7 @@ mod tests {
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.init(false, false);
 
         let peb = emu.maps.get_mem("peb");
         let peb_addr = peb.get_base();

@@ -51,6 +51,7 @@ impl Maps {
     }
 
     pub fn clear(&mut self) {
+        self.mem_slab.clear();
         self.maps.clear();
         self.name_map.clear();
     }
@@ -1135,6 +1136,7 @@ impl Maps {
         }
 
         // Here we assume that we go from the bottom to the most
+
         for (_, mem_key) in self.maps.iter() {
             let mem = self.mem_slab.get(*mem_key).unwrap();
             let base = mem.get_base();
