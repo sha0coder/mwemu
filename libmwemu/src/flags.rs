@@ -124,6 +124,41 @@ impl Flags {
         self.f_id = false;
     }
 
+    pub fn print_trace(&self, pos: u64) {
+        let mut fs = String::new();
+        fs.push_str("[ ");
+        if self.f_cf {
+            fs.push_str("CF ");
+        }
+        if self.f_pf {
+            fs.push_str("PF ");
+        }
+        if self.f_af {
+            fs.push_str("AF ");
+        }
+        if self.f_zf {
+            fs.push_str("ZF ");
+        }
+        if self.f_sf {
+            fs.push_str("SF ");
+        }
+        if self.f_tf {
+            fs.push_str("TF ");
+        }
+        if self.f_if {
+            fs.push_str("IF ");
+        }
+        if self.f_df {
+            fs.push_str("DF ");
+        }
+        if self.f_of {
+            fs.push_str("OF ");
+        }
+        fs.push_str("]");
+        log::info!("\t{} flags: 0x{:x} {}", pos, self.dump(), fs);
+        
+    }
+
     pub fn print(&self) {
         log::info!("--- flags ---");
         log::info!("0x{:x}", self.dump());
@@ -399,6 +434,7 @@ impl Flags {
         self.f_zf = final_value == 0;
         self.f_tf = false;
     }
+
 
     #[inline]
     pub fn calc_pf(&mut self, final_value: u8) {
@@ -1140,12 +1176,14 @@ impl Flags {
         if uresult > 0xffffffffffffffff {
             self.f_cf = true;
             self.f_of = true;
+        } else {
+            self.f_cf = false;
+            self.f_of = false;
         }
 
-        let res: u64 = (uresult & 0xffffffffffffffff) as u64;
 
-        self.calc_flags(res, 64);
-        self.calc_pf(res as u8);
+
+        let res: u64 = (uresult & 0xffffffffffffffff) as u64;
         res
     }
 
@@ -1156,12 +1194,12 @@ impl Flags {
         if uresult > 0xffffffff {
             self.f_cf = true;
             self.f_of = true;
+        } else {
+            self.f_cf = false;
+            self.f_of = false;
         }
 
         let res: u64 = uresult & 0xffffffff;
-
-        self.calc_flags(res, 32);
-        self.calc_pf(res as u8);
         res
     }
 
@@ -1172,12 +1210,12 @@ impl Flags {
         if uresult > 0xffff {
             self.f_cf = true;
             self.f_of = true;
+        } else {
+            self.f_cf = false;
+            self.f_of = false;
         }
 
         let res = (uresult & 0xffff) as u64;
-
-        self.calc_flags(res, 16);
-        self.calc_pf(res as u8);
         res
     }
 
@@ -1188,12 +1226,12 @@ impl Flags {
         if uresult > 0xff {
             self.f_cf = true;
             self.f_of = true;
+        } else {
+            self.f_cf = false;
+            self.f_of = false;
         }
 
         let res = (uresult & 0xff) as u64;
-
-        self.calc_flags(res, 8);
-        self.calc_pf(res as u8);
         res
     }
 
@@ -1211,6 +1249,32 @@ impl Flags {
     }
 
     pub fn rcr(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
+        let mask = if sz == 64 { 0x3f } else { 0x1f };
+        let count = value1 & mask;
+        let pow = if sz == 64 { u64::MAX } else { (1u64 << sz) - 1 };
+        let res = match count {
+            0 => value0 & pow,
+            1 => ((value0 >> 1) | ((self.f_cf as u64) << (sz - 1))) & pow,
+            _ => {
+                ((value0 >> count)
+                    | ((self.f_cf as u64) << ((sz as u64) - count))
+                    | (value0 << ((sz as u64 + 1) - count))) & pow
+            }
+        };
+
+        if count != 0 {
+            self.f_cf = ((value0 >> (count - 1)) & 1) != 0;
+        }
+
+        if count == 1 {
+            self.f_of = (((res ^ (res << 1)) >> (sz - 1)) & 1) != 0;
+        }
+
+        res
+    }
+
+
+    pub fn rcr_prev(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
         let mask = if sz == 64 {
             0x3f
         } else {
@@ -1231,24 +1295,40 @@ impl Flags {
     }
 
     pub fn rcl(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        let mask = if sz == 64 {
-            0x3f
-        } else {
-            0x1f
-        };
-        let count = value1 & mask;
-        let res = if count == 1 {
-            ((value0 << count) | self.f_cf as u64) & (u64::pow(2, sz) - 1)
-        } else {
-            ((value0 << count) | ((self.f_cf as u64) << (count - 1)) |
-                (value0 >> ((sz+1) as u64 - count))) & (u64::pow(2, sz) - 1)
-        };
+        //assert!(sz == 8 || sz == 16 || sz == 32 || sz == 64);
 
-        self.f_cf = ((value0 >> (sz as u64 - count) ) &  1) == 1;
-        self.f_of = (self.f_cf as u64 ^ (res >> 31)) == 1;
-        // don't calculate the flag zf, sf doesn't got effect
-        res
+        let mask = if sz == 64 { 0x3f } else { 0x1f };
+        let count = value1 & mask;
+        if count == 0 {
+            let pow = if sz == 64 { u64::MAX } else { (1u64 << sz) - 1 };
+            return value0 & pow;
+        }
+
+        if sz == 64 {
+            let pow128 = (1u128 << 64) - 1;
+            let extended = ((value0 as u128 & pow128) << 1) | (self.f_cf as u128);
+            let rotated = ((extended << count) | (extended >> (65 - count))) & ((1u128 << 65) - 1);
+            let res = (rotated >> 1) & pow128;
+            self.f_cf = (rotated & 1) != 0;
+            if count == 1 {
+                let msb = (res >> 63) & 1;
+                self.f_of = self.f_cf ^ (msb != 0);
+            }
+            return res as u64;
+        } else {
+            let pow = (1u64 << sz) - 1;
+            let extended = ((value0 & pow) << 1) | (self.f_cf as u64);
+            let rotated = ((extended << count) | (extended >> ((sz + 1) as u64 - count))) & ((1u64 << (sz + 1)) - 1);
+            let res = (rotated >> 1) & pow;
+            self.f_cf = (rotated & 1) != 0;
+            if count == 1 {
+                let msb = (res >> (sz - 1)) & 1;
+                self.f_of = self.f_cf ^ (msb != 0);
+            }
+            return res;
+        }
     }
+
 
     pub fn ror(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
         let mask = if sz == 64 {

@@ -31,7 +31,8 @@ pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     ret
 }
 
-pub fn rcl(emu: &Emu, val: u64, rot2: u64, bits: u32) -> u64 {
+
+pub fn rcl_bit_based(emu: &Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     let mut ret: u128 = val as u128;
 
     let rot = if bits == 64 {
@@ -180,11 +181,12 @@ pub fn imul64p1(emu: &mut Emu, value0: u64) {
     let value2: i64 = value0 as i64;
     let res: i128 = value1 as i128 * value2 as i128;
     let ures: u128 = res as u128;
-    emu.regs.rdx = ((ures & 0xffffffffffffffff0000000000000000) >> 64) as u64;
+    emu.regs.rdx =  (ures >> 64) as u64; 
     emu.regs.rax = (ures & 0xffffffffffffffff) as u64;
-    emu.flags.calc_pf(ures as u8);
-    emu.flags.f_of = emu.regs.get_edx() != 0;
-    emu.flags.f_cf = emu.regs.get_edx() != 0;
+    let rax = emu.regs.rax as i64;
+    let rdx = emu.regs.rdx as i64;
+    emu.flags.f_of = !((rax < 0 && rdx == -1) || (rax >= 0 && rdx == 0));
+    emu.flags.f_cf = emu.flags.f_of;
 }
 
 pub fn imul32p1(emu: &mut Emu, value0: u64) {
@@ -194,9 +196,10 @@ pub fn imul32p1(emu: &mut Emu, value0: u64) {
     let ures: u64 = res as u64;
     emu.regs.set_edx((ures & 0xffffffff00000000) >> 32);
     emu.regs.set_eax(ures & 0x00000000ffffffff);
-    emu.flags.calc_pf(ures as u8);
-    emu.flags.f_of = emu.regs.get_edx() != 0;
-    emu.flags.f_cf = emu.regs.get_edx() != 0;
+    let eax = emu.regs.get_eax() as i32;
+    let edx = emu.regs.get_edx() as i32;
+    emu.flags.f_of = !((eax < 0 && edx == -1) || (eax >= 0 && edx == 0));
+    emu.flags.f_cf = emu.flags.f_of;
 }
 
 pub fn imul16p1(emu: &mut Emu, value0: u64) {
@@ -206,21 +209,26 @@ pub fn imul16p1(emu: &mut Emu, value0: u64) {
     let ures: u32 = res as u32;
     emu.regs.set_dx(((ures & 0xffff0000) >> 16).into());
     emu.regs.set_ax((ures & 0xffff).into());
-    emu.flags.calc_pf(ures as u8);
-    emu.flags.f_of = emu.regs.get_dx() != 0;
-    emu.flags.f_cf = emu.regs.get_dx() != 0;
+    let ax = emu.regs.get_ax() as i16;
+    let dx = emu.regs.get_dx() as i16;
+    emu.flags.f_of = !((ax < 0 && dx == -1) || (ax >= 0 && dx == 0));
+    emu.flags.f_cf = emu.flags.f_of;
 }
 
 pub fn imul8p1(emu: &mut Emu, value0: u64) {
-    let value1: i32 = emu.regs.get_al() as i32;
-    let value2: i32 = value0 as i32;
-    let res: i32 = value1 * value2;
-    let ures: u32 = res as u32;
-    emu.regs.set_ax((ures & 0xffff).into());
-    emu.flags.calc_pf(ures as u8);
-    emu.flags.f_of = emu.regs.get_ah() != 0;
-    emu.flags.f_cf = emu.regs.get_ah() != 0;
+    let value1: i8 = emu.regs.get_al() as i8;
+    let value2: i8 = value0 as i8;
+    let res: i16 = value1 as i16 * value2 as i16;
+    emu.regs.set_ax(res as u16 as u64);
+
+    let ax = emu.regs.get_ax() as u16;
+    let al = (ax & 0x00FF) as i8 as i16;
+    let ah = ((ax >> 8) & 0x00FF) as i8 as i16;
+
+    emu.flags.f_of = !((al < 0 && ah == -1) || (al >= 0 && ah == 0));
+    emu.flags.f_cf = emu.flags.f_of;
 }
+
 
 pub fn div64(emu: &mut Emu, value0: u64) {
     let mut value1: u128 = emu.regs.rdx as u128;

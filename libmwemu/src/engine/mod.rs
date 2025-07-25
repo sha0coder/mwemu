@@ -1539,6 +1539,7 @@ pub fn emulate_instruction(
                 }
             } else if ins.op_count() == 2 {
                 // 2 params
+
                 let value0 = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v,
                     None => return false,

@@ -2008,6 +2008,9 @@ impl Emu {
         let name = match self.maps.get_addr_name(addr) {
             Some(n) => n,
             None => {
+                if self.linux {
+                    return false;
+                }
                 let api_name = self.pe64.as_ref().unwrap().import_addr_to_name(addr);
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop64(false).unwrap_or(0);
@@ -2074,6 +2077,9 @@ impl Emu {
         let name = match self.maps.get_addr_name(addr) {
             Some(n) => n,
             None => {
+                if self.linux {
+                    return false;
+                }
                 let api_name = self.pe32.as_ref().unwrap().import_addr_to_name(addr as u32);
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
@@ -3748,6 +3754,11 @@ impl Emu {
                         }
                     }
 
+                    if self.cfg.trace_flags {
+                        self.flags.print_trace(self.pos);
+                    }
+
+
                     if self.cfg.trace_string {
                         self.trace_string();
                     }
@@ -3786,6 +3797,7 @@ impl Emu {
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
                     /*************************************/
+
 
                     if let Some(rep_count) = self.rep {
                         if self.cfg.verbose >= 3 {
@@ -3859,10 +3871,14 @@ impl Emu {
                         if self.cfg.console_enabled {
                             Console::spawn_console(self);
                         } else {
-                            return Err(MwemuError::new(&format!(
-                                "emulation error at pos = {} rip = 0x{:x}",
-                                self.pos, self.regs.rip
-                            )));
+                            if self.running_script {
+                                return Ok(self.regs.rip);
+                            } else {
+                                return Err(MwemuError::new(&format!(
+                                    "emulation error at pos = {} rip = 0x{:x}",
+                                    self.pos, self.regs.rip
+                                )));
+                            }
                         }
                     }
 

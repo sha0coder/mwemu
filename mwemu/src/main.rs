@@ -67,6 +67,7 @@ fn main() {
         .arg(clap_arg!("verbose", "v", "verbose", "-vv for view the assembly, -v only messages, without verbose only see the api calls and goes faster", multiple: true))
         .arg(clap_arg!("64bits", "6", "64bits", "enable 64bits architecture emulation"))
         .arg(clap_arg!("memory", "m", "memory", "trace all the memory accesses read and write."))
+        .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
         .arg(clap_arg!("registers", "r", "regs", "print the register values in every step."))
         .arg(clap_arg!("register", "R", "reg", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
@@ -185,6 +186,7 @@ fn main() {
     // console
     if matches.is_present("console") {
         emu.cfg.console = true;
+        emu.cfg.console_enabled = true;
         emu.cfg.console_num = matches
             .value_of("console")
             .expect("select the number of moment to inspect")
@@ -299,6 +301,7 @@ fn main() {
     // console
     if matches.is_present("console_addr") {
         emu.cfg.console2 = true;
+        emu.cfg.console_enabled = true;
         emu.cfg.console_addr = u64::from_str_radix(
             matches
                 .value_of("console_addr")
@@ -355,6 +358,10 @@ fn main() {
         emu.fpu.trace = true;
     }
 
+    if matches.is_present("flags") {
+        emu.cfg.trace_flags = true;
+    }
+
     // load code
     emu.load_code(&filename);
 
@@ -381,6 +388,7 @@ fn main() {
     } else {
 
         if matches.is_present("handle") {
+            emu.cfg.console_enabled = true; 
             emu.enable_ctrlc();
         }
 
