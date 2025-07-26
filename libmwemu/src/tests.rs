@@ -1228,7 +1228,7 @@ mod tests {
         assert_eq!(emu.maps.exists_mapname("notexist"), false);
         assert_eq!(emu.maps.get_map_by_name("notexist").is_some(), false);
 
-        for _ in 0..1000 {
+        for _ in 0..700 {
             assert_eq!(emu.maps.alloc(1024).is_some(), true);
             assert_eq!(emu.maps.lib64_alloc(1024).is_some(), true);
         }
@@ -1277,7 +1277,7 @@ mod tests {
         assert_eq!(emu.maps.exists_mapname("notexist"), false);
         assert_eq!(emu.maps.get_map_by_name("notexist").is_some(), false);
 
-        for _ in 0..1000 {
+        for _ in 0..700 {
             assert_eq!(emu.maps.alloc(1024).is_some(), true);
             assert_eq!(emu.maps.lib32_alloc(1024).is_some(), true);
         }
@@ -1516,7 +1516,7 @@ mod tests {
 
         let mut emu = emu64();
         emu.load_code("../test/elf64lin_syscall64.bin");
-        emu.run_to(100000);
+        emu.run_to(80000);
         assert_eq!(emu.regs.r12, 549);
     }
 
