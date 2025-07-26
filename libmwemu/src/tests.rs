@@ -1509,6 +1509,17 @@ mod tests {
         assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
     }
 
+    #[test]
+    // tests syscalls64
+    fn elf64lin_syscall64() {
+        setup();
+
+        let mut emu = emu64();
+        emu.load_code("../test/elf64lin_syscall64.bin");
+        emu.run_to(100000);
+        assert_eq!(emu.regs.r12, 549);
+    }
+
 
     #[test]
     // peb/teb/ldr basic tests
