@@ -1374,4 +1374,46 @@ impl Flags {
         // don't calculate the flag zf, sf doesn't got effect
         res
     }
+
+    pub fn shrd(&mut self, value0: u64, value1: u64, count: u64, sz: u32) -> u64 {
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+        let res_mask: u64 = match sz {
+            64 => 0xffffffffffffffff,
+            32 => 0xffffffff,
+            16 => 0xffff,
+            _ => 0xff,
+        };
+
+        let count = count & mask;
+        let res = (value0 >> count) | (value1 << (sz as u64 - count)) & res_mask;
+        self.f_cf = ((value0 >> (count - 1) ) &  1) == 1;
+        self.f_of = ((res ^ (res << 1)) >> (sz-1)) == 1;
+        self.calc_flags(res, sz);
+        res
+    }
+
+    pub fn shld(&mut self, value0: u64, value1: u64, count: u64, sz: u32) -> u64 {
+        let mask = if sz == 64 {
+            0x3f
+        } else {
+            0x1f
+        };
+        let res_mask: u64 = match sz {
+            64 => 0xffffffffffffffff,
+            32 => 0xffffffff,
+            16 => 0xffff,
+            _ => 0xff,
+        };
+
+        let count = count & mask;
+        let res = (value1 >> (sz as u64 - count)) | (value0 << count) & res_mask;
+        self.f_cf = ((value0 >> (count - 1) ) &  1) == 1;
+        self.f_of = (self.f_cf as u64 ^ (res >> (sz-1))) == 0x1;
+        self.calc_flags(res, sz);
+        res
+    }
 }

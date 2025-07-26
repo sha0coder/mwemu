@@ -5340,9 +5340,7 @@ pub fn emulate_instruction(
                     return false;
                 }
             } else {
-                let (result, new_flags) =
-                    inline::shld(value0, value1, counter, sz, emu.flags.dump());
-                emu.flags.load(new_flags);
+                let result = emu.flags.shld(value0, value1, counter, sz);
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -5368,8 +5366,7 @@ pub fn emulate_instruction(
             };
 
             let sz = emu.get_operand_sz(ins, 0);
-            let (result, new_flags) = inline::shrd(value0, value1, counter, sz, emu.flags.dump());
-            emu.flags.load(new_flags);
+            let result = emu.flags.shrd(value0, value1, counter, sz);
 
             //log::info!("0x{:x} SHRD 0x{:x}, 0x{:x}, 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, counter, result);
             /*
