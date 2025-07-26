@@ -1517,7 +1517,7 @@ mod tests {
 
         let mut emu = emu32();
         emu.cfg.maps_folder = "../maps32/".to_string();
-        emu.init(false, false);
+        emu.load_code("../test/exe32win_minecraft.bin");
 
         let peb = emu.maps.get_mem("peb");
         let peb_addr = peb.get_base();
@@ -1534,8 +1534,14 @@ mod tests {
 
         let peb_struct = structures::PEB::load(peb_addr, &mut emu.maps);
         let teb_struct = structures::TEB::load(teb_addr, &mut emu.maps);
-        let ldr_struct = structures::LdrDataTableEntry::load(ldr_addr, &mut emu.maps);
+        let ldr_struct = structures::PebLdrData::load(ldr_addr, &mut emu.maps);
 
+
+        assert_eq!(ldr_struct.in_load_order_module_list.flink, ldr_struct.in_memory_order_module_list.flink - 0x8);
+        assert_eq!(ldr_struct.in_initialization_order_module_list.flink, ldr_struct.in_memory_order_module_list.flink + 0x8);
+        assert_eq!(ldr_addr, peb_struct.ldr as u64);
+
+        let mut ldr_entry = structures::LdrDataTableEntry::load(ldr_struct.in_load_order_module_list.flink as u64, &mut emu.maps);
         let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
         
         assert_eq!(peb_struct.image_base_addr, ntdll_addr as u32);
@@ -1547,30 +1553,59 @@ mod tests {
 
         assert_eq!(teb_struct.process_environment_block, peb_addr as u32);
         assert_eq!(teb_struct.last_error_value, 0);
-        //assert!(teb_struct.environment_pointer > 0);  TODO: implement this
-        //assert_eq!(ldr_struct.dll_base, ntdll_addr as u32); TODO: fix ldr.dll_base
+        //assert!(teb_struct.environment_pointer > 0);
+        
+        let main_pe_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
+        assert!(main_pe_w.is_some());
+        let main_pe = main_pe_w.unwrap();
+        assert_eq!(main_pe, "exe32win_minecraft.pe");
 
-        /*
-           full_dll_name: UnicodeString {
-                length: 0x1000,
-                maximum_length: 0x0,
-                buffer: 0x0,
-            },
-            base_dll_name: UnicodeString {
-                length: 0x0,
-                maximum_length: 0x0,
-                buffer: 0x0,
-            },
 
-        let ntdll_str_ptr = ldr_struct.base_dll_name.buffer as u64;
+        assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x8);
+        assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x8);
+
+        assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x8);
+        assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x8);
+
+        let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
+        assert!(sample_w.is_some());
+        let sample = sample_w.unwrap();
+        assert_eq!(sample, "exe32win_minecraft.pe");
+
+        // follow to next flink
+        ldr_entry = structures::LdrDataTableEntry::load(ldr_entry.in_load_order_links.flink as u64, &mut emu.maps);
+
+        assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x8);
+        assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x8);
+
+        assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x8);
+        assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x8);
+
+        let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
+        assert!(sample_w.is_some());
+        let sample = sample_w.unwrap();
+        assert_eq!(sample, "netapi32.pe");
+
+        let ntdll_str_ptr = ldr_entry.base_dll_name.buffer as u64;
         assert!(ntdll_str_ptr > 0);
         let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
-        assert_eq!(ntdll_str, "ntdll.dll");
-        */
+        assert_eq!(ntdll_str, "netapi32.dll");
+
+        let ntdll_str_ptr = ldr_entry.full_dll_name.buffer as u64;
+        assert!(ntdll_str_ptr > 0);
+        let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
+        assert_eq!(ntdll_str, "C:\\Windows\\System32\\netapi32.dll");
+
+
+
+
+        // 64BITS //
 
         let mut emu = emu64();
         emu.cfg.maps_folder = "../maps64/".to_string();
-        emu.init(false, false);
+        emu.load_code("../test/exe64win_msgbox.bin");
+
+        let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
 
         let peb = emu.maps.get_mem("peb");
         let peb_addr = peb.get_base();
@@ -1585,12 +1620,10 @@ mod tests {
         assert!(ldr_addr > 0x1000);
         assert!(emu.maps.is_allocated(ldr_addr));
 
+
         let peb_struct = structures::PEB64::load(peb_addr, &mut emu.maps);
         let teb_struct = structures::TEB64::load(teb_addr, &mut emu.maps);
-        let ldr_struct = structures::LdrDataTableEntry64::load(ldr_addr, &mut emu.maps);
 
-        let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
-        
         assert_eq!(peb_struct.image_base_addr, ntdll_addr);
         assert_eq!(peb_struct.ldr, ldr_addr);
         assert_eq!(peb_struct.being_debugged, 0);
@@ -1601,33 +1634,50 @@ mod tests {
         assert_eq!(teb_struct.process_environment_block, peb_addr);
         assert_eq!(teb_struct.last_error_value, 0);
         //assert!(teb_struct.environment_pointer > 0);
-        //assert_eq!(ldr_struct.dll_base, ntdll_addr); 
+
+        let ldr_struct = structures::PebLdrData64::load(ldr_addr, &mut emu.maps);
+        let entry_addr = ldr_struct.in_load_order_module_list.flink;
+        assert!(entry_addr >= 0x1000);
+        let mut ldr_entry = structures::LdrDataTableEntry64::load(entry_addr, &mut emu.maps);
+
+        //let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
+        
 
 
-        /*
-         * TODO: recheck this, because structure is already ok:
+        assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x10);
+        assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x10);
 
-           full_dll_name: UnicodeString {
-                length: 0x0,
-                maximum_length: 0x0,
-                buffer: 0x1010,
-            },
-            base_dll_name: UnicodeString {
-                length: 0x0,
-                maximum_length: 0x0,
-                buffer: 0x1020,
-            },
+        assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x10);
+        assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x10);
 
-        let ntdll_str_ptr = ldr_struct.base_dll_name.buffer as u64;
+        let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base);
+        assert!(sample_w.is_some());
+        let sample = sample_w.unwrap();
+        assert_eq!(sample, "exe64win_msgbox.pe");
+
+        // follow to next flink
+        ldr_entry = structures::LdrDataTableEntry64::load(ldr_entry.in_load_order_links.flink, &mut emu.maps);
+
+        assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x10);
+        assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x10);
+
+        assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x10);
+        assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x10);
+
+        let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base);
+        assert!(sample_w.is_some());
+        let sample = sample_w.unwrap();
+        assert_eq!(sample, "ntdll.pe");
+
+        let ntdll_str_ptr = ldr_entry.base_dll_name.buffer as u64;
         assert!(ntdll_str_ptr > 0);
         let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
         assert_eq!(ntdll_str, "ntdll.dll");
 
-        let ntdll_str_ptr = ldr_struct.full_dll_name.buffer as u64;
+        let ntdll_str_ptr = ldr_entry.full_dll_name.buffer as u64;
         assert!(ntdll_str_ptr > 0);
         let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
-        assert_eq!(ntdll_str, "ntdll.dll");
-        */
+        assert_eq!(ntdll_str, "C:\\Windows\\System32\\ntdll.dll");
 
 
     }
