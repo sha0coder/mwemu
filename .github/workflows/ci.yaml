@@ -53,9 +53,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+           $ErrorActionPreference = "Stop"
            Invoke-WebRequest -Uri "https://github.com/sha0coder/mwemu/releases/download/maps/test.zip"  -OutFile "test.zip"
            choco install 7zip -y
-           7z x test.zip 
+           7z x test.zip | Out-Null
 
       - name: Run libmwemu tests (windows)
         if: runner.os == 'Windows'
