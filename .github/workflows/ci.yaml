@@ -56,10 +56,8 @@ jobs:
            Invoke-WebRequest -Uri "https://github.com/sha0coder/mwemu/releases/download/maps/test.zip"  -OutFile "test.zip"
            choco install 7zip -y
            7z x test.zip 
-           Write-Host "=== Current Directory ==="
-           Get-Location
-           Write-Host "=== Files ==="
-           Get-ChildItem -Recurse
+           cd test
+           cargo test --release --package libmwemu --verbose
 
       - name: Run pymwemu tests
         if: runner.os != 'Windows'
