@@ -2613,7 +2613,7 @@ fn UnhandledExceptionFilter(emu: &mut emu::Emu) {
     );
 
     emu.stack_pop32(false);
-    emu.regs.rax = constants::EXCEPTION_EXECUTE_HANDLER;
+    emu.regs.rax = constants::EXCEPTION_EXECUTE_HANDLER as u64;
     // a debugger would had answered EXCEPTION_CONTINUE_SEARCH
 }
 

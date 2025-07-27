@@ -2185,8 +2185,17 @@ impl Emu {
             } else {
                 self.set_eip(addr, false);
             }
-        } else {
-            if self.seh == 0 {
+        } else if self.feh > 0 {
+            addr = self.feh;
+
+            exception::enter(self);
+            if self.cfg.is_64bits {
+                self.set_rip(addr, false);
+            } else {
+                self.set_eip(addr, false);
+            }
+
+        } else if self.seh == 0 {
                 log::info!(
                     "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                     self.pos,
@@ -2196,7 +2205,7 @@ impl Emu {
                     Console::spawn_console(self);
                 }
                 return;
-            }
+        } else {
 
             // SEH
 
@@ -2217,7 +2226,18 @@ impl Emu {
             };
 
             let con = Console::new();
+            if self.running_script {
+                self.seh = next;
+                exception::enter(self);
+                if self.cfg.is_64bits {
+                    self.set_rip(addr, false);
+                } else {
+                    self.set_eip(addr, false);
+                }
+                return;
+            } 
             con.print("jump the exception pointer (y/n)?");
+
             let cmd = con.cmd();
             if cmd == "y" {
                 self.seh = next;

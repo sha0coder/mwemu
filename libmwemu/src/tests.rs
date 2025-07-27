@@ -544,6 +544,7 @@ mod tests {
         emu.step(); //  10 fptan
         assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
         if emu.fpu.peek_st_u80(6) != 0x3fffc75922e5f71d3000 {
+            log::info!("f64:tan() -> 0x{:x}", emu.fpu.peek_st_u80(6));
             return; // in mac  f64::tan() returns different value
         }
         assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000);
@@ -1693,6 +1694,19 @@ mod tests {
         assert!(ntdll_str_ptr > 0);
         let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
         assert_eq!(ntdll_str, "C:\\Windows\\System32\\ntdll.dll");
+    }
+
+    #[test]
+    // context objects for exception recovering
+    #[ignore]
+    fn exception_handler32() {
+        setup();
+
+        let mut emu = emu32();
+        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.load_code("../test/exe32win_exception_handler.bin");
+
+        let map = emu.maps.get_mem("code");
 
 
     }
