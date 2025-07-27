@@ -35,26 +35,27 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
       # TODO: fail pipeline if formatting fails
-      - name: Check formatting
-        run: cargo fmt --all -- --check || true
+      #- name: Check formatting
+      #  run: cargo fmt --all -- --check || true
       
       # TODO: fail pipeline if clippy fails
-      - name: Run clippy
-        run: cargo clippy -- -D warnings || true
+      #- name: Run clippy
+      #  run: cargo clippy -- -D warnings || true
       
-      - name: Build
-        run: cargo build --release --verbose
+      #- name: Build
+      #  run: cargo build --release --verbose
       
       - name: Run libmwemu tests (linux / mac)
         if: runner.os != 'Windows'
         run: make tests 
 
-      - name: Run libmwemu tests (windows 
+      - name: Run libmwemu tests (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
            Invoke-WebRequest -Uri "https://github.com/sha0coder/mwemu/releases/download/maps/test.zip"  -OutFile "test.zip"
-           Expand-Archive -Path "test.zip" -Destination "test"
+           choco install 7zip -y
+           7z x test.zip 
            cargo test --release --package libmwemu --verbose
 
       - name: Run pymwemu tests
