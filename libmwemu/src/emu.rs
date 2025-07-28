@@ -344,6 +344,9 @@ impl Emu {
     }
 
     pub fn set_verbose(&mut self, n: u32) {
+        if n > 3 {
+            panic!("verbose is from 0 to 3 display (0:apis, 1:msgs, 2:asm, 3:rep)");
+        }
         self.cfg.verbose = n;
     }
 
@@ -419,11 +422,6 @@ impl Emu {
         assert!(stack.inside(self.regs.get_esp()));
         assert!(stack.inside(self.regs.get_ebp()));
 
-        let teb_map = self.maps.get_mem("teb");
-        let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
-        teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
-        teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
-        teb.save(teb_map);
     }
 
     pub fn init_stack64(&mut self) {
@@ -450,12 +448,6 @@ impl Emu {
         assert!(self.regs.rbp < stack.get_bottom());
         assert!(stack.inside(self.regs.rsp));
         assert!(stack.inside(self.regs.rbp));
-
-        let teb_map = self.maps.get_mem("teb");
-        let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
-        teb.nt_tib.stack_base = self.cfg.stack_addr;
-        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
-        teb.save(teb_map);
     }
 
     pub fn init_stack64_tests(&mut self) {
@@ -516,10 +508,9 @@ impl Emu {
         }
         //self.regs.rand();
 
+        self.regs.rip = self.cfg.entry_point;
         if self.cfg.is_64bits {
-            self.regs.rip = self.cfg.entry_point;
             self.maps.is_64bits = true;
-
             //self.init_regs_tests(); // TODO: not sure why this was on
             self.init_mem64();
             self.init_stack64();
@@ -527,7 +518,6 @@ impl Emu {
             //self.init_flags_tests();
         } else {
             // 32bits
-            self.regs.rip = self.cfg.entry_point;
             self.maps.is_64bits = false;
             self.regs.sanitize32();
             self.init_mem32();
@@ -550,6 +540,22 @@ impl Emu {
         }
 
         //self.init_tests();
+    }
+
+    /// the minimum initializations necessary to emualte asm with no OS
+    pub fn init_cpu(&mut self) {
+        self.pos = 0;
+        self.regs.clear::<64>();
+        self.flags.clear();
+
+        if self.cfg.is_64bits {
+            self.maps.is_64bits = true;
+            self.init_stack64();
+        } else {
+            self.maps.is_64bits = false;
+            self.regs.sanitize32();
+            self.init_stack32()
+        }
     }
 
     pub fn init_linux64(&mut self, dyn_link: bool) {
@@ -614,6 +620,7 @@ impl Emu {
     pub fn init_mem32(&mut self) {
         log::info!("loading memory maps");
 
+
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
 
@@ -641,6 +648,12 @@ impl Emu {
         //winapi32::kernel32::load_library(self, "dnsapi.dll");
         winapi32::kernel32::load_library(self, "shell32.dll");
         //winapi32::kernel32::load_library(self, "shlwapi.dll");
+        
+        let teb_map = self.maps.get_mem("teb");
+        let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
+        teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
+        teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
+        teb.save(teb_map);
     }
 
     pub fn init_tests(&mut self) {
@@ -739,6 +752,13 @@ impl Emu {
         winapi64::kernel32::load_library(self, "dnsapi.dll");
         winapi64::kernel32::load_library(self, "shell32.dll");
         winapi64::kernel32::load_library(self, "shlwapi.dll");
+
+        let teb_map = self.maps.get_mem("teb");
+        let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
+        teb.nt_tib.stack_base = self.cfg.stack_addr;
+        let stack_size = 0x100000;
+        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
+        teb.save(teb_map);
     }
 
     pub fn filename_to_mapname(&self, filename: &str) -> String {
@@ -1299,15 +1319,13 @@ impl Emu {
         if self.cfg.verbose >= 1 {
             log::info!("Loading shellcode from bytes");
         }
-        if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
-            let code = self.maps.get_mem("code");
-            code.update_base(self.cfg.code_base_addr);
-            code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
-        }
-        let code = self.maps.get_mem("code");
+
+        self.init_cpu();
+
+        let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64).expect("cannot create code map");
         let base = code.get_base();
-        code.set_size(bytes.len() as u64);
         code.write_bytes(base, bytes);
+        self.regs.rip = code.get_base();
     }
 
     pub fn free(&mut self, name: &str) {
@@ -2179,7 +2197,7 @@ impl Emu {
         if self.veh > 0 {
             addr = self.veh;
 
-            exception::enter(self);
+            exception::enter(self, ex_type);
             if self.cfg.is_64bits {
                 self.set_rip(addr, false);
             } else {
@@ -2188,7 +2206,7 @@ impl Emu {
         } else if self.feh > 0 {
             addr = self.feh;
 
-            exception::enter(self);
+            exception::enter(self, ex_type);
             if self.cfg.is_64bits {
                 self.set_rip(addr, false);
             } else {
@@ -2228,7 +2246,7 @@ impl Emu {
             let con = Console::new();
             if self.running_script {
                 self.seh = next;
-                exception::enter(self);
+                exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
                 } else {
@@ -2241,7 +2259,7 @@ impl Emu {
             let cmd = con.cmd();
             if cmd == "y" {
                 self.seh = next;
-                exception::enter(self);
+                exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
                 } else {
