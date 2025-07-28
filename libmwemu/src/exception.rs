@@ -1,7 +1,7 @@
 /*
         SEH, VEH and UEF
 
-    - SEG: structured exception handler (try/catch, stack items)
+    - SEH: structured exception handler (try/catch, stack items)
     - VEH: vectorized exception handler (API)
             ntdll!RtlAddVectoredExceptionHandler
             ntdll!RtlRemoveVectoredExceptionHandler
