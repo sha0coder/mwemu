@@ -18,4 +18,9 @@ clap = "2.33.3"
 log = "0.4.22"
 env_logger = "0.11.6"
 libmwemu = { path = "../libmwemu" }
+fast_log = { version = "1.7" }
 #libmwemu = "0.21.0"
+
+
+[features]
+#  log_file = []

@@ -1,11 +1,10 @@
 extern crate clap;
 
 use clap::{App, Arg};
-use env_logger::Env;
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use std::io::Write as _;
+use fast_log::Config;
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -55,9 +54,13 @@ macro_rules! clap_arg {
 }
 
 fn main() {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .init();
+    // init logger
+    // TODO: add option to changing the output logging
+    if cfg!(feature = "log_file") {
+        fast_log::init(Config::new().file("instruction_log.log").chan_len(Some(100000))).unwrap();
+    } else {
+        fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
+    }
 
     let matches = App::new("MWEMU emulator for malware")
         .version(env!("CARGO_PKG_VERSION"))
@@ -127,6 +130,10 @@ fn main() {
     }
 
     emu.running_script = false;
+
+    if cfg!(feature = "log_file") {
+        emu.colors.disable();
+    }
 
     // filename
     let filename = matches
@@ -392,6 +399,8 @@ fn main() {
             emu.enable_ctrlc();
         }
 
-        emu.run(None).unwrap();
+        let result = emu.run(None);
+        log::logger().flush();
+        result.unwrap();
     }
 }

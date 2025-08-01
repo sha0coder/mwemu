@@ -268,12 +268,12 @@ impl FPU {
         self.st.get_mut(i).map(|st| st.set(value));
     }
 
-    // only use from test.rs 
+    // only use from test.rs
     pub fn peek_st_f64(&mut self, i: usize) -> f64 {
         self.st.peek(i).get_f64()
     }
 
-    // only use from test.rs 
+    // only use from test.rs
     pub fn peek_st_u80(&mut self, i: usize) -> u128 {
         self.st.peek(i).get()
     }
@@ -353,7 +353,7 @@ impl FPU {
     }
 
     pub fn get_st_f80_copy(&mut self, n: usize) -> F80 {
-        self.st.get(n)     
+        self.st.get(n)
     }
 
     pub fn is_empty(&mut self, a: usize) -> bool {
@@ -416,7 +416,7 @@ impl FPU {
             Register::ST6 => 6,
             Register::ST7 => 7,
             _ => unreachable!(),
-        } 
+        }
     }
 
     pub fn reg_to_idx(&self, reg: Register) -> usize {
@@ -430,7 +430,7 @@ impl FPU {
             Register::ST6 => 6,
             Register::ST7 => 7,
             _ => unreachable!(),
-        } 
+        }
     }
 
 
