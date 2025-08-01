@@ -94,9 +94,6 @@ impl Maps {
             })
     }
 
-    pub fn is_allocated(&self, addr: u64) -> bool {
-        self.get_mem_by_addr(addr).is_some()
-    }
 
     pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
         //if size == 0 {
@@ -559,6 +556,16 @@ impl Maps {
     #[inline(always)]
     pub fn is_mapped(&self, addr: u64) -> bool {
         self.get_mem_by_addr(addr).is_some()
+    }
+
+    #[inline(always)]
+    pub fn is_allocated(&self, addr: u64) -> bool {
+        self.get_mem_by_addr(addr).is_some()
+    }
+
+    #[inline(always)]
+    pub fn is_valid_ptr(&self, addr: u64) -> bool {
+        addr > 0 && self.get_mem_by_addr(addr).is_some()
     }
 
     #[inline(always)]
@@ -1082,9 +1089,13 @@ impl Maps {
     }
 
     pub fn dealloc(&mut self, addr: u64) {
-        let mem_key = self.maps
-            .get(&addr)
-            .expect(format!("map base {} not found", addr).as_str());
+        let mem_key = match self.maps.get(&addr) {
+                Some(key) => key,
+                None => {
+                    log::info!("dealloc: non mapped address 0x{:x}", addr);
+                    return;
+                }
+        };
         let mem = self.mem_slab.get_mut(*mem_key).unwrap();
         self.name_map.remove(mem.get_name());
         mem.clear();

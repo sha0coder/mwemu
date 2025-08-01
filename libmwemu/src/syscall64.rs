@@ -365,40 +365,51 @@ pub fn gateway(emu: &mut emu::Emu) {
             let sockaddr = emu.regs.rsi;
             let len = emu.regs.rdx;
 
-            let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
-            let port: u16 = emu
-                .maps
-                .read_word(sockaddr + 2)
-                .expect("cannot read the port")
-                .to_be();
-            let ip: u32 = emu
-                .maps
-                .read_dword(sockaddr + 4)
-                .expect("cannot read the ip");
-            let sip = format!(
-                "{}.{}.{}.{}",
-                ip & 0xff,
-                (ip & 0xff00) >> 8,
-                (ip & 0xff0000) >> 16,
-                (ip & 0xff000000) >> 24
-            );
+            if sockaddr > 0 && emu.maps.is_mapped(sockaddr) {
+                let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
+                let port: u16 = emu
+                    .maps
+                    .read_word(sockaddr + 2)
+                    .expect("cannot read the port")
+                    .to_be();
+                let ip: u32 = emu
+                    .maps
+                    .read_dword(sockaddr + 4)
+                    .expect("cannot read the ip");
+                let sip = format!(
+                    "{}.{}.{}.{}",
+                    ip & 0xff,
+                    (ip & 0xff00) >> 8,
+                    (ip & 0xff0000) >> 16,
+                    (ip & 0xff000000) >> 24
+                );
 
-            log::info!(
-                "{}** {} syscall socketcall bind() sock: {} fam: {} {}:{} {}",
-                emu.colors.light_red,
-                emu.pos,
-                sock,
-                fam,
-                sip,
-                port,
-                emu.colors.nc
-            );
+                log::info!(
+                    "{}** {} syscall socketcall bind() sock: {} fam: {} {}:{} {}",
+                    emu.colors.light_red,
+                    emu.pos,
+                    sock,
+                    fam,
+                    sip,
+                    port,
+                    emu.colors.nc
+                );
 
-            if !helper::socket_exist(sock) {
-                log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                if !helper::socket_exist(sock) {
+                    log::info!("\tbad socket/");
+                    emu.regs.rax = constants::ENOTSOCK;
+                } else {
+                    emu.regs.rax = 0;
+                }
             } else {
-                emu.regs.rax = 0;
+                log::info!(
+                    "{}** {} syscall socketcall bind() sock: {} bad sockaddr! {}",
+                    emu.colors.light_red,
+                    emu.pos,
+                    sock,
+                    emu.colors.nc
+                );
+                emu.regs.rax = constants::EINVAL;
             }
         }
 
@@ -407,51 +418,62 @@ pub fn gateway(emu: &mut emu::Emu) {
             let sockaddr = emu.regs.rsi;
             let len = emu.regs.rdx;
 
-            let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
-            let port: u16 = emu
-                .maps
-                .read_word(sockaddr + 2)
-                .expect("cannot read the port")
-                .to_be();
-            let ip: u32 = emu
-                .maps
-                .read_dword(sockaddr + 4)
-                .expect("cannot read the ip");
-            let sip = format!(
-                "{}.{}.{}.{}",
-                ip & 0xff,
-                (ip & 0xff00) >> 8,
-                (ip & 0xff0000) >> 16,
-                (ip & 0xff000000) >> 24
-            );
+            if sockaddr > 0 && emu.maps.is_mapped(sockaddr) {
+                let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
+                let port: u16 = emu
+                    .maps
+                    .read_word(sockaddr + 2)
+                    .expect("cannot read the port")
+                    .to_be();
+                let ip: u32 = emu
+                    .maps
+                    .read_dword(sockaddr + 4)
+                    .expect("cannot read the ip");
+                let sip = format!(
+                    "{}.{}.{}.{}",
+                    ip & 0xff,
+                    (ip & 0xff00) >> 8,
+                    (ip & 0xff0000) >> 16,
+                    (ip & 0xff000000) >> 24
+                );
 
-            log::info!(
-                "{}** {} syscall socketcall connect() sock: {} fam: {} {}:{} {}",
-                emu.colors.light_red,
-                emu.pos,
-                sock,
-                fam,
-                sip,
-                port,
-                emu.colors.nc
-            );
+                log::info!(
+                    "{}** {} syscall socketcall connect() sock: {} fam: {} {}:{} {}",
+                    emu.colors.light_red,
+                    emu.pos,
+                    sock,
+                    fam,
+                    sip,
+                    port,
+                    emu.colors.nc
+                );
 
-            if !helper::socket_exist(sock) {
-                log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
-                return;
-            }
-
-            /*
-            if emu.cfg.endpoint {
-                if endpoint::sock_connect(sip.as_str(), port) {
-                    log::info!("\tconnected to the endpoint.");
-                } else {
-                    log::info!("\tcannot connect. dont use -e");
+                if !helper::socket_exist(sock) {
+                    log::info!("\tbad socket/");
+                    emu.regs.rax = constants::ENOTSOCK;
+                    return;
                 }
-            }*/
 
-            emu.regs.rax = 0;
+                /*
+                if emu.cfg.endpoint {
+                    if endpoint::sock_connect(sip.as_str(), port) {
+                        log::info!("\tconnected to the endpoint.");
+                    } else {
+                        log::info!("\tcannot connect. dont use -e");
+                    }
+                }*/
+
+                emu.regs.rax = 0;
+            } else {
+                log::info!(
+                    "{}** {} syscall socketcall connect() sock: {} bad sockaddr! {}",
+                    emu.colors.light_red,
+                    emu.pos,
+                    sock,
+                    emu.colors.nc
+                );
+                emu.regs.rax = constants::EINVAL;
+            }
         }
 
         constants::NR64_LISTEN => {
@@ -513,7 +535,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 sock,
                 emu.colors.nc
             );
-            todo!("implement this");
+            emu.regs.rax = 0;
         }
 
         constants::NR64_GETPEERNAME => {
@@ -523,6 +545,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
+            emu.regs.rax = 0;
         }
 
         constants::NR64_SOCKETPAIR => {
@@ -532,6 +555,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
+            emu.regs.rax = 0;
         }
 
         /*constants::NR64_SEND => {
@@ -784,7 +808,13 @@ pub fn gateway(emu: &mut emu::Emu) {
         constants::NR64_UNAME => {
             emu.regs.rax = 0;
             let ptr = emu.regs.rdi;
-            emu.maps.write_bytes(ptr, constants::UTSNAME.to_vec());
+
+            if emu.maps.is_valid_ptr(ptr) {
+                emu.maps.write_bytes(ptr, constants::UTSNAME.to_vec());
+                emu.regs.rax = 0;
+            } else {
+                emu.regs.rax = constants::EINVAL;
+            }
 
             log::info!(
                 "{}** {} syscall uname(0x{:x})  {}",
@@ -817,7 +847,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let addr = emu.regs.rdi;
             let sz = emu.regs.rsi;
 
-            emu.maps.free(&format!("mmap_{:x}", addr));
+            emu.maps.dealloc(addr);
 
             log::info!(
                 "{}** {} syscall munmap(0x{:x} sz:{})  {}",
@@ -839,7 +869,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let fd = emu.regs.r8;
             let off = emu.regs.r9;
 
-            if addr == 0 {
+            if addr == 0 || emu.maps.is_mapped(addr) {
                 if sz > 0xffffff {
                     log::info!("/!\\ Warning trying to allocate {} bytes", sz);
                     sz = 0xffffff;
@@ -927,7 +957,10 @@ pub fn gateway(emu: &mut emu::Emu) {
                 stat.size = file_size as i64;
             }
 
-            stat.save(stat_ptr, &mut emu.maps);
+            if stat_ptr > 0 && emu.maps.is_mapped(stat_ptr) {
+                println!("saving stat at 0x{:x}", stat_ptr);
+                stat.save(stat_ptr, &mut emu.maps);
+            }
 
             log::info!(
                 "{}** {} syscall ftat(0x{:x})  =0 {}",
@@ -945,13 +978,15 @@ pub fn gateway(emu: &mut emu::Emu) {
             let stat_ptr = emu.regs.rsi;
             let filename = emu.maps.read_string(filename_ptr);
 
-            let mut stat = structures::Stat::fake();
-            let path = Path::new(&filename);
-            let metadata =
-                fs::metadata(path).expect("this file should exist because was opened by kernel64");
-            let file_size = metadata.len();
-            stat.size = file_size as i64;
-            stat.save(stat_ptr, &mut emu.maps);
+            let stat = structures::Stat::fake();
+            //let path = Path::new(&filename);
+            //let metadata =
+            //    fs::metadata(path).expect("this file should exist because was opened by kernel64");
+            //let file_size = metadata.len();
+            //stat.size = file_size as i64;
+            if stat_ptr > 0 && emu.maps.is_mapped(stat_ptr) {
+                stat.save(stat_ptr, &mut emu.maps);
+            }
 
             log::info!(
                 "{}** {} syscall stat({})  =0 {}",

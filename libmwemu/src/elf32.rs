@@ -4,6 +4,7 @@ use super::maps::mem64::Mem64;
 use crate::maps::Maps;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 macro_rules! read_u8 {
     ($raw:expr, $off:expr) => {
@@ -110,6 +111,8 @@ impl Elf32 {
     }
 
     pub fn is_elf32(filename: &str) -> bool {
+        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let path = base.join(filename);
         let mut fd = File::open(filename).expect("file not found");
         let mut raw = vec![0u8; 5];
         fd.read_exact(&mut raw).expect("couldnt read the file");

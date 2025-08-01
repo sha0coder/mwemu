@@ -11,8 +11,13 @@ env:
 
 jobs:
   check:
-    name: Check
-    runs-on: ubuntu-latest
+    name: Check on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy: 
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
     steps:
       - uses: actions/checkout@v4
       
@@ -31,29 +36,60 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
       # TODO: fail pipeline if formatting fails
-      - name: Check formatting
-        run: cargo fmt --all -- --check || true
+      #- name: Check formatting
+      #  run: cargo fmt --all -- --check || true
       
       # TODO: fail pipeline if clippy fails
-      - name: Run clippy
-        run: cargo clippy -- -D warnings || true
+      #- name: Run clippy
+      #  run: cargo clippy -- -D warnings || true
       
-      - name: Build
-        run: cargo build --release --verbose
+      #- name: Build
+      #  run: cargo build --release --verbose
       
-      - name: Run libmwemu tests
+      - name: Run libmwemu tests (linux / mac)
+        if: runner.os != 'Windows'
         run: make tests 
 
+      - name: Download libmwemu tests (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri "https://github.com/sha0coder/mwemu/releases/download/maps/test.zip"  -OutFile "test.zip"
+
+      - name: Instlal 7z (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install 7zip -y; exit 0
+
+      - name: Uncompress tests (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          7z x test.zip -pmwemuTestSystem
+
+      - name: Run libmwemu tests (windows)
+        if: runner.os == 'Windows'
+        working-directory: ./test
+        shell: pwsh
+        run: cargo test --release --package libmwemu --verbose
+
       - name: Run pymwemu tests
+        if: runner.os != 'Windows'
         run: make pytests
 
       - name: Install cargo-tarpaulin
+        if: runner.os == 'Linux'
         run: cargo install cargo-tarpaulin
 
       - name: Run coverage
-        run: cargo tarpaulin --out Xml --timeout 200
+        if: runner.os == 'Linux'
+        run: |
+          cargo tarpaulin --out Xml --timeout 200
 
       - name: Upload coverage reports to Codecov
+        if: runner.os == 'Linux'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

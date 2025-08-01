@@ -1,10 +1,14 @@
+#![allow(unexpected_cfgs)]
+
 extern crate clap;
 
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use fast_log::Config;
+use fast_log::{Config, FastLogFormat};
+use fast_log::appender::{Command, FastLogRecord, LogAppender, RecordFormat};
+use log::{Level, LevelFilter};
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -53,13 +57,40 @@ macro_rules! clap_arg {
     };
 }
 
+pub struct CustomLogFormat {}
+
+impl RecordFormat for CustomLogFormat {
+    fn do_format(&self, arg: &mut FastLogRecord) {
+        match &arg.command {
+            Command::CommandRecord => {
+                arg.formated = format!("{}\n", arg.args);
+            }
+            Command::CommandExit => {}
+            Command::CommandFlush(_) => {}
+        }
+    }
+}
+
+impl CustomLogFormat {
+    pub fn new() -> CustomLogFormat {
+        Self {}
+    }
+
+}
+
 fn main() {
     // init logger
     // TODO: add option to changing the output logging
     if cfg!(feature = "log_file") {
-        fast_log::init(Config::new().file("instruction_log.log").chan_len(Some(100000))).unwrap();
+        fast_log::init(Config::new()
+            .format(CustomLogFormat::new())
+            .file("instruction_log.log")
+            .chan_len(Some(100000))).unwrap();
     } else {
-        fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
+        fast_log::init(Config::new()
+            .format(CustomLogFormat::new())
+            .console()
+            .chan_len(Some(100000))).unwrap();
     }
 
     let matches = App::new("MWEMU emulator for malware")
