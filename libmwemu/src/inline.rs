@@ -1,9 +1,11 @@
 // use std::arch::asm;
 
-// this unsafe blocks are disabled
+// this unsafe blocks are disabled, this was used for testing in the past, better use tests.rs
+#![allow(unreachable_code)]
 
 pub fn or(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("or {}, {}", inout(reg) r, in(reg) b);
@@ -14,6 +16,7 @@ pub fn or(a: u64, b: u64) -> u64 {
 
 pub fn xor(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("xor {}, {}", inout(reg) r, in(reg) b);
@@ -24,6 +27,7 @@ pub fn xor(a: u64, b: u64) -> u64 {
 
 pub fn and(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("and {}, {}", inout(reg) r, in(reg) b);
@@ -34,6 +38,7 @@ pub fn and(a: u64, b: u64) -> u64 {
 
 pub fn not(a: u64, bits: u32) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     match bits {
         64 => {
@@ -71,6 +76,7 @@ pub fn not(a: u64, bits: u32) -> u64 {
 
 pub fn neg(a: u64, bits: u32) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     match bits {
         64 => {
@@ -109,6 +115,7 @@ pub fn neg(a: u64, bits: u32) -> u64 {
 pub fn ror(a: u64, b: u64, bits: u32) -> u64 {
     let bb = b as u8;
     let r: u64 = a;
+    unimplemented!();
 
     /*
     match bits {
@@ -160,6 +167,7 @@ pub fn ror(a: u64, b: u64, bits: u32) -> u64 {
 pub fn rol(a: u64, b: u64, sz: u32) -> u64 {
     let bb = b as u8;
     let r: u64 = a;
+    unimplemented!();
     /*
     match sz {
         64 => {
@@ -201,6 +209,7 @@ pub fn rol(a: u64, b: u64, sz: u32) -> u64 {
 
 pub fn rcl(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("rcl {}, {}", inout(reg) r, in(reg) b);
@@ -211,6 +220,7 @@ pub fn rcl(a: u64, b: u64) -> u64 {
 
 pub fn rcr(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("rcr {}, {}", inout(reg) r, in(reg) b);
@@ -221,6 +231,7 @@ pub fn rcr(a: u64, b: u64) -> u64 {
 
 pub fn sar1p(a: u64, bits: u32, cf: bool) -> u64 {
     let r: u64 = a;
+    unimplemented!();
 
     /*
     if cf {
@@ -271,6 +282,7 @@ pub fn sar1p(a: u64, bits: u32, cf: bool) -> u64 {
 pub fn sar2p(a: u64, b: u64, bits: u32, cf: bool) -> u64 {
     let r: u64 = a;
     let b8 = b as u8;
+    unimplemented!();
 
     /*
     match bits {
@@ -314,6 +326,7 @@ pub fn sar2p(a: u64, b: u64, bits: u32, cf: bool) -> u64 {
 pub fn sal(a: u64, b: u64, bits: u32) -> u64 {
     let r: u64 = a;
     let b8 = b as u8;
+    unimplemented!();
 
     /*
     match bits {
@@ -356,6 +369,7 @@ pub fn sal(a: u64, b: u64, bits: u32) -> u64 {
 pub fn shl(a: u64, b: u64, bits: u32) -> u64 {
     let r: u64 = a;
     let b8 = b as u8;
+    unimplemented!();
 
     /*
     match bits {
@@ -398,6 +412,7 @@ pub fn shl(a: u64, b: u64, bits: u32) -> u64 {
 pub fn shr(a: u64, b: u64, bits: u32) -> u64 {
     let r: u64 = a;
     let b8 = b as u8;
+    unimplemented!();
 
     /*
     match bits {
@@ -441,6 +456,7 @@ pub fn shld(a: u64, b: u64, c: u64, bits: u32, flags: u32) -> (u64, u32) {
     let r: u64 = a;
     let c8 = c as u8;
     let new_flags: u32 = 0;
+    unimplemented!();
 
     /*
     match bits {
@@ -531,6 +547,7 @@ pub fn shrd(a: u64, b: u64, c: u64, bits: u32, flags: u32) -> (u64, u32) {
     let c8 = c as u8;
     let new_flags: u32 = 0;
 
+    unimplemented!();
     /*
     match bits {
         64 => {
@@ -618,6 +635,7 @@ pub fn shrd(a: u64, b: u64, c: u64, bits: u32, flags: u32) -> (u64, u32) {
 pub fn div(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
     let r_rax: u64 = 0;
     let r_rdx: u64 = 0;
+    unimplemented!();
 
     /*
     match bits {
@@ -665,6 +683,7 @@ pub fn div(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
 pub fn idiv(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
     let r_rax: u64 = 0;
     let r_rdx: u64 = 0;
+    unimplemented!();
 
     /*
     match bits {
@@ -713,6 +732,7 @@ pub fn idiv(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
 pub fn mul(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
     let r_rax: u64 = 0;
     let r_rdx: u64 = 0;
+    unimplemented!();
 
     /*
     match bits {
@@ -760,6 +780,7 @@ pub fn mul(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
 pub fn imul1p(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
     let r_rax: u64 = 0;
     let r_rdx: u64 = 0;
+    unimplemented!();
 
     /*
     match bits {
@@ -807,6 +828,7 @@ pub fn imul1p(a: u64, rax: u64, rdx: u64, bits: u32) -> (u64, u64) {
 
 pub fn imul2p(a: u64, b: u64, bits: u32) -> u64 {
     let r: u64 = a;
+    unimplemented!();
 
     /*
     match bits {
@@ -846,6 +868,7 @@ pub fn imul2p(a: u64, b: u64, bits: u32) -> u64 {
 pub fn imul3p(b:u64, c:u64, bits:u8) -> u64 {
     let r:u64;
 
+    unimplemented!();
     match bits {
         64 => {
             let a64:u64;
@@ -883,6 +906,7 @@ pub fn imul3p(b:u64, c:u64, bits:u8) -> u64 {
 
 pub fn bswap(a: u64, bits: u32) -> u64 {
     let r: u64 = a;
+    unimplemented!();
 
     /*
     match bits {
@@ -911,6 +935,7 @@ pub fn bswap(a: u64, bits: u32) -> u64 {
 
 pub fn movzx(b: u64) -> u64 {
     let r: u64 = 0;
+    unimplemented!();
 
     /*
     unsafe {
@@ -925,6 +950,7 @@ pub fn movsx(b: u64, bits0: u32, bits1: u32) -> u64 {
     let b32 = b as u32;
     let b16 = b as u16;
     let b8 = b as u8;
+    unimplemented!();
 
     /*
     match bits0 {
@@ -978,6 +1004,7 @@ pub fn movsx(b: u64, bits0: u32, bits1: u32) -> u64 {
 
 pub fn movsxd(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("movsxd {}, {}", inout(reg) r, in(reg) b);
@@ -988,6 +1015,7 @@ pub fn movsxd(a: u64, b: u64) -> u64 {
 
 pub fn cmovs(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("cmovs {}, {}", inout(reg) r, in(reg) b);
@@ -998,6 +1026,7 @@ pub fn cmovs(a: u64, b: u64) -> u64 {
 
 pub fn cmovo(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("cmovs {}, {}", inout(reg) r, in(reg) b);
@@ -1008,6 +1037,7 @@ pub fn cmovo(a: u64, b: u64) -> u64 {
 
 pub fn btc(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("btc {}, {}", inout(reg) r, in(reg) b);
@@ -1018,6 +1048,7 @@ pub fn btc(a: u64, b: u64) -> u64 {
 
 pub fn bts(a: u64, b: u64) -> u64 {
     let r: u64 = a;
+    unimplemented!();
     /*
     unsafe {
         asm!("bts {}, {}", inout(reg) r, in(reg) b);
@@ -1029,6 +1060,7 @@ pub fn bts(a: u64, b: u64) -> u64 {
 pub fn bsf(a: u64, b: u64, bits: u32, flags: u32) -> (u64, u32) {
     let new_flags: u32 = 0;
     let r: u64 = a;
+    unimplemented!();
     /*
     match bits {
         64 => {
@@ -1097,6 +1129,7 @@ pub fn bsf(a: u64, b: u64, bits: u32, flags: u32) -> (u64, u32) {
 pub fn bsr(a: u64, b: u64, bits: u32, flags: u32) -> (u64, u32) {
     let new_flags: u32 = 0;
     let r: u64 = a;
+    unimplemented!();
     /*
     match bits {
         64 => {
@@ -1159,5 +1192,5 @@ pub fn bsr(a: u64, b: u64, bits: u32, flags: u32) -> (u64, u32) {
         _ => panic!("weird size"),
     }*/
 
-    (r, new_flags)
+    //(r, new_flags)
 }

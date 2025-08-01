@@ -84,7 +84,6 @@ pub struct Emu {
     pub running_script: bool,
     pub banzai: Banzai,
     pub mnemonic: String,
-    pub dbg: bool,
     pub linux: bool,
     pub fs: BTreeMap<u64, u64>,
     pub now: Instant,
@@ -149,12 +148,11 @@ impl Emu {
             break_on_next_cmp: false,
             break_on_next_return: false,
             filename: String::new(),
-            enabled_ctrlc: false, // TODO: make configurable with command line arg
+            enabled_ctrlc: false,
             run_until_ret: false,
             running_script: true,
             banzai: Banzai::new(),
             mnemonic: String::new(),
-            dbg: false,
             linux: false,
             fs: BTreeMap::new(),
             now: Instant::now(),
@@ -189,16 +187,9 @@ impl Emu {
         }
     }
 
+    /// change default base address, code map will be loaded there.
     pub fn set_base_address(&mut self, addr: u64) {
         self.cfg.code_base_addr = addr;
-    }
-
-    pub fn enable_debug_mode(&mut self) {
-        self.dbg = true;
-    }
-
-    pub fn disable_debug_mode(&mut self) {
-        self.dbg = false;
     }
 
     // configure the base address of stack map
@@ -206,7 +197,7 @@ impl Emu {
         self.cfg.stack_addr = addr;
     }
 
-    // select the folder with maps32 or maps64 depending upon the arch, make sure to do init after this.
+    /// For simulating a windows process space, select the folder with maps32 or maps64 depending upon the arch, do this before loading the binary.
     pub fn set_maps_folder(&mut self, folder: &str) {
         let mut f = folder.to_string();
         f.push('/');
@@ -222,7 +213,7 @@ impl Emu {
         }
     }
 
-    // Check if maps folder exists and contains essential files
+    /// Check if maps folder exists and contains essential files
     fn maps_folder_is_valid(&self, folder: &str) -> bool {
         let folder_path = Path::new(folder);
         if !folder_path.exists() {
@@ -247,7 +238,7 @@ impl Emu {
         true
     }
 
-    // Download and extract maps folder from specific URL
+    /// Download and extract maps folder from specific URL
     fn download_and_extract_maps(&self, folder: &str) -> Result<(), Box<dyn std::error::Error>> {
         let url = match folder {
             "maps32" | "maps32/" => "https://github.com/sha0coder/mwemu/releases/download/maps/maps32.zip",
@@ -302,21 +293,25 @@ impl Emu {
         Ok(())
     }
 
+    /// Do spawn a console, for user interaction with the current emulation state.
+    /// Command h for help.
     pub fn spawn_console(&mut self) {
         Console::spawn_console(self);
     }
 
-    // spawn a console on the instruction number, ie: 1 at the beginning.
+    /// Spawn a console on the instruction number, ie: 1 after emulating first instruction.
     pub fn spawn_console_at(&mut self, exp: u64) {
         self.exp = exp;
     }
 
+    /// Spawn a console the first time the specified address is reached.
     pub fn spawn_console_at_addr(&mut self, addr: u64) {
         self.cfg.console2 = true;
         self.cfg.console_addr = addr;
         self.cfg.console_enabled = true;
     }
 
+    /// Get the base address of the code, if code map doesn't exist yet will return None.
     pub fn get_base_addr(&self) -> Option<u64> {
         //TODO: fix this, now there is no code map.
         let map = match self.maps.get_map_by_name("code") {
@@ -327,40 +322,60 @@ impl Emu {
         Some(map.get_base())
     }
 
+    /// Do enable the Control + C handling, for spawning console.
     pub fn enable_ctrlc(&mut self) {
         self.enabled_ctrlc = true;
     }
 
+    /// Do disable the Control + C handling, it will not be handled and will interrupt the program.
     pub fn disable_ctrlc(&mut self) {
         self.enabled_ctrlc = false;
     }
 
+    /// Disable the console mode, it will not be spawned automatically.
     pub fn disable_console(&mut self) {
         self.cfg.console_enabled = false;
     }
 
+    /// Enable the console mode, it will spawned automatically in some situations.
     pub fn enable_console(&mut self) {
         self.cfg.console_enabled = true;
     }
 
+    /// Set verbose level.
+    /// 0: only will print syscalls and api name called.
+    /// 1: same than 0 and also some messages like undefined behaviours or polymorfic code etc.
+    /// 2: same than 1 and also will print the assembly code, this will make it much slower.
+    /// 3: same than 2 but also in the case of a rep prefix will see every rep iteration.
     pub fn set_verbose(&mut self, n: u32) {
+        if n > 3 {
+            panic!("verbose is from 0 to 3 display (0:apis, 1:msgs, 2:asm, 3:rep)");
+        }
         self.cfg.verbose = n;
     }
 
+    /// Enable banzai mode, in this mode on the windows api of 32bits, if the called api is not
+    /// implemented will try to fix the stack (because knows the number of params of every api) and
+    /// will continue the emulation.
     pub fn enable_banzai(&mut self) {
         self.cfg.skip_unimplemented = true;
         self.maps.set_banzai(true);
     }
 
+    /// Disable the banzai mode, if the emualted code call an unimplemented 32bits winapis, the
+    /// emulation will stop.
     pub fn disable_banzai(&mut self) {
         self.cfg.skip_unimplemented = false;
         self.maps.set_banzai(false);
     }
 
+    /// Add windows 32bits apis to the banzai mode, with this info mwemu will know how to continue
+    /// the emulating inf this api is found and is not implemented.
     pub fn banzai_add(&mut self, name: &str, nparams: i32) {
         self.banzai.add(name, nparams);
     }
 
+    /// For an existing linked DLL, this funcion allows to modify the base address on LDR entry.
     pub fn update_ldr_entry_base(&mut self, libname: &str, base: u64) {
         if self.cfg.is_64bits {
             peb64::update_ldr_entry_base(libname, base, self);
@@ -369,6 +384,7 @@ impl Emu {
         }
     }
 
+    /// Dynamic link a windows DLL from emu.cfg.maps_folder.
     pub fn link_library(&mut self, libname: &str) -> u64 {
         if self.cfg.is_64bits {
             winapi64::kernel32::load_library(self, libname)
@@ -377,6 +393,7 @@ impl Emu {
         }
     }
 
+    /// Resolve the winapi name having an address.
     pub fn api_addr_to_name(&mut self, addr: u64) -> String {
         let name: String = if self.cfg.is_64bits {
             winapi64::kernel32::resolve_api_addr_to_name(self, addr)
@@ -387,6 +404,7 @@ impl Emu {
         name
     }
 
+    /// Resolve the address of an api name keyword.
     pub fn api_name_to_addr(&mut self, kw: &str) -> u64 {
         if self.cfg.is_64bits {
             let (addr, lib, name) = winapi64::kernel32::search_api_name(self, kw);
@@ -397,6 +415,7 @@ impl Emu {
         }
     }
 
+    /// This inits the 32bits stack, it's called from init_cpu() and init()
     pub fn init_stack32(&mut self) {
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
@@ -419,13 +438,9 @@ impl Emu {
         assert!(stack.inside(self.regs.get_esp()));
         assert!(stack.inside(self.regs.get_ebp()));
 
-        let teb_map = self.maps.get_mem("teb");
-        let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
-        teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
-        teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
-        teb.save(teb_map);
     }
 
+    /// This inits the 64bits stack, it's called from init_cpu() and init()
     pub fn init_stack64(&mut self) {
         let stack_size = 0x100000;
 
@@ -450,14 +465,9 @@ impl Emu {
         assert!(self.regs.rbp < stack.get_bottom());
         assert!(stack.inside(self.regs.rsp));
         assert!(stack.inside(self.regs.rbp));
-
-        let teb_map = self.maps.get_mem("teb");
-        let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
-        teb.nt_tib.stack_base = self.cfg.stack_addr;
-        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
-        teb.save(teb_map);
     }
 
+    //TODO: tests only in tests.rs
     pub fn init_stack64_tests(&mut self) {
         let stack = self.maps.get_mem("stack");
         self.regs.rsp = 0x000000000014F4B0;
@@ -466,6 +476,7 @@ impl Emu {
         stack.set_size(0x0000000000007000);
     }
 
+    //TODO: tests only in tests.rs
     pub fn init_regs_tests(&mut self) {
         self.regs.rax = 0x00000001448A76A4;
         self.regs.rbx = 0x000000007FFE0385;
@@ -479,6 +490,7 @@ impl Emu {
         self.regs.r14 = 0x0000000140000000;
     }
 
+    //TODO: tests only in tests.rs
     pub fn init_flags_tests(&mut self) {
         self.flags.clear();
 
@@ -497,6 +509,9 @@ impl Emu {
         self.flags.f_nt = false;
     }
 
+    /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
+    /// This is called from load_code if the code is a PE or shellcode.
+    /// load_code_bytes() and other loading ways don't call this, if you need windows simulation call this.
     pub fn init(&mut self, clear_registers: bool, clear_flags: bool) {
         self.pos = 0;
 
@@ -516,10 +531,9 @@ impl Emu {
         }
         //self.regs.rand();
 
+        self.regs.rip = self.cfg.entry_point;
         if self.cfg.is_64bits {
-            self.regs.rip = self.cfg.entry_point;
             self.maps.is_64bits = true;
-
             //self.init_regs_tests(); // TODO: not sure why this was on
             self.init_mem64();
             self.init_stack64();
@@ -527,7 +541,6 @@ impl Emu {
             //self.init_flags_tests();
         } else {
             // 32bits
-            self.regs.rip = self.cfg.entry_point;
             self.maps.is_64bits = false;
             self.regs.sanitize32();
             self.init_mem32();
@@ -552,6 +565,23 @@ impl Emu {
         //self.init_tests();
     }
 
+    /// The minimum initializations necessary to emualte asm with no OS simulation.
+    pub fn init_cpu(&mut self) {
+        self.pos = 0;
+        self.regs.clear::<64>();
+        self.flags.clear();
+
+        if self.cfg.is_64bits {
+            self.maps.is_64bits = true;
+            self.init_stack64();
+        } else {
+            self.maps.is_64bits = false;
+            self.regs.sanitize32();
+            self.init_stack32()
+        }
+    }
+
+    /// Initialize linux simulation, it's called from load_code() if the sample is an ELF.
     pub fn init_linux64(&mut self, dyn_link: bool) {
         self.regs.clear::<64>();
         self.flags.clear();
@@ -611,8 +641,10 @@ impl Emu {
         self.fs.insert(40, 0x4b27a0);
     }
 
+    /// This is called from init(), this setup the 32bits windows memory simulation.
     pub fn init_mem32(&mut self) {
         log::info!("loading memory maps");
+
 
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
@@ -641,8 +673,15 @@ impl Emu {
         //winapi32::kernel32::load_library(self, "dnsapi.dll");
         winapi32::kernel32::load_library(self, "shell32.dll");
         //winapi32::kernel32::load_library(self, "shlwapi.dll");
+        
+        let teb_map = self.maps.get_mem("teb");
+        let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
+        teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
+        teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
+        teb.save(teb_map);
     }
 
+    //TODO: tests on tests.rs
     pub fn init_tests(&mut self) {
         let mem = self
             .maps
@@ -707,19 +746,22 @@ impl Emu {
         }
     }
 
+    /// This is called from init(), this setup the 64bits windows memory simulation.
     pub fn init_mem64(&mut self) {
         log::info!("loading memory maps");
 
+        /*
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
 
-        //self.maps.create_map("m10000", 0x10000, 0).expect("cannot create m10000 map");
-        //self.maps.create_map("m20000", 0x20000, 0).expect("cannot create m20000 map");
-        //self.maps.create_map("m520000", 0x520000, 0).expect("cannot create m520000 map");
-        //self.maps.create_map("m53b000", 0x53b000, 0).expect("cannot create m53b000 map");
-        //self.maps.create_map("code", self.cfg.code_base_addr, 0);
+        self.maps.create_map("m10000", 0x10000, 0).expect("cannot create m10000 map");
+        self.maps.create_map("m20000", 0x20000, 0).expect("cannot create m20000 map");
+        self.maps.create_map("m520000", 0x520000, 0).expect("cannot create m520000 map");
+        self.maps.create_map("m53b000", 0x53b000, 0).expect("cannot create m53b000 map");
+        self.maps.create_map("code", self.cfg.code_base_addr, 0);
 
         std::env::set_current_dir(orig_path);
+        */
 
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
@@ -739,8 +781,16 @@ impl Emu {
         winapi64::kernel32::load_library(self, "dnsapi.dll");
         winapi64::kernel32::load_library(self, "shell32.dll");
         winapi64::kernel32::load_library(self, "shlwapi.dll");
+
+        let teb_map = self.maps.get_mem("teb");
+        let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
+        teb.nt_tib.stack_base = self.cfg.stack_addr;
+        let stack_size = 0x100000;
+        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
+        teb.save(teb_map);
     }
 
+    /// From a file-path this returns the filename with no path and no extension.
     pub fn filename_to_mapname(&self, filename: &str) -> String {
         filename
             .split('/')
@@ -751,6 +801,9 @@ impl Emu {
             .to_string()
     }
 
+    /// Complex funtion called from many places and with multiple purposes.
+    /// This is called from load_code() if sample is PE32, but also from load_library etc.
+    /// Powered by pe32.rs implementation.
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
         let is_maps = filename.contains("maps32/");
         let map_name = self.filename_to_mapname(filename);
@@ -921,6 +974,9 @@ impl Emu {
         (base, pe_hdr_off)
     }
 
+    /// Complex funtion called from many places and with multiple purposes.
+    /// This is called from load_code() if sample is PE64, but also from load_library etc.
+    /// Powered by pe64.rs implementation.
     pub fn load_pe64(&mut self, filename: &str, set_entry: bool, force_base: u64) -> (u64, u32) {
         let is_maps = filename.contains("maps64/");
         let map_name = self.filename_to_mapname(filename);
@@ -1067,6 +1123,8 @@ impl Emu {
         (base, pe_hdr_off)
     }
 
+    /// Loads an ELF64 parsing sections etc, powered by elf64.rs
+    /// This is called from load_code() if the sample is ELF64
     pub fn load_elf64(&mut self, filename: &str) {
         let mut elf64 = Elf64::parse(filename).unwrap();
         let dyn_link = !elf64.get_dynamic().is_empty();
@@ -1162,6 +1220,7 @@ impl Emu {
         }*/
     }
 
+    /// Set a custom config, normally used only from commandline tool main.rs
     pub fn set_config(&mut self, cfg: Config) {
         self.cfg = cfg;
         if self.cfg.console {
@@ -1172,6 +1231,12 @@ impl Emu {
         }
     }
 
+    /// Load a sample. It can be PE32, PE64, ELF32, ELF64 or shellcode.
+    /// If its a shellcode cannot be known if is for windows or linux, it triggers also init() to
+    /// setup windows simulator. 
+    /// For now mwemu also don't know if shellcode is for 32bits or 64bits, in commandline -6 has
+    /// to be selected for indicating 64bits, and from python or rust the emu32() or emu64()
+    /// construtor dtermines the engine.
     pub fn load_code(&mut self, filename: &str) {
         self.filename = filename.to_string();
         self.cfg.filename = self.filename.clone();
@@ -1295,25 +1360,29 @@ impl Emu {
         }*/
     }
 
+    /// Load a shellcode from a variable.
+    /// This assumes that there is no headers like PE/ELF and it's direclty code.
+    /// Any OS simulation is triggered, but init() could be called by the user
     pub fn load_code_bytes(&mut self, bytes: &[u8]) {
         if self.cfg.verbose >= 1 {
             log::info!("Loading shellcode from bytes");
         }
-        if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
-            let code = self.maps.get_mem("code");
-            code.update_base(self.cfg.code_base_addr);
-            code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
-        }
-        let code = self.maps.get_mem("code");
+
+        self.init_cpu();
+
+        let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64).expect("cannot create code map");
         let base = code.get_base();
-        code.set_size(bytes.len() as u64);
         code.write_bytes(base, bytes);
+        self.regs.rip = code.get_base();
     }
 
+    /// Remove from the memory the map name provided.
     pub fn free(&mut self, name: &str) {
         self.maps.free(name);
     }
 
+    /// This find an empty space on the memory of selected size
+    /// and also creates a map there.
     pub fn alloc(&mut self, name: &str, size: u64) -> u64 {
         let addr = match self.maps.alloc(size) {
             Some(a) => a,
@@ -1328,6 +1397,8 @@ impl Emu {
         addr
     }
 
+    /// Push a dword to the stack and dec the esp
+    /// This will return false if stack pointer is pointing to non allocated place.
     pub fn stack_push32(&mut self, value: u32) -> bool {
         if self.cfg.stack_trace {
             log::info!("--- stack push32 ---");
@@ -1388,6 +1459,8 @@ impl Emu {
         }
     }
 
+    /// Push a qword to the stack and dec the rsp.
+    /// This will return false if stack pointer is pointing to non allocated place.
     pub fn stack_push64(&mut self, value: u64) -> bool {
         if self.cfg.stack_trace {
             log::info!("--- stack push64  ---");
@@ -1441,6 +1514,7 @@ impl Emu {
         }
     }
 
+    /// Pop a dword from stack and return it, None if esp points to unmapped zone.
     pub fn stack_pop32(&mut self, pop_instruction: bool) -> Option<u32> {
         if self.cfg.stack_trace {
             log::info!("--- stack pop32 ---");
@@ -1536,6 +1610,7 @@ impl Emu {
         Some(value)
     }
 
+    /// Pop a qword from stack, return None if cannot read the rsp address.
     pub fn stack_pop64(&mut self, pop_instruction: bool) -> Option<u64> {
         if self.cfg.stack_trace {
             log::info!("--- stack pop64 ---");
@@ -1615,7 +1690,8 @@ impl Emu {
         Some(value)
     }
 
-    // this is not used on the emulation
+    /// This is not used on the emulation.
+    /// It's part of a feature like  reading or wirtting like it was asm "dword ptr [rax + 0x123]"
     pub fn memory_operand_to_address(&mut self, operand: &str) -> u64 {
         let spl: Vec<&str> = operand.split('[').collect::<Vec<&str>>()[1]
             .split(']')
@@ -1756,7 +1832,11 @@ impl Emu {
         0
     }
 
-    // this is not used on the emulation
+    /// This is not used on the emulation.
+    /// It's a feature to read memory based on an string like "dword ptr [rax + 0x1234]"
+    /// Unperfect but cool feautre, don't alow all the combinations possible.
+    /// Not sure if this features will be removed.
+    /// The emulator uses much more eficient ways to decode the operands than this.
     pub fn memory_read(&mut self, operand: &str) -> Option<u64> {
         if operand.contains("fs:[0]") {
             if self.cfg.verbose >= 1 {
@@ -1875,7 +1955,11 @@ impl Emu {
         }
     }
 
-    // this is not used on the emulation
+    /// This is not used on the emulation.
+    /// It's a feature to write memory based on an string like "dword ptr [rax + 0x1234]"
+    /// Unperfect but cool feautre, don't alow all the combinations possible.
+    /// Not sure if this features will be removed.
+    /// The emulator uses much more eficient ways to decode the operands than this.
     pub fn memory_write(&mut self, operand: &str, value: u64) -> bool {
         if operand.contains("fs:[0]") {
             log::info!("Setting SEH fs:[0]  0x{:x}", value);
@@ -1930,7 +2014,9 @@ impl Emu {
         }
     }
 
-    // this is not used on the emulation
+    /// This is not used on the emulation.
+    /// It's just for a memory reading feature.
+    /// The emulation uses much more efficient ways to decode
     pub fn get_size(&self, operand: &str) -> u8 {
         if operand.contains("byte ptr") {
             return 8;
@@ -1966,6 +2052,7 @@ impl Emu {
     }
 
     //TODO: check this, this is used only on pyscemu
+    /// Call a winapi by addess.
     pub fn handle_winapi(&mut self, addr: u64) {
         if self.cfg.is_64bits {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
@@ -1994,6 +2081,8 @@ impl Emu {
         }
     }
 
+    /// Redirect execution flow on 64bits.
+    /// If the target address is a winapi, triggers it's implementation.
     pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
         self.force_reload = true;
 
@@ -2063,6 +2152,8 @@ impl Emu {
         true
     }
 
+    /// Redirect execution flow on 32bits.
+    /// If the target address is a winapi, triggers it's implementation.
     pub fn set_eip(&mut self, addr: u64, is_branch: bool) -> bool {
         self.force_reload = true;
 
@@ -2131,6 +2222,7 @@ impl Emu {
         true
     }
 
+    /// display 32bits main registers
     pub fn featured_regs32(&self) {
         self.regs.show_eax(&self.maps, 0);
         self.regs.show_ebx(&self.maps, 0);
@@ -2143,6 +2235,7 @@ impl Emu {
         log::info!("\teip: 0x{:x}", self.regs.get_eip() as u32);
     }
 
+    /// display 64bits main registers
     pub fn featured_regs64(&self) {
         self.regs.show_rax(&self.maps, 0);
         self.regs.show_rbx(&self.maps, 0);
@@ -2163,6 +2256,9 @@ impl Emu {
         self.regs.show_r15(&self.maps, 0);
     }
 
+    /// Trigger an exception.
+    /// If it has to be handled initiate contex tand jump to the programmed error routine.
+    /// Support SEH, VEH and UEF
     pub fn exception(&mut self, ex_type: exception_type::ExceptionType) {
         let addr: u64;
         let next: u64;
@@ -2179,14 +2275,23 @@ impl Emu {
         if self.veh > 0 {
             addr = self.veh;
 
-            exception::enter(self);
+            exception::enter(self, ex_type);
             if self.cfg.is_64bits {
                 self.set_rip(addr, false);
             } else {
                 self.set_eip(addr, false);
             }
-        } else {
-            if self.seh == 0 {
+        } else if self.feh > 0 {
+            addr = self.feh;
+
+            exception::enter(self, ex_type);
+            if self.cfg.is_64bits {
+                self.set_rip(addr, false);
+            } else {
+                self.set_eip(addr, false);
+            }
+
+        } else if self.seh == 0 {
                 log::info!(
                     "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                     self.pos,
@@ -2196,7 +2301,7 @@ impl Emu {
                     Console::spawn_console(self);
                 }
                 return;
-            }
+        } else {
 
             // SEH
 
@@ -2217,11 +2322,22 @@ impl Emu {
             };
 
             let con = Console::new();
+            if self.running_script {
+                self.seh = next;
+                exception::enter(self, ex_type);
+                if self.cfg.is_64bits {
+                    self.set_rip(addr, false);
+                } else {
+                    self.set_eip(addr, false);
+                }
+                return;
+            } 
             con.print("jump the exception pointer (y/n)?");
+
             let cmd = con.cmd();
             if cmd == "y" {
                 self.seh = next;
-                exception::enter(self);
+                exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
                 } else {
@@ -2231,6 +2347,9 @@ impl Emu {
         }
     }
 
+    /// Disassemble an amount of instruccions on an specified address.
+    /// This not used on the emulation engine, just from console, 
+    /// but the api could be used programatilcally.
     pub fn disassemble(&mut self, addr: u64, amount: u32) -> String {
         let mut out = String::new();
         let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
@@ -2260,6 +2379,7 @@ impl Emu {
         out
     }
 
+    /// Decode the jump parameter
     pub fn get_jump_value(&mut self, ins: &Instruction, noperand: u32) -> Option<u64> {
         match ins.op_kind(noperand) {
             OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => Some(ins.near_branch_target()),
@@ -2269,6 +2389,7 @@ impl Emu {
         }
     }
 
+    /// Instruction argument decoder.
     fn handle_memory_get_operand(&mut self, ins: &Instruction, noperand: u32, do_derref: bool) -> Option<u64> {
         let mem_seg = ins.memory_segment();
         let fs = mem_seg == Register::FS;
@@ -2580,6 +2701,9 @@ impl Emu {
         Some(value)
     }
 
+    /// Decode a selected operand and return its value (inmediate, register or memory)
+    /// noperand: is (from 0 to n) and return
+    /// do_derref: instructions like lea use memory, get the ref but dont derreference.
     pub fn get_operand_value(
         &mut self,
         ins: &Instruction,
@@ -2606,6 +2730,8 @@ impl Emu {
         Some(value)
     }
 
+    /// Set a value to an operand, normally noperand=0
+    /// If it's a register modify the register, it can be memory also.
     pub fn set_operand_value(&mut self, ins: &Instruction, noperand: u32, value: u64) -> bool {
         assert!(ins.op_count() > noperand);
 
@@ -2843,6 +2969,7 @@ impl Emu {
         true
     }
 
+    /// Get a 128bits operand ie for xmm instructions.
     pub fn get_operand_xmm_value_128(
         &mut self,
         ins: &Instruction,
@@ -2898,6 +3025,7 @@ impl Emu {
         Some(value)
     }
 
+    /// Set an operand of 128 bits, like xmm.
     pub fn set_operand_xmm_value_128(&mut self, ins: &Instruction, noperand: u32, value: u128) {
         assert!(ins.op_count() > noperand);
 
@@ -2978,6 +3106,7 @@ impl Emu {
         Some(value)
     }
 
+    /// Set a 256bits value to an operand, usually ymm instructions.
     pub fn set_operand_ymm_value_256(
         &mut self,
         ins: &Instruction,
@@ -3015,6 +3144,8 @@ impl Emu {
         };
     }
 
+    /// Fetch the size in amount of bits of a specific operand (reg/mem/imm), if it's a memory operation it
+    /// depend on the dword ptr, qword ptr etc.
     pub fn get_operand_sz(&self, ins: &Instruction, noperand: u32) -> u32 {
         let reg: Register = ins.op_register(noperand);
         if reg.is_xmm() {
@@ -3177,7 +3308,10 @@ impl Emu {
         self.is_running.store(0, atomic::Ordering::Relaxed);
     }
 
+    /// Call a 32bits function at addr, passing argument in an array of u64 but will cast to u32.
+    /// The calling convention is stack, like winapi32.
     pub fn call32(&mut self, addr: u64, args: &[u64]) -> Result<u32, MwemuError> {
+        //TODO: why this was u64?
         if addr == self.regs.get_eip() {
             if addr == 0 {
                 return Err(MwemuError::new(
@@ -3199,6 +3333,9 @@ impl Emu {
         Ok(self.regs.get_eax() as u32)
     }
 
+    /// Call a 64bits function at addr, passing argument in an array of u64.
+    /// The calling convention is registers rcx/rdx/48/r9 and then stack. Like windows64.
+    /// Dont use for linux64 syscall like convention, on those cases craft stack/register manually.
     pub fn call64(&mut self, addr: u64, args: &[u64]) -> Result<u64, MwemuError> {
         if addr == self.regs.rip {
             if addr == 0 {
@@ -3238,6 +3375,8 @@ impl Emu {
         Ok(self.regs.rax)
     }
 
+    /// Start emulation until a ret instruction is found.
+    /// It will return the address or MwemuError.
     #[inline]
     pub fn run_until_ret(&mut self) -> Result<u64, MwemuError> {
         self.run_until_ret = true;
@@ -3256,6 +3395,7 @@ impl Emu {
         self.post_op_flags = self.flags;
     }
 
+    /// dump the registers and memory write operations to file
     pub fn write_to_trace_file(&mut self) {
         let index = self.pos - 1;
 
@@ -3386,7 +3526,9 @@ impl Emu {
         ).expect("failed to write to trace file");
     }
 
+    /// display specific register.
     fn trace_specific_register(&self, reg: &str) {
+        //TODO: I think this is already implemented in regs64
         match reg {
             "rax" => self.regs.show_rax(&self.maps, self.pos),
             "rbx" => self.regs.show_rbx(&self.maps, self.pos),
@@ -3440,6 +3582,7 @@ impl Emu {
         }
     }
 
+    /// trace that inspects memory
     fn trace_memory_inspection(&mut self) {
         let addr: u64 = self.memory_operand_to_address(self.cfg.inspect_seq.clone().as_str());
         let bits = self.get_size(self.cfg.inspect_seq.clone().as_str());
@@ -3461,6 +3604,13 @@ impl Emu {
         );
     }
 
+
+    /// Emulate a single step from the current point.
+    /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
+    /// the current emulation moment. 
+    /// If you do a loop with emu.step() will have more control of the emulator but it will be
+    /// slow.
+    /// Is more convinient using run and run_to or even setting breakpoints.
     pub fn step(&mut self) -> bool {
         self.pos += 1;
 
@@ -3558,6 +3708,9 @@ impl Emu {
         result_ok
     }
 
+    /// Run until a specific position (emu.pos)
+    /// This don't reset the emu.pos, will meulate from current position to 
+    /// selected end_pos included.
     pub fn run_to(&mut self, end_pos:u64) -> Result<u64, MwemuError> {
         self.max_pos = Some(end_pos);
         let r = self.run(None);
@@ -3565,7 +3718,10 @@ impl Emu {
         return r;
     }
 
-    ///  RUN ENGINE ///
+    /// Start or continue emulation.
+    /// For emulating forever: run(None)
+    /// For emulating until an address: run(Some(0x11223344))
+    /// self.pos is not set to zero, can be used to continue emulation.
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;

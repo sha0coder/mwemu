@@ -16,6 +16,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     match api.as_str() {
         "GetModuleHandleW" => GetModuleHandleW(emu),
         "LoadStringW" => LoadStringW(emu),
+        "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
         "_initterm" => _initterm(emu),
         "_initterm_e" => _initterm_e(emu),
 
@@ -163,6 +164,27 @@ fn _initterm_e(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     emu.stack_pop32(false);
+emu.stack_pop32(false);
+    emu.regs.rax = 0;
+}
+
+fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
+    let ptr1 = emu
+        .maps
+        .read_dword(emu.regs.rsp)
+        .expect("kernelbase!SetUnhandledExceptionFilter error reading param");
+
+    log::info!(
+        "{}** {} kernelbase!SetUnhandledExceptionFilter 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        ptr1,
+        emu.colors.nc
+    );
+
+    emu.feh = ptr1 as u64;
+
     emu.stack_pop32(false);
     emu.regs.rax = 0;
 }
+
