@@ -23,4 +23,4 @@ fast_log = { version = "1.7" }
 
 
 [features]
-#  log_file = []
+log_file = []

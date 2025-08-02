@@ -1411,7 +1411,7 @@ impl Flags {
 
         let count = count & mask;
         let res = (value1 >> (sz as u64 - count)) | (value0 << count) & res_mask;
-        self.f_cf = ((value0 >> (count - 1) ) &  1) == 1;
+        self.f_cf = ((value0 >> (sz as u64 - count) ) &  1) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> (sz-1))) == 0x1;
         self.calc_flags(res, sz);
         res

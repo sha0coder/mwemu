@@ -2,13 +2,13 @@
 
 extern crate clap;
 
+use std::{panic, process};
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use fast_log::{Config, FastLogFormat};
-use fast_log::appender::{Command, FastLogRecord, LogAppender, RecordFormat};
-use log::{Level, LevelFilter};
+use fast_log::{Config};
+use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -80,7 +80,7 @@ impl CustomLogFormat {
 
 fn main() {
     // init logger
-    // TODO: add option to changing the output logging
+    // TODO: add option to changing the output file in logging
     if cfg!(feature = "log_file") {
         fast_log::init(Config::new()
             .format(CustomLogFormat::new())
@@ -92,6 +92,16 @@ fn main() {
             .console()
             .chan_len(Some(100000))).unwrap();
     }
+
+    // setup hook to flush the log when end the program
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        // flush all the log
+        log::logger().flush();
+        // invoke the default handler and exit the process
+        orig_hook(panic_info);
+        process::exit(1);
+    }));
 
     let matches = App::new("MWEMU emulator for malware")
         .version(env!("CARGO_PKG_VERSION"))

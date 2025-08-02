@@ -1,7 +1,6 @@
 use std::io::Write;
 use std::num::ParseIntError;
 use std::sync::atomic;
-use log::Log;
 use crate::emu::Emu;
 use crate::peb32;
 use crate::peb64;
