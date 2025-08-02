@@ -3791,8 +3791,9 @@ impl Emu {
                 // reading anymore would be a waste of time
                 let block_sz = BLOCK_LEN;
                 let block_temp = code.read_bytes(self.regs.rip, block_sz);
-                if block_temp.len() != block.len() {
-                    block.resize(block_temp.len(), 0);
+                let block_temp_len = block_temp.len();
+                if block_temp_len != block.len() {
+                    block.resize(block_temp_len, 0);
                 }
                 block.clone_from_slice(block_temp);
                 if block.len() == 0 {
@@ -3804,7 +3805,8 @@ impl Emu {
                 let mut addr: u64 = 0;
 
                 self.rep = None;
-                while decoder.can_decode() && (decoder.position() + 16 < decoder.max_position()) {
+                let addition = if block_temp_len < 16 {block_temp_len} else {16};
+                while decoder.can_decode() && (decoder.position() + addition <= decoder.max_position()) {
                     if self.rep.is_none() {
                         decoder.decode_out(&mut ins);
                         sz = ins.len();

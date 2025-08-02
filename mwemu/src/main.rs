@@ -81,17 +81,17 @@ impl CustomLogFormat {
 fn main() {
     // init logger
     // TODO: add option to changing the output file in logging
-    if cfg!(feature = "log_file") {
-        fast_log::init(Config::new()
-            .format(CustomLogFormat::new())
-            .file("instruction_log.log")
-            .chan_len(Some(100000))).unwrap();
-    } else {
-        fast_log::init(Config::new()
-            .format(CustomLogFormat::new())
-            .console()
-            .chan_len(Some(100000))).unwrap();
-    }
+    #[cfg(feature = "log_file")]
+    fast_log::init(Config::new()
+        .format(CustomLogFormat::new())
+        .file("instruction_log.log")
+        .chan_len(Some(100000))).unwrap();
+
+    #[cfg(not(feature = "log_file"))]
+    fast_log::init(Config::new()
+        .format(CustomLogFormat::new())
+        .console()
+        .chan_len(Some(100000))).unwrap();
 
     // setup hook to flush the log when end the program
     let orig_hook = panic::take_hook();
@@ -172,9 +172,8 @@ fn main() {
 
     emu.running_script = false;
 
-    if cfg!(feature = "log_file") {
-        emu.colors.disable();
-    }
+    #[cfg(feature = "log_file")]
+    emu.colors.disable();
 
     // filename
     let filename = matches
