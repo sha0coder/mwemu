@@ -430,7 +430,7 @@ pub fn get_library_handle(emu: &mut emu::Emu, libname: &str) -> u64 {
             return base;
         }
         None => {
-            // if is not linked, dont link, this is not a load_library
+            // if is not linked, don't link, this is not a load_library
             return 0;
         }
     }

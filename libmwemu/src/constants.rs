@@ -8,6 +8,7 @@
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
+pub const BLOCK_LEN: usize = 0x300;
 pub const LIBS32_MIN: u64 = 0x70000000;
 pub const LIBS32_MAX: u64 = 0x7FFFFFFF;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;

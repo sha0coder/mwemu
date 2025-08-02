@@ -1,11 +1,14 @@
+#![allow(unexpected_cfgs)]
+
 extern crate clap;
 
+use std::{panic, process};
 use clap::{App, Arg};
-use env_logger::Env;
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use std::io::Write as _;
+use fast_log::{Config};
+use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -54,10 +57,51 @@ macro_rules! clap_arg {
     };
 }
 
+pub struct CustomLogFormat {}
+
+impl RecordFormat for CustomLogFormat {
+    fn do_format(&self, arg: &mut FastLogRecord) {
+        match &arg.command {
+            Command::CommandRecord => {
+                arg.formated = format!("{}\n", arg.args);
+            }
+            Command::CommandExit => {}
+            Command::CommandFlush(_) => {}
+        }
+    }
+}
+
+impl CustomLogFormat {
+    pub fn new() -> CustomLogFormat {
+        Self {}
+    }
+
+}
+
 fn main() {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .init();
+    // init logger
+    // TODO: add option to changing the output file in logging
+    #[cfg(feature = "log_file")]
+    fast_log::init(Config::new()
+        .format(CustomLogFormat::new())
+        .file("instruction_log.log")
+        .chan_len(Some(100000))).unwrap();
+
+    #[cfg(not(feature = "log_file"))]
+    fast_log::init(Config::new()
+        .format(CustomLogFormat::new())
+        .console()
+        .chan_len(Some(100000))).unwrap();
+
+    // setup hook to flush the log when end the program
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        // flush all the log
+        log::logger().flush();
+        // invoke the default handler and exit the process
+        orig_hook(panic_info);
+        process::exit(1);
+    }));
 
     let matches = App::new("MWEMU emulator for malware")
         .version(env!("CARGO_PKG_VERSION"))
@@ -127,6 +171,9 @@ fn main() {
     }
 
     emu.running_script = false;
+
+    #[cfg(feature = "log_file")]
+    emu.colors.disable();
 
     // filename
     let filename = matches
@@ -392,6 +439,8 @@ fn main() {
             emu.enable_ctrlc();
         }
 
-        emu.run(None).unwrap();
+        let result = emu.run(None);
+        log::logger().flush();
+        result.unwrap();
     }
 }
