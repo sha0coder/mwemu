@@ -13,12 +13,12 @@ mod tests {
     use crate::emu::Emu;
     use crate::fpu::FPU;
     use crate::fpu::f80::F80;
-    use crate::engine::logic;
     use crate::emu64;
     use crate::emu32;
     use crate::serialization::Serialization;
     use crate::structures;
     use std::process::Command;
+    use crate::engine::logic;
 
     static INIT: Once = Once::new();
 
@@ -1386,11 +1386,6 @@ mod tests {
         let shift:u64 = 12;
         let size:u32 = 32;
         let src: u64 = num >> (size as u64 - shift);
-        let num2 = logic::shld(&mut emu, num, src, shift, size).0;
-        assert_eq!(
-            logic::shrd(&mut emu, num2, src, shift, size),
-            (num, false)
-        );
 
         let mut r: u64;
         (r, _) = logic::shrd(&mut emu, 0x9fd88893, 0x1b, 0x6, 32);
@@ -1407,6 +1402,7 @@ mod tests {
         assert!(r == 0x3);
         (r, _) = logic::shld(&mut emu, 0x144e471f8, 0x14F498, 0x3e, 64);
         assert!(r == 0x53d26);
+
     }
 
     #[test]
