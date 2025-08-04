@@ -79,29 +79,6 @@ impl CustomLogFormat {
 }
 
 fn main() {
-    // init logger
-    // TODO: add option to changing the output file in logging
-    #[cfg(feature = "log_file")]
-    fast_log::init(Config::new()
-        .format(CustomLogFormat::new())
-        .file("instruction_log.log")
-        .chan_len(Some(100000))).unwrap();
-
-    #[cfg(not(feature = "log_file"))]
-    fast_log::init(Config::new()
-        .format(CustomLogFormat::new())
-        .console()
-        .chan_len(Some(100000))).unwrap();
-
-    // setup hook to flush the log when end the program
-    let orig_hook = panic::take_hook();
-    panic::set_hook(Box::new(move |panic_info| {
-        // flush all the log
-        log::logger().flush();
-        // invoke the default handler and exit the process
-        orig_hook(panic_info);
-        process::exit(1);
-    }));
 
     let matches = App::new("MWEMU emulator for malware")
         .version(env!("CARGO_PKG_VERSION"))
@@ -133,6 +110,7 @@ fn main() {
         .arg(clap_arg!("script", "x", "script", "launch an emulation script, see scripts_examples folder", "SCRIPT"))
         .arg(clap_arg!("trace", "T", "trace", "output trace to specified file", "TRACE_FILENAME"))
         .arg(clap_arg!("trace_start", "S", "trace_start", "start trace at specified position", "TRACE_START"))
+        .arg(clap_arg!("log","L", "log", "log output to file", "LOG_FILENAME")) 
         .arg(clap_arg!("fpu","F", "fpu", "trace the fpu states."))
         .arg(clap_arg!("rax", "", "rax", "set rax register", "RAX"))
         .arg(clap_arg!("rbx", "", "rbx", "set rbx register", "RBX"))
@@ -172,8 +150,6 @@ fn main() {
 
     emu.running_script = false;
 
-    #[cfg(feature = "log_file")]
-    emu.colors.disable();
 
     // filename
     let filename = matches
@@ -408,6 +384,32 @@ fn main() {
     if matches.is_present("flags") {
         emu.cfg.trace_flags = true;
     }
+
+    // log to file
+    if matches.is_present("log") {
+        let filename = matches.value_of("log").expect("log filename is missing");
+        emu.colors.disable();
+        fast_log::init(Config::new()
+            .format(CustomLogFormat::new())
+            .file(filename)
+            .chan_len(Some(100000))).unwrap();
+
+    } else {
+        fast_log::init(Config::new()
+            .format(CustomLogFormat::new())
+            .console()
+            .chan_len(Some(100000))).unwrap();
+    }
+
+    // setup hook to flush the log when end the program
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        // flush all the log
+        log::logger().flush();
+        // invoke the default handler and exit the process
+        orig_hook(panic_info);
+        process::exit(1);
+    }));
 
     // load code
     emu.load_code(&filename);

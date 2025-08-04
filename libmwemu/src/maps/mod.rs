@@ -105,7 +105,7 @@ impl Maps {
         }
 
         if self.exists_mapname(name) {
-            //self.show_maps();
+            self.show_maps();
             return Err(format!("this map name {} already exists!", name));
         }
 

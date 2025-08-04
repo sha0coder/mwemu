@@ -6,6 +6,8 @@
 //pub const LIBS32_BARRIER: u64 = 0x80000000;
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
+pub const EXE_NAME:&str = "jowe13r.exe"; // randomize this
+
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
 pub const BLOCK_LEN: usize = 0x300;

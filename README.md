@@ -156,6 +156,7 @@ make tests
 ## Some use cases
 
 mwemu emulates a simple shellcode detecting the execve() interrupt.
+note that I renamed this tool from scemu to mwemu (in italian scemu is a bad word)
 ![exploring basic shellcode](pics/basic_shellcode1.png)
 
 We select the line to stop and inspect the memory.

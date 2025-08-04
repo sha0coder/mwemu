@@ -1047,14 +1047,18 @@ impl Emu {
         }
 
         // 4. map pe and then sections
-        let pemap = self
+        let pemap = match self
             .maps
             .create_map(
                 &format!("{}.pe", filename2),
                 base,
                 pe64.opt.size_of_headers.into(),
-            )
-            .expect("cannot create pe64 map");
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    panic!("annot create pe64 map: {}", e);
+                }
+        };
         pemap.memcpy(pe64.get_headers(), pe64.opt.size_of_headers as usize);
 
         for i in 0..pe64.num_of_sections() {

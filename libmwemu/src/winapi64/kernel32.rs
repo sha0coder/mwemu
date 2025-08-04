@@ -2683,7 +2683,7 @@ fn GetModuleFileNameA(emu: &mut emu::Emu) {
     let sz = emu.regs.r8;
 
     if sz >= 11 {
-        emu.maps.write_string(out_filename, "jowei3r.exe");
+        emu.maps.write_string(out_filename, constants::EXE_NAME);
         emu.regs.rax = 11;
     } else {
         emu.regs.rax = 0;
@@ -3073,7 +3073,7 @@ fn GetCommandLineA(emu: &mut emu::Emu) {
     let addr = emu.maps.alloc(1024).expect("out of memory");
     let name = format!("alloc_{:x}", addr);
     emu.maps.create_map(&name, addr, 1024);
-    emu.maps.write_string(addr, "test.exe");
+    emu.maps.write_string(addr, constants::EXE_NAME);
     emu.regs.rax = addr;
 }
 
@@ -3088,7 +3088,7 @@ fn GetCommandLineW(emu: &mut emu::Emu) {
     let addr = emu.maps.alloc(1024).expect("out of memory");
     let name = format!("alloc_{:x}", addr);
     emu.maps.create_map(&name, addr, 1024);
-    emu.maps.write_wide_string(addr, "test.exe");
+    emu.maps.write_wide_string(addr, constants::EXE_NAME);
     emu.regs.rax = addr;
 }
 
