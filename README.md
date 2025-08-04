@@ -29,8 +29,8 @@ Rust apps https://crates.io/crates/libmwemu
 	- All dependencies are in rust.
 - ⚡ very fast emulation (much faster than unicorn) 
     - [benchmarks](BENCHMARK.md)
-	- 18,000,000 instructions/second
-	- 408,000 instructions/second printing every instruction -vv.
+    - 25,767,432 instructions/second
+    - 680,000 instructions/second printing every instruction -vv.
 - powered by iced-x86 rust dissasembler awesome library.
 - commandline tool, rust library, and python library.
 - iteration detector.
@@ -82,7 +82,7 @@ Rust apps https://crates.io/crates/libmwemu
 
 ## Usage
 ```
-MWEMU emulator for malware
+MWEMU emulator for malware.
 @sha0coder
 
 USAGE:
@@ -91,6 +91,7 @@ USAGE:
 FLAGS:
     -6, --64bits         enable 64bits architecture emulation
         --banzai         skip unimplemented instructions, and keep up emulating what can be emulated
+        --flags          trace the flags hex value in every instruction.
     -F, --fpu            trace the fpu states.
     -h, --handle         handle Ctrl+C to spawn console
         --help           Prints help information
@@ -113,6 +114,7 @@ OPTIONS:
     -e, --exit <POSITION>              exit position of the shellcode
     -f, --filename <FILE>              set the shellcode binary file.
     -i, --inspect <DIRECTION>          monitor memory like: -i 'dword ptr [ebp + 0x24]
+    -L, --log <LOG_FILENAME>           log output to file
     -M, --maps <PATH>                  select the memory maps folder
         --mxcsr <MXCSR>                set mxcsr register
         --r10 <R10>                    set r10 register

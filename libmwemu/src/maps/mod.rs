@@ -63,6 +63,28 @@ impl Maps {
             .map(|map| map.1.get_base())
     }
 
+    pub fn overflow_predicted(&self, addr: u64, amount: u64) -> bool {
+        self.maps
+            .range(..=addr)
+            .next_back()
+            .and_then(|(start, region_key)| {
+                let region = self.mem_slab.get(*region_key)?;
+                let start = *start;
+                let size = region.size() as u64;
+
+                if addr >= start && addr < start + size {
+                    if addr + amount < start + size {
+                        Some(false)
+                    } else {
+                        Some(true)
+                    }
+                } else {
+                    Some(true)
+                }
+            })
+            .unwrap_or(true)
+    }
+
     #[inline(always)]
     pub fn exists_mapname(&self, name: &str) -> bool {
         self.name_map.contains_key(name)

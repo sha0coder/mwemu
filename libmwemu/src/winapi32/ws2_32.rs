@@ -287,10 +287,17 @@ fn recv(emu: &mut emu::Emu) {
 
         if helper::socket_exist(sock) {
             //emu.maps.write_spaced_bytes(buff, "6c 73 0d 0a".to_string()); // send a ls\r\n
+
             if len == 4 {
                 emu.maps.write_dword(buff, 0x0100); // probably expect a size
             } else {
-                emu.maps.memset(buff, 0x90, len as usize);
+                if emu.maps.overflow_predicted(buff, len) {
+                    if emu.cfg.verbose > 0 {
+                        log::info!("/!\\ on this asm, the recv overflows the buffer, canceled the write!");
+                    }
+                } else {
+                    emu.maps.memset(buff, 0x90, len as usize);
+                }
             }
 
             emu.regs.rax = len;
