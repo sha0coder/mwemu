@@ -15,3 +15,4 @@ test
 test.zip*
 .gdb_history
 *.zip
+*.log
