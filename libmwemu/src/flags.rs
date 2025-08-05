@@ -925,12 +925,43 @@ impl Flags {
 
     pub fn sar2p8(&mut self, value0: u64, value1: u64) -> u64 {
         let s8: i8 = value0 as u8 as i8;
+        let count = (value1 & 0x1f) as u32;
+
+        if count == 0 {
+            return value0;
+        }
+
+        // avoids UB on shift >= 8
+        let s_result = if count < 8 {
+            s8 >> count
+        } else {
+            // - 0x00 if number was positive
+            // - 0xFF if it was negative (sign extend)
+            if s8 < 0 { -1 } else { 0 }
+        };
+
+        let result = s_result as u8 as u64;
+
+        self.f_cf = if count <= 8 {
+            ((value0 >> (count - 1)) & 0x1) == 0x1
+        } else {
+            false
+        };
+
+        self.f_of = false;
+        self.calc_flags(result, 8);
+        result
+    }
+
+
+    pub fn sar2p8_bug(&mut self, value0: u64, value1: u64) -> u64 {
+        let s8: i8 = value0 as u8 as i8;
         if value1 == 0 {
             return value0;
         }
 
         let count = value1 & 0x1f;
-        let sResult = s8 >> count;
+        let sResult = s8 >> count; // attempt to shift right with overflow
         let result = sResult as u8 as u64;
         self.f_cf = ((value0 >> (count - 1)) & 0x1) == 0x1;
         self.f_of = false;
