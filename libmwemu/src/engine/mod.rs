@@ -6,7 +6,6 @@ use crate::exception;
 use crate::exception_type;
 use crate::fpu::FPUState;
 use crate::fpu::f80::F80;
-use crate::inline;
 use crate::ntapi32;
 use crate::regs64;
 use crate::serialization;
@@ -483,14 +482,6 @@ pub fn emulate_instruction(
             let sz = emu.get_operand_sz(ins, 0);
             let result = value0 ^ value1;
 
-            if emu.cfg.test_mode && result != inline::xor(value0, value1) {
-                panic!(
-                    "0x{:x} should be 0x{:x}",
-                    result,
-                    inline::xor(value0, value1)
-                );
-            }
-
             emu.flags.calc_flags(result, sz);
             emu.flags.f_of = false;
             emu.flags.f_cf = false;
@@ -731,12 +722,7 @@ pub fn emulate_instruction(
                 _ => panic!("weird size"),
             };
 
-            if emu.cfg.test_mode && res != inline::neg(value0, sz) {
-                panic!("0x{:x} should be 0x{:x}", res, inline::neg(value0, sz));
-            }
-
             emu.flags.f_cf = value0 != 0;
-
             emu.flags.f_af = ((res | value0) & 0x8) != 0;
 
             if !emu.set_operand_value(ins, 0, res) {
@@ -785,10 +771,6 @@ pub fn emulate_instruction(
                 _ => unimplemented!("weird"),
             }
 
-            if emu.cfg.test_mode && val != inline::not(value0, sz) {
-                panic!("0x{:x} should be 0x{:x}", val, inline::not(value0, sz));
-            }
-
             if !emu.set_operand_value(ins, 0, val) {
                 return false;
             }
@@ -831,14 +813,6 @@ pub fn emulate_instruction(
                     result2 = result1;
                 }
                 _ => unreachable!(""),
-            }
-
-            if emu.cfg.test_mode && result2 != inline::and(value0, value1) {
-                panic!(
-                    "0x{:x} should be 0x{:x}",
-                    result2,
-                    inline::and(value0, value1)
-                );
             }
 
             emu.flags.calc_flags(result1, emu.get_operand_sz(ins, 0));
@@ -891,14 +865,6 @@ pub fn emulate_instruction(
                 _ => unreachable!(""),
             }
 
-            if emu.cfg.test_mode && result2 != inline::or(value0, value1) {
-                panic!(
-                    "0x{:x} should be 0x{:x}",
-                    result2,
-                    inline::or(value0, value1)
-                );
-            }
-
             emu.flags.calc_flags(result1, emu.get_operand_sz(ins, 0));
             emu.flags.f_of = false;
             emu.flags.f_cf = false;
@@ -931,14 +897,6 @@ pub fn emulate_instruction(
                     _ => panic!("weird size"),
                 };
 
-                if emu.cfg.test_mode && result != inline::sal(value0, 1, sz) {
-                    panic!(
-                        "sal1p 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::sal(value0, 1, sz)
-                    );
-                }
-
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -958,14 +916,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.sal2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::sal(value0, value1, sz) {
-                    panic!(
-                        "sal1p 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::sal(value0, value1, sz)
-                    );
-                }
 
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
@@ -995,14 +945,6 @@ pub fn emulate_instruction(
                     _ => panic!("weird size"),
                 };
 
-                if emu.cfg.test_mode && result != inline::sar1p(value0, sz, emu.flags.f_cf) {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::sar1p(value0, sz, emu.flags.f_cf)
-                    );
-                }
-
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -1022,15 +964,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.sar2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::sar2p(value0, value1, sz, emu.flags.f_cf)
-                {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::sar2p(value0, value1, sz, emu.flags.f_cf)
-                    );
-                }
 
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
@@ -1060,14 +993,6 @@ pub fn emulate_instruction(
                     _ => panic!("weird size"),
                 };
 
-                if emu.cfg.test_mode && result != inline::shl(value0, 1, sz) {
-                    panic!(
-                        "SHL 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::shl(value0, 1, sz)
-                    );
-                }
-
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -1087,14 +1012,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.shl2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::shl(value0, value1, sz) {
-                    panic!(
-                        "SHL 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::shl(value0, value1, sz)
-                    );
-                }
 
                 //log::info!("0x{:x}: 0x{:x} SHL 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, result);
 
@@ -1126,14 +1043,6 @@ pub fn emulate_instruction(
                     _ => panic!("weird size"),
                 };
 
-                if emu.cfg.test_mode && result != inline::shr(value0, 1, sz) {
-                    panic!(
-                        "SHR 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::shr(value0, 1, sz)
-                    );
-                }
-
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -1153,14 +1062,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.shr2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::shr(value0, value1, sz) {
-                    panic!(
-                        "SHR 0x{:x} should be 0x{:x}",
-                        result,
-                        inline::shr(value0, value1, sz)
-                    );
-                }
 
                 //log::info!("0x{:x} SHR 0x{:x} >> 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, result);
 
@@ -1187,13 +1088,6 @@ pub fn emulate_instruction(
 
                 result = emu.flags.ror(value0, 1, sz);
 
-                if emu.cfg.test_mode && result != inline::ror(value0, 1, sz) {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::ror(value0, 1, sz)
-                    )
-                }
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1207,14 +1101,6 @@ pub fn emulate_instruction(
                 };
 
                 result = emu.flags.ror(value0, value1, sz);
-
-                if emu.cfg.test_mode && result != inline::ror(value0, value1, sz) {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::ror(value0, value1, sz)
-                    )
-                }
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1274,13 +1160,6 @@ pub fn emulate_instruction(
                 };
 
                 result = emu.flags.rol(value0, 1, sz);
-                if emu.cfg.test_mode && result != inline::rol(value0, 1, sz) {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::rol(value0, 1, sz)
-                    );
-                }
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1294,14 +1173,6 @@ pub fn emulate_instruction(
                 };
 
                 result = emu.flags.rol(value0, value1, sz);
-
-                if emu.cfg.test_mode && result != inline::rol(value0, value1, sz) {
-                    panic!(
-                        "0x{:x} should be 0x{:x}",
-                        result,
-                        inline::rol(value0, value1, sz)
-                    );
-                }
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1366,30 +1237,6 @@ pub fn emulate_instruction(
                 8 => logic::mul8(emu, value0),
                 _ => unimplemented!("wrong size"),
             }
-
-            if emu.cfg.test_mode {
-                let (post_rdx, post_rax) = inline::mul(value0, pre_rax, pre_rdx, sz);
-                if post_rax != emu.regs.rax || post_rdx != emu.regs.rdx {
-                    log::info!(
-                        "sz: {} value0: 0x{:x} pre_rax: 0x{:x} pre_rdx: 0x{:x}",
-                        sz,
-                        value0,
-                        pre_rax,
-                        pre_rdx
-                    );
-                    log::info!(
-                        "mul rax is 0x{:x} and should be 0x{:x}",
-                        emu.regs.rax,
-                        post_rax
-                    );
-                    log::info!(
-                        "mul rdx is 0x{:x} and should be 0x{:x}",
-                        emu.regs.rdx,
-                        post_rdx
-                    );
-                    panic!("inline asm test failed");
-                }
-            }
         }
 
         Mnemonic::Div => {
@@ -1413,33 +1260,6 @@ pub fn emulate_instruction(
                 8 => logic::div8(emu, value0),
                 _ => unimplemented!("wrong size"),
             }
-
-            if emu.cfg.test_mode {
-                let (post_rdx, post_rax) = inline::div(value0, pre_rax, pre_rdx, sz);
-                if post_rax != emu.regs.rax || post_rdx != emu.regs.rdx {
-                    log::info!("pos: {}", emu.pos);
-                    log::info!(
-                        "sz: {} value0: 0x{:x} pre_rax: 0x{:x} pre_rdx: 0x{:x}",
-                        sz,
-                        value0,
-                        pre_rax,
-                        pre_rdx
-                    );
-                    log::info!(
-                        "div{} rax is 0x{:x} and should be 0x{:x}",
-                        sz,
-                        emu.regs.rax,
-                        post_rax
-                    );
-                    log::info!(
-                        "div{} rdx is 0x{:x} and should be 0x{:x}",
-                        sz,
-                        emu.regs.rdx,
-                        post_rdx
-                    );
-                    panic!("inline asm test failed");
-                }
-            }
         }
 
         Mnemonic::Idiv => {
@@ -1462,30 +1282,6 @@ pub fn emulate_instruction(
                 16 => logic::idiv16(emu, value0),
                 8 => logic::idiv8(emu, value0),
                 _ => unimplemented!("wrong size"),
-            }
-
-            if emu.cfg.test_mode {
-                let (post_rdx, post_rax) = inline::idiv(value0, pre_rax, pre_rdx, sz);
-                if post_rax != emu.regs.rax || post_rdx != emu.regs.rdx {
-                    log::info!(
-                        "sz: {} value0: 0x{:x} pre_rax: 0x{:x} pre_rdx: 0x{:x}",
-                        sz,
-                        value0,
-                        pre_rax,
-                        pre_rdx
-                    );
-                    log::info!(
-                        "idiv rax is 0x{:x} and should be 0x{:x}",
-                        emu.regs.rax,
-                        post_rax
-                    );
-                    log::info!(
-                        "idiv rdx is 0x{:x} and should be 0x{:x}",
-                        emu.regs.rdx,
-                        post_rdx
-                    );
-                    panic!("inline asm test failed");
-                }
             }
         }
 
@@ -1514,29 +1310,6 @@ pub fn emulate_instruction(
                     _ => unimplemented!("wrong size"),
                 }
 
-                if emu.cfg.test_mode {
-                    let (post_rdx, post_rax) = inline::imul1p(value0, pre_rax, pre_rdx, sz);
-                    if post_rax != emu.regs.rax || post_rdx != emu.regs.rdx {
-                        log::info!(
-                            "sz: {} value0: 0x{:x} pre_rax: 0x{:x} pre_rdx: 0x{:x}",
-                            sz,
-                            value0,
-                            pre_rax,
-                            pre_rdx
-                        );
-                        log::info!(
-                            "imul1p rax is 0x{:x} and should be 0x{:x}",
-                            emu.regs.rax,
-                            post_rax
-                        );
-                        log::info!(
-                            "imul1p rdx is 0x{:x} and should be 0x{:x}",
-                            emu.regs.rdx,
-                            post_rdx
-                        );
-                        panic!("inline asm test failed");
-                    }
-                }
             } else if ins.op_count() == 2 {
                 // 2 params
 
@@ -1558,15 +1331,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.imul8p2(value0, value1),
                     _ => unimplemented!("wrong size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::imul2p(value0, value1, sz) {
-                    panic!(
-                        "imul{}p2 gives 0x{:x} and should be 0x{:x}",
-                        sz,
-                        result,
-                        inline::imul2p(value0, value1, sz)
-                    );
-                }
 
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
@@ -1592,15 +1356,6 @@ pub fn emulate_instruction(
                     8 => emu.flags.imul8p2(value1, value2),
                     _ => unimplemented!("wrong size"),
                 };
-
-                if emu.cfg.test_mode && result != inline::imul2p(value1, value2, sz) {
-                    panic!(
-                        "imul{}p3 gives 0x{:x} and should be 0x{:x}",
-                        sz,
-                        result,
-                        inline::imul2p(value1, value2, sz)
-                    );
-                }
 
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
@@ -1786,50 +1541,35 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Green"), ins);
             assert!(ins.op_count() == 2);
 
+            let sz = emu.get_operand_sz(ins, 0);
             let value1 = match emu.get_operand_value(ins, 1, true) {
-                Some(v) => v,
-                None => return false,
-            };
-
-            let value0 = match emu.get_operand_value(ins, 0, true) {
                 Some(v) => v,
                 None => return false,
             };
 
             let sz = emu.get_operand_sz(ins, 0);
 
-            let (result, new_flags) = inline::bsr(value0, value1, sz, emu.flags.dump());
+            if value1 == 0 {
+                if emu.cfg.verbose >= 1 {
+                    log::info!("/!\\ bsr src == 0 is undefined behavior");
+                }
+                emu.flags.f_zf = true;
+                return true;
+            }
 
-            emu.flags.load(new_flags);
+            let result = match sz {
+                64 => 63 - value1.leading_zeros() as u64,
+                32 => 31 - (value1 as u32).leading_zeros() as u64,
+                16 => 15 - (value1 as u16).leading_zeros() as u64,
+                8  => 7  - (value1 as u8).leading_zeros() as u64,
+                _ => return false,
+            };
+
+            emu.flags.f_zf = false;
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
             }
-
-            /*
-            if value1 == 0 {
-                emu.flags.f_zf = true;
-                if emu.cfg.verbose >= 1 {
-                    log::info!("/!\\ bsr src == 0 is undefined behavior");
-                }
-            } else {
-                let sz = emu.get_operand_sz(&ins, 0);
-                let mut dest: u64 = sz as u64 -1;
-
-                while dest > 0 && get_bit!(value1, dest) == 0 {
-                    dest -= 1;
-                }
-
-                if dest == 0 {
-                    emu.flags.f_zf = true;
-                } else {
-                    emu.flags.f_zf = false;
-                }
-
-                if !emu.set_operand_value(&ins, 0, dest) {
-                    return false;
-                }
-            }*/
         }
 
         Mnemonic::Bswap => {
@@ -1866,14 +1606,6 @@ pub fn emulate_instruction(
                 }
             } else {
                 unimplemented!("bswap <16bits makes no sense, isn't it?");
-            }
-
-            if emu.cfg.test_mode && value1 != inline::bswap(value0, sz) {
-                panic!(
-                    "bswap test failed, 0x{:x} should be 0x{:x}",
-                    value1,
-                    inline::bswap(value0, sz)
-                );
             }
 
             /*
@@ -2105,16 +1837,6 @@ pub fn emulate_instruction(
                 }
             }
 
-            if emu.cfg.test_mode && result != inline::movsx(value1, sz0, sz1) {
-                panic!(
-                    "MOVSX sz:{}->{}  0x{:x} should be 0x{:x}",
-                    sz0,
-                    sz1,
-                    result,
-                    inline::movsx(value1, sz0, sz1)
-                );
-            }
-
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
             }
@@ -2141,16 +1863,6 @@ pub fn emulate_instruction(
             );
 
             let result: u64 = value1;
-
-            //log::info!("0x{:x}: MOVZX 0x{:x}", ins.ip32(), result);
-
-            /*
-            if emu.cfg.test_mode {
-                if result != inline::movzx(value1) {
-                    panic!("MOVZX sz:{}->{} 0x{:x} should be 0x{:x}",
-                           sz1, sz0, result, inline::movzx(value1));
-                }
-            }*/
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
@@ -5367,14 +5079,6 @@ pub fn emulate_instruction(
 
             let sz = emu.get_operand_sz(ins, 0);
             let result = emu.flags.shrd(value0, value1, counter, sz);
-
-            //log::info!("0x{:x} SHRD 0x{:x}, 0x{:x}, 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, counter, result);
-            /*
-            if emu.cfg.test_mode { //&& !undef {
-                if result != inline::shrd(value0, value1, counter, sz) {
-                    panic!("SHRD{} 0x{:x} should be 0x{:x}", sz, result, inline::shrd(value0, value1, counter, sz));
-                }
-            }*/
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;

@@ -23,7 +23,6 @@ pub mod exception;
 pub mod flags;
 pub mod fpu;
 pub mod hooks;
-pub mod inline;
 #[macro_use]
 pub mod macros;
 pub mod exception_type;
