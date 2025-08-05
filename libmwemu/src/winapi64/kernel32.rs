@@ -20,6 +20,7 @@ fn clear_last_error(emu: &mut emu::Emu) {
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
+    println!("guess_api_name de 0x{:x} es {}", addr, api);
     match api.as_str() {
         "FindActCtxSectionStringW" => FindActCtxSectionStringW(emu),
         "LoadLibraryA" => LoadLibraryA(emu),
