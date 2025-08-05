@@ -16,3 +16,4 @@ test.zip*
 .gdb_history
 *.zip
 *.log
+.idea
