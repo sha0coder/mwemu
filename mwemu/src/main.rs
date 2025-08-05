@@ -3,6 +3,7 @@
 extern crate clap;
 
 use std::{panic, process};
+use std::cell::RefCell;
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
@@ -76,6 +77,64 @@ impl CustomLogFormat {
         Self {}
     }
 
+}
+
+// Thread-local storage for current emulator reference
+thread_local! {
+    static CURRENT_EMU: RefCell<Option<*const libmwemu::emu::Emu>> = RefCell::new(None);
+}
+
+fn set_current_emu(emu: &libmwemu::emu::Emu) {
+    CURRENT_EMU.with(|current| {
+        *current.borrow_mut() = Some(emu as *const _);
+    });
+}
+
+fn clear_current_emu() {
+    CURRENT_EMU.with(|current| {
+        *current.borrow_mut() = None;
+    });
+}
+
+fn log_emu_state(emu: &libmwemu::emu::Emu) {
+    log::error!("=== EMULATOR STATE AT PANIC ===");
+    log::error!("Current position: 0x{:x}", emu.pos);
+    
+    // Log general purpose registers
+    log::error!("Registers:");
+    log::error!("  RAX: 0x{:016x}  RBX: 0x{:016x}", emu.regs.rax, emu.regs.rbx);
+    log::error!("  RCX: 0x{:016x}  RDX: 0x{:016x}", emu.regs.rcx, emu.regs.rdx);
+    log::error!("  RSI: 0x{:016x}  RDI: 0x{:016x}", emu.regs.rsi, emu.regs.rdi);
+    log::error!("  RBP: 0x{:016x}  RSP: 0x{:016x}", emu.regs.rbp, emu.regs.rsp);
+    log::error!("  R8:  0x{:016x}  R9:  0x{:016x}", emu.regs.r8, emu.regs.r9);
+    log::error!("  R10: 0x{:016x}  R11: 0x{:016x}", emu.regs.r10, emu.regs.r11);
+    log::error!("  R12: 0x{:016x}  R13: 0x{:016x}", emu.regs.r12, emu.regs.r13);
+    log::error!("  R14: 0x{:016x}  R15: 0x{:016x}", emu.regs.r14, emu.regs.r15);
+    log::error!("  RIP: 0x{:016x}", emu.regs.rip);
+    
+    // Log flags
+    log::error!("EFLAGS: 0x{:08x}", emu.flags.dump());
+    
+    // Log last instruction if available
+    if let Some(ref _instruction) = emu.instruction {
+        log::error!("Last instruction: {}", emu.mnemonic);
+        log::error!("Instruction size: {}", emu.last_instruction_size);
+    }
+    
+    // Log call stack
+    if !emu.call_stack.is_empty() {
+        log::error!("Call stack (last {} entries):", emu.call_stack.len().min(10));
+        for (i, entry) in emu.call_stack.iter().rev().take(10).enumerate() {
+            log::error!("  {}: {}", i, entry);
+        }
+    }
+    
+    // Log execution info
+    log::error!("Tick count: {}", emu.tick);
+    log::error!("Base address: 0x{:x}", emu.base);
+    log::error!("Filename: {}", emu.filename);
+    
+    log::error!("==============================");
 }
 
 fn main() {
@@ -404,6 +463,17 @@ fn main() {
     // setup hook to flush the log when end the program
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
+        // Try to log emulator state if available
+        CURRENT_EMU.with(|current| {
+            if let Some(emu_ptr) = *current.borrow() {
+                unsafe {
+                    // Safety: We ensure the pointer is valid during the lifetime of run()
+                    let emu = &*emu_ptr;
+                    log_emu_state(emu);
+                }
+            }
+        });
+        
         // flush all the log
         log::logger().flush();
         // invoke the default handler and exit the process
@@ -433,7 +503,14 @@ fn main() {
                 .value_of("script")
                 .expect("select a script filename"),
         );
+        // Set the current emu for panic handler
+        set_current_emu(&emu);
+        
+        // Run script
         script.run(&mut emu);
+        
+        // Clear the current emu
+        clear_current_emu();
     } else {
 
         if matches.is_present("handle") {
@@ -441,7 +518,14 @@ fn main() {
             emu.enable_ctrlc();
         }
 
+        // Set the current emu for panic handler
+        set_current_emu(&emu);
+        
         let result = emu.run(None);
+        
+        // Clear the current emu
+        clear_current_emu();
+        
         log::logger().flush();
         result.unwrap();
     }
