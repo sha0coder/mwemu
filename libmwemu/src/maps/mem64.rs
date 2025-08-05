@@ -10,6 +10,7 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Write;
+use bytemuck::cast_slice;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
@@ -381,15 +382,7 @@ impl Mem64 {
     #[inline(always)]
     pub fn write_wide_string(&mut self, addr: u64, s: &str) {
         let wide_string: Vec<u16> = s.encode_utf16().collect();
-        /* TODO: maybe this is unsafe. It needed to assert that the the input is not empty
-            and divided by 2.
-        */
-        let byte_slice: &[u8] = unsafe {
-            std::slice::from_raw_parts(
-                wide_string.as_ptr() as *const u8,
-                wide_string.len() * std::mem::size_of::<u16>(),
-            )
-        };
+        let byte_slice: &[u8] = cast_slice(&wide_string);
         self.write_bytes(addr, &byte_slice);
 
         if cfg!(feature = "log_mem") {
