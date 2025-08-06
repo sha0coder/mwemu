@@ -167,6 +167,7 @@ fn main() {
         .arg(clap_arg!("test_mode", "t", "test", "test mode"))
         .arg(clap_arg!("banzai", "", "banzai", "skip unimplemented instructions, and keep up emulating what can be emulated"))
         .arg(clap_arg!("script", "x", "script", "launch an emulation script, see scripts_examples folder", "SCRIPT"))
+        .arg(clap_arg!("args", "A", "args", "provide arguments to the EXE like: --args '\"aa\" \"bb\"'", "ARGS"))
         .arg(clap_arg!("trace", "T", "trace", "output trace to specified file", "TRACE_FILENAME"))
         .arg(clap_arg!("trace_start", "S", "trace_start", "start trace at specified position", "TRACE_START"))
         .arg(clap_arg!("log","L", "log", "log output to file", "LOG_FILENAME")) 
@@ -444,6 +445,11 @@ fn main() {
         emu.cfg.trace_flags = true;
     }
 
+    if matches.is_present("args") {
+        log::info!("espeicificando argumentos: {}", matches.value_of("args").expect("specify the argument string").to_string());
+        emu.cfg.arguments = matches.value_of("args").expect("specify the argument string").to_string();
+    }
+
     // log to file
     if matches.is_present("log") {
         let filename = matches.value_of("log").expect("log filename is missing");
@@ -491,6 +497,7 @@ fn main() {
         process::exit(1);
     }));
 
+
     // load code
     emu.load_code(&filename);
 
@@ -503,6 +510,7 @@ fn main() {
         emu.cfg = old_config;
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
+
 
     // script 
     if matches.is_present("script") {

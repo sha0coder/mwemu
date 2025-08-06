@@ -1126,6 +1126,23 @@ impl Maps {
         self.maps.remove(&addr);
     }
 
+    pub fn map(&mut self, name: &str, sz: u64) -> u64 {
+        let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
+        self.create_map(name, addr, sz).expect("emu.maps.map(sz) cannot create map");
+        addr
+    }
+
+    pub fn map_lib(&mut self, name: &str, sz: u64) -> u64 {
+        let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
+        if self.is_64bits { 
+            let addr = self.lib64_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
+        } else {
+            let addr = self.lib32_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
+        }
+        self.create_map(name, addr, sz).expect("emu.maps.map_lib(sz) cannot create map");
+        addr
+    }
+
     pub fn lib64_alloc(&self, sz: u64) -> Option<u64> {
         self._alloc(sz, constants::LIBS64_MIN, constants::LIBS64_MAX, true)
     }

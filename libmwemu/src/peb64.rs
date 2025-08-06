@@ -4,6 +4,7 @@ use crate::structures::OrdinalTable;
 use crate::structures::PebLdrData64;
 use crate::structures::PEB64;
 use crate::structures::TEB64;
+use crate::structures::RtlUserProcessParameters64;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData64::size() + 100;
@@ -30,8 +31,38 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     ldr_addr
 }
 
+pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
+    let addr = emu.maps.map("RtlUserProcessParameters64", RtlUserProcessParameters64::size() as u64);
+    let mut params_struct = RtlUserProcessParameters64::new();
+
+    let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
+    let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
+
+    let filename = emu.maps.map("file_name", filename_len);
+    let cmdline = emu.maps.map("command_line", cmdline_len);
+
+    params_struct.image_path_name.length = filename_len as u16;
+    params_struct.image_path_name.maximum_length = filename_len as u16;
+    params_struct.image_path_name.buffer = filename;
+
+    params_struct.command_line.length = cmdline_len as u16;
+    params_struct.command_line.maximum_length = cmdline_len as u16;
+    params_struct.command_line.buffer = cmdline;
+
+    let mut params = emu.cfg.filename.clone();
+    params.push_str(&emu.cfg.arguments);
+
+    emu.maps.write_wide_string(filename, &emu.cfg.filename);
+    emu.maps.write_wide_string(cmdline, &params);
+
+    params_struct.save(addr, &mut emu.maps);
+
+    addr
+}
+
 pub fn init_peb(emu: &mut emu::Emu) {
     let ldr = init_ldr(emu);
+    let params_addr = init_arguments(emu);
 
     let peb_addr = emu
         .maps
@@ -42,8 +73,10 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .create_map("peb", peb_addr, PEB64::size() as u64)
         .expect("cannot create peb map");
     // Create KuserSharedData map
-    let process_parameters = 0x521e20;
-    let peb = PEB64::new(0, ldr, process_parameters);
+
+
+
+    let peb = PEB64::new(0, ldr, params_addr);
     peb.save(peb_map);
     emu.maps.write_byte(peb_addr + 2, 0); // not being_debugged
     

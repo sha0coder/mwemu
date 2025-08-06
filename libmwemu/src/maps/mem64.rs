@@ -381,7 +381,8 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn write_wide_string(&mut self, addr: u64, s: &str) {
-        let wide_string: Vec<u16> = s.encode_utf16().collect();
+        let mut wide_string: Vec<u16> = s.encode_utf16().collect();
+        wide_string.push(0);
         let byte_slice: &[u8] = cast_slice(&wide_string);
         self.write_bytes(addr, &byte_slice);
 

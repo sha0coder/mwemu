@@ -5,6 +5,7 @@ use crate::structures::OrdinalTable;
 use crate::structures::PebLdrData;
 use crate::structures::PEB;
 use crate::structures::TEB;
+use crate::structures::RtlUserProcessParameters32;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData::size() + 100;
@@ -31,8 +32,38 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     ldr_addr
 }
 
+pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
+    let addr = emu.maps.map("RtlUserProcessParameters32", RtlUserProcessParameters32::size() as u64);
+    let mut params_struct = RtlUserProcessParameters32::new();
+
+    let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
+    let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
+
+    let filename = emu.maps.map("file_name", filename_len);
+    let cmdline = emu.maps.map("command_line", cmdline_len);
+
+    params_struct.image_path_name.length = filename_len as u16;
+    params_struct.image_path_name.maximum_length = filename_len as u16;
+    params_struct.image_path_name.buffer = filename as u32;
+
+    params_struct.command_line.length = cmdline_len as u16;
+    params_struct.command_line.maximum_length = cmdline_len as u16;
+    params_struct.command_line.buffer = cmdline as u32;
+
+    let mut params = emu.cfg.filename.clone();
+    params.push_str(&emu.cfg.arguments);
+
+    emu.maps.write_wide_string(filename, &emu.cfg.filename);
+    emu.maps.write_wide_string(cmdline, &params);
+
+    params_struct.save(addr, &mut emu.maps);
+
+    addr
+}
+
 pub fn init_peb(emu: &mut emu::Emu) {
     let ldr = init_ldr(emu);
+    let args_addr = init_arguments(emu);
 
     let peb_addr = emu
         .maps
@@ -42,8 +73,7 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .maps
         .create_map("peb", peb_addr, PEB::size() as u64)
         .expect("cannot create peb map");
-    let process_parameters = 0x521e20;
-    let peb = PEB::new(0, ldr as u32, process_parameters);
+    let peb = PEB::new(0, ldr as u32, args_addr as u32);
     peb.save(peb_map);
 
     let teb_addr = emu

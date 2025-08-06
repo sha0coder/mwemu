@@ -35,6 +35,7 @@ pub struct Config {
     pub console_enabled: bool,
     pub skip_unimplemented: bool,
     pub stack_addr: u64,
+    pub arguments: String,
 }
 
 impl Default for Config {
@@ -78,6 +79,7 @@ impl Config {
             console_enabled: false,
             skip_unimplemented: false,
             stack_addr: 0,
+            arguments: "".to_string(),
         }
     }
 }
