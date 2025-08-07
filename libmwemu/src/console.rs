@@ -633,9 +633,10 @@ impl Console {
                             continue;
                         }
                     };
-                    //emu.force_break = true;
                     //emu.regs.set_eip(addr);
                     emu.set_eip(addr, false);
+                    emu.force_break = true;
+                    break;
                 }
                 "rip" => {
                     con.print("=");
@@ -646,7 +647,9 @@ impl Console {
                             continue;
                         }
                     };
-                    //emu.force_break = true;
+                    emu.set_rip(addr, false);
+                    emu.force_break = true;
+                    break;
                     //emu.regs.rip = addr;
                 }
                 "push" => {
