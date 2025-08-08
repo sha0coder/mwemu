@@ -7,6 +7,7 @@ tests:
 	unzip -o -P mwemuTestSystem test.zip
 	rm test.zip
 	cargo test --package libmwemu --verbose
+	cargo test --release --package libmwemu --verbose
 pytests:
 	cd pymwemu && ./test_all.sh
 

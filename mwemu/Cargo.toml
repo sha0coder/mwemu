@@ -19,6 +19,7 @@ log = "0.4.22"
 env_logger = "0.11.6"
 libmwemu = { path = "../libmwemu" }
 fast_log = { version = "1.7" }
+iced-x86 = { version = "1.21.0", features = ["serde"] } # for the formatter on panic hook
 #libmwemu = "0.21.0"
 
 [features]

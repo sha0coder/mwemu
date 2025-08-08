@@ -985,6 +985,7 @@ dependencies = [
  "clap",
  "env_logger",
  "fast_log",
+ "iced-x86",
  "libmwemu",
  "log",
 ]

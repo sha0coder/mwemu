@@ -8,6 +8,7 @@ use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
+use iced_x86::Formatter;
 use fast_log::{Config};
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
@@ -96,9 +97,24 @@ fn clear_current_emu() {
     });
 }
 
-fn log_emu_state(emu: &libmwemu::emu::Emu) {
+fn log_emu_state(emu: &mut libmwemu::emu::Emu) {
     log::error!("=== EMULATOR STATE AT PANIC ===");
     log::error!("Current position: {}", emu.pos);
+
+    let mut out: String = String::new();
+    let color = "\x1b[0;31m";
+    let ins = emu.instruction.unwrap().clone();
+    emu.formatter.format(&ins, &mut out);
+    log::info!(
+        "{}{} 0x{:x}: {}{}",
+        color,
+        emu.pos,
+        ins.ip(),
+        out,
+        emu.colors.nc
+    );
+
+
     
     // Log general purpose registers
     log::error!("Registers:");
@@ -474,7 +490,8 @@ fn main() {
             if let Some(emu_ptr) = *current.borrow() {
                 unsafe {
                     // Safety: We ensure the pointer is valid during the lifetime of run()
-                    let emu = &*emu_ptr;
+                    let emu = &mut *(emu_ptr as *mut _);
+                    //let emu = &*emu_ptr;
 
                     // log state
                     log_emu_state(emu);

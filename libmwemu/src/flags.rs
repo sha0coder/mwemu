@@ -1641,8 +1641,42 @@ impl Flags {
         }
     }
 
-
     pub fn ror(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
+        let mask = if sz == 64 { 0x3f } else { 0x1f };
+        let count = value1 & mask;
+
+        let res_mask = match sz {
+            64 => 0xffffffffffffffff,
+            32 => 0xffffffff,
+            16 => 0xffff,
+            _ => 0xff,
+        };
+
+        if count == 0 {
+            return value0 & res_mask;
+        }
+
+        let shift = count % sz as u64;
+        let res = ((value0 >> shift) | (value0 << (sz as u64 - shift))) & res_mask;
+
+        // CF is the last bit shifted out (i.e., bit at position count - 1)
+        self.f_cf = ((res >> (sz - 1)) & 1) == 1;
+
+        // OF is only defined for 1-bit rotates
+        self.f_of = if shift == 1 {
+            let msb = (res >> (sz - 1)) & 1;
+            let sec_msb = (res >> (sz - 2)) & 1;
+            msb ^ sec_msb == 1
+        } else {
+            false
+        };
+
+        res
+    }
+
+
+
+    pub fn ror_overflow(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
         let mask = if sz == 64 {
             0x3f
         } else {
@@ -1668,6 +1702,51 @@ impl Flags {
     }
 
     pub fn rol(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
+        let mask = match sz {
+            64 => 0x3f,
+            _ => 0x1f,
+        };
+
+        let res_mask = match sz {
+            64 => 0xffff_ffff_ffff_ffff,
+            32 => 0xffff_ffff,
+            16 => 0xffff,
+            8 => 0xff,
+            _ => panic!("Unsupported size for ROL: {}", sz),
+        };
+
+        let count = (value1 & mask) as u32;
+        let width = sz;
+
+        let value0 = value0 & res_mask;
+
+        let res = if count == 0 {
+            value0
+        } else {
+            ((value0 << count) | (value0 >> (width - count))) & res_mask
+        };
+
+        // CF = least significant bit of the result after the rotate
+        self.f_cf = if count != 0 {
+            ((res >> 0) & 0x1) == 1
+        } else {
+            self.f_cf // unchanged
+        };
+
+        // OF is defined only when count == 1 for ROL
+        self.f_of = if count == 1 {
+            let msb = (res >> (width - 1)) & 0x1;
+            let lsb = res & 0x1;
+            (msb ^ lsb) == 1
+        } else {
+            self.f_of // unchanged
+        };
+
+        res
+    }
+
+
+    pub fn rol_overflow(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
         let mask = if sz == 64 {
             0x3f
         } else {
@@ -1680,7 +1759,7 @@ impl Flags {
             _ => 0xff,
         };
         let count =  value1 & mask;
-        let res = ((value0 << count) | (value0 >> (sz as u64 - count))) & res_mask;
+        let res = ((value0 << count) | (value0 >> (sz as u64 - count))) & res_mask; // panic_const_shr_overflow
         self.f_cf = (res & 0x1) == 1;
         self.f_of = (self.f_cf as u64 ^ (res >> (sz - 1))) == 1;
         // don't calculate the flag zf, sf doesn't got effect
