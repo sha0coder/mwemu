@@ -162,6 +162,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetLocaleInfoW" => GetLocaleInfoW(emu),
         "GetLocaleInfoA" => GetLocaleInfoA(emu),
         "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
+        "GetWindowsDirectoryW" => GetWindowsDirectoryW(emu),
         "ResetEvent" => ResetEvent(emu),
         "VirtualFree" => VirtualFree(emu),
         "CreateFileA" => CreateFileA(emu),
@@ -3513,6 +3514,23 @@ fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
     let output = "C:\\Windows\\";
     emu.maps.write_string(lp_buffer as u64, output);
     emu.regs.rax = output.len() as u64;
+}
+
+fn GetWindowsDirectoryW(emu: &mut emu::Emu) {
+    let lp_buffer = emu.regs.rcx;
+    let u_size = emu.regs.rdx as usize;
+    log_red!(emu, "** {} kernel32!GetWindowsDirectoryW lp_buffer: 0x{:x} u_size: {}",
+        emu.pos,
+        lp_buffer,
+        u_size
+    );
+    let output = "C:\\Windows\\";
+    if emu.maps.is_mapped(lp_buffer) && u_size > output.len()*2+2 {
+        emu.maps.write_wide_string(lp_buffer, output);
+        emu.regs.rax = output.len() as u64 * 2;
+    } else {
+        emu.regs.rax = 0;
+    }
 }
 
 /*
