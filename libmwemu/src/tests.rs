@@ -1747,5 +1747,215 @@ mod tests {
         emu.step(); // shrd rdx, rax, 4
         assert_eq!(emu.regs.rdx, 0x0edcba9876543210);
     }
+
+    fn critical_values(bits: u32) -> Vec<u64> {
+        let max = match bits {
+            8 => u8::MAX as u64,
+            16 => u16::MAX as u64,
+            32 => u32::MAX as u64,
+            64 => u64::MAX,
+            _ => panic!("Unsupported size"),
+        };
+
+        let sign_bit = 1u64 << (bits - 1);
+
+        vec![
+            0,
+            1,
+            max,
+            sign_bit,
+            sign_bit - 1,
+            sign_bit + 1,
+            0x55,     // 01010101
+            0xAA,     // 10101010
+            0xFFFFFFFFFFFFFFFFu64 >> (64 - bits), // all 1s for the width
+        ]
+    }
+
+    fn shift_counts(bits: u32) -> Vec<u64> {
+        vec![0, 1, bits as u64 - 1, bits as u64, bits as u64 + 1, 63, 64, 127]
+    }
+
+    #[test]
+    fn stress_sar2p_all() {
+        setup();
+        let mut emu = emu64();
+
+        for value in critical_values(8) {
+            for shift in shift_counts(8) {
+                emu.flags.sar2p8(value, shift);
+            }
+        }
+
+        for value in critical_values(16) {
+            for shift in shift_counts(16) {
+                emu.flags.sar2p16(value, shift);
+            }
+        }
+
+        for value in critical_values(32) {
+            for shift in shift_counts(32) {
+                emu.flags.sar2p32(value, shift);
+            }
+        }
+
+        for value in critical_values(64) {
+            for shift in shift_counts(64) {
+                emu.flags.sar2p64(value, shift);
+            }
+        }
+    }
+
+    #[test]
+    fn stress_shr2p_all() {
+        setup();
+        let mut emu = emu64();
+
+        for value in critical_values(8) {
+            for shift in shift_counts(8) {
+                emu.flags.shr2p8(value, shift);
+            }
+        }
+
+        for value in critical_values(16) {
+            for shift in shift_counts(16) {
+                emu.flags.shr2p16(value, shift);
+            }
+        }
+
+        for value in critical_values(32) {
+            for shift in shift_counts(32) {
+                emu.flags.shr2p32(value, shift);
+            }
+        }
+
+        for value in critical_values(64) {
+            for shift in shift_counts(64) {
+                emu.flags.shr2p64(value, shift);
+            }
+        }
+    }
+
+    #[test]
+    fn stress_shl2p_all() {
+        setup();
+        let mut emu = emu64();
+
+        for value in critical_values(16) {
+            for shift in shift_counts(16) {
+                emu.flags.shl2p16(value, shift);
+            }
+        }
+
+        for value in critical_values(32) {
+            for shift in shift_counts(32) {
+                emu.flags.shl2p32(value, shift);
+            }
+        }
+
+        for value in critical_values(64) {
+            for shift in shift_counts(64) {
+                emu.flags.shl2p64(value, shift);
+            }
+        }
+    }
+
+    #[test]
+    fn stress_shl1p_all() {
+        setup();
+        let mut emu = emu64();
+
+        for value in critical_values(8) {
+            emu.flags.shl1p8(value);
+        }
+
+        for value in critical_values(16) {
+            emu.flags.shl1p16(value);
+        }
+
+        for value in critical_values(32) {
+            emu.flags.shl1p32(value);
+        }
+
+        for value in critical_values(64) {
+            emu.flags.shl1p64(value);
+        }
+    }
+
+    #[test]
+    fn shl2p8_bug_trigger() {
+        let mut emu = emu64();
+
+        let value0 = 0x44;
+        let value1 = 0x0c;
+        let result = emu.flags.shl2p8(value0, value1);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn stress_shl2p_trigger() {
+        let mut emu = emu64();
+
+        let test_values = [
+            0x00, 0x01, 0x7F, 0x80, 0xFF,
+            0x44 
+        ];
+        let shift_counts = [0, 1, 7, 8, 15, 31, 63, 127, 255, 0x0C];
+
+        for &v0 in &test_values {
+            for &v1 in &shift_counts {
+                emu.flags.shl2p8(v0, v1);
+            }
+        }
+        assert!(true);
+    }
+
+
+    #[test]
+    fn shl2p8_edge_cases_should_not_panic() {
+        let mut emu = emu64();
+
+        let test_cases: &[(u64, u64)] = &[
+            (0x01, 0),   // count = 0
+            (0x01, 1),   // normal shift
+            (0x80, 7),   // MSB gets shifted out
+            (0x01, 8),   // count == width
+            (0x01, 9),   // count > width
+            (0xff, 255), // extreme value
+        ];
+
+        for &(value, count) in test_cases {
+            let _ = emu.flags.shl2p8(value, count); // no panic expected
+        }
+
+        emu.flags.shl2p8(0xf6, 1);
+        emu.flags.shl2p8(0x44, 0xc);
+    }
+
+    #[test]
+    fn waaaaaaaaaaaaatf_shl2p8_44_c() {
+        let mut emu = emu64();
+        emu.flags.shl2p8(0x44, 0xc);
+        log::info!("SHL2P8(0x44, 0xc) DON'T CRASH");
+        assert!(true);
+    }
+
+    #[test]
+    fn must_fail() {
+        setup();
+        let mut emu = emu64();
+        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.load_code("/home/sha0/jail/Downloads/Telegram Desktop/version2.dll");
+        emu.regs.rcx = 0x180000000;
+        emu.regs.rdx = 1;
+        emu.regs.r8 = 0;
+        emu.enable_console();
+        emu.run_to(188987411);
+        log::error!("pos: {} rip: 0x{:x}", emu.pos, emu.regs.rip);
+    }
+
+
+
+
 }
 

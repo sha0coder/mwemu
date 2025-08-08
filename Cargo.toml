@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "pymwemu",
     "libmwemu",
-    "mwemu"
+    "mwemu",
 ]
 
 [profile.release]

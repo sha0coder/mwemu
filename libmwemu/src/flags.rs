@@ -1136,7 +1136,9 @@ impl Flags {
     }
 
     pub fn shl2p8(&mut self, value0: u64, value1: u64) -> u64 {
+        log::info!("shl2p8: v0:0x{:x} v1:{:x}", value0, value1);
         if value1 == 0 {
+            log::info!("shl2p8 end well value1==0");
             return value0;
         }
 
@@ -1145,6 +1147,7 @@ impl Flags {
         self.f_cf = ((value0 >> (8 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 7)) == 0x1;
         self.calc_flags(result, 8);
+        log::info!("shl2p8 end well");
         result
     }
 

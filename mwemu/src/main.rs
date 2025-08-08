@@ -98,7 +98,7 @@ fn clear_current_emu() {
 
 fn log_emu_state(emu: &libmwemu::emu::Emu) {
     log::error!("=== EMULATOR STATE AT PANIC ===");
-    log::error!("Current position: 0x{:x}", emu.pos);
+    log::error!("Current position: {}", emu.pos);
     
     // Log general purpose registers
     log::error!("Registers:");
