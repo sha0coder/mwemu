@@ -1940,22 +1940,6 @@ mod tests {
         assert!(true);
     }
 
-    #[test]
-    fn must_fail() {
-        setup();
-        let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
-        emu.load_code("/home/sha0/jail/Downloads/Telegram Desktop/version2.dll");
-        emu.regs.rcx = 0x180000000;
-        emu.regs.rdx = 1;
-        emu.regs.r8 = 0;
-        emu.enable_console();
-        emu.run_to(188987411);
-        log::error!("pos: {} rip: 0x{:x}", emu.pos, emu.regs.rip);
-    }
-
-
-
 
 }
 
