@@ -138,6 +138,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "DecodePointer" => DecodePointer(emu),
         "lstrcpyn" => lstrcpyn(emu),
         "GetModuleFileNameA" => GetModuleFileNameA(emu),
+        "GetModuleFileNameW" => GetModuleFileNameW(emu),
         "GetLocalTime" => GetLocalTime(emu),
         "SystemTimeToFileTime" => SystemTimeToFileTime(emu),
         "GetNativeSystemInfo" => GetNativeSystemInfo(emu),
@@ -167,7 +168,6 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "VirtualFree" => VirtualFree(emu),
         "CreateFileA" => CreateFileA(emu),
         "GetFileSize" => GetFileSize(emu),
-        "GetModuleFileNameW" => GetModuleFileNameW(emu),
         "EnterCriticalSection" => EnterCriticalSection(emu),
         "LeaveCriticalSection" => LeaveCriticalSection(emu),
         "GlobalAddAtomA" => GlobalAddAtomA(emu),
@@ -2707,6 +2707,35 @@ fn GetModuleFileNameA(emu: &mut emu::Emu) {
     );
 }
 
+/*
+DWORD GetModuleFileNameW(
+  [in, optional] HMODULE hModule,
+  [out]          LPWSTR  lpFilename,
+  [in]           DWORD   nSize
+);
+*/
+fn GetModuleFileNameW(emu: &mut emu::Emu) {
+    let module = emu.regs.rcx;
+    let lp_filename = emu.regs.rdx;
+    let n_size = emu.regs.r8 as usize;
+
+
+    log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}",
+        emu.pos,
+        module,
+        lp_filename,
+        n_size
+    );
+    let output = "haspmeul.dll";
+    if emu.maps.is_mapped(lp_filename) && n_size > output.len()*2+2 { 
+        emu.maps.write_wide_string(lp_filename, output);
+        emu.regs.rax = output.len() as u64 * 2;
+    } else {
+        emu.regs.rax = 0;
+    }
+}
+
+
 fn GetLocalTime(emu: &mut emu::Emu) {
     let ptr = emu.regs.rcx;
 
@@ -3565,28 +3594,6 @@ fn VirtualFree(emu: &mut emu::Emu) {
     );
     // TODO: do something
     emu.regs.rax = 1;
-}
-
-/*
-DWORD GetModuleFileNameW(
-  [in, optional] HMODULE hModule,
-  [out]          LPWSTR  lpFilename,
-  [in]           DWORD   nSize
-);
-*/
-fn GetModuleFileNameW(emu: &mut emu::Emu) {
-    let module = emu.regs.rcx as usize;
-    let lp_filename = emu.regs.rdx as usize;
-    let n_size = emu.regs.r8 as usize;
-    log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}",
-        emu.pos,
-        module,
-        lp_filename,
-        n_size
-    );
-    let output = "haspmeul.dll";
-    emu.maps.write_wide_string(lp_filename as u64, output);
-    emu.regs.rax = output.len() as u64;
 }
 
 fn EnterCriticalSection(emu: &mut emu::Emu) {

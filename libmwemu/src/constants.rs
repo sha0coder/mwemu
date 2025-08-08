@@ -6,7 +6,7 @@
 //pub const LIBS32_BARRIER: u64 = 0x80000000;
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
-pub const EXE_NAME:&str = "jowe13r.exe"; // randomize this
+pub const EXE_NAME:&str = "loader.exe"; // randomize this
 pub const USER_NAME:&str = "bartolo"; // randomize this
 pub const HOST_NAME:&str = "medusa"; // randomize this
 

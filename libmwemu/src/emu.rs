@@ -969,7 +969,7 @@ impl Emu {
         if set_entry {
             let space_addr =
                 peb32::create_ldr_entry(self, base, self.regs.rip as u32, &filename2.clone(), 0, 0x2c1950);
-            peb32::update_ldr_entry_base("loader.exe", base as u64, self);
+            peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
         }
 
         // 6. return values
@@ -1122,7 +1122,7 @@ impl Emu {
         if set_entry {
             let space_addr =
                 peb64::create_ldr_entry(self, base, self.regs.rip, &filename2.clone(), 0, 0x2c1950);
-            peb64::update_ldr_entry_base("loader.exe", base, self);
+            peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
         }
 
         // 6. return values
@@ -1330,18 +1330,18 @@ impl Emu {
             self.init(clear_registers, clear_flags);
             if self.cfg.is_64bits {
                 let (base, pe_off) = self.load_pe64(
-                    &format!("{}/{}", self.cfg.maps_folder, "loader.exe"),
+                    &format!("{}/{}", self.cfg.maps_folder, constants::EXE_NAME),
                     false,
                     0,
                 );
-                peb64::update_ldr_entry_base("loader.exe", base, self);
+                peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
             } else {
                 let (base, pe_off) = self.load_pe32(
-                    &format!("{}/{}", self.cfg.maps_folder, "loader.exe"),
+                    &format!("{}/{}", self.cfg.maps_folder, constants::EXE_NAME),
                     false,
                     0,
                 );
-                peb32::update_ldr_entry_base("loader.exe", base as u64, self);
+                peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
             }
 
             if !self

@@ -5,6 +5,7 @@ use crate::structures::PebLdrData64;
 use crate::structures::PEB64;
 use crate::structures::TEB64;
 use crate::structures::RtlUserProcessParameters64;
+use crate::constants;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData64::size() + 100;
@@ -15,7 +16,7 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     emu.maps
         .create_map("ldr", ldr_addr, ldr_sz as u64)
         .expect("cannot create ldr map");
-    let module_entry = create_ldr_entry(emu, 0, 0, "loader.exe", 0, 0);
+    let module_entry = create_ldr_entry(emu, 0, 0, constants::EXE_NAME, 0, 0);
     let mut ldr = PebLdrData64::new();
     ldr.initializated = 1;
     ldr.in_load_order_module_list.flink = module_entry;
