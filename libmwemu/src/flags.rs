@@ -879,6 +879,34 @@ impl Flags {
     }
 
     pub fn sar2p64(&mut self, value0: u64, value1: u64) -> u64 {
+        let s64 = value0 as i64;
+        let count = (value1 & 0x3f) as u32;
+
+        if count == 0 {
+            return value0;
+        }
+
+        let s_result = if count < 64 {
+            s64 >> count
+        } else {
+            if s64 < 0 { -1 } else { 0 }
+        };
+
+        let result = s_result as u64;
+
+        self.f_cf = if count <= 64 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = false;
+        self.calc_flags(result, 64);
+        result
+    }
+
+
+    pub fn sar2p64_bug(&mut self, value0: u64, value1: u64) -> u64 {
         let s64: i64 = value0 as i64;
         if value1 == 0 {
             return value0;
@@ -894,6 +922,34 @@ impl Flags {
     }
 
     pub fn sar2p32(&mut self, value0: u64, value1: u64) -> u64 {
+        let s32 = value0 as u32 as i32;
+        let count = (value1 & 0x1f) as u32;
+
+        if count == 0 {
+            return value0;
+        }
+
+        let s_result = if count < 32 {
+            s32 >> count
+        } else {
+            if s32 < 0 { -1 } else { 0 }
+        };
+
+        let result = s_result as u32 as u64;
+
+        self.f_cf = if count <= 32 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = false;
+        self.calc_flags(result, 32);
+        result
+    }
+
+
+    pub fn sar2p32_bug(&mut self, value0: u64, value1: u64) -> u64 {
         let s32: i32 = value0 as u32 as i32;
         if value1 == 0 {
             return value0;
@@ -909,6 +965,34 @@ impl Flags {
     }
 
     pub fn sar2p16(&mut self, value0: u64, value1: u64) -> u64 {
+        let s16 = value0 as u16 as i16;
+        let count = (value1 & 0x1f) as u32;
+
+        if count == 0 {
+            return value0;
+        }
+
+        let s_result = if count < 16 {
+            s16 >> count
+        } else {
+            if s16 < 0 { -1 } else { 0 }
+        };
+
+        let result = s_result as u16 as u64;
+
+        self.f_cf = if count <= 16 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = false;
+        self.calc_flags(result, 16);
+        result
+    }
+
+
+    pub fn sar2p16_bug(&mut self, value0: u64, value1: u64) -> u64 {
         let s16 = value0 as u16 as i16;
         if value1 == 0 {
             return value0;
