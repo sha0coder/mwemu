@@ -1931,15 +1931,5 @@ mod tests {
         emu.flags.shl2p8(0xf6, 1);
         emu.flags.shl2p8(0x44, 0xc);
     }
-
-    #[test]
-    fn waaaaaaaaaaaaatf_shl2p8_44_c() {
-        let mut emu = emu64();
-        emu.flags.shl2p8(0x44, 0xc);
-        log::info!("SHL2P8(0x44, 0xc) DON'T CRASH");
-        assert!(true);
-    }
-
-
 }
 

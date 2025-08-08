@@ -1096,7 +1096,104 @@ impl Flags {
 
     //// shr shl unsigned ////
 
+    pub fn shl2p8(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xff;
+        }
+
+        let result = ((value0 << count) & 0xff) as u64;
+
+        self.f_cf = if count <= 8 {
+            ((value0 >> (8 - count)) & 0x1) == 0x1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((result >> 7) & 0x1) != ((value0 >> 7) & 0x1)
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 8);
+        result
+    }
+
+    pub fn shl2p16(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xffff;
+        }
+
+        let result = ((value0 << count) & 0xffff) as u64;
+
+        self.f_cf = if count <= 16 {
+            ((value0 >> (16 - count)) & 0x1) == 0x1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((result >> 15) & 0x1) != ((value0 >> 15) & 0x1)
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 16);
+        result
+    }
+
+    pub fn shl2p32(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xffff_ffff;
+        }
+
+        let result = ((value0 << count) & 0xffff_ffff) as u64;
+
+        self.f_cf = if count <= 32 {
+            ((value0 >> (32 - count)) & 0x1) == 0x1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((result >> 31) & 0x1) != ((value0 >> 31) & 0x1)
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 32);
+        result
+    }
+
     pub fn shl2p64(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x3f) as u32;
+        if count == 0 {
+            return value0;
+        }
+
+        let result = value0 << count;
+
+        self.f_cf = if count <= 64 {
+            ((value0 >> (64 - count)) & 0x1) == 0x1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((result >> 63) & 0x1) != ((value0 >> 63) & 0x1)
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 64);
+        result
+    }
+
+
+    pub fn shl2p64_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1109,7 +1206,7 @@ impl Flags {
         result
     }
 
-    pub fn shl2p32(&mut self, value0: u64, value1: u64) -> u64 {
+    pub fn shl2p32_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1122,7 +1219,7 @@ impl Flags {
         result
     }
 
-    pub fn shl2p16(&mut self, value0: u64, value1: u64) -> u64 {
+    pub fn shl2p16_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1135,10 +1232,8 @@ impl Flags {
         result
     }
 
-    pub fn shl2p8(&mut self, value0: u64, value1: u64) -> u64 {
-        log::info!("shl2p8: v0:0x{:x} v1:{:x}", value0, value1);
+    pub fn shl2p8_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
-            log::info!("shl2p8 end well value1==0");
             return value0;
         }
 
@@ -1147,7 +1242,6 @@ impl Flags {
         self.f_cf = ((value0 >> (8 - count)) & 0x1) == 0x1;
         self.f_of = (self.f_cf as u64 ^ (result >> 7)) == 0x1;
         self.calc_flags(result, 8);
-        log::info!("shl2p8 end well");
         result
     }
 
@@ -1184,7 +1278,107 @@ impl Flags {
         result
     }
 
+    pub fn shr2p8(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xff;
+        }
+
+        let result = ((value0 >> count) & 0xff) as u64;
+
+        self.f_cf = if count <= 8 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((value0 >> 7) & 1) == 1
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 8);
+        result
+    }
+
+    pub fn shr2p16(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xffff;
+        }
+
+        let result = ((value0 >> count) & 0xffff) as u64;
+
+        self.f_cf = if count <= 16 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((value0 >> 15) & 1) == 1
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 16);
+        result
+    }
+
+    pub fn shr2p32(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x1f) as u32;
+        if count == 0 {
+            return value0 & 0xffff_ffff;
+        }
+
+        let result = ((value0 >> count) & 0xffff_ffff) as u64;
+
+        self.f_cf = if count <= 32 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((value0 >> 31) & 1) == 1
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 32);
+        result
+    }
+
     pub fn shr2p64(&mut self, value0: u64, value1: u64) -> u64 {
+        let count = (value1 & 0x3f) as u32;
+        if count == 0 {
+            return value0;
+        }
+
+        let result = value0 >> count;
+
+        self.f_cf = if count <= 64 {
+            ((value0 >> (count - 1)) & 0x1) == 1
+        } else {
+            false
+        };
+
+        self.f_of = if count == 1 {
+            ((value0 >> 63) & 1) == 1
+        } else {
+            false
+        };
+
+        self.calc_flags(result, 64);
+        result
+    }
+
+
+
+
+
+    pub fn shr2p64_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1197,7 +1391,7 @@ impl Flags {
         result
     }
 
-    pub fn shr2p32(&mut self, value0: u64, value1: u64) -> u64 {
+    pub fn shr2p32_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1210,7 +1404,7 @@ impl Flags {
         result
     }
 
-    pub fn shr2p16(&mut self, value0: u64, value1: u64) -> u64 {
+    pub fn shr2p16_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }
@@ -1223,7 +1417,7 @@ impl Flags {
         result
     }
 
-    pub fn shr2p8(&mut self, value0: u64, value1: u64) -> u64 {
+    pub fn shr2p8_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;
         }

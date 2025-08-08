@@ -6,7 +6,7 @@ tests:
 	wget -q https://github.com/sha0coder/mwemu/releases/download/maps/test.zip
 	unzip -o -P mwemuTestSystem test.zip
 	rm test.zip
-	cargo test --release --package libmwemu --verbose
+	cargo test --package libmwemu --verbose
 pytests:
 	cd pymwemu && ./test_all.sh
 
