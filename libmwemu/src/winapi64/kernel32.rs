@@ -1565,19 +1565,25 @@ fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
 }
 
 fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
-    let buff_len = emu.regs.rcx;
-    let buff_ptr = emu.regs.rdx;
+    let buff_ptr = emu.regs.rcx;
+    let buff_len = emu.regs.rdx as usize;
 
-    emu.maps
-        .write_string(buff_ptr, "c\x00:\x00\\\x00\x00\x00\x00\x00");
     log::info!(
-        "{}** {} kernel32!GetCurrentDirectoryW {}",
+        "{}** {} kernel32!GetCurrentDirectoryW  {}",
         emu.colors.light_red,
         emu.pos,
         emu.colors.nc
     );
 
-    emu.regs.rax = 6;
+    let path = "c\x00:\x00\\\x00\x00\x00\x00\x00";
+    if emu.maps.is_mapped(buff_ptr) && buff_len > path.len() {
+        emu.maps
+            .write_string(buff_ptr, path);
+        emu.regs.rax = path.len() as u64;
+    } else {
+        emu.regs.rax = 0;
+    }
+
 }
 
 fn VirtualProtect(emu: &mut emu::Emu) {
