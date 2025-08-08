@@ -81,7 +81,7 @@ pub struct Elf64 {
 
 impl Elf64 {
     pub fn parse(filename: &str) -> Result<Elf64, MwemuError> {
-        let mut mem: Mem64 = Mem64::new();
+        let mut mem: Mem64 = Mem64::default();
         if !mem.load(filename) {
             return Err(MwemuError::new("cannot open elf binary"));
         }

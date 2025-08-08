@@ -6,9 +6,12 @@
 //pub const LIBS32_BARRIER: u64 = 0x80000000;
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
-pub const EXE_NAME:&str = "loader.exe"; // randomize this
-pub const USER_NAME:&str = "bartolo"; // randomize this
-pub const HOST_NAME:&str = "medusa"; // randomize this
+pub const MODULE_NAME: &str = "version.dll"; // randomize this
+pub const LOADER_NAME: &str = "loader.exe"; // randomize this
+pub const EXE_NAME: &str = "version.dll"; // randomize this
+pub const USER_NAME: &str = "bartolo"; // randomize this
+pub const HOST_NAME: &str = "medusa"; // randomize this
+pub const TEMP_PATH: &str = "C:\\Temp\\"; // randomize this
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
