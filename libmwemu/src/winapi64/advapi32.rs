@@ -12,6 +12,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "RegOpenKeyExA" => RegOpenKeyExA(emu),
         "RegQueryValueExA" => RegQueryValueExA(emu),
         "RegCloseKey" => RegCloseKey(emu),
+        "GetUserNameA" => GetUserNameA(emu),
+        "GetUserNameW" => GetUserNameW(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -134,4 +136,93 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
         emu.maps.write_qword(datasz_out, 24);
     }
     emu.regs.rax = constants::ERROR_SUCCESS;
+}
+
+fn GetUserNameA(emu: &mut emu::Emu) {
+    let out_username = emu.regs.rcx;
+    let in_out_sz = emu.regs.rdx;
+
+    let mut sz = 0;
+
+    if out_username > 0 && in_out_sz > 0 {
+        if emu.maps.is_mapped(in_out_sz) && emu.maps.is_mapped(out_username) {
+            sz = emu.maps.read_qword(in_out_sz).expect("advapi32!GetUserNameA cannot read the in_out_sz");
+            let len = constants::USER_NAME.len() as u64 + 1;
+            if sz >= len {
+                emu.maps.write_string(out_username, constants::USER_NAME);
+                sz = len;
+                emu.maps.write_qword(in_out_sz, sz);
+            } else {
+                sz = 0;
+            }
+        }
+    }
+
+    if sz == 0 {
+        log::info!(
+            "{}** {} advapi32!GetUserNameA  bad buffer or sizeptr or size!  buf: 0x{:x} szptr: 0x{:x} {}",
+            emu.colors.light_red,
+            emu.pos,
+            out_username,
+            in_out_sz,
+            emu.colors.nc
+        );
+        emu.regs.rax = constants::FALSE;
+    } else {
+        log::info!(
+            "{}** {} advapi32!GetUserNameA buf: 0x{:x} `{}` {}",
+            emu.colors.light_red,
+            emu.pos,
+            out_username,
+            constants::USER_NAME,
+            emu.colors.nc
+        );
+        emu.regs.rax = constants::TRUE;
+    }
+
+}
+
+
+fn GetUserNameW(emu: &mut emu::Emu) {
+    let out_username = emu.regs.rcx;
+    let in_out_sz = emu.regs.rdx;
+
+    let mut sz = 0;
+
+    if out_username > 0 && in_out_sz > 0 {
+        if emu.maps.is_mapped(in_out_sz) && emu.maps.is_mapped(out_username) {
+            sz = emu.maps.read_qword(in_out_sz).expect("advapi32!GetUserNameW cannot read the in_out_sz");
+            let len = constants::USER_NAME.len() as u64 * 2 + 2;
+            if sz >= len {
+                emu.maps.write_wide_string(out_username, constants::USER_NAME);
+                sz = len;
+                emu.maps.write_qword(in_out_sz, sz);
+            } else {
+                sz = 0;
+            }
+        }
+    }
+
+    if sz == 0 {
+        log::info!(
+            "{}** {} advapi32!GetUserNameW  bad buffer or sizeptr or size!  buf: 0x{:x} szptr: 0x{:x} {}",
+            emu.colors.light_red,
+            emu.pos,
+            out_username,
+            in_out_sz,
+            emu.colors.nc
+        );
+        emu.regs.rax = constants::FALSE;
+    } else {
+        log::info!(
+            "{}** {} advapi32!GetUserNameW buf: 0x{:x} `{}` {}",
+            emu.colors.light_red,
+            emu.pos,
+            out_username,
+            constants::USER_NAME,
+            emu.colors.nc
+        );
+        emu.regs.rax = constants::TRUE;
+    }
+
 }

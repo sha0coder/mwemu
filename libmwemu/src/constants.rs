@@ -7,6 +7,8 @@
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
 pub const EXE_NAME:&str = "jowe13r.exe"; // randomize this
+pub const USER_NAME:&str = "bartolo"; // randomize this
+pub const HOST_NAME:&str = "medusa"; // randomize this
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
@@ -16,6 +18,8 @@ pub const LIBS32_MAX: u64 = 0x7FFFFFFF;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;
 pub const LIBS64_MAX: u64 = 0x7FFFFFFFFFFF;
 
+pub const TRUE: u64 = 1;
+pub const FALSE: u64 = 0;
 pub const STATUS_SUCCESS: u64 = 0x00000000;
 pub const STATUS_ACCESS_DENIED: u64 = 0xC0000022;
 pub const STATUS_INVALID_HANDLE: u64 = 0xC0000008;

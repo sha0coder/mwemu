@@ -494,7 +494,7 @@ impl Maps {
     }
 
     pub fn write_string(&mut self, to: u64, from: &str) {
-        log::debug!("write_string to: 0x{:x} from: {}", to, from);
+        log::debug!("write_string 0x{:x}: `{}`", to, from);
         let bs: Vec<u8> = from.bytes().collect();
 
         self.write_bytes(to, bs.clone());
@@ -502,7 +502,7 @@ impl Maps {
     }
 
     pub fn write_wide_string(&mut self, to: u64, from: &str) {
-        log::debug!("write_wide_string to: 0x{:x} from: {}", to, from);
+        log::debug!("write_wide_string 0x{:x}: `{}`", to, from);
         self.get_mem_by_addr_mut(to)
             .expect(format!("Cannot write wide string: Memory {} doesn't exists", to).as_str())
             .write_wide_string(to, from);

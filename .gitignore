@@ -4,6 +4,7 @@ shellcodes32/
 shellcodes64/
 .DS_Store
 x
+*.txt
 *.swp
 *.idb
 .venv/

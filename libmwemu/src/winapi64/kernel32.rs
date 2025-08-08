@@ -20,7 +20,6 @@ fn clear_last_error(emu: &mut emu::Emu) {
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
-    println!("guess_api_name de 0x{:x} es {}", addr, api);
     match api.as_str() {
         "FindActCtxSectionStringW" => FindActCtxSectionStringW(emu),
         "LoadLibraryA" => LoadLibraryA(emu),
@@ -2108,12 +2107,13 @@ fn GetComputerNameA(emu: &mut emu::Emu) {
     let size_ptr = emu.regs.rdx;
 
     emu.maps.write_dword(size_ptr, 6);
-    emu.maps.write_string(buff_ptr, "medusa");
+    emu.maps.write_string(buff_ptr, constants::HOST_NAME);
 
     log::info!(
-        "{}** {} kernel32!GetComputerNameA 'medusa' {}",
+        "{}** {} kernel32!GetComputerNameA '{}' {}",
         emu.colors.light_red,
         emu.pos,
+         constants::HOST_NAME,
         emu.colors.nc
     );
 
@@ -2125,12 +2125,13 @@ fn GetComputerNameW(emu: &mut emu::Emu) {
     let size_ptr = emu.regs.rdx;
 
     emu.maps.write_dword(size_ptr, 12);
-    emu.maps.write_wide_string(buff_ptr, "medusa");
+    emu.maps.write_wide_string(buff_ptr, constants::HOST_NAME);
 
     log::info!(
-        "{}** {} kernel32!GetComputerNameW 'medusa' {}",
+        "{}** {} kernel32!GetComputerNameW '{}' {}",
         emu.colors.light_red,
         emu.pos,
+        constants::HOST_NAME,
         emu.colors.nc
     );
 
@@ -3405,10 +3406,41 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
     let cch_wide_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
-        .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i64;
+        .read_dword(emu.regs.rsp + 0x28) // yes, read only half of the stack item
+        .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i32;
 
     let mut utf8: String = String::new();
+
+    // validation 1: output NULL but cch > 0
+    if wide_ptr == 0 && cch_wide_char > 0 {
+        log::warn!(
+            "[ALERT] MultiByteToWideChar: output buffer is NULL but cch_wide_char = {}",
+            cch_wide_char
+        );
+    }
+
+    // validation 2: output NO NULL but cch == 0
+    if wide_ptr != 0 && cch_wide_char == 0 {
+        log::warn!(
+            "[ALERT] MultiByteToWideChar: output buffer is non-NULL but cch_wide_char = 0"
+        );
+    }
+
+    // validation 3: size too big
+    if cch_wide_char < 0 || cch_wide_char > 1_000_000 {
+        log::warn!(
+            "[ALERT] MultiByteToWideChar: cch_wide_char = {} exceeds 1_000_000",
+            cch_wide_char,
+        );
+    }
+
+    // validation 4: if cb_multi_byte is negative or too big
+    if cb_multi_byte < 0 || cb_multi_byte > 10_000_000 {
+        log::warn!(
+            "[ALERT] MultiByteToWideChar: cb_multi_byte = {} is suspicious",
+            cb_multi_byte
+        );
+    }
 
     // Read exact number of bytes specified
     if utf8_ptr > 0 {
@@ -3431,6 +3463,8 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
     );
 
 
+
+
     // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)
     let wide: Vec<u16> = utf8.encode_utf16().collect();
 
@@ -3439,7 +3473,7 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         emu.regs.rax = wide.len() as u64;
     } else if wide_ptr != 0 {
         // Write string if buffer is large enough
-        if cch_wide_char >= wide.len() as i64 {
+        if cch_wide_char >= wide.len() as i32 {
             for (i, wchar) in wide.iter().enumerate() {
                 emu.maps.write_word(wide_ptr + (i * 2) as u64, *wchar);
             }

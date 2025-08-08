@@ -2744,7 +2744,7 @@ fn GetComputerNameA(emu: &mut emu::Emu) {
         .expect("kernel32!GetComputerNameA cannot read size param") as u64;
 
     if buff_ptr > 0 {
-        emu.maps.write_string(buff_ptr, "medusa");
+        emu.maps.write_string(buff_ptr, constants::HOST_NAME);
         emu.regs.rax = 1;
     } else {
         emu.regs.rax = 0;
@@ -2756,9 +2756,10 @@ fn GetComputerNameA(emu: &mut emu::Emu) {
     }
 
     log::info!(
-        "{}** {} kernel32!GetComputerName 'medusa' {}",
+        "{}** {} kernel32!GetComputerName '{}' {}",
         emu.colors.light_red,
         emu.pos,
+        constants::HOST_NAME,
         emu.colors.nc
     );
 
