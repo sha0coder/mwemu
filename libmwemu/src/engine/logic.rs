@@ -16,7 +16,7 @@ pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         let mut ret2: u64 = ret;
 
         //  For the ROL and ROR instructions, the original value of the CF flag is not a part of the result, but the CF flag receives a copy of the bit that was shifted from one end to the other.
-        emu.flags().f_cf = last_bit == 1;
+        emu.flags_mut().f_cf = last_bit == 1;
 
         for j in 0..bits - 1 {
             let bit = get_bit!(ret, j);
@@ -80,7 +80,7 @@ pub fn ror(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         let mut ret2: u64 = ret;
 
         //  For the ROL and ROR instructions, the original value of the CF flag is not a part of the result, but the CF flag receives a copy of the bit that was shifted from one end to the other.
-        emu.flags().f_cf = first_bit == 1;
+        emu.flags_mut().f_cf = first_bit == 1;
 
         for j in (1..bits).rev() {
             let bit = get_bit!(ret, j);
@@ -124,9 +124,9 @@ pub fn rcr(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
 
     let cnt = rot2 % (bits + 1) as u64;
     if cnt == 1 {
-        emu.flags().f_cf = (val & 0x1) == 1;
+        emu.flags_mut().f_cf = (val & 0x1) == 1;
     } else {
-        emu.flags().f_cf = ((val >> (cnt - 1)) & 0x1) == 1;
+        emu.flags_mut().f_cf = ((val >> (cnt - 1)) & 0x1) == 1;
     }
 
     let a: u128 = 2;
@@ -139,9 +139,9 @@ pub fn mul64(emu: &mut Emu, value0: u64) {
     let res: u128 = value1 as u128 * value2 as u128;
     emu.regs_mut().rdx = ((res & 0xffffffffffffffff0000000000000000) >> 64) as u64;
     emu.regs_mut().rax = (res & 0xffffffffffffffff) as u64;
-    emu.flags().calc_pf(res as u8);
-    emu.flags().f_of = emu.regs().rdx != 0;
-    emu.flags().f_cf = emu.regs().rdx != 0;
+    emu.flags_mut().calc_pf(res as u8);
+    emu.flags_mut().f_of = emu.regs().rdx != 0;
+    emu.flags_mut().f_cf = emu.regs().rdx != 0;
 }
 
 pub fn mul32(emu: &mut Emu, value0: u64) {
@@ -150,7 +150,7 @@ pub fn mul32(emu: &mut Emu, value0: u64) {
     let res: u64 = value1 as u64 * value2 as u64;
     emu.regs_mut().set_edx((res & 0xffffffff00000000) >> 32);
     emu.regs_mut().set_eax(res & 0x00000000ffffffff);
-    emu.flags().calc_pf(res as u8);
+    emu.flags_mut().calc_pf(res as u8);
     emu.flags_mut().f_of = emu.regs().get_edx() != 0;
     emu.flags_mut().f_cf = emu.regs().get_edx() != 0;
 }
@@ -185,8 +185,8 @@ pub fn imul64p1(emu: &mut Emu, value0: u64) {
     emu.regs_mut().rax = (ures & 0xffffffffffffffff) as u64;
     let rax = emu.regs().rax as i64;
     let rdx = emu.regs().rdx as i64;
-    emu.flags().f_of = !((rax < 0 && rdx == -1) || (rax >= 0 && rdx == 0));
-    emu.flags().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_of = !((rax < 0 && rdx == -1) || (rax >= 0 && rdx == 0));
+    emu.flags_mut().f_cf = emu.flags().f_of;
 }
 
 pub fn imul32p1(emu: &mut Emu, value0: u64) {
@@ -198,8 +198,8 @@ pub fn imul32p1(emu: &mut Emu, value0: u64) {
     emu.regs_mut().set_eax(ures & 0x00000000ffffffff);
     let eax = emu.regs().get_eax() as i32;
     let edx = emu.regs().get_edx() as i32;
-    emu.flags().f_of = !((eax < 0 && edx == -1) || (eax >= 0 && edx == 0));
-    emu.flags().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_of = !((eax < 0 && edx == -1) || (eax >= 0 && edx == 0));
+    emu.flags_mut().f_cf = emu.flags().f_of;
 }
 
 pub fn imul16p1(emu: &mut Emu, value0: u64) {
@@ -211,8 +211,8 @@ pub fn imul16p1(emu: &mut Emu, value0: u64) {
     emu.regs_mut().set_ax((ures & 0xffff).into());
     let ax = emu.regs().get_ax() as i16;
     let dx = emu.regs().get_dx() as i16;
-    emu.flags().f_of = !((ax < 0 && dx == -1) || (ax >= 0 && dx == 0));
-    emu.flags().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_of = !((ax < 0 && dx == -1) || (ax >= 0 && dx == 0));
+    emu.flags_mut().f_cf = emu.flags().f_of;
 }
 
 pub fn imul8p1(emu: &mut Emu, value0: u64) {
@@ -225,8 +225,8 @@ pub fn imul8p1(emu: &mut Emu, value0: u64) {
     let al = (ax & 0x00FF) as i8 as i16;
     let ah = ((ax >> 8) & 0x00FF) as i8 as i16;
 
-    emu.flags().f_of = !((al < 0 && ah == -1) || (al >= 0 && ah == 0));
-    emu.flags().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_of = !((al < 0 && ah == -1) || (al >= 0 && ah == 0));
+    emu.flags_mut().f_cf = emu.flags().f_of;
 }
 
 
@@ -237,7 +237,7 @@ pub fn div64(emu: &mut Emu, value0: u64) {
     let value2: u128 = value0 as u128;
 
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -248,8 +248,8 @@ pub fn div64(emu: &mut Emu, value0: u64) {
     let resr: u128 = value1 % value2;
     emu.regs_mut().rax = resq as u64;
     emu.regs_mut().rdx = resr as u64;
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_of = resq > 0xffffffffffffffff;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_of = resq > 0xffffffffffffffff;
     if emu.flags().f_of {
         log::info!("/!\\ int overflow on division");
     }
@@ -262,7 +262,7 @@ pub fn div32(emu: &mut Emu, value0: u64) {
     let value2: u64 = value0;
 
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -273,8 +273,8 @@ pub fn div32(emu: &mut Emu, value0: u64) {
     let resr: u64 = value1 % value2;
     emu.regs_mut().set_eax(resq);
     emu.regs_mut().set_edx(resr);
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_of = resq > 0xffffffff;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_of = resq > 0xffffffff;
     if emu.flags().f_of {
         log::info!("/!\\ int overflow on division");
     }
@@ -285,7 +285,7 @@ pub fn div16(emu: &mut Emu, value0: u64) {
     let value2: u32 = value0 as u32;
 
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -296,9 +296,9 @@ pub fn div16(emu: &mut Emu, value0: u64) {
     let resr: u32 = value1 % value2;
     emu.regs_mut().set_ax(resq.into());
     emu.regs_mut().set_dx(resr.into());
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_of = resq > 0xffff;
-    emu.flags().f_tf = false;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_of = resq > 0xffff;
+    emu.flags_mut().f_tf = false;
     if emu.flags().f_of {
         log::info!("/!\\ int overflow on division");
     }
@@ -308,7 +308,7 @@ pub fn div8(emu: &mut Emu, value0: u64) {
     let value1: u32 = emu.regs().get_ax() as u32;
     let value2: u32 = value0 as u32;
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -319,9 +319,9 @@ pub fn div8(emu: &mut Emu, value0: u64) {
     let resr: u32 = value1 % value2;
     emu.regs_mut().set_al(resq.into());
     emu.regs_mut().set_ah(resr.into());
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_of = resq > 0xff;
-    emu.flags().f_tf = false;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_of = resq > 0xff;
+    emu.flags_mut().f_tf = false;
     if emu.flags().f_of {
         log::info!("/!\\ int overflow");
     }
@@ -333,7 +333,7 @@ pub fn idiv64(emu: &mut Emu, value0: u64) {
     value1 += emu.regs().rax as u128;
     let value2: u128 = value0 as u128;
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -344,7 +344,7 @@ pub fn idiv64(emu: &mut Emu, value0: u64) {
     let resr: u128 = value1 % value2;
     emu.regs_mut().rax = resq as u64;
     emu.regs_mut().rdx = resr as u64;
-    emu.flags().calc_pf(resq as u8);
+    emu.flags_mut().calc_pf(resq as u8);
     if resq > 0xffffffffffffffff {
         log::info!("/!\\ int overflow exception on division");
         if emu.break_on_alert {
@@ -365,7 +365,7 @@ pub fn idiv32(emu: &mut Emu, value0: u64) {
     value1 += emu.regs().get_eax();
     let value2: u64 = value0;
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -376,7 +376,7 @@ pub fn idiv32(emu: &mut Emu, value0: u64) {
     let resr: u64 = value1 % value2;
     emu.regs_mut().set_eax(resq);
     emu.regs_mut().set_edx(resr);
-    emu.flags().calc_pf(resq as u8);
+    emu.flags_mut().calc_pf(resq as u8);
     if resq > 0xffffffff {
         log::info!("/!\\ int overflow exception on division");
         if emu.break_on_alert {
@@ -395,7 +395,7 @@ pub fn idiv16(emu: &mut Emu, value0: u64) {
     let value1: u32 = to32!((emu.regs().get_dx() << 16) + emu.regs().get_ax());
     let value2: u32 = value0 as u32;
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -406,8 +406,8 @@ pub fn idiv16(emu: &mut Emu, value0: u64) {
     let resr: u32 = value1 % value2;
     emu.regs_mut().set_ax(resq.into());
     emu.regs_mut().set_dx(resr.into());
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_tf = false;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_tf = false;
     if resq > 0xffff {
         log::info!("/!\\ int overflow exception on division");
         if emu.break_on_alert {
@@ -426,7 +426,7 @@ pub fn idiv8(emu: &mut Emu, value0: u64) {
     let value1: u32 = to32!(emu.regs().get_ax());
     let value2: u32 = value0 as u32;
     if value2 == 0 {
-        emu.flags().f_tf = true;
+        emu.flags_mut().f_tf = true;
         log::info!("/!\\ division by 0 exception");
         emu.exception(exception_type::ExceptionType::Div0);
         emu.force_break = true;
@@ -437,8 +437,8 @@ pub fn idiv8(emu: &mut Emu, value0: u64) {
     let resr: u32 = value1 % value2;
     emu.regs_mut().set_al(resq.into());
     emu.regs_mut().set_ah(resr.into());
-    emu.flags().calc_pf(resq as u8);
-    emu.flags().f_tf = false;
+    emu.flags_mut().calc_pf(resq as u8);
+    emu.flags_mut().f_tf = false;
     if resq > 0xff {
         log::info!("/!\\ int overflow exception on division");
         if emu.break_on_alert {
@@ -477,11 +477,11 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
             log::info!("/!\\ SHRD undefined behaviour value0 = 0x{:x} value1 = 0x{:x} pcounter = 0x{:x} counter = 0x{:x} size = 0x{:x}", value0, value1, pcounter, counter, size);
         }
         let result = 0; //inline::shrd(value0, value1, pcounter, size);
-        emu.flags().calc_flags(result, size);
+        emu.flags_mut().calc_flags(result, size);
         return (result, true);
     }
 
-    emu.flags().f_cf = get_bit!(value0, counter - 1) == 1;
+    emu.flags_mut().f_cf = get_bit!(value0, counter - 1) == 1;
 
     let mut to = size as u64 - 1 - counter;
     if to > 64 {
@@ -513,7 +513,7 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }*/
 
-    emu.flags().calc_flags(storage0, size);
+    emu.flags_mut().calc_flags(storage0, size);
     (storage0, false)
 }
 
@@ -543,13 +543,13 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
 
         let result = 0;
         //let result = inline::shld(value0, value1, pcounter, size);
-        emu.flags().calc_flags(result, size);
+        emu.flags_mut().calc_flags(result, size);
 
         return (result, true);
         //counter = pcounter - size as u64;
     }
 
-    emu.flags().f_cf = get_bit!(value0, size as u64 - counter) == 1;
+    emu.flags_mut().f_cf = get_bit!(value0, size as u64 - counter) == 1;
     /*
     if counter < size as u64 && size - (counter as u8) < 64 {
         emu.flags().f_cf = get_bit!(value0, size - counter as u8) == 1;
@@ -565,7 +565,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }
 
-    emu.flags().calc_flags(storage0, size);
+    emu.flags_mut().calc_flags(storage0, size);
 
     (storage0, false)
 }
