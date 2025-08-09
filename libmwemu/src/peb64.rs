@@ -6,7 +6,6 @@ use crate::structures::PebLdrData64;
 use crate::structures::PEB64;
 use crate::structures::TEB64;
 use crate::structures::RtlUserProcessParameters64;
-use crate::constants;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData64::size() + 100;

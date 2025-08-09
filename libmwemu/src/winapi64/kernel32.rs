@@ -2750,35 +2750,6 @@ fn GetModuleFileNameA(emu: &mut emu::Emu) {
     );
 }
 
-/*
-DWORD GetModuleFileNameW(
-  [in, optional] HMODULE hModule,
-  [out]          LPWSTR  lpFilename,
-  [in]           DWORD   nSize
-);
-*/
-fn GetModuleFileNameW(emu: &mut emu::Emu) {
-    let module = emu.regs.rcx;
-    let lp_filename = emu.regs.rdx;
-    let n_size = emu.regs.r8 as usize;
-
-
-    log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}",
-        emu.pos,
-        module,
-        lp_filename,
-        n_size
-    );
-    let output = "haspmeul.dll";
-    if emu.maps.is_mapped(lp_filename) && n_size > output.len()*2+2 { 
-        emu.maps.write_wide_string(lp_filename, output);
-        emu.regs.rax = output.len() as u64 * 2;
-    } else {
-        emu.regs.rax = 0;
-    }
-}
-
-
 fn GetLocalTime(emu: &mut emu::Emu) {
     let ptr = emu.regs.rcx;
 
