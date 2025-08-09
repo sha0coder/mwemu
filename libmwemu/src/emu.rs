@@ -3877,7 +3877,8 @@ impl Emu {
         }
 
         // code
-        let code = match self.maps.get_mem_by_addr_mut(self.regs().rip) {
+        let rip = self.regs().rip;
+        let code = match self.maps.get_mem_by_addr(rip) {
             Some(c) => c,
             None => {
                 log::info!(
@@ -3890,7 +3891,7 @@ impl Emu {
         };
 
         // block
-        let block = code.read_from(self.regs().rip).to_vec(); // reduce code block for more speed
+        let block = code.read_from(rip).to_vec(); // reduce code block for more speed
 
         // decoder
         let mut decoder;
@@ -3922,7 +3923,8 @@ impl Emu {
                 } else if self.cfg.is_64bits {
                     self.regs_mut().rip += sz as u64;
                 } else {
-                    self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
+                    let eip = self.regs().get_eip() + sz as u64;
+                    self.regs_mut().set_eip(eip);
                 }
                 return true; // skip instruction emulation
             }
@@ -3942,7 +3944,8 @@ impl Emu {
         } else if self.cfg.is_64bits {
             self.regs_mut().rip += sz as u64;
         } else {
-            self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
+            let eip = self.regs().get_eip() + sz as u64;
+            self.regs_mut().set_eip(eip);
         }
 
         result_ok
@@ -4011,12 +4014,13 @@ impl Emu {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs().rip);
 
-                let code = match self.maps.get_mem_by_addr_mut(self.regs().rip) {
+                let rip = self.regs().rip;
+                let code = match self.maps.get_mem_by_addr(rip) {
                     Some(c) => c,
                     None => {
                         log::info!(
                             "redirecting code flow to non mapped address 0x{:x}",
-                            self.regs().rip
+                            rip
                         );
                         Console::spawn_console(self);
                         return Err(MwemuError::new("cannot read program counter"));
@@ -4026,7 +4030,7 @@ impl Emu {
                 // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block_sz = BLOCK_LEN;
-                let block_temp = code.read_bytes(self.regs().rip, block_sz);
+                let block_temp = code.read_bytes(rip, block_sz);
                 let block_temp_len = block_temp.len();
                 if block_temp_len != block.len() {
                     block.resize(block_temp_len, 0);
