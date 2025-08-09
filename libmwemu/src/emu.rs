@@ -618,7 +618,7 @@ impl Emu {
 
     /// This inits the 32bits stack, it's called from init_cpu() and init()
     pub fn init_stack32(&mut self) {
-        // default if not set via clap args
+    // default if not set via clap args
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x212000;
             let esp = self.cfg.stack_addr + 0x1c000 + 4;
@@ -627,18 +627,25 @@ impl Emu {
             self.regs_mut().set_ebp(ebp);
         }
 
+        // Store register values in local variables
+        let esp = self.regs().get_esp();
+        let ebp = self.regs().get_ebp();
+
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, 0x030000)
             .expect("cannot create stack map");
+        let stack_base = stack.get_base();
+        let stack_bottom = stack.get_bottom();
 
-        assert!(self.regs().get_esp() < self.regs().get_ebp());
-        assert!(self.regs().get_esp() > stack.get_base());
-        assert!(self.regs().get_esp() < stack.get_bottom());
-        assert!(self.regs().get_ebp() > stack.get_base());
-        assert!(self.regs().get_ebp() < stack.get_bottom());
-        assert!(stack.inside(self.regs().get_esp()));
-        assert!(stack.inside(self.regs().get_ebp()));
+        // Now do all the assertions using the local variables
+        assert!(esp < ebp);
+        assert!(esp > stack_base);
+        assert!(esp < stack_bottom);
+        assert!(ebp > stack_base);
+        assert!(ebp < stack_bottom);
+        assert!(stack.inside(esp));
+        assert!(stack.inside(ebp));
     }
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
@@ -653,19 +660,26 @@ impl Emu {
             self.regs_mut().rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
         }
 
+        // Store register values in local variables
+        let rsp = self.regs().rsp;
+        let rbp = self.regs().rbp;
+
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
             .expect("cannot create stack map");
+        let stack_base = stack.get_base();
+        let stack_bottom = stack.get_bottom();
 
-        assert!(self.regs().rsp < self.regs().rbp);
-        assert!(self.regs().rsp > stack.get_base());
-        assert!(self.regs().rsp < stack.get_bottom());
-        assert!(self.regs().rbp > stack.get_base());
-        assert!(self.regs().rbp < stack.get_bottom());
-        assert!(stack.inside(self.regs().rsp));
-        assert!(stack.inside(self.regs().rbp));
+        // Now do all the assertions using the local variables
+        assert!(rsp < rbp);
+        assert!(rsp > stack_base);
+        assert!(rsp < stack_bottom);
+        assert!(rbp > stack_base);
+        assert!(rbp < stack_bottom);
+        assert!(stack.inside(rsp));
+        assert!(stack.inside(rbp));
     }
 
     //TODO: tests only in tests.rs
