@@ -425,17 +425,17 @@ impl Emu {
 
     /// read register value ie get_reg('rax')
     fn get_reg(&mut self, reg: &str) -> PyResult<u64> {
-        if self.emu.regs.is_reg(reg) {
-            return Ok(self.emu.regs.get_by_name(reg));
+        if self.emu.regs().is_reg(reg) {
+            return Ok(self.emu.regs().get_by_name(reg));
         }
         Err(PyValueError::new_err("invalid register name"))
     }
 
     /// set register value ie  set_reg('rax', 0x123), returns previous value.
     fn set_reg(&mut self, reg: &str, value: u64) -> PyResult<u64> {
-        if self.emu.regs.is_reg(reg) {
-            let prev = self.emu.regs.get_by_name(reg);
-            self.emu.regs.set_by_name(reg, value);
+        if self.emu.regs().is_reg(reg) {
+            let prev = self.emu.regs().get_by_name(reg);
+            self.emu.regs_mut().set_by_name(reg, value);
             Ok(prev)
         } else {
             Err(PyValueError::new_err("invalid register name"))
@@ -444,17 +444,17 @@ impl Emu {
 
     /// get the value of a xmm register.
     fn get_xmm(&mut self, reg: &str) -> PyResult<u128> {
-        if self.emu.regs.is_xmm_by_name(reg) {
-            return Ok(self.emu.regs.get_xmm_by_name(reg));
+        if self.emu.regs().is_xmm_by_name(reg) {
+            return Ok(self.emu.regs().get_xmm_by_name(reg));
         }
         Err(PyValueError::new_err("invalid register name"))
     }
 
     /// set a value to a xmm register.
     fn set_xmm(&mut self, reg: &str, value: u128) -> PyResult<u128> {
-        if self.emu.regs.is_xmm_by_name(reg) {
-            let prev = self.emu.regs.get_xmm_by_name(reg);
-            self.emu.regs.set_xmm_by_name(reg, value);
+        if self.emu.regs().is_xmm_by_name(reg) {
+            let prev = self.emu.regs().get_xmm_by_name(reg);
+            self.emu.regs_mut().set_xmm_by_name(reg, value);
             Ok(prev)
         } else {
             Err(PyValueError::new_err("invalid register name"))
@@ -830,7 +830,7 @@ impl Emu {
                     Some(addr) => {
                         self.emu.skip_apicall = false;
                         let name = self.emu.api_addr_to_name(addr);
-                        self.emu.regs.rip += self.emu.last_instruction_size as u64;
+                        self.emu.regs_mut().rip += self.emu.last_instruction_size as u64;
                         return Ok((addr, name));
                     }
                     None => continue,
