@@ -670,9 +670,9 @@ impl Emu {
 
     //TODO: tests only in tests.rs
     pub fn init_stack64_tests(&mut self) {
-        let stack = self.maps.get_mem_mut("stack");
         self.regs_mut().rsp = 0x000000000014F4B0;
         self.regs_mut().rbp = 0x0000000000000000;
+        let stack = self.maps.get_mem_mut("stack");
         stack.set_base(0x0000000000149000);
         stack.set_size(0x0000000000007000);
     }
@@ -2416,8 +2416,8 @@ impl Emu {
             }
 
             self.gateway_return = self.stack_pop32(false).unwrap_or(0).into();
-
-            self.regs_mut().set_eip(self.gateway_return);
+            let gateway_return = self.gateway_return;
+            self.regs_mut().set_eip(gateway_return);
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
                 Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
