@@ -231,6 +231,22 @@ impl Emu {
         self.threads[self.current_thread_id].regs.rbp
     }
     
+    pub fn set_pre_op_regs(&mut self, regs: Regs64) {
+        self.threads[self.current_thread_id].pre_op_regs = regs;
+    }
+    
+    pub fn set_post_op_regs(&mut self, regs: Regs64) {
+        self.threads[self.current_thread_id].post_op_regs = regs;
+    }
+    
+    pub fn set_pre_op_flags(&mut self, flags: Flags) {
+        self.threads[self.current_thread_id].pre_op_flags = flags;
+    }
+    
+    pub fn set_post_op_flags(&mut self, flags: Flags) {
+        self.threads[self.current_thread_id].post_op_flags = flags;
+    }
+    
     pub fn pre_op_regs(&self) -> &Regs64 {
         &self.threads[self.current_thread_id].pre_op_regs
     }
@@ -616,7 +632,8 @@ impl Emu {
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, 0x030000)
-            .expect("cannot create stack map");
+            .expect("cannot create stack map")
+            .clone();
 
         assert!(self.regs().get_esp() < self.regs().get_ebp());
         assert!(self.regs().get_esp() > stack.get_base());
@@ -643,7 +660,8 @@ impl Emu {
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
-            .expect("cannot create stack map");
+            .expect("cannot create stack map")
+            .clone();
 
         assert!(self.regs().rsp < self.regs().rbp);
         assert!(self.regs().rsp > stack.get_base());
@@ -656,7 +674,7 @@ impl Emu {
 
     //TODO: tests only in tests.rs
     pub fn init_stack64_tests(&mut self) {
-        let stack = self.maps.get_mem("stack");
+        let stack = self.maps.get_mem_mut("stack");
         self.regs_mut().rsp = 0x000000000014F4B0;
         self.regs_mut().rbp = 0x0000000000000000;
         stack.set_base(0x0000000000149000);
@@ -861,7 +879,7 @@ impl Emu {
         winapi32::kernel32::load_library(self, "shell32.dll");
         //winapi32::kernel32::load_library(self, "shlwapi.dll");
         
-        let teb_map = self.maps.get_mem("teb");
+        let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
         teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
@@ -3581,8 +3599,8 @@ impl Emu {
 
     #[inline]
     pub fn capture_pre_op(&mut self) {
-        self.pre_op_regs() = self.regs();
-        self.pre_op_flags() = self.flags();
+        self.set_pre_op_regs(self.regs());
+        self.set_pre_op_flags(self.flags());
     }
 
     #[inline]
@@ -4142,7 +4160,8 @@ impl Emu {
                             if self.cfg.is_64bits {
                                 self.regs_mut().rip += sz as u64;
                             } else {
-                                self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
+                                let new_eip = self.regs().get_eip() + sz as u64;
+                                self.regs_mut().set_eip(new_eip);
                             }
                             continue;
                         }
@@ -4245,7 +4264,8 @@ impl Emu {
                         if self.cfg.is_64bits {
                             self.regs_mut().rip += sz as u64;
                         } else {
-                            self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
+                            let new_eip = self.regs().get_eip() + sz as u64;
+                            self.regs_mut().set_eip(new_eip);
                         }
                     }
 
