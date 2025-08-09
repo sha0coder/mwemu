@@ -764,8 +764,8 @@ impl Maps {
         }
     }
 
-    pub fn read_bytes(&mut self, addr: u64, sz: usize) -> &[u8] {
-        let mem = match self.get_mem_by_addr_mut(addr) {
+    pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
+        let mem = match self.get_mem_by_addr(addr) {
             Some(v) => v,
             None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
         };

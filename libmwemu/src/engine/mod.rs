@@ -131,8 +131,9 @@ pub fn emulate_instruction(
                   emu.stack_lvl_idx += 1;
               }*/
 
+            let call_stack_label = format!("{:x}:call:{:x}", emu.regs().rip, addr);
             emu.call_stack_mut()
-                .push(format!("{:x}:call:{:x}", emu.regs().rip, addr));
+                .push(call_stack_label);
 
             if emu.cfg.is_64bits {
                 if !emu.stack_push64(emu.regs().rip + instruction_sz as u64) {
@@ -4260,13 +4261,13 @@ pub fn emulate_instruction(
         Mnemonic::Fninit => {
             emu.show_instruction(color!("Green"), ins);
             emu.fpu_mut().clear();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Finit => {
             emu.show_instruction(color!("Green"), ins);
             emu.fpu_mut().clear();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Ffree => {
@@ -4284,7 +4285,7 @@ pub fn emulate_instruction(
                 _ => unimplemented!("impossible case"),
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fbld => {
@@ -4308,7 +4309,7 @@ pub fn emulate_instruction(
             };
 
             emu.fpu_mut().set_ctrl(value);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fnstenv => {
@@ -4332,62 +4333,62 @@ pub fn emulate_instruction(
                 }
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fld => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldz => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(0.0);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fld1 => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(1.0);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldpi => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f80(F80::PI());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldl2t => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(10f64.log2());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldlg2 => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(2f64.log10());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldln2 => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(2f64.log(std::f64::consts::E));
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fldl2e => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().push_f64(std::f64::consts::E.log2());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fst => {
@@ -4398,7 +4399,7 @@ pub fn emulate_instruction(
             if !emu.set_operand_value(ins, 0, res) {
                 return false;
             }
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsubrp => {
@@ -4406,7 +4407,7 @@ pub fn emulate_instruction(
 
             emu.fpu_mut().subr(1, 0);
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fstp => {
@@ -4429,7 +4430,7 @@ pub fn emulate_instruction(
             }
 
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fincstp => {
@@ -4437,7 +4438,7 @@ pub fn emulate_instruction(
 
             emu.fpu_mut().set_status_c1(false);
             emu.fpu_mut().st.inc_top();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fild => {
@@ -4455,7 +4456,7 @@ pub fn emulate_instruction(
                 };
 
                 emu.fpu_mut().st.push_f64(value1);
-                emu.fpu_mut().set_ip(emu.regs().rip);
+                emu.sync_fpu_ip();
             }
         }
 
@@ -4470,7 +4471,7 @@ pub fn emulate_instruction(
                 _ => return false,
             };
             emu.set_operand_value(ins, 0, value2);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fxtract => {
@@ -4479,7 +4480,7 @@ pub fn emulate_instruction(
             let (mantissa, exponent) = emu.fpu().frexp(st0);
             emu.fpu_mut().set_st(0, mantissa);
             emu.fpu_mut().push_f64(exponent as f64);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fxsave => {
@@ -4492,7 +4493,7 @@ pub fn emulate_instruction(
 
             let state = emu.fpu().fxsave();
             state.save(addr, emu);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fxrstor => {
@@ -4506,7 +4507,7 @@ pub fn emulate_instruction(
             let state = FPUState::load(addr, emu);
 
             emu.fpu_mut().fxrstor(state);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fistp => {
@@ -4524,7 +4525,7 @@ pub fn emulate_instruction(
             }
 
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmove => {
@@ -4534,7 +4535,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovb => {
@@ -4544,7 +4545,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovbe => {
@@ -4554,7 +4555,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovu => {
@@ -4564,7 +4565,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovnb => {
@@ -4574,7 +4575,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovne => {
@@ -4584,7 +4585,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovnbe => {
@@ -4594,7 +4595,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcmovnu => {
@@ -4604,7 +4605,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fxch => {
@@ -4623,7 +4624,7 @@ pub fn emulate_instruction(
                 _ => unimplemented!("impossible case"),
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsqrt => {
@@ -4638,7 +4639,7 @@ pub fn emulate_instruction(
             } else {
                 emu.fpu_mut().set_st(0, st0.sqrt());
             }
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fchs => {
@@ -4647,7 +4648,7 @@ pub fn emulate_instruction(
            
             emu.fpu_mut().neg_st(0);
             emu.fpu_mut().set_status_c0(false);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fptan => {
@@ -4655,7 +4656,7 @@ pub fn emulate_instruction(
             let st0 = emu.fpu_mut().get_st(0);
             emu.fpu_mut().push_f64(1.0);
             emu.fpu_mut().set_st(1, st0.tan());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fmulp => {
@@ -4666,7 +4667,7 @@ pub fn emulate_instruction(
 
             emu.fpu_mut().set_st(1, result);
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fdivp => {
@@ -4679,7 +4680,7 @@ pub fn emulate_instruction(
             emu.fpu_mut().set_st(1, result);
 
             emu.fpu_mut().pop_f64();               // Remove ST(0)
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsubp => {
@@ -4701,7 +4702,7 @@ pub fn emulate_instruction(
             }
 
             emu.fpu_mut().pop_f64(); // pops ST(0) properly
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsubr => {
@@ -4710,7 +4711,7 @@ pub fn emulate_instruction(
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
             
             emu.fpu_mut().subr(value0 as usize, value1 as usize);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsub => {
@@ -4719,7 +4720,7 @@ pub fn emulate_instruction(
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
 
             emu.fpu_mut().sub(value0 as usize, value1 as usize);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fadd => {
@@ -4750,7 +4751,7 @@ pub fn emulate_instruction(
             } else {
                 unreachable!();
             }
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fucom => {
@@ -4777,7 +4778,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().set_status_c3(false);
             }
 
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::F2xm1 => {
@@ -4786,21 +4787,21 @@ pub fn emulate_instruction(
             let st0 = emu.fpu_mut().get_st(0);
             let result = (2.0f64.powf(st0)) - 1.0;
             emu.fpu_mut().set_st(0, result);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fyl2x => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().fyl2x();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fyl2xp1 => {
             emu.show_instruction(color!("Green"), ins);
 
             emu.fpu_mut().fyl2xp1();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Faddp => {
@@ -4814,13 +4815,13 @@ pub fn emulate_instruction(
             } else {
                 unreachable!();
             }
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fnclex => {
             emu.show_instruction(color!("Green"), ins);
             emu.fpu_mut().stat &= !(0b10000011_11111111);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcom => {
@@ -4843,7 +4844,7 @@ pub fn emulate_instruction(
                 emu.fpu_mut().set_status_c2(false);
                 emu.fpu_mut().set_status_c3(st0 == st4);
             }
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fmul => {
@@ -4857,28 +4858,28 @@ pub fn emulate_instruction(
 
             let stn = emu.fpu_mut().get_st(value1 as usize);
             emu.fpu_mut().set_st(0, st0 * stn);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fabs => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu_mut().get_st(0);
             emu.fpu_mut().set_st(0, st0.abs());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fsin => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu_mut().get_st(0);
             emu.fpu_mut().set_st(0, st0.sin());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fcos => {
             emu.show_instruction(color!("Green"), ins);
             let st0 = emu.fpu_mut().get_st(0);
             emu.fpu_mut().set_st(0, st0.cos());
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fdiv => {
@@ -4892,7 +4893,7 @@ pub fn emulate_instruction(
 
             let stn = emu.fpu_mut().get_st(value1 as usize);
             emu.fpu_mut().set_st(0, st0 / stn);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fdivr => {
@@ -4901,7 +4902,7 @@ pub fn emulate_instruction(
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
             let stn = emu.fpu_mut().get_st(value1 as usize);
             emu.fpu_mut().set_st(0, stn / st0);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fdivrp => {
@@ -4915,7 +4916,7 @@ pub fn emulate_instruction(
 
             emu.fpu_mut().set_st(value1, result);
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fpatan => {
@@ -4926,7 +4927,7 @@ pub fn emulate_instruction(
             let result = (st1 / st0).atan();
             emu.fpu_mut().set_st(1, result);
             emu.fpu_mut().pop_f64();
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fprem => {
@@ -4939,7 +4940,7 @@ pub fn emulate_instruction(
             let result = st0 - quotient * st1;
 
             emu.fpu_mut().set_st(0, result);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         Mnemonic::Fprem1 => {
@@ -4952,7 +4953,7 @@ pub fn emulate_instruction(
             let remainder = st0 - quotient * st1;
 
             emu.fpu_mut().set_st(0, remainder);
-            emu.fpu_mut().set_ip(emu.regs().rip);
+            emu.sync_fpu_ip();
         }
 
         ////////// end fpu //////////
@@ -5018,7 +5019,8 @@ pub fn emulate_instruction(
             }
 
             if old_al > 0x99 || old_cf {
-                emu.regs_mut().set_al(emu.regs().get_al() + 0x60);
+                let al = emu.regs().get_al() + 0x60;
+                emu.regs_mut().set_al(al);
                 emu.flags_mut().f_cf = true;
             } else {
                 emu.flags_mut().f_cf = false;
@@ -8407,7 +8409,8 @@ pub fn emulate_instruction(
                         emu.regs_mut().rbp -= 8;
                         emu.stack_push64(emu.regs().rbp);
                     } else {
-                        emu.regs_mut().set_ebp(emu.regs().get_ebp() - 4);
+                        let ebp = emu.regs().get_ebp() - 4;
+                        emu.regs_mut().set_ebp(ebp);
                         emu.stack_push32(emu.regs().get_ebp() as u32);
                     }
                 }

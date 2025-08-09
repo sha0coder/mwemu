@@ -183,7 +183,7 @@ impl Flags {
         log::info!("---");
     }
 
-    pub fn diff(a: Flags, b: Flags) -> String {
+    pub fn diff(a: &Flags, b: &Flags) -> String {
         let mut output = String::new();
         // f_cf
         if a.f_cf != b.f_cf {

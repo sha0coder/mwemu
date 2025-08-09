@@ -231,6 +231,12 @@ impl Emu {
         self.threads[self.current_thread_id].regs.rbp
     }
     
+    // Helper method to sync FPU instruction pointer with RIP
+    pub fn sync_fpu_ip(&mut self) {
+        let rip = self.threads[self.current_thread_id].regs.rip;
+        self.threads[self.current_thread_id].fpu.set_ip(rip);
+    }
+    
     pub fn set_pre_op_regs(&mut self, regs: Regs64) {
         self.threads[self.current_thread_id].pre_op_regs = regs;
     }
@@ -3634,96 +3640,99 @@ impl Emu {
         let mut comments = String::new();
 
         // dump all registers on first, only differences on next
+        let pre_op_regs = self.pre_op_regs();
+        let post_op_regs = self.post_op_regs();
         let mut registers = String::new();
         if index == 0 {
             registers = format!(
                 "{} rax: {:x}-> {:x}",
-                registers, self.pre_op_regs().rax, self.post_op_regs().rax
+                registers, pre_op_regs.rax, post_op_regs.rax
             );
             registers = format!(
                 "{} rbx: {:x}-> {:x}",
-                registers, self.pre_op_regs().rbx, self.post_op_regs().rbx
+                registers, pre_op_regs.rbx, post_op_regs.rbx
             );
             registers = format!(
                 "{} rcx: {:x}-> {:x}",
-                registers, self.pre_op_regs().rcx, self.post_op_regs().rcx
+                registers, pre_op_regs.rcx, post_op_regs.rcx
             );
             registers = format!(
                 "{} rdx: {:x}-> {:x}",
-                registers, self.pre_op_regs().rdx, self.post_op_regs().rdx
+                registers, pre_op_regs.rdx, post_op_regs.rdx
             );
             registers = format!(
                 "{} rsp: {:x}-> {:x}",
-                registers, self.pre_op_regs().rsp, self.post_op_regs().rsp
+                registers, pre_op_regs.rsp, post_op_regs.rsp
             );
             registers = format!(
                 "{} rbp: {:x}-> {:x}",
-                registers, self.pre_op_regs().rbp, self.post_op_regs().rbp
+                registers, pre_op_regs.rbp, post_op_regs.rbp
             );
             registers = format!(
                 "{} rsi: {:x}-> {:x}",
-                registers, self.pre_op_regs().rsi, self.post_op_regs().rsi
+                registers, pre_op_regs.rsi, post_op_regs.rsi
             );
             registers = format!(
                 "{} rdi: {:x}-> {:x}",
-                registers, self.pre_op_regs().rdi, self.post_op_regs().rdi
+                registers, pre_op_regs.rdi, post_op_regs.rdi
             );
             registers = format!(
                 "{} r8: {:x}-> {:x}",
-                registers, self.pre_op_regs().r8, self.post_op_regs().r8
+                registers, pre_op_regs.r8, post_op_regs.r8
             );
             registers = format!(
                 "{} r9: {:x}-> {:x}",
-                registers, self.pre_op_regs().r9, self.post_op_regs().r9
+                registers, pre_op_regs.r9, post_op_regs.r9
             );
             registers = format!(
                 "{} r10: {:x}-> {:x}",
-                registers, self.pre_op_regs().r10, self.post_op_regs().r10
+                registers, pre_op_regs.r10, post_op_regs.r10
             );
             registers = format!(
                 "{} r11: {:x}-> {:x}",
-                registers, self.pre_op_regs().r11, self.post_op_regs().r11
+                registers, pre_op_regs.r11, post_op_regs.r11
             );
             registers = format!(
                 "{} r12: {:x}-> {:x}",
-                registers, self.pre_op_regs().r12, self.post_op_regs().r12
+                registers, pre_op_regs.r12, post_op_regs.r12
             );
             registers = format!(
                 "{} r13: {:x}-> {:x}",
-                registers, self.pre_op_regs().r13, self.post_op_regs().r13
+                registers, pre_op_regs.r13, post_op_regs.r13
             );
             registers = format!(
                 "{} r14: {:x}-> {:x}",
-                registers, self.pre_op_regs().r14, self.post_op_regs().r14
+                registers, pre_op_regs.r14, post_op_regs.r14
             );
             registers = format!(
                 "{} r15: {:x}-> {:x}",
-                registers, self.pre_op_regs().r15, self.post_op_regs().r15
+                registers, pre_op_regs.r15, post_op_regs.r15
             );
         } else {
-            let pre_op_regs = self.pre_op_regs();
-            let post_op_regs = self.post_op_regs();            
+            let post_op_regs = post_op_regs;            
             registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
         let mut flags = String::new();
         // dump all flags on first, only differences on next
+        let pre_op_flags = self.pre_op_flags();
+        let post_op_flags = self.post_op_flags();
         if index == 0 {
             flags = format!(
                 "rflags: {:x}-> {:x}",
-                self.pre_op_flags().dump(),
-                self.post_op_flags().dump()
+                pre_op_flags.dump(),
+                post_op_flags.dump()
             );
-        } else if self.pre_op_flags().dump() != self.post_op_flags().dump() {
+        } else if pre_op_flags.dump() != post_op_flags.dump() {
             flags = format!(
                 "rflags: {:x}-> {:x}",
-                self.pre_op_flags().dump(),
-                self.post_op_flags().dump()
+                pre_op_flags.dump(),
+                post_op_flags.dump()
             );
             comments = format!(
                 "{} {}",
                 comments,
-                Flags::diff(*self.pre_op_flags(), *self.post_op_flags())
+                Flags::diff(pre_op_flags, post_op_flags)
             );
         }
 
@@ -3747,7 +3756,7 @@ impl Emu {
             trace_file,
             r#""{index:02X}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
             index = index,
-            address = self.pre_op_regs().rip,
+            address = pre_op_regs.rip,
             bytes = instruction_bytes,
             disassembly = output,
             registers = format!("{} {}", registers, flags),
