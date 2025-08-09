@@ -552,7 +552,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
     emu.flags_mut().f_cf = get_bit!(value0, size as u64 - counter) == 1;
     /*
     if counter < size as u64 && size - (counter as u8) < 64 {
-        emu.flags().f_cf = get_bit!(value0, size - counter as u8) == 1;
+        emu.flags_mut().f_cf = get_bit!(value0, size - counter as u8) == 1;
     }*/
 
     for i in (counter..=((size as u64) - 1)).rev() {

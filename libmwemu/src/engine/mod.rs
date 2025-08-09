@@ -1383,7 +1383,7 @@ pub fn emulate_instruction(
             }
 
             if bit < 64 {
-                emu.flags().f_cf = get_bit!(value, bit) == 1;
+                emu.flags_mut().f_cf = get_bit!(value, bit) == 1;
             }
         }
 
@@ -1405,7 +1405,7 @@ pub fn emulate_instruction(
             bitpos %= sz as u64;
 
             let cf = get_bit!(value0, bitpos);
-            emu.flags().f_cf = cf == 1;
+            emu.flags_mut().f_cf = cf == 1;
 
             let mut result = value0;
             set_bit!(result, bitpos, cf ^ 1);
@@ -1433,7 +1433,7 @@ pub fn emulate_instruction(
             bit %= sz as u64;
 
             let cf = get_bit!(value, bit);
-            emu.flags().f_cf = cf == 1;
+            emu.flags_mut().f_cf = cf == 1;
 
             let mut result = value;
             set_bit!(result, bit, 1);
@@ -1461,7 +1461,7 @@ pub fn emulate_instruction(
             bit %= sz as u64;
 
             let cf = get_bit!(value, bit);
-            emu.flags().f_cf = cf == 1;
+            emu.flags_mut().f_cf = cf == 1;
 
             let mut result = value;
             set_bit!(result, bit, 0);
@@ -1488,13 +1488,13 @@ pub fn emulate_instruction(
             let sz = emu.get_operand_sz(ins, 0);
 
             if value1 == 0 {
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
 
                 if emu.cfg.verbose >= 1 {
                     log::info!("/!\\ undefined behavior on BSF with src == 0");
                 }
             } else {
-                emu.flags().f_zf = false;
+                emu.flags_mut().f_zf = false;
 
                 if !emu.set_operand_value(ins, 0, value1.trailing_zeros() as u64) {
                     return false;
@@ -1506,12 +1506,12 @@ pub fn emulate_instruction(
                 if emu.cfg.verbose >= 1 {
                     log::info!("/!\\ f_cf undefined behaviour");
                 }
-                emu.flags().f_cf = false;
+                emu.flags_mut().f_cf = false;
             }
 
             /*
             if src == 0 {
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
                 if emu.cfg.verbose >= 1 {
                     log::info!("/!\\ bsf src == 0 is undefined behavior");
                 }
@@ -1526,9 +1526,9 @@ pub fn emulate_instruction(
                 }
 
                 if dest == 0 {
-                    emu.flags().f_zf = true;
+                    emu.flags_mut().f_zf = true;
                 } else {
-                    emu.flags().f_zf = false;
+                    emu.flags_mut().f_zf = false;
                 }
 
                 if !emu.set_operand_value(&ins, 0, dest) {
@@ -1553,7 +1553,7 @@ pub fn emulate_instruction(
                 if emu.cfg.verbose >= 1 {
                     log::info!("/!\\ bsr src == 0 is undefined behavior");
                 }
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
                 return true;
             }
 
@@ -1565,7 +1565,7 @@ pub fn emulate_instruction(
                 _ => return false,
             };
 
-            emu.flags().f_zf = false;
+            emu.flags_mut().f_zf = false;
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
@@ -1691,16 +1691,16 @@ pub fn emulate_instruction(
             let f1 = f32::from_bits(low_val1);
             let f2 = f32::from_bits(low_val2);
 
-            emu.flags().f_zf = false;
-            emu.flags().f_pf = false;
-            emu.flags().f_cf = false;
+            emu.flags_mut().f_zf = false;
+            emu.flags_mut().f_pf = false;
+            emu.flags_mut().f_cf = false;
 
             if f1.is_nan() || f2.is_nan() {
-                emu.flags().f_pf = true;
+                emu.flags_mut().f_pf = true;
             } else if f1 == f2 {
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
             } else if f1 < f2 {
-                emu.flags().f_cf = true;
+                emu.flags_mut().f_cf = true;
             }
         }
 
@@ -1892,11 +1892,11 @@ pub fn emulate_instruction(
                 }
 
                 if !emu.flags().f_df {
-                    emu.regs().rsi += 1;
-                    emu.regs().rdi += 1;
+                    emu.regs_mut().rsi += 1;
+                    emu.regs_mut().rdi += 1;
                 } else {
-                    emu.regs().rsi -= 1;
-                    emu.regs().rdi -= 1;
+                    emu.regs_mut().rsi -= 1;
+                    emu.regs_mut().rdi -= 1;
                 }
             } else {
                 let val = match emu.maps.read_byte(emu.regs().get_esi()) {
@@ -1938,11 +1938,11 @@ pub fn emulate_instruction(
                 emu.maps.write_word(emu.regs().rdi, val);
 
                 if !emu.flags().f_df {
-                    emu.regs().rsi += 2;
-                    emu.regs().rdi += 2;
+                    emu.regs_mut().rsi += 2;
+                    emu.regs_mut().rdi += 2;
                 } else {
-                    emu.regs().rsi -= 2;
-                    emu.regs().rdi -= 2;
+                    emu.regs_mut().rsi -= 2;
+                    emu.regs_mut().rdi -= 2;
                 }
             } else {
                 // 32bits
@@ -1981,11 +1981,11 @@ pub fn emulate_instruction(
             emu.maps.write_qword(emu.regs().rdi, val);
 
             if !emu.flags().f_df {
-                emu.regs().rsi += 8;
-                emu.regs().rdi += 8;
+                emu.regs_mut().rsi += 8;
+                emu.regs_mut().rdi += 8;
             } else {
-                emu.regs().rsi -= 8;
-                emu.regs().rdi -= 8;
+                emu.regs_mut().rsi -= 8;
+                emu.regs_mut().rdi -= 8;
             }
         }
 
@@ -2027,11 +2027,11 @@ pub fn emulate_instruction(
                     emu.maps.write_dword(emu.regs().rdi, val);
 
                     if !emu.flags().f_df {
-                        emu.regs().rsi += 4;
-                        emu.regs().rdi += 4;
+                        emu.regs_mut().rsi += 4;
+                        emu.regs_mut().rdi += 4;
                     } else {
-                        emu.regs().rsi -= 4;
-                        emu.regs().rdi -= 4;
+                        emu.regs_mut().rsi -= 4;
+                        emu.regs_mut().rdi -= 4;
                     }
                 } else {
                     // 32bits
@@ -2170,7 +2170,7 @@ pub fn emulate_instruction(
             };
             let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
             emu.set_operand_value(ins, 0, value);
-            if !emu.flags().f_zf && emu.flags().f_sf == emu.flags().f_of {
+            if !emu.flags_mut().f_zf && emu.flags().f_sf == emu.flags().f_of {
                 let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
                     _ => return false
@@ -2191,7 +2191,7 @@ pub fn emulate_instruction(
             };
             let value = if ins.op0_register().is_gpr64() {value1} else {value1 & 0xffffffff};
             emu.set_operand_value(ins, 0, value);
-            if emu.flags().f_sf == emu.flags().f_of {
+            if emu.flags_mut().f_sf == emu.flags().f_of {
                 let value2 = match emu.get_operand_value(ins, 1, true) {
                     Some(v) => v,
                     _ => return false
@@ -2456,7 +2456,7 @@ pub fn emulate_instruction(
         Mnemonic::Setg => {
             emu.show_instruction(color!("Orange"), ins);
 
-            if !emu.flags().f_zf && emu.flags().f_sf == emu.flags().f_of {
+            if !emu.flags_mut().f_zf && emu.flags().f_sf == emu.flags().f_of {
                 if !emu.set_operand_value(ins, 0, 1) {
                     return false;
                 }
@@ -2468,7 +2468,7 @@ pub fn emulate_instruction(
         Mnemonic::Setge => {
             emu.show_instruction(color!("Orange"), ins);
 
-            if emu.flags().f_sf == emu.flags().f_of {
+            if emu.flags_mut().f_sf == emu.flags().f_of {
                 if !emu.set_operand_value(ins, 0, 1) {
                     return false;
                 }
@@ -2599,9 +2599,9 @@ pub fn emulate_instruction(
                     return false;
                 }
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 1;
+                    emu.regs_mut().rdi -= 1;
                 } else {
-                    emu.regs().rdi += 1;
+                    emu.regs_mut().rdi += 1;
                 }
             } else {
                 // 32bits
@@ -2626,9 +2626,9 @@ pub fn emulate_instruction(
                 emu.maps.write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
 
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 2;
+                    emu.regs_mut().rdi -= 2;
                 } else {
-                    emu.regs().rdi += 2;
+                    emu.regs_mut().rdi += 2;
                 }
             } else {
                 // 32bits
@@ -2662,9 +2662,9 @@ pub fn emulate_instruction(
                     return false;
                 }
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 4;
+                    emu.regs_mut().rdi -= 4;
                 } else {
-                    emu.regs().rdi += 4;
+                    emu.regs_mut().rdi += 4;
                 }
             } else {
                 // 32bits
@@ -2697,9 +2697,9 @@ pub fn emulate_instruction(
             emu.maps.write_qword(emu.regs().rdi, emu.regs().rax);
 
             if emu.flags().f_df {
-                emu.regs().rdi -= 8;
+                emu.regs_mut().rdi -= 8;
             } else {
-                emu.regs().rdi += 8;
+                emu.regs_mut().rdi += 8;
             }
         }
 
@@ -2724,9 +2724,9 @@ pub fn emulate_instruction(
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 1;
+                    emu.regs_mut().rdi -= 1;
                 } else {
-                    emu.regs().rdi += 1;
+                    emu.regs_mut().rdi += 1;
                 }
             } else {
                 // 32bits
@@ -2756,9 +2756,9 @@ pub fn emulate_instruction(
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 2;
+                    emu.regs_mut().rdi -= 2;
                 } else {
-                    emu.regs().rdi += 2;
+                    emu.regs_mut().rdi += 2;
                 }
             } else {
                 // 32bits
@@ -2788,9 +2788,9 @@ pub fn emulate_instruction(
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
-                    emu.regs().rdi -= 4;
+                    emu.regs_mut().rdi -= 4;
                 } else {
-                    emu.regs().rdi += 4;
+                    emu.regs_mut().rdi += 4;
                 }
             } else {
                 // 32bits
@@ -2819,9 +2819,9 @@ pub fn emulate_instruction(
             emu.flags_mut().sub64(emu.regs().rax, value0);
 
             if emu.flags().f_df {
-                emu.regs().rdi -= 8;
+                emu.regs_mut().rdi -= 8;
             } else {
-                emu.regs().rdi += 8;
+                emu.regs_mut().rdi += 8;
             }
         }
 
@@ -2865,23 +2865,23 @@ pub fn emulate_instruction(
 
             if emu.cfg.is_64bits {
                 if value0 == emu.regs().rax {
-                    emu.flags().f_zf = true;
+                    emu.flags_mut().f_zf = true;
                     if !emu.set_operand_value(ins, 0, value1) {
                         return false;
                     }
                 } else {
-                    emu.flags().f_zf = false;
+                    emu.flags_mut().f_zf = false;
                     emu.regs_mut().rax = value1;
                 }
             } else {
                 // 32bits
                 if value0 == emu.regs().get_eax() {
-                    emu.flags().f_zf = true;
+                    emu.flags_mut().f_zf = true;
                     if !emu.set_operand_value(ins, 0, value1) {
                         return false;
                     }
                 } else {
-                    emu.flags().f_zf = false;
+                    emu.flags_mut().f_zf = false;
                     emu.regs_mut().set_eax(value1);
                 }
             }
@@ -2901,12 +2901,12 @@ pub fn emulate_instruction(
             };
 
             if value0 as u8 == (emu.regs().get_al() as u8) {
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
                 if !emu.set_operand_value(ins, 0, value1) {
                     return false;
                 }
             } else {
-                emu.flags().f_zf = false;
+                emu.flags_mut().f_zf = false;
                 emu.regs_mut().set_al(value1 & 0xff);
             }
         }
@@ -2925,12 +2925,12 @@ pub fn emulate_instruction(
             };
 
             if value0 as u16 == (emu.regs().get_ax() as u16) {
-                emu.flags().f_zf = true;
+                emu.flags_mut().f_zf = true;
                 if !emu.set_operand_value(ins, 0, value1) {
                     return false;
                 }
             } else {
-                emu.flags().f_zf = false;
+                emu.flags_mut().f_zf = false;
                 emu.regs_mut().set_ax(value1 & 0xffff);
             }
         }
@@ -3031,11 +3031,11 @@ pub fn emulate_instruction(
             };
 
             if emu.flags().f_df {
-                emu.regs().rsi -= 8;
-                emu.regs().rdi -= 8;
+                emu.regs_mut().rsi -= 8;
+                emu.regs_mut().rdi -= 8;
             } else {
-                emu.regs().rsi += 8;
-                emu.regs().rdi += 8;
+                emu.regs_mut().rsi += 8;
+                emu.regs_mut().rdi += 8;
             }
 
             emu.flags_mut().sub64(value0, value1);
@@ -3080,11 +3080,11 @@ pub fn emulate_instruction(
                 };
 
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 4;
-                    emu.regs().rdi -= 4;
+                    emu.regs_mut().rsi -= 4;
+                    emu.regs_mut().rdi -= 4;
                 } else {
-                    emu.regs().rsi += 4;
-                    emu.regs().rdi += 4;
+                    emu.regs_mut().rsi += 4;
+                    emu.regs_mut().rdi += 4;
                 }
             } else {
                 // 32bits
@@ -3154,11 +3154,11 @@ pub fn emulate_instruction(
                 };
 
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 2;
-                    emu.regs().rdi -= 2;
+                    emu.regs_mut().rsi -= 2;
+                    emu.regs_mut().rdi -= 2;
                 } else {
-                    emu.regs().rsi += 2;
-                    emu.regs().rdi += 2;
+                    emu.regs_mut().rsi += 2;
+                    emu.regs_mut().rdi += 2;
                 }
             } else {
                 // 32bits
@@ -3228,11 +3228,11 @@ pub fn emulate_instruction(
                 };
 
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 1;
-                    emu.regs().rdi -= 1;
+                    emu.regs_mut().rsi -= 1;
+                    emu.regs_mut().rdi -= 1;
                 } else {
-                    emu.regs().rsi += 1;
-                    emu.regs().rdi += 1;
+                    emu.regs_mut().rsi += 1;
+                    emu.regs_mut().rdi += 1;
                 }
             } else {
                 // 32bits
@@ -3504,7 +3504,7 @@ pub fn emulate_instruction(
         Mnemonic::Jge => {
             assert!(ins.op_count() == 1);
 
-            if emu.flags().f_sf == emu.flags().f_of {
+            if emu.flags_mut().f_sf == emu.flags().f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
                 let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
@@ -3544,7 +3544,7 @@ pub fn emulate_instruction(
         Mnemonic::Jg => {
             assert!(ins.op_count() == 1);
 
-            if !emu.flags().f_zf && emu.flags().f_sf == emu.flags().f_of {
+            if !emu.flags_mut().f_zf && emu.flags().f_sf == emu.flags().f_of {
                 emu.show_instruction_taken(color!("Orange"), ins);
                 let addr = match emu.get_jump_value(ins, 0) {
                     Some(v) => v,
@@ -3826,7 +3826,7 @@ pub fn emulate_instruction(
 
         Mnemonic::Clc => {
             emu.show_instruction(color!("LightGray"), ins);
-            emu.flags().f_cf = false;
+            emu.flags_mut().f_cf = false;
         }
 
         Mnemonic::Rdtsc => {
@@ -3862,7 +3862,7 @@ pub fn emulate_instruction(
                 if emu.regs_mut().rcx == 0 {
                     emu.regs_mut().rcx = 0xffffffffffffffff;
                 } else {
-                    emu.regs().rcx -= 1;
+                    emu.regs_mut().rcx -= 1;
                 }
 
                 if emu.regs().rcx > 0 {
@@ -3913,7 +3913,7 @@ pub fn emulate_instruction(
                 if emu.regs_mut().rcx == 0 {
                     emu.regs_mut().rcx = 0xffffffffffffffff;
                 } else {
-                    emu.regs().rcx -= 1;
+                    emu.regs_mut().rcx -= 1;
                 }
 
                 if emu.regs().rcx > 0 && emu.flags().f_zf {
@@ -3964,7 +3964,7 @@ pub fn emulate_instruction(
                 if emu.regs_mut().rcx == 0 {
                     emu.regs_mut().rcx = 0xffffffffffffffff;
                 } else {
-                    emu.regs().rcx -= 1;
+                    emu.regs_mut().rcx -= 1;
                 }
 
                 if emu.regs().rcx > 0 && !emu.flags().f_zf {
@@ -4090,22 +4090,22 @@ pub fn emulate_instruction(
 
         Mnemonic::Std => {
             emu.show_instruction(color!("Blue"), ins);
-            emu.flags().f_df = true;
+            emu.flags_mut().f_df = true;
         }
 
         Mnemonic::Stc => {
             emu.show_instruction(color!("Blue"), ins);
-            emu.flags().f_cf = true;
+            emu.flags_mut().f_cf = true;
         }
 
         Mnemonic::Cmc => {
             emu.show_instruction(color!("Blue"), ins);
-            emu.flags().f_cf = !emu.flags().f_cf;
+            emu.flags_mut().f_cf = !emu.flags().f_cf;
         }
 
         Mnemonic::Cld => {
             emu.show_instruction(color!("Blue"), ins);
-            emu.flags().f_df = false;
+            emu.flags_mut().f_df = false;
         }
 
         Mnemonic::Lodsq => {
@@ -4120,9 +4120,9 @@ pub fn emulate_instruction(
 
                 emu.regs_mut().rax = val;
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 8;
+                    emu.regs_mut().rsi -= 8;
                 } else {
-                    emu.regs().rsi += 8;
+                    emu.regs_mut().rsi += 8;
                 }
             } else {
                 unreachable!("lodsq dont exists in 32bit");
@@ -4141,9 +4141,9 @@ pub fn emulate_instruction(
 
                 emu.regs_mut().set_eax(val as u64);
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 4;
+                    emu.regs_mut().rsi -= 4;
                 } else {
-                    emu.regs().rsi += 4;
+                    emu.regs_mut().rsi += 4;
                 }
             } else {
                 let val = match emu.maps.read_dword(emu.regs().get_esi()) {
@@ -4172,9 +4172,9 @@ pub fn emulate_instruction(
 
                 emu.regs_mut().set_ax(val as u64);
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 2;
+                    emu.regs_mut().rsi -= 2;
                 } else {
-                    emu.regs().rsi += 2;
+                    emu.regs_mut().rsi += 2;
                 }
             } else {
                 let val = match emu.maps.read_word(emu.regs().get_esi()) {
@@ -4207,9 +4207,9 @@ pub fn emulate_instruction(
 
                 emu.regs_mut().set_al(val as u64);
                 if emu.flags().f_df {
-                    emu.regs().rsi -= 1;
+                    emu.regs_mut().rsi -= 1;
                 } else {
-                    emu.regs().rsi += 1;
+                    emu.regs_mut().rsi += 1;
                 }
             } else {
                 let val = match emu.maps.read_byte(emu.regs().get_esi()) {
@@ -8130,8 +8130,8 @@ pub fn emulate_instruction(
                 dest += 1;
             }
 
-            emu.flags().f_cf = dest == sz;
-            emu.flags().f_zf = dest == 0;
+            emu.flags_mut().f_cf = dest == sz;
+            emu.flags_mut().f_zf = dest == 0;
 
             emu.set_operand_value(ins, 1, dest);
         }
@@ -8164,7 +8164,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            emu.flags().f_zf = value1 < value0;
+            emu.flags_mut().f_zf = value1 < value0;
 
             emu.set_operand_value(ins, 0, value0);
         }
@@ -8174,7 +8174,7 @@ pub fn emulate_instruction(
 
             let val: u16 = (emu.flags().dump() & 0xffff) as u16;
 
-            emu.regs().rsp -= 2;
+            emu.regs_mut().rsp -= 2;
 
             if !emu.maps.write_word(emu.regs().rsp, val) {
                 log::info!("/!\\ exception writing word at rsp 0x{:x}", emu.regs().rsp);
@@ -8195,7 +8195,7 @@ pub fn emulate_instruction(
 
         Mnemonic::Pushfq => {
             emu.show_instruction(color!("Blue"), ins);
-            emu.flags().f_tf = false;
+            emu.flags_mut().f_tf = false;
             if !emu.stack_push64(emu.flags().dump() as u64) {
                 return false;
             }
@@ -8401,7 +8401,7 @@ pub fn emulate_instruction(
             if nestingLvl > 1 {
                 for i in 1..nestingLvl {
                     if emu.cfg.is_64bits {
-                        emu.regs().rbp -= 8;
+                        emu.regs_mut().rbp -= 8;
                         emu.stack_push64(emu.regs().rbp);
                     } else {
                         emu.regs_mut().set_ebp(emu.regs().get_ebp() - 4);
@@ -8416,7 +8416,7 @@ pub fn emulate_instruction(
 
             if emu.cfg.is_64bits {
                 emu.regs_mut().rbp = frameTmp;
-                emu.regs().rsp -= allocSZ;
+                emu.regs_mut().rsp -= allocSZ;
             } else {
                 emu.regs_mut().set_ebp(frameTmp);
                 emu.regs_mut().set_esp(emu.regs().get_esp() - allocSZ);

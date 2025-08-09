@@ -1677,7 +1677,7 @@ impl Emu {
             log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, self.regs().rsp, value, name);
         }
 
-        self.regs().rsp -= 8;
+        self.regs_mut().rsp -= 8;
         //self.stack_lvl[self.stack_lvl_idx] += 1;
         //log::info!("push64 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
 
@@ -1821,7 +1821,7 @@ impl Emu {
             {
                 log::info!("/!\\ poping a code address 0x{:x}", value);
             }
-            self.regs().rsp += 8;
+            self.regs_mut().rsp += 8;
             return Some(value);
         }
 
@@ -1878,7 +1878,7 @@ impl Emu {
                 self.pos, self.regs().rip, 64, self.regs().rsp, value);
         }
 
-        self.regs().rsp += 8;
+        self.regs_mut().rsp += 8;
         //self.stack_lvl[self.stack_lvl_idx] -= 1;
         //log::info!("0x{:x} pop64 stack level is {} deep {}", self.regs().rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
