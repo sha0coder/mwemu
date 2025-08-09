@@ -356,7 +356,7 @@ pub fn emulate_instruction(
                         return false;
                     }
 
-                    emu.regs().rsp += arg;
+                    emu.regs_mut().rsp += arg;
                     //emu.stack_lvl[emu.stack_lvl_idx] -= arg as i32 / 8;
                 } else {
                     if arg % 4 != 0 {
@@ -369,7 +369,7 @@ pub fn emulate_instruction(
                 }
             }
 
-            emu.call_stack().pop();
+            emu.call_stack_mut().pop();
 
             if emu.run_until_ret {
                 return true;
@@ -430,7 +430,7 @@ pub fn emulate_instruction(
             emu.regs_mut().set_al(low);
             emu.regs_mut().set_ah(0);
 
-            emu.flags().calc_flags(low, 8);
+            emu.flags_mut().calc_flags(low, 8);
         }
 
         Mnemonic::Les => {
@@ -482,10 +482,10 @@ pub fn emulate_instruction(
             let sz = emu.get_operand_sz(ins, 0);
             let result = value0 ^ value1;
 
-            emu.flags().calc_flags(result, sz);
-            emu.flags().f_of = false;
-            emu.flags().f_cf = false;
-            emu.flags().calc_pf(result as u8);
+            emu.flags_mut().calc_flags(result, sz);
+            emu.flags_mut().f_of = false;
+            emu.flags_mut().f_cf = false;
+            emu.flags_mut().calc_pf(result as u8);
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
@@ -508,20 +508,20 @@ pub fn emulate_instruction(
             };
 
             let res: u64 = match emu.get_operand_sz(ins, 1) {
-                64 => emu.flags().add64(value0, value1, emu.flags().f_cf, false),
-                32 => emu.flags().add32(
+                64 => emu.flags_mut().add64(value0, value1, emu.flags().f_cf, false),
+                32 => emu.flags_mut().add32(
                     (value0 & 0xffffffff) as u32,
                     (value1 & 0xffffffff) as u32,
                     emu.flags().f_cf,
                     false,
                 ),
-                16 => emu.flags().add16(
+                16 => emu.flags_mut().add16(
                     (value0 & 0xffff) as u16,
                     (value1 & 0xffff) as u16,
                     emu.flags().f_cf,
                     false,
                 ),
-                8 => emu.flags().add8(
+                8 => emu.flags_mut().add8(
                     (value0 & 0xff) as u8,
                     (value1 & 0xff) as u8,
                     emu.flags().f_cf,
@@ -553,20 +553,20 @@ pub fn emulate_instruction(
             };
 
             let res = match emu.get_operand_sz(ins, 1) {
-                64 => emu.flags().add64(value0, value1, emu.flags().f_cf, true),
-                32 => emu.flags().add32(
+                64 => emu.flags_mut().add64(value0, value1, emu.flags().f_cf, true),
+                32 => emu.flags_mut().add32(
                     (value0 & 0xffffffff) as u32,
                     (value1 & 0xffffffff) as u32,
                     emu.flags().f_cf,
                     true,
                 ),
-                16 => emu.flags().add16(
+                16 => emu.flags_mut().add16(
                     (value0 & 0xffff) as u16,
                     (value1 & 0xffff) as u16,
                     emu.flags().f_cf,
                     true,
                 ),
-                8 => emu.flags().add8(
+                8 => emu.flags_mut().add8(
                     (value0 & 0xff) as u8,
                     (value1 & 0xff) as u8,
                     emu.flags().f_cf,
@@ -645,10 +645,10 @@ pub fn emulate_instruction(
                         }*/
 
             let res: u64 = match emu.get_operand_sz(ins, 0) {
-                64 => emu.flags().sub64(value0, value1),
-                32 => emu.flags().sub32(value0, value1),
-                16 => emu.flags().sub16(value0, value1),
-                8 => emu.flags().sub8(value0, value1),
+                64 => emu.flags_mut().sub64(value0, value1),
+                32 => emu.flags_mut().sub32(value0, value1),
+                16 => emu.flags_mut().sub16(value0, value1),
+                8 => emu.flags_mut().sub8(value0, value1),
                 _ => panic!("weird size"),
             };
 
@@ -668,10 +668,10 @@ pub fn emulate_instruction(
             };
 
             let res = match emu.get_operand_sz(ins, 0) {
-                64 => emu.flags().inc64(value0),
-                32 => emu.flags().inc32(value0),
-                16 => emu.flags().inc16(value0),
-                8 => emu.flags().inc8(value0),
+                64 => emu.flags_mut().inc64(value0),
+                32 => emu.flags_mut().inc32(value0),
+                16 => emu.flags_mut().inc16(value0),
+                8 => emu.flags_mut().inc8(value0),
                 _ => panic!("weird size"),
             };
 
@@ -691,10 +691,10 @@ pub fn emulate_instruction(
             };
 
             let res = match emu.get_operand_sz(ins, 0) {
-                64 => emu.flags().dec64(value0),
-                32 => emu.flags().dec32(value0),
-                16 => emu.flags().dec16(value0),
-                8 => emu.flags().dec8(value0),
+                64 => emu.flags_mut().dec64(value0),
+                32 => emu.flags_mut().dec32(value0),
+                16 => emu.flags_mut().dec16(value0),
+                8 => emu.flags_mut().dec8(value0),
                 _ => panic!("weird size"),
             };
 
@@ -715,15 +715,15 @@ pub fn emulate_instruction(
 
             let sz = emu.get_operand_sz(ins, 0);
             let res = match sz {
-                64 => emu.flags().neg64(value0),
-                32 => emu.flags().neg32(value0),
-                16 => emu.flags().neg16(value0),
-                8 => emu.flags().neg8(value0),
+                64 => emu.flags_mut().neg64(value0),
+                32 => emu.flags_mut().neg32(value0),
+                16 => emu.flags_mut().neg16(value0),
+                8 => emu.flags_mut().neg8(value0),
                 _ => panic!("weird size"),
             };
 
-            emu.flags().f_cf = value0 != 0;
-            emu.flags().f_af = ((res | value0) & 0x8) != 0;
+            emu.flags_mut().f_cf = value0 != 0;
+            emu.flags_mut().f_af = ((res | value0) & 0x8) != 0;
 
             if !emu.set_operand_value(ins, 0, res) {
                 return false;
@@ -815,10 +815,10 @@ pub fn emulate_instruction(
                 _ => unreachable!(""),
             }
 
-            emu.flags().calc_flags(result1, emu.get_operand_sz(ins, 0));
-            emu.flags().f_of = false;
-            emu.flags().f_cf = false;
-            emu.flags().calc_pf(result1 as u8);
+            emu.flags_mut().calc_flags(result1, emu.get_operand_sz(ins, 0));
+            emu.flags_mut().f_of = false;
+            emu.flags_mut().f_cf = false;
+            emu.flags_mut().calc_pf(result1 as u8);
 
             if !emu.set_operand_value(ins, 0, result2) {
                 return false;
@@ -865,10 +865,10 @@ pub fn emulate_instruction(
                 _ => unreachable!(""),
             }
 
-            emu.flags().calc_flags(result1, emu.get_operand_sz(ins, 0));
-            emu.flags().f_of = false;
-            emu.flags().f_cf = false;
-            emu.flags().calc_pf(result1 as u8);
+            emu.flags_mut().calc_flags(result1, emu.get_operand_sz(ins, 0));
+            emu.flags_mut().f_of = false;
+            emu.flags_mut().f_cf = false;
+            emu.flags_mut().calc_pf(result1 as u8);
 
             if !emu.set_operand_value(ins, 0, result2) {
                 return false;
@@ -890,10 +890,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().sal1p64(value0),
-                    32 => emu.flags().sal1p32(value0),
-                    16 => emu.flags().sal1p16(value0),
-                    8 => emu.flags().sal1p8(value0),
+                    64 => emu.flags_mut().sal1p64(value0),
+                    32 => emu.flags_mut().sal1p32(value0),
+                    16 => emu.flags_mut().sal1p16(value0),
+                    8 => emu.flags_mut().sal1p8(value0),
                     _ => panic!("weird size"),
                 };
 
@@ -910,10 +910,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().sal2p64(value0, value1),
-                    32 => emu.flags().sal2p32(value0, value1),
-                    16 => emu.flags().sal2p16(value0, value1),
-                    8 => emu.flags().sal2p8(value0, value1),
+                    64 => emu.flags_mut().sal2p64(value0, value1),
+                    32 => emu.flags_mut().sal2p32(value0, value1),
+                    16 => emu.flags_mut().sal2p16(value0, value1),
+                    8 => emu.flags_mut().sal2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
 
@@ -938,10 +938,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().sar1p64(value0),
-                    32 => emu.flags().sar1p32(value0),
-                    16 => emu.flags().sar1p16(value0),
-                    8 => emu.flags().sar1p8(value0),
+                    64 => emu.flags_mut().sar1p64(value0),
+                    32 => emu.flags_mut().sar1p32(value0),
+                    16 => emu.flags_mut().sar1p16(value0),
+                    8 => emu.flags_mut().sar1p8(value0),
                     _ => panic!("weird size"),
                 };
 
@@ -958,10 +958,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().sar2p64(value0, value1),
-                    32 => emu.flags().sar2p32(value0, value1),
-                    16 => emu.flags().sar2p16(value0, value1),
-                    8 => emu.flags().sar2p8(value0, value1),
+                    64 => emu.flags_mut().sar2p64(value0, value1),
+                    32 => emu.flags_mut().sar2p32(value0, value1),
+                    16 => emu.flags_mut().sar2p16(value0, value1),
+                    8 => emu.flags_mut().sar2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
 
@@ -986,10 +986,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().shl1p64(value0),
-                    32 => emu.flags().shl1p32(value0),
-                    16 => emu.flags().shl1p16(value0),
-                    8 => emu.flags().shl1p8(value0),
+                    64 => emu.flags_mut().shl1p64(value0),
+                    32 => emu.flags_mut().shl1p32(value0),
+                    16 => emu.flags_mut().shl1p16(value0),
+                    8 => emu.flags_mut().shl1p8(value0),
                     _ => panic!("weird size"),
                 };
 
@@ -1006,10 +1006,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().shl2p64(value0, value1),
-                    32 => emu.flags().shl2p32(value0, value1),
-                    16 => emu.flags().shl2p16(value0, value1),
-                    8 => emu.flags().shl2p8(value0, value1),
+                    64 => emu.flags_mut().shl2p64(value0, value1),
+                    32 => emu.flags_mut().shl2p32(value0, value1),
+                    16 => emu.flags_mut().shl2p16(value0, value1),
+                    8 => emu.flags_mut().shl2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
 
@@ -1036,10 +1036,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().shr1p64(value0),
-                    32 => emu.flags().shr1p32(value0),
-                    16 => emu.flags().shr1p16(value0),
-                    8 => emu.flags().shr1p8(value0),
+                    64 => emu.flags_mut().shr1p64(value0),
+                    32 => emu.flags_mut().shr1p32(value0),
+                    16 => emu.flags_mut().shr1p16(value0),
+                    8 => emu.flags_mut().shr1p8(value0),
                     _ => panic!("weird size"),
                 };
 
@@ -1056,10 +1056,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().shr2p64(value0, value1),
-                    32 => emu.flags().shr2p32(value0, value1),
-                    16 => emu.flags().shr2p16(value0, value1),
-                    8 => emu.flags().shr2p8(value0, value1),
+                    64 => emu.flags_mut().shr2p64(value0, value1),
+                    32 => emu.flags_mut().shr2p32(value0, value1),
+                    16 => emu.flags_mut().shr2p16(value0, value1),
+                    8 => emu.flags_mut().shr2p8(value0, value1),
                     _ => panic!("weird size"),
                 };
 
@@ -1086,7 +1086,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().ror(value0, 1, sz);
+                result = emu.flags_mut().ror(value0, 1, sz);
 
             } else {
                 // 2 params
@@ -1100,7 +1100,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().ror(value0, value1, sz);
+                result = emu.flags_mut().ror(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1123,7 +1123,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().rcr(value0, 1, sz);
+                result = emu.flags_mut().rcr(value0, 1, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1136,7 +1136,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
                 
-                result = emu.flags().rcr(value0, value1, sz);
+                result = emu.flags_mut().rcr(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1159,7 +1159,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().rol(value0, 1, sz);
+                result = emu.flags_mut().rol(value0, 1, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1172,7 +1172,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().rol(value0, value1, sz);
+                result = emu.flags_mut().rol(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1195,7 +1195,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().rcl(value0, 1, sz);
+                result = emu.flags_mut().rcl(value0, 1, sz);
             } else {
                 // 2 params
                 let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -1208,7 +1208,7 @@ pub fn emulate_instruction(
                     None => return false,
                 };
 
-                result = emu.flags().rcl(value0, value1, sz);
+                result = emu.flags_mut().rcl(value0, value1, sz);
             }
 
             if !emu.set_operand_value(ins, 0, result) {
@@ -1325,10 +1325,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().imul64p2(value0, value1),
-                    32 => emu.flags().imul32p2(value0, value1),
-                    16 => emu.flags().imul16p2(value0, value1),
-                    8 => emu.flags().imul8p2(value0, value1),
+                    64 => emu.flags_mut().imul64p2(value0, value1),
+                    32 => emu.flags_mut().imul32p2(value0, value1),
+                    16 => emu.flags_mut().imul16p2(value0, value1),
+                    8 => emu.flags_mut().imul8p2(value0, value1),
                     _ => unimplemented!("wrong size"),
                 };
 
@@ -1350,10 +1350,10 @@ pub fn emulate_instruction(
 
                 let sz = emu.get_operand_sz(ins, 0);
                 let result = match sz {
-                    64 => emu.flags().imul64p2(value1, value2),
-                    32 => emu.flags().imul32p2(value1, value2),
-                    16 => emu.flags().imul16p2(value1, value2),
-                    8 => emu.flags().imul8p2(value1, value2),
+                    64 => emu.flags_mut().imul64p2(value1, value2),
+                    32 => emu.flags_mut().imul32p2(value1, value2),
+                    16 => emu.flags_mut().imul16p2(value1, value2),
+                    8 => emu.flags_mut().imul8p2(value1, value2),
                     _ => unimplemented!("wrong size"),
                 };
 
@@ -1634,20 +1634,20 @@ pub fn emulate_instruction(
             };
 
             let res: u64 = match emu.get_operand_sz(ins, 1) {
-                64 => emu.flags().add64(value0, value1, emu.flags().f_cf, false),
-                32 => emu.flags().add32(
+                64 => emu.flags_mut().add64(value0, value1, emu.flags().f_cf, false),
+                32 => emu.flags_mut().add32(
                     (value0 & 0xffffffff) as u32,
                     (value1 & 0xffffffff) as u32,
                     emu.flags().f_cf,
                     false,
                 ),
-                16 => emu.flags().add16(
+                16 => emu.flags_mut().add16(
                     (value0 & 0xffff) as u16,
                     (value1 & 0xffff) as u16,
                     emu.flags().f_cf,
                     false,
                 ),
-                8 => emu.flags().add8(
+                8 => emu.flags_mut().add8(
                     (value0 & 0xff) as u8,
                     (value1 & 0xff) as u8,
                     emu.flags().f_cf,
@@ -2720,7 +2720,7 @@ pub fn emulate_instruction(
                 }
             };
 
-            emu.flags().sub8(emu.regs().get_al(), value0);
+            emu.flags_mut().sub8(emu.regs().get_al(), value0);
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
@@ -2752,7 +2752,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            emu.flags().sub16(emu.regs().get_ax(), value0);
+            emu.flags_mut().sub16(emu.regs().get_ax(), value0);
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
@@ -2784,7 +2784,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            emu.flags().sub32(emu.regs().get_eax(), value0);
+            emu.flags_mut().sub32(emu.regs().get_eax(), value0);
 
             if emu.cfg.is_64bits {
                 if emu.flags().f_df {
@@ -2816,7 +2816,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            emu.flags().sub64(emu.regs().rax, value0);
+            emu.flags_mut().sub64(emu.regs().rax, value0);
 
             if emu.flags().f_df {
                 emu.regs().rdi -= 8;
@@ -2847,7 +2847,7 @@ pub fn emulate_instruction(
 
             let sz = emu.get_operand_sz(ins, 0);
 
-            emu.flags().test(value0, value1, sz);
+            emu.flags_mut().test(value0, value1, sz);
         }
 
         Mnemonic::Cmpxchg => {
@@ -2987,16 +2987,16 @@ pub fn emulate_instruction(
 
             match emu.get_operand_sz(ins, 0) {
                 64 => {
-                    emu.flags().sub64(value0, value1);
+                    emu.flags_mut().sub64(value0, value1);
                 }
                 32 => {
-                    emu.flags().sub32(value0, value1);
+                    emu.flags_mut().sub32(value0, value1);
                 }
                 16 => {
-                    emu.flags().sub16(value0, value1);
+                    emu.flags_mut().sub16(value0, value1);
                 }
                 8 => {
-                    emu.flags().sub8(value0, value1);
+                    emu.flags_mut().sub8(value0, value1);
                 }
                 _ => {
                     panic!("wrong size {}", emu.get_operand_sz(ins, 0));
@@ -3038,7 +3038,7 @@ pub fn emulate_instruction(
                 emu.regs().rdi += 8;
             }
 
-            emu.flags().sub64(value0, value1);
+            emu.flags_mut().sub64(value0, value1);
 
             if emu.cfg.verbose >= 2 {
                 if value0 > value1 {
@@ -3112,7 +3112,7 @@ pub fn emulate_instruction(
                 }
             }
 
-            emu.flags().sub32(value0 as u64, value1 as u64);
+            emu.flags_mut().sub32(value0 as u64, value1 as u64);
 
             if emu.cfg.verbose >= 2 {
                 if value0 > value1 {
@@ -3186,7 +3186,7 @@ pub fn emulate_instruction(
                 }
             }
 
-            emu.flags().sub16(value0 as u64, value1 as u64);
+            emu.flags_mut().sub16(value0 as u64, value1 as u64);
 
             if emu.cfg.verbose >= 2 {
                 if value0 > value1 {
@@ -3260,7 +3260,7 @@ pub fn emulate_instruction(
                 }
             } // end 32bits
 
-            emu.flags().sub8(value0 as u64, value1 as u64);
+            emu.flags_mut().sub8(value0 as u64, value1 as u64);
 
             if emu.cfg.verbose >= 2 {
                 if value0 > value1 {
@@ -4256,32 +4256,32 @@ pub fn emulate_instruction(
         ///// FPU /////  https://github.com/radare/radare/blob/master/doc/xtra/fpu
         Mnemonic::Fninit => {
             emu.show_instruction(color!("Green"), ins);
-            emu.fpu().clear();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().clear();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Finit => {
             emu.show_instruction(color!("Green"), ins);
-            emu.fpu().clear();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().clear();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Ffree => {
             emu.show_instruction(color!("Green"), ins);
 
             match ins.op_register(0) {
-                Register::ST0 => emu.fpu().clear_st(0),
-                Register::ST1 => emu.fpu().clear_st(1),
-                Register::ST2 => emu.fpu().clear_st(2),
-                Register::ST3 => emu.fpu().clear_st(3),
-                Register::ST4 => emu.fpu().clear_st(4),
-                Register::ST5 => emu.fpu().clear_st(5),
-                Register::ST6 => emu.fpu().clear_st(6),
-                Register::ST7 => emu.fpu().clear_st(7),
+                Register::ST0 => emu.fpu_mut().clear_st(0),
+                Register::ST1 => emu.fpu_mut().clear_st(1),
+                Register::ST2 => emu.fpu_mut().clear_st(2),
+                Register::ST3 => emu.fpu_mut().clear_st(3),
+                Register::ST4 => emu.fpu_mut().clear_st(4),
+                Register::ST5 => emu.fpu_mut().clear_st(5),
+                Register::ST6 => emu.fpu_mut().clear_st(6),
+                Register::ST7 => emu.fpu_mut().clear_st(7),
                 _ => unimplemented!("impossible case"),
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fbld => {
@@ -4293,7 +4293,7 @@ pub fn emulate_instruction(
             };
 
             //log::info!("{} {}", value, value as f32);
-            emu.fpu().set_st(0, value as f64);
+            emu.fpu_mut().set_st(0, value as f64);
         }
 
         Mnemonic::Fldcw => {
@@ -4304,8 +4304,8 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            emu.fpu().set_ctrl(value);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ctrl(value);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fnstenv => {
@@ -4317,93 +4317,93 @@ pub fn emulate_instruction(
             };
 
             if emu.cfg.is_64bits {
-                let env = emu.fpu().get_env64();
+                let env = emu.fpu_mut().get_env64();
 
                 for i in 0..4 {
                     emu.maps.write_qword(addr + (i * 4), env[i as usize]);
                 }
             } else {
-                let env = emu.fpu().get_env32();
+                let env = emu.fpu_mut().get_env32();
                 for i in 0..4 {
                     emu.maps.write_dword(addr + (i * 4), env[i as usize]);
                 }
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fld => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldz => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(0.0);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(0.0);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fld1 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(1.0);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(1.0);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldpi => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f80(F80::PI());
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f80(F80::PI());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldl2t => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(10f64.log2());
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(10f64.log2());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldlg2 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(2f64.log10());
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(2f64.log10());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldln2 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(2f64.log(std::f64::consts::E));
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(2f64.log(std::f64::consts::E));
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fldl2e => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().push_f64(std::f64::consts::E.log2());
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().push_f64(std::f64::consts::E.log2());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fst => {
             emu.show_instruction(color!("Green"), ins);
 
-            let res = emu.fpu().get_st(0) as u64;
+            let res = emu.fpu_mut().get_st(0) as u64;
 
             if !emu.set_operand_value(ins, 0, res) {
                 return false;
             }
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsubrp => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().subr(1, 0);
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().subr(1, 0);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fstp => {
@@ -4415,7 +4415,7 @@ pub fn emulate_instruction(
             }
             if ins.op_kind(0) == iced_x86::OpKind::Memory {
                 log::info!("  param0 is mem"); 
-                let res = emu.fpu().get_st(0) as u64;
+                let res = emu.fpu_mut().get_st(0) as u64;
 
                 if !emu.set_operand_value(ins, 0, res) {
                     return false;
@@ -4425,41 +4425,41 @@ pub fn emulate_instruction(
                 unreachable!("Fstp: param1 is mem");
             }
 
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fincstp => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().set_status_c1(false);
-            emu.fpu().st.inc_top();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_status_c1(false);
+            emu.fpu_mut().st.inc_top();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fild => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.fpu().st.get_depth() >= 8 {
-                emu.fpu().set_status_c1(true);
+                emu.fpu_mut().set_status_c1(true);
             } else {
-                emu.fpu().set_status_c1(false);
-                emu.fpu().st.dec_top();
+                emu.fpu_mut().set_status_c1(false);
+                emu.fpu_mut().st.dec_top();
 
                 let value1 = match emu.get_operand_value(ins, 0, true) {
                     Some(v) => v as i64 as f64,
                     None => return false,
                 };
 
-                emu.fpu().st.push_f64(value1);
-                emu.fpu().set_ip(emu.regs().rip);
+                emu.fpu_mut().st.push_f64(value1);
+                emu.fpu_mut().set_ip(emu.regs().rip);
             }
         }
 
         Mnemonic::Fist => {
             emu.show_instruction(color!("Green"), ins);
 
-            let value = emu.fpu().get_st(0) as i64;
+            let value = emu.fpu_mut().get_st(0) as i64;
             let value2 = match emu.get_operand_sz(ins, 0) {
                 16 => value as i16 as u16 as u64,
                 32 => value as i32 as u32 as u64,
@@ -4467,16 +4467,16 @@ pub fn emulate_instruction(
                 _ => return false,
             };
             emu.set_operand_value(ins, 0, value2);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fxtract => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
             let (mantissa, exponent) = emu.fpu().frexp(st0);
-            emu.fpu().set_st(0, mantissa);
-            emu.fpu().push_f64(exponent as f64);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(0, mantissa);
+            emu.fpu_mut().push_f64(exponent as f64);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fxsave => {
@@ -4489,7 +4489,7 @@ pub fn emulate_instruction(
 
             let state = emu.fpu().fxsave();
             state.save(addr, emu);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fxrstor => {
@@ -4502,14 +4502,14 @@ pub fn emulate_instruction(
 
             let state = FPUState::load(addr, emu);
 
-            emu.fpu().fxrstor(state);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().fxrstor(state);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fistp => {
             emu.show_instruction(color!("Green"), ins);
 
-            let value = emu.fpu().get_st(0) as i64;
+            let value = emu.fpu_mut().get_st(0) as i64;
             let value2 = match emu.get_operand_sz(ins, 0) {
                 16 => value as i16 as u16 as u64,
                 32 => value as i32 as u32 as u64,
@@ -4520,88 +4520,88 @@ pub fn emulate_instruction(
                 return false;
             }
 
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmove => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags().f_zf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovb => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags().f_cf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovbe => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags().f_cf || emu.flags().f_zf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovu => {
             emu.show_instruction(color!("Green"), ins);
 
             if emu.flags().f_pf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovnb => {
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags().f_cf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovne => {
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags().f_zf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovnbe => {
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags().f_cf && !emu.flags().f_zf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcmovnu => {
             emu.show_instruction(color!("Green"), ins);
 
             if !emu.flags().f_pf {
-                emu.fpu().move_reg_to_st0(ins.op_register(1));
+                emu.fpu_mut().move_reg_to_st0(ins.op_register(1));
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fxch => {
@@ -4609,74 +4609,74 @@ pub fn emulate_instruction(
             assert_eq!(ins.op_count(), 2);
             assert_eq!(ins.op_register(0), Register::ST0);
             match ins.op_register(1) {
-                Register::ST0 => emu.fpu().xchg_st(0),
-                Register::ST1 => emu.fpu().xchg_st(1),
-                Register::ST2 => emu.fpu().xchg_st(2),
-                Register::ST3 => emu.fpu().xchg_st(3),
-                Register::ST4 => emu.fpu().xchg_st(4),
-                Register::ST5 => emu.fpu().xchg_st(5),
-                Register::ST6 => emu.fpu().xchg_st(6),
-                Register::ST7 => emu.fpu().xchg_st(7),
+                Register::ST0 => emu.fpu_mut().xchg_st(0),
+                Register::ST1 => emu.fpu_mut().xchg_st(1),
+                Register::ST2 => emu.fpu_mut().xchg_st(2),
+                Register::ST3 => emu.fpu_mut().xchg_st(3),
+                Register::ST4 => emu.fpu_mut().xchg_st(4),
+                Register::ST5 => emu.fpu_mut().xchg_st(5),
+                Register::ST6 => emu.fpu_mut().xchg_st(6),
+                Register::ST7 => emu.fpu_mut().xchg_st(7),
                 _ => unimplemented!("impossible case"),
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsqrt => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
 
             if st0 < 0.0 {
                 if emu.cfg.verbose >= 1 {
                     log::info!("/!\\ sqrt of negative float");
                 }
-                emu.fpu().set_st_u80(0, F80::QNaN().get());
+                emu.fpu_mut().set_st_u80(0, F80::QNaN().get());
             } else {
-                emu.fpu().set_st(0, st0.sqrt());
+                emu.fpu_mut().set_st(0, st0.sqrt());
             }
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fchs => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
            
-            emu.fpu().neg_st(0);
-            emu.fpu().set_status_c0(false);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().neg_st(0);
+            emu.fpu_mut().set_status_c0(false);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fptan => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
-            emu.fpu().push_f64(1.0);
-            emu.fpu().set_st(1, st0.tan());
-            emu.fpu().set_ip(emu.regs().rip);
+            let st0 = emu.fpu_mut().get_st(0);
+            emu.fpu_mut().push_f64(1.0);
+            emu.fpu_mut().set_st(1, st0.tan());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fmulp => {
             emu.show_instruction(color!("Green"), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
-            let result = emu.fpu().get_st(value1) * emu.fpu().get_st(value0);
+            let result = emu.fpu_mut().get_st(value1) * emu.fpu_mut().get_st(value0);
 
-            emu.fpu().set_st(1, result);
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(1, result);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fdivp => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);     // ST(0) = divisor
-            let st1 = emu.fpu().get_st(1);     // ST(1) = dividend
+            let st0 = emu.fpu_mut().get_st(0);     // ST(0) = divisor
+            let st1 = emu.fpu_mut().get_st(1);     // ST(1) = dividend
 
             let result = st1 / st0;          // ST(1) = ST(1) / ST(0)
-            emu.fpu().set_st(1, result);
+            emu.fpu_mut().set_st(1, result);
 
-            emu.fpu().pop_f64();               // Remove ST(0)
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().pop_f64();               // Remove ST(0)
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsubp => {
@@ -4687,18 +4687,18 @@ pub fn emulate_instruction(
             log::info!("st0_idx: {}, st1_idx: {}", st0_idx, st1_idx);
 
 
-            let st0 = emu.fpu().get_st_f80_copy(st0_idx);
-            let st1 = emu.fpu().get_st_f80_copy(st1_idx);
+            let st0 = emu.fpu_mut().get_st_f80_copy(st0_idx);
+            let st1 = emu.fpu_mut().get_st_f80_copy(st1_idx);
             log::info!("st0: {:x}, st1: {:x}", st0.get(), st1.get());
 
             if st0.is_empty() || st1.is_empty() {
-                emu.fpu().set_st(st1_idx, F80::QNaN().get_f64());
+                emu.fpu_mut().set_st(st1_idx, F80::QNaN().get_f64());
             } else {
-                emu.fpu().sub(st1_idx, st0_idx);
+                emu.fpu_mut().sub(st1_idx, st0_idx);
             }
 
-            emu.fpu().pop_f64(); // pops ST(0) properly
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().pop_f64(); // pops ST(0) properly
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsubr => {
@@ -4706,8 +4706,8 @@ pub fn emulate_instruction(
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
             
-            emu.fpu().subr(value0 as usize, value1 as usize);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().subr(value0 as usize, value1 as usize);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsub => {
@@ -4715,8 +4715,8 @@ pub fn emulate_instruction(
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0);
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
 
-            emu.fpu().sub(value0 as usize, value1 as usize);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().sub(value0 as usize, value1 as usize);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fadd => {
@@ -4725,7 +4725,7 @@ pub fn emulate_instruction(
             if ins.op_count() == 2 {
                 let i = emu.fpu().reg_to_id(ins.op_register(0));
                 let j = emu.fpu().reg_to_id(ins.op_register(1));
-                emu.fpu().add(i,j);
+                emu.fpu_mut().add(i,j);
 
             } else if ins.op_count() == 1 {
                 if ins.op_kind(0) == iced_x86::OpKind::Memory {
@@ -4738,7 +4738,7 @@ pub fn emulate_instruction(
                         _ => unreachable!(),
                     };
 
-                    emu.fpu().set_st(0, value);
+                    emu.fpu_mut().set_st(0, value);
 
                 } else {
                     unreachable!();
@@ -4747,57 +4747,57 @@ pub fn emulate_instruction(
             } else {
                 unreachable!();
             }
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fucom => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
-            let st1 = emu.fpu().get_st(1);
+            let st0 = emu.fpu_mut().get_st(0);
+            let st1 = emu.fpu_mut().get_st(1);
 
             if st0.is_nan() || st1.is_nan() {
-                emu.fpu().set_status_c0(true);
-                emu.fpu().set_status_c2(true);
-                emu.fpu().set_status_c3(true);
+                emu.fpu_mut().set_status_c0(true);
+                emu.fpu_mut().set_status_c2(true);
+                emu.fpu_mut().set_status_c3(true);
             } else if st0 == st1 {
-                emu.fpu().set_status_c0(false);
-                emu.fpu().set_status_c2(false);
-                emu.fpu().set_status_c3(true);
+                emu.fpu_mut().set_status_c0(false);
+                emu.fpu_mut().set_status_c2(false);
+                emu.fpu_mut().set_status_c3(true);
             } else if st0 > st1 {
-                emu.fpu().set_status_c0(true);
-                emu.fpu().set_status_c2(false);
-                emu.fpu().set_status_c3(false);
+                emu.fpu_mut().set_status_c0(true);
+                emu.fpu_mut().set_status_c2(false);
+                emu.fpu_mut().set_status_c3(false);
             } else {
                 // st0 < st1
-                emu.fpu().set_status_c0(false);
-                emu.fpu().set_status_c2(false);
-                emu.fpu().set_status_c3(false);
+                emu.fpu_mut().set_status_c0(false);
+                emu.fpu_mut().set_status_c2(false);
+                emu.fpu_mut().set_status_c3(false);
             }
 
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::F2xm1 => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
             let result = (2.0f64.powf(st0)) - 1.0;
-            emu.fpu().set_st(0, result);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(0, result);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fyl2x => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().fyl2x();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().fyl2x();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fyl2xp1 => {
             emu.show_instruction(color!("Green"), ins);
 
-            emu.fpu().fyl2xp1();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().fyl2xp1();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Faddp => {
@@ -4806,150 +4806,150 @@ pub fn emulate_instruction(
             if ins.op_count() == 2 {
                 let i = emu.fpu().reg_to_id(ins.op_register(0));
                 let j = emu.fpu().reg_to_id(ins.op_register(1));
-                emu.fpu().add(i, j);
-                emu.fpu().pop_f64();
+                emu.fpu_mut().add(i, j);
+                emu.fpu_mut().pop_f64();
             } else {
                 unreachable!();
             }
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fnclex => {
             emu.show_instruction(color!("Green"), ins);
-            emu.fpu().stat &= !(0b10000011_11111111);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().stat &= !(0b10000011_11111111);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcom => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
 
             let value1 = match emu.get_operand_value(ins, 1, false) {
                 Some(v1) => v1,
                 None => 0,
             };
 
-            let st4 = emu.fpu().get_st(value1 as usize);
+            let st4 = emu.fpu_mut().get_st(value1 as usize);
 
             if st0.is_nan() || st4.is_nan() {
-                emu.fpu().set_status_c0(false);
-                emu.fpu().set_status_c2(true);
-                emu.fpu().set_status_c3(false);
+                emu.fpu_mut().set_status_c0(false);
+                emu.fpu_mut().set_status_c2(true);
+                emu.fpu_mut().set_status_c3(false);
             } else {
-                emu.fpu().set_status_c0(st0 < st4);
-                emu.fpu().set_status_c2(false);
-                emu.fpu().set_status_c3(st0 == st4);
+                emu.fpu_mut().set_status_c0(st0 < st4);
+                emu.fpu_mut().set_status_c2(false);
+                emu.fpu_mut().set_status_c3(st0 == st4);
             }
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fmul => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
 
             let value1 = match emu.get_operand_value(ins, 1, false) {
                 Some(v1) => v1,
                 None => 0,
             };
 
-            let stn = emu.fpu().get_st(value1 as usize);
-            emu.fpu().set_st(0, st0 * stn);
-            emu.fpu().set_ip(emu.regs().rip);
+            let stn = emu.fpu_mut().get_st(value1 as usize);
+            emu.fpu_mut().set_st(0, st0 * stn);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fabs => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
-            emu.fpu().set_st(0, st0.abs());
-            emu.fpu().set_ip(emu.regs().rip);
+            let st0 = emu.fpu_mut().get_st(0);
+            emu.fpu_mut().set_st(0, st0.abs());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fsin => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
-            emu.fpu().set_st(0, st0.sin());
-            emu.fpu().set_ip(emu.regs().rip);
+            let st0 = emu.fpu_mut().get_st(0);
+            emu.fpu_mut().set_st(0, st0.sin());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fcos => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
-            emu.fpu().set_st(0, st0.cos());
-            emu.fpu().set_ip(emu.regs().rip);
+            let st0 = emu.fpu_mut().get_st(0);
+            emu.fpu_mut().set_st(0, st0.cos());
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fdiv => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
 
             let value1 = match emu.get_operand_value(ins, 1, false) {
                 Some(v1) => v1,
                 None => 0,
             };
 
-            let stn = emu.fpu().get_st(value1 as usize);
-            emu.fpu().set_st(0, st0 / stn);
-            emu.fpu().set_ip(emu.regs().rip);
+            let stn = emu.fpu_mut().get_st(value1 as usize);
+            emu.fpu_mut().set_st(0, st0 / stn);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fdivr => {
             emu.show_instruction(color!("Green"), ins);
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0);
-            let stn = emu.fpu().get_st(value1 as usize);
-            emu.fpu().set_st(0, stn / st0);
-            emu.fpu().set_ip(emu.regs().rip);
+            let stn = emu.fpu_mut().get_st(value1 as usize);
+            emu.fpu_mut().set_st(0, stn / st0);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fdivrp => {
             emu.show_instruction(color!("Green"), ins);
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value1 = emu.get_operand_value(ins, 1, false).unwrap_or(0) as usize;
-            let st0 = emu.fpu().get_st(value0);
-            let st7 = emu.fpu().get_st(value1);
+            let st0 = emu.fpu_mut().get_st(value0);
+            let st7 = emu.fpu_mut().get_st(value1);
 
             let result = st7 / st0;
 
-            emu.fpu().set_st(value1, result);
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(value1, result);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fpatan => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
-            let st1 = emu.fpu().get_st(1);
+            let st0 = emu.fpu_mut().get_st(0);
+            let st1 = emu.fpu_mut().get_st(1);
             let result = (st1 / st0).atan();
-            emu.fpu().set_st(1, result);
-            emu.fpu().pop_f64();
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(1, result);
+            emu.fpu_mut().pop_f64();
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fprem => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
-            let st1 = emu.fpu().get_st(1);
+            let st0 = emu.fpu_mut().get_st(0);
+            let st1 = emu.fpu_mut().get_st(1);
 
             let quotient = (st0 / st1).floor();
             let result = st0 - quotient * st1;
 
-            emu.fpu().set_st(0, result);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(0, result);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         Mnemonic::Fprem1 => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
-            let st1 = emu.fpu().get_st(1);
+            let st0 = emu.fpu_mut().get_st(0);
+            let st1 = emu.fpu_mut().get_st(1);
 
             let quotient = (st0 / st1).round();
             let remainder = st0 - quotient * st1;
 
-            emu.fpu().set_st(0, remainder);
-            emu.fpu().set_ip(emu.regs().rip);
+            emu.fpu_mut().set_st(0, remainder);
+            emu.fpu_mut().set_ip(emu.regs().rip);
         }
 
         ////////// end fpu //////////
@@ -4969,8 +4969,8 @@ pub fn emulate_instruction(
             };
 
             let flags2: u32 = (emu.flags().dump() & 0xffff0000) + (flags as u32);
-            emu.flags().load(flags2);
-            emu.regs().rsp += 2;
+            emu.flags_mut().load(flags2);
+            emu.regs_mut().rsp += 2;
         }
 
         Mnemonic::Popfd => {
@@ -4980,7 +4980,7 @@ pub fn emulate_instruction(
                 Some(v) => v,
                 None => return false,
             };
-            emu.flags().load(flags);
+            emu.flags_mut().load(flags);
         }
 
         Mnemonic::Popfq => {
@@ -4990,7 +4990,7 @@ pub fn emulate_instruction(
                 Some(v) => v as u32,
                 None => return false,
             };
-            emu.flags().load(eflags);
+            emu.flags_mut().load(eflags);
         }
 
         Mnemonic::Daa => {
@@ -4998,27 +4998,27 @@ pub fn emulate_instruction(
 
             let old_al = emu.regs().get_al();
             let old_cf = emu.flags().f_cf;
-            emu.flags().f_cf = false;
+            emu.flags_mut().f_cf = false;
 
             if (emu.regs().get_al() & 0x0f > 9) || emu.flags().f_af {
                 let sum = emu.regs().get_al() + 6;
                 emu.regs_mut().set_al(sum & 0xff);
                 if sum > 0xff {
-                    emu.flags().f_cf = true;
+                    emu.flags_mut().f_cf = true;
                 } else {
-                    emu.flags().f_cf = old_cf;
+                    emu.flags_mut().f_cf = old_cf;
                 }
 
-                emu.flags().f_af = true;
+                emu.flags_mut().f_af = true;
             } else {
-                emu.flags().f_af = false;
+                emu.flags_mut().f_af = false;
             }
 
             if old_al > 0x99 || old_cf {
                 emu.regs_mut().set_al(emu.regs().get_al() + 0x60);
-                emu.flags().f_cf = true;
+                emu.flags_mut().f_cf = true;
             } else {
-                emu.flags().f_cf = false;
+                emu.flags_mut().f_cf = false;
             }
         }
 
@@ -5052,7 +5052,7 @@ pub fn emulate_instruction(
                     return false;
                 }
             } else {
-                let result = emu.flags().shld(value0, value1, counter, sz);
+                let result = emu.flags_mut().shld(value0, value1, counter, sz);
                 if !emu.set_operand_value(ins, 0, result) {
                     return false;
                 }
@@ -5078,7 +5078,7 @@ pub fn emulate_instruction(
             };
 
             let sz = emu.get_operand_sz(ins, 0);
-            let result = emu.flags().shrd(value0, value1, counter, sz);
+            let result = emu.flags_mut().shrd(value0, value1, counter, sz);
 
             if !emu.set_operand_value(ins, 0, result) {
                 return false;
@@ -5204,7 +5204,7 @@ pub fn emulate_instruction(
             };
 
             let result: u128 = value0 & value1;
-            emu.flags().calc_flags(result as u64, 32);
+            emu.flags_mut().calc_flags(result as u64, 32);
 
             emu.set_operand_xmm_value_128(ins, 0, result);
         }
@@ -5229,7 +5229,7 @@ pub fn emulate_instruction(
             };
 
             let result: u128 = value0 | value1;
-            emu.flags().calc_flags(result as u64, 32);
+            emu.flags_mut().calc_flags(result as u64, 32);
 
             emu.set_operand_xmm_value_128(ins, 0, result);
         }
@@ -5255,7 +5255,7 @@ pub fn emulate_instruction(
             };
 
             let result: u128 = value0 ^ value1;
-            emu.flags().calc_flags(result as u64, 32);
+            emu.flags_mut().calc_flags(result as u64, 32);
 
             emu.set_operand_xmm_value_128(ins, 0, result);
         }
@@ -6937,22 +6937,22 @@ pub fn emulate_instruction(
             let mask_lower = regs64::U256::from(0xffffffffffffffffu64);
             let mask = mask_lower | (mask_lower << 64);
 
-            emu.regs().ymm0 &= mask;
-            emu.regs().ymm1 &= mask;
-            emu.regs().ymm2 &= mask;
-            emu.regs().ymm3 &= mask;
-            emu.regs().ymm4 &= mask;
-            emu.regs().ymm5 &= mask;
-            emu.regs().ymm6 &= mask;
-            emu.regs().ymm7 &= mask;
-            emu.regs().ymm8 &= mask;
-            emu.regs().ymm9 &= mask;
-            emu.regs().ymm10 &= mask;
-            emu.regs().ymm11 &= mask;
-            emu.regs().ymm12 &= mask;
-            emu.regs().ymm13 &= mask;
-            emu.regs().ymm14 &= mask;
-            emu.regs().ymm15 &= mask;
+            emu.regs_mut().ymm0 &= mask;
+            emu.regs_mut().ymm1 &= mask;
+            emu.regs_mut().ymm2 &= mask;
+            emu.regs_mut().ymm3 &= mask;
+            emu.regs_mut().ymm4 &= mask;
+            emu.regs_mut().ymm5 &= mask;
+            emu.regs_mut().ymm6 &= mask;
+            emu.regs_mut().ymm7 &= mask;
+            emu.regs_mut().ymm8 &= mask;
+            emu.regs_mut().ymm9 &= mask;
+            emu.regs_mut().ymm10 &= mask;
+            emu.regs_mut().ymm11 &= mask;
+            emu.regs_mut().ymm12 &= mask;
+            emu.regs_mut().ymm13 &= mask;
+            emu.regs_mut().ymm14 &= mask;
+            emu.regs_mut().ymm15 &= mask;
         }
 
         Mnemonic::Vmovdqu => {
@@ -7341,14 +7341,14 @@ pub fn emulate_instruction(
             let value0 = emu.get_operand_value(ins, 0, false).unwrap_or(0) as usize;
             let value2 = emu.get_operand_value(ins, 1, false).unwrap_or(2) as usize;
 
-            let sti = emu.fpu().get_st(value0);
-            let stj = emu.fpu().get_st(value2);
+            let sti = emu.fpu_mut().get_st(value0);
+            let stj = emu.fpu_mut().get_st(value2);
 
-            emu.fpu().set_status_c0(sti < stj);
-            emu.fpu().set_status_c2(sti.is_nan() || stj.is_nan());
-            emu.fpu().set_status_c3(sti == stj);
+            emu.fpu_mut().set_status_c0(sti < stj);
+            emu.fpu_mut().set_status_c2(sti.is_nan() || stj.is_nan());
+            emu.fpu_mut().set_status_c3(sti == stj);
 
-            emu.fpu().pop_f64();
+            emu.fpu_mut().pop_f64();
         }
 
         Mnemonic::Psrlq => {
@@ -7385,12 +7385,12 @@ pub fn emulate_instruction(
         Mnemonic::Fsincos => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
+            let st0 = emu.fpu_mut().get_st(0);
             let sin_value = st0.sin();
             let cos_value = st0.cos();
 
-            emu.fpu().set_st(0, sin_value);
-            emu.fpu().push_f64(cos_value);
+            emu.fpu_mut().set_st(0, sin_value);
+            emu.fpu_mut().push_f64(cos_value);
         }
 
         Mnemonic::Packuswb => {
@@ -7502,10 +7502,10 @@ pub fn emulate_instruction(
         Mnemonic::Frndint => {
             emu.show_instruction(color!("Green"), ins);
 
-            let value = emu.fpu().get_st(0);
+            let value = emu.fpu_mut().get_st(0);
             let rounded_value = value.round();
 
-            emu.fpu().set_st(0, rounded_value);
+            emu.fpu_mut().set_st(0, rounded_value);
         }
 
         Mnemonic::Psrlw => {
@@ -7578,13 +7578,13 @@ pub fn emulate_instruction(
         Mnemonic::Fscale => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
-            let st1 = emu.fpu().get_st(1);
+            let st0 = emu.fpu_mut().get_st(0);
+            let st1 = emu.fpu_mut().get_st(1);
 
             let scale_factor = 2.0f64.powf(st1.trunc());
             let result = st0 * scale_factor;
 
-            emu.fpu().set_st(0, result);
+            emu.fpu_mut().set_st(0, result);
         }
 
         Mnemonic::Vpcmpeqb => {
@@ -7868,16 +7868,16 @@ pub fn emulate_instruction(
 
         Mnemonic::Fdecstp => {
             emu.show_instruction(color!("Green"), ins);
-            emu.fpu().st.inc_top();
+            emu.fpu_mut().st.inc_top();
         }
 
         Mnemonic::Ftst => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0 = emu.fpu().get_st(0);
-            emu.fpu().set_status_c0(st0 < 0.0);
-            emu.fpu().set_status_c2(st0.is_nan());
-            emu.fpu().set_status_c3(st0 == 0.0);
+            let st0 = emu.fpu_mut().get_st(0);
+            emu.fpu_mut().set_status_c0(st0 < 0.0);
+            emu.fpu_mut().set_status_c2(st0.is_nan());
+            emu.fpu_mut().set_status_c3(st0 == 0.0);
         }
 
         Mnemonic::Emms => {
@@ -7887,33 +7887,33 @@ pub fn emulate_instruction(
         Mnemonic::Fxam => {
             emu.show_instruction(color!("Green"), ins);
 
-            let st0: f64 = emu.fpu().get_st(0);
+            let st0: f64 = emu.fpu_mut().get_st(0);
 
             if st0.is_nan() {
                 // Undefined (QNaN)
-                emu.fpu().set_status_c0(true);
-                emu.fpu().set_status_c1(true);
-                emu.fpu().set_status_c2(true);
+                emu.fpu_mut().set_status_c0(true);
+                emu.fpu_mut().set_status_c1(true);
+                emu.fpu_mut().set_status_c2(true);
             } else if st0 == 0.0 {
                 // Zero or negative zero
-                emu.fpu().set_status_c1(true);
-                emu.fpu().set_status_c2(false);
-                emu.fpu().set_status_c0(st0.is_sign_negative());
+                emu.fpu_mut().set_status_c1(true);
+                emu.fpu_mut().set_status_c2(false);
+                emu.fpu_mut().set_status_c0(st0.is_sign_negative());
             } else if st0.is_infinite() {
                 // Positive or negative Infinite
-                emu.fpu().set_status_c1(false);
-                emu.fpu().set_status_c2(true);
-                emu.fpu().set_status_c0(st0.is_sign_negative());
+                emu.fpu_mut().set_status_c1(false);
+                emu.fpu_mut().set_status_c2(true);
+                emu.fpu_mut().set_status_c0(st0.is_sign_negative());
             } else if st0.abs() < std::f64::MIN_POSITIVE {
                 // Denormal
-                emu.fpu().set_status_c0(true);
-                emu.fpu().set_status_c1(true);
-                emu.fpu().set_status_c2(false);
+                emu.fpu_mut().set_status_c0(true);
+                emu.fpu_mut().set_status_c1(true);
+                emu.fpu_mut().set_status_c2(false);
             } else {
                 // Normal positive or negative
-                emu.fpu().set_status_c0(st0.is_sign_negative());
-                emu.fpu().set_status_c1(false);
-                emu.fpu().set_status_c2(false);
+                emu.fpu_mut().set_status_c0(st0.is_sign_negative());
+                emu.fpu_mut().set_status_c1(false);
+                emu.fpu_mut().set_status_c2(false);
             }
 
         }

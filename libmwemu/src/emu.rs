@@ -214,6 +214,23 @@ impl Emu {
         &mut self.threads[self.current_thread_id].regs
     }
     
+    // Helper methods for common register operations to avoid borrow conflicts
+    pub fn set_rsp(&mut self, value: u64) {
+        self.threads[self.current_thread_id].regs.rsp = value;
+    }
+    
+    pub fn set_rbp(&mut self, value: u64) {
+        self.threads[self.current_thread_id].regs.rbp = value;
+    }
+    
+    pub fn get_rsp(&self) -> u64 {
+        self.threads[self.current_thread_id].regs.rsp
+    }
+    
+    pub fn get_rbp(&self) -> u64 {
+        self.threads[self.current_thread_id].regs.rbp
+    }
+    
     pub fn pre_op_regs(&self) -> &Regs64 {
         &self.threads[self.current_thread_id].pre_op_regs
     }
@@ -587,9 +604,13 @@ impl Emu {
     pub fn init_stack32(&mut self) {
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
-            self.cfg.stack_addr = 0x212000;
-            self.regs_mut().set_esp(self.cfg.stack_addr + 0x1c000 + 4);
-            self.regs_mut().set_ebp(self.cfg.stack_addr + 0x1c000 + 4 + 0x1000);
+            {
+                self.cfg.stack_addr = 0x212000;
+                let esp = self.cfg.stack_addr + 0x1c000 + 4;
+                let ebp = self.cfg.stack_addr + 0x1c000 + 4 + 0x1000;
+                self.regs_mut().set_esp(esp);
+                self.regs_mut().set_ebp(ebp);
+            }
         }
 
         let stack = self
@@ -604,7 +625,6 @@ impl Emu {
         assert!(self.regs().get_ebp() < stack.get_bottom());
         assert!(stack.inside(self.regs().get_esp()));
         assert!(stack.inside(self.regs().get_ebp()));
-
     }
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
@@ -2497,7 +2517,7 @@ impl Emu {
 
             let con = Console::new();
             if self.running_script {
-                self.seh() = next;
+                self.set_seh(next);
                 exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
@@ -3856,7 +3876,7 @@ impl Emu {
                 if self.force_reload {
                     self.force_reload = false;
                 } else if self.cfg.is_64bits {
-                    self.regs().rip += sz as u64;
+                    self.regs_mut().rip += sz as u64;
                 } else {
                     self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
                 }
@@ -3876,7 +3896,7 @@ impl Emu {
         if self.force_reload {
             self.force_reload = false;
         } else if self.cfg.is_64bits {
-            self.regs().rip += sz as u64;
+            self.regs_mut().rip += sz as u64;
         } else {
             self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
         }
@@ -4120,7 +4140,7 @@ impl Emu {
                         if self.regs_mut().rcx == 0 {
                             self.rep = None;
                             if self.cfg.is_64bits {
-                                self.regs().rip += sz as u64;
+                                self.regs_mut().rip += sz as u64;
                             } else {
                                 self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
                             }
@@ -4138,7 +4158,7 @@ impl Emu {
                             log::info!("    rcx: {}", self.regs().rcx);
                         }
                         if self.regs().rcx > 0 {
-                            self.regs().rcx -= 1;
+                            self.regs_mut().rcx -= 1;
                             if self.regs_mut().rcx == 0 {
                                 self.rep = None;
                             } else {
@@ -4223,7 +4243,7 @@ impl Emu {
 
                     if self.rep.is_none() {
                         if self.cfg.is_64bits {
-                            self.regs().rip += sz as u64;
+                            self.regs_mut().rip += sz as u64;
                         } else {
                             self.regs_mut().set_eip(self.regs().get_eip() + sz as u64);
                         }
