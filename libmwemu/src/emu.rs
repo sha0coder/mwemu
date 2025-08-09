@@ -3636,6 +3636,8 @@ impl Emu {
         let instruction = self.instruction.unwrap();
         let instruction_size = instruction.len();
         let instruction_bytes = self.maps.read_bytes(self.regs().rip, instruction_size);
+        let mut output: String = String::new();
+        self.formatter.format(&instruction, &mut output);
 
         let mut comments = String::new();
 
@@ -3750,8 +3752,6 @@ impl Emu {
 
         let mut trace_file = self.trace_file.as_ref().unwrap();
 
-        let mut output: String = String::new();
-        self.formatter.format(&instruction, &mut output);
         writeln!(
             trace_file,
             r#""{index:02X}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
