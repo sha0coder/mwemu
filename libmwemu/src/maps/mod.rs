@@ -394,7 +394,12 @@ impl Maps {
     }
 
     // deprecated
-    pub fn get_mem(&mut self, name: &str) -> &mut Mem64 {
+    pub fn get_mem(&self, name: &str) -> &Mem64 {
+        self.get_map_by_name(name)
+            .expect("incorrect memory map name")
+    }
+
+    pub fn get_mem_mut(&mut self, name: &str) -> &mut Mem64 {
         self.get_map_by_name_mut(name)
             .expect("incorrect memory map name")
     }

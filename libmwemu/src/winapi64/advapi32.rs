@@ -30,7 +30,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -42,7 +42,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 fn StartServiceCtrlDispatcherA(emu: &mut emu::Emu) {
     let service_table_entry_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!StartServiceCtrlDispatcherA error reading service_table_entry pointer");
 
     let service_name = emu
@@ -54,23 +54,23 @@ fn StartServiceCtrlDispatcherA(emu: &mut emu::Emu) {
         .read_dword((service_table_entry_ptr + 4) as u64)
         .expect("advapi32!StartServiceCtrlDispatcherA error reading service_name");
 
-    emu.regs.set_eax(1);
+    emu.regs_mut().set_eax(1);
 }
 
 fn StartServiceCtrlDispatcherW(emu: &mut emu::Emu) {
     let service_table_entry_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!StartServiceCtrlDispatcherW error reading service_table_entry pointer");
 
-    emu.regs.set_eax(1);
+    emu.regs_mut().set_eax(1);
 }
 
 fn RegOpenKeyExA(emu: &mut emu::Emu) {
-    let hkey = emu.regs.rcx;
-    let subkey_ptr = emu.regs.rdx;
-    let opts = emu.regs.r8;
-    let result = emu.regs.r9;
+    let hkey = emu.regs().rcx;
+    let subkey_ptr = emu.regs().rdx;
+    let opts = emu.regs().r8;
+    let result = emu.regs().r9;
 
     let subkey = emu.maps.read_string(subkey_ptr);
 
@@ -84,11 +84,11 @@ fn RegOpenKeyExA(emu: &mut emu::Emu) {
 
     emu.maps
         .write_qword(result, helper::handler_create(&subkey));
-    emu.regs.rax = constants::ERROR_SUCCESS;
+    emu.regs_mut().rax = constants::ERROR_SUCCESS;
 }
 
 fn RegCloseKey(emu: &mut emu::Emu) {
-    let hkey = emu.regs.rcx;
+    let hkey = emu.regs().rcx;
 
     log::info!(
         "{}** {} advapi32!RegCloseKey {}",
@@ -99,21 +99,21 @@ fn RegCloseKey(emu: &mut emu::Emu) {
 
     helper::handler_close(hkey);
 
-    emu.regs.rax = constants::ERROR_SUCCESS;
+    emu.regs_mut().rax = constants::ERROR_SUCCESS;
 }
 
 fn RegQueryValueExA(emu: &mut emu::Emu) {
-    let hkey = emu.regs.rcx;
-    let value_ptr = emu.regs.rdx;
-    let reserved = emu.regs.r8;
-    let typ_out = emu.regs.r9;
+    let hkey = emu.regs().rcx;
+    let value_ptr = emu.regs().rdx;
+    let reserved = emu.regs().r8;
+    let typ_out = emu.regs().r9;
     let data_out = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("error reading api aparam");
     let datasz_out = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("error reading api param");
 
     let mut value = String::new();
@@ -135,12 +135,12 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
     if datasz_out > 0 {
         emu.maps.write_qword(datasz_out, 24);
     }
-    emu.regs.rax = constants::ERROR_SUCCESS;
+    emu.regs_mut().rax = constants::ERROR_SUCCESS;
 }
 
 fn GetUserNameA(emu: &mut emu::Emu) {
-    let out_username = emu.regs.rcx;
-    let in_out_sz = emu.regs.rdx;
+    let out_username = emu.regs().rcx;
+    let in_out_sz = emu.regs().rdx;
 
     let mut sz = 0;
 
@@ -167,7 +167,7 @@ fn GetUserNameA(emu: &mut emu::Emu) {
             in_out_sz,
             emu.colors.nc
         );
-        emu.regs.rax = constants::FALSE;
+        emu.regs_mut().rax = constants::FALSE;
     } else {
         log::info!(
             "{}** {} advapi32!GetUserNameA buf: 0x{:x} `{}` {}",
@@ -177,15 +177,15 @@ fn GetUserNameA(emu: &mut emu::Emu) {
             constants::USER_NAME,
             emu.colors.nc
         );
-        emu.regs.rax = constants::TRUE;
+        emu.regs_mut().rax = constants::TRUE;
     }
 
 }
 
 
 fn GetUserNameW(emu: &mut emu::Emu) {
-    let out_username = emu.regs.rcx;
-    let in_out_sz = emu.regs.rdx;
+    let out_username = emu.regs().rcx;
+    let in_out_sz = emu.regs().rdx;
 
     let mut sz = 0;
 
@@ -212,7 +212,7 @@ fn GetUserNameW(emu: &mut emu::Emu) {
             in_out_sz,
             emu.colors.nc
         );
-        emu.regs.rax = constants::FALSE;
+        emu.regs_mut().rax = constants::FALSE;
     } else {
         log::info!(
             "{}** {} advapi32!GetUserNameW buf: 0x{:x} `{}` {}",
@@ -222,7 +222,7 @@ fn GetUserNameW(emu: &mut emu::Emu) {
             constants::USER_NAME,
             emu.colors.nc
         );
-        emu.regs.rax = constants::TRUE;
+        emu.regs_mut().rax = constants::TRUE;
     }
 
 }

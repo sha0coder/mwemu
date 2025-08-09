@@ -1,6 +1,6 @@
 /*macro_rules! stack_param {
     ($emu:expr, $num:expr, $msg:expr) => (
-        $emu.read_dword($emu.regs.esp+($num*4)).expect($msg);
+        $emu.read_dword($emu.regs().esp+($num*4)).expect($msg);
     )
 }
 

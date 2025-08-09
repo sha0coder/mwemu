@@ -41,7 +41,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -53,7 +53,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn StartServiceCtrlDispatcherA(emu: &mut emu::Emu) {
     let service_table_entry_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!StartServiceCtrlDispatcherA error reading service_table_entry pointer");
     /*
     let service_name = emu.maps.read_dword(service_table_entry_ptr as u64)
@@ -69,13 +69,13 @@ fn StartServiceCtrlDispatcherA(emu: &mut emu::Emu) {
     );
 
     emu.stack_pop32(false);
-    emu.regs.set_eax(1);
+    emu.regs_mut().set_eax(1);
 }
 
 fn StartServiceCtrlDispatcherW(emu: &mut emu::Emu) {
     let service_table_entry_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!StartServiceCtrlDispatcherW error reading service_table_entry pointer");
 
     log::info!(
@@ -86,7 +86,7 @@ fn StartServiceCtrlDispatcherW(emu: &mut emu::Emu) {
     );
 
     emu.stack_pop32(false);
-    emu.regs.set_eax(1);
+    emu.regs_mut().set_eax(1);
 }
 
 ///// CRYPTO API /////
@@ -94,23 +94,23 @@ fn StartServiceCtrlDispatcherW(emu: &mut emu::Emu) {
 fn CryptAcquireContextA(emu: &mut emu::Emu) {
     let out_handle =
         emu.maps
-            .read_dword(emu.regs.get_esp())
+            .read_dword(emu.regs().get_esp())
             .expect("advapi32!CryptAcquireContextA error reading handle pointer") as u64;
     let container = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptAcquireContextA error reading container");
     let provider = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptAcquireContextA error reading provider");
     let prov_type = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptAcquireContextA error reading prov_type");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptAcquireContextA error reading flags");
 
     let uri = "cryptctx://".to_string();
@@ -150,29 +150,29 @@ fn CryptAcquireContextA(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptAcquireContextW(emu: &mut emu::Emu) {
     let out_handle =
         emu.maps
-            .read_dword(emu.regs.get_esp())
+            .read_dword(emu.regs().get_esp())
             .expect("advapi32!CryptAcquireContextW error reading handle pointer") as u64;
     let container = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptAcquireContextW error reading container");
     let provider = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptAcquireContextW error reading provider");
     let prov_type = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptAcquireContextW error reading prov_type");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptAcquireContextW error reading flags");
 
     let uri = "cryptctx://".to_string();
@@ -212,21 +212,21 @@ fn CryptAcquireContextW(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn LookupPrivilegeValueW(emu: &mut emu::Emu) {
     let ptr_sysname = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!LookupPrivilegeValueW error reading param") as u64;
     let ptr_name = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!LookupPrivilegeValueW error reading param") as u64;
     let ptr_uid = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!LookupPrivilegeValueW error reading param") as u64;
 
     let sysname = emu.maps.read_wide_string(ptr_sysname);
@@ -245,37 +245,37 @@ fn LookupPrivilegeValueW(emu: &mut emu::Emu) {
     for _ in 0..3 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptEncrypt(emu: &mut emu::Emu) {
     let hkey = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let bfinal = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let data_len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 20)
+        .read_dword(emu.regs().get_esp() + 20)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
     let buff_len = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 24)
+        .read_dword(emu.regs().get_esp() + 24)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
 
     log::info!(
@@ -289,37 +289,37 @@ fn CryptEncrypt(emu: &mut emu::Emu) {
         emu.stack_pop32(false);
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptDecrypt(emu: &mut emu::Emu) {
     let hkey = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let bfinal = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let data_len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 20)
+        .read_dword(emu.regs().get_esp() + 20)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
     let buff_len = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 24)
+        .read_dword(emu.regs().get_esp() + 24)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
 
     log::info!(
@@ -333,17 +333,17 @@ fn CryptDecrypt(emu: &mut emu::Emu) {
         emu.stack_pop32(false);
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptReleaseContext(emu: &mut emu::Emu) {
     let hndl = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptReleaseContext error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptReleaseContext error reading param") as u64;
 
     log::info!(
@@ -357,29 +357,29 @@ fn CryptReleaseContext(emu: &mut emu::Emu) {
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptCreateHash(emu: &mut emu::Emu) {
     let hprov = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptCreateHash error reading param");
     let algid = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptCreateHash error reading param");
     let hkey = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptCreateHash error reading param");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptCreateHash error reading param");
     let hash_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptCreateHash error reading param") as u64;
 
     log::info!(
@@ -397,25 +397,25 @@ fn CryptCreateHash(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptGenKey(emu: &mut emu::Emu) {
     let hprov = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptGenKey error reading param");
     let algid = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptGenKey error reading param");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptGenKey error reading param");
     let hkey_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptGenKey error reading param");
 
     log::info!(
@@ -429,29 +429,29 @@ fn CryptGenKey(emu: &mut emu::Emu) {
     for _ in 0..4 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptGetHashParam(emu: &mut emu::Emu) {
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
     let param = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
     let len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
 
     log::info!(
@@ -464,29 +464,29 @@ fn CryptGetHashParam(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptGetKeyParam(emu: &mut emu::Emu) {
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
     let param = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
     let len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
 
     log::info!(
@@ -499,33 +499,33 @@ fn CryptGetKeyParam(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptImportKey(emu: &mut emu::Emu) {
     let hprov = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptImportKey error reading param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptImportKey error reading param") as u64;
     let data_len = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptImportKey error reading param") as u64;
     let hpubkey = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptImportKey error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptImportKey error reading param") as u64;
     let hkey_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptImportKey error reading param") as u64;
 
     log::info!(
@@ -538,33 +538,33 @@ fn CryptImportKey(emu: &mut emu::Emu) {
     for _ in 0..6 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptSignHashA(emu: &mut emu::Emu) {
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptSignHashA error reading param") as u64;
     let key_spec = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
     let desc_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
     let sig_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
     let sig_len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
 
     log::info!(
@@ -577,33 +577,33 @@ fn CryptSignHashA(emu: &mut emu::Emu) {
     for _ in 0..6 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptSignHashW(emu: &mut emu::Emu) {
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptSignHashW error reading param") as u64;
     let key_spec = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
     let desc_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
     let sig_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
     let sig_len_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
 
     log::info!(
@@ -616,25 +616,25 @@ fn CryptSignHashW(emu: &mut emu::Emu) {
     for _ in 0..6 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptHashData(emu: &mut emu::Emu) {
     let hhash = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptHashData error on param") as u64;
     let data_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptHashData error on param") as u64;
     let data_len = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptHashData error on param") as usize;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptHashData error on param");
 
     let data = emu.maps.read_bytes(data_ptr, data_len);
@@ -661,29 +661,29 @@ fn CryptHashData(emu: &mut emu::Emu) {
     for _ in 0..4 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptDeriveKey(emu: &mut emu::Emu) {
     let hprov = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!CryptDeriveKey error on param") as u64;
     let algid = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptDeriveKey error on param");
     let data = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("advapi32!CryptDeriveKey error on param") as usize;
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("advapi32!CryptDeriveKey error on param") as usize;
     let hkey_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptDeriveKey error on param") as u64;
 
     let alg = get_cryptoalgorithm_name(algid);
@@ -706,5 +706,5 @@ fn CryptDeriveKey(emu: &mut emu::Emu) {
     for _ in 0..5 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }

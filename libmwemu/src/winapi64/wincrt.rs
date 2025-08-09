@@ -31,7 +31,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -41,7 +41,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 fn _initialize_onexit_table(emu: &mut emu::Emu) {
-    let table = emu.regs.rcx;
+    let table = emu.regs().rcx;
 
     /*
     http://sandbox.hlt.bme.hu/~gaebor/STLdoc/VS2017/corecrt__startup_8h_source.html
@@ -61,12 +61,12 @@ fn _initialize_onexit_table(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn _register_onexit_function(emu: &mut emu::Emu) {
-    let table = emu.regs.rcx;
-    let callback = emu.regs.rdx;
+    let table = emu.regs().rcx;
+    let callback = emu.regs().rdx;
 
     /*
     http://sandbox.hlt.bme.hu/~gaebor/STLdoc/VS2017/corecrt__startup_8h_source.html
@@ -87,7 +87,7 @@ fn _register_onexit_function(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -97,7 +97,7 @@ extern "C" char** __cdecl _get_initial_narrow_environment()
 }
 */
 fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
-    let env = emu.regs.rcx;
+    let env = emu.regs().rcx;
 
     log::info!(
         "{}** {} wincrt!_get_initial_narrow_environment env: 0x{:x}  {}",
@@ -108,7 +108,7 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
     );
 
     // TODO: Implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 // char*** CDECL __p___argv(void) { return &MSVCRT___argv; }
@@ -159,12 +159,12 @@ fn __p___argv(emu: &mut emu::Emu) {
     emu.maps.write_qword(p_argv_addr, argv_array_addr);
 
     // Return pointer to argv
-    emu.regs.rax = p_argv_addr;
+    emu.regs_mut().rax = p_argv_addr;
 }
 
 // int* CDECL __p___argc(void) { return &MSVCRT___argc; }
 fn __p___argc(emu: &mut emu::Emu) {
-    let argc = emu.regs.rcx;
+    let argc = emu.regs().rcx;
 
     log::info!(
         "{}** {} wincrt!__p___argc argc: 0x{:x}  {}",
@@ -181,7 +181,7 @@ fn __p___argc(emu: &mut emu::Emu) {
     emu.maps
         .create_map(&format!("alloc_{:x}", argc_addr), argc_addr, 4);
     emu.maps.write_dword(argc_addr, 1);
-    emu.regs.rax = argc_addr;
+    emu.regs_mut().rax = argc_addr;
 }
 
 /*
@@ -192,7 +192,7 @@ FILE * CDECL __acrt_iob_func(int index)
 */
 
 fn __acrt_iob_func(emu: &mut emu::Emu) {
-    let index = emu.regs.rcx;
+    let index = emu.regs().rcx;
 
     log::info!(
         "{}** {} wincrt!__acrt_iob_func index: 0x{:x}  {}",
@@ -203,7 +203,7 @@ fn __acrt_iob_func(emu: &mut emu::Emu) {
     );
 
     // TODO: Implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -234,13 +234,13 @@ fn parse_format_specifiers(fmt: &str) -> Vec<&str> {
 }
 
 fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
-    let options = emu.regs.rcx; // _In_ options
-    let file = emu.regs.rdx; // _In_ FILE*
-    let format = emu.regs.r8; // _In_ format string ptr
-    let locale = emu.regs.r9; // _In_opt_ locale
+    let options = emu.regs().rcx; // _In_ options
+    let file = emu.regs().rdx; // _In_ FILE*
+    let format = emu.regs().r8; // _In_ format string ptr
+    let locale = emu.regs().r9; // _In_opt_ locale
     let va_list = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("wincrt!__stdio_common_vfprintf cannot read_qword va_list");
 
     // Just try to read the format string
@@ -289,16 +289,16 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     }
 
     // Return success (1) - this is super basic
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn realloc(emu: &mut emu::Emu) {
-    let addr = emu.regs.rcx;
-    let size = emu.regs.rdx;
+    let addr = emu.regs().rcx;
+    let size = emu.regs().rdx;
 
     if addr == 0 {
         if size == 0 {
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
             return;
         } else {
             let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
@@ -317,7 +317,7 @@ fn realloc(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = base;
+            emu.regs_mut().rax = base;
             return;
         }
     }
@@ -332,7 +332,7 @@ fn realloc(emu: &mut emu::Emu) {
             emu.colors.nc
         );
 
-        emu.regs.rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
+        emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
         return;
     }
 
@@ -361,7 +361,7 @@ fn realloc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = new_addr;
+    emu.regs_mut().rax = new_addr;
 }
 
 fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
@@ -371,14 +371,14 @@ fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn malloc(emu: &mut emu::Emu) {
-    let size = emu.regs.rcx; // In malloc, size is the only parameter
+    let size = emu.regs().rcx; // In malloc, size is the only parameter
 
     if size == 0 {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -397,7 +397,7 @@ fn malloc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = base;
+    emu.regs_mut().rax = base;
 }
 
 /*
@@ -406,7 +406,7 @@ int _crt_atexit(
 )
 */
 fn _crt_atexit(emu: &mut emu::Emu) {
-    let function = emu.regs.rcx;
+    let function = emu.regs().rcx;
 
     log::info!(
         "{}** {} wincrt!_crt_atexit function: 0x{:x}  {}",
@@ -416,5 +416,5 @@ fn _crt_atexit(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: Implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }

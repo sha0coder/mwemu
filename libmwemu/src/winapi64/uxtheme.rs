@@ -23,7 +23,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -33,15 +33,15 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 
 fn IsAppThemed(emu: &mut emu::Emu) {
     log_red!(emu, "** {} uxtheme!IsAppThemed", emu.pos);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn IsThemeActive(emu: &mut emu::Emu) {
     log_red!(emu, "** {} uxtheme!IsThemeActive", emu.pos);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetThemeAppProperties(emu: &mut emu::Emu) {
     log_red!(emu, "** {} uxtheme!GetThemeAppProperties", emu.pos);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }

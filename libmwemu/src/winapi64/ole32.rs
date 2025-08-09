@@ -22,7 +22,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -44,5 +44,5 @@ fn OleInitialize(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: do something
-    emu.regs.rax = 0; // S_OK
+    emu.regs_mut().rax = 0; // S_OK
 }

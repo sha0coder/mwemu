@@ -177,88 +177,88 @@ impl Console {
                         emu.featured_regs32();
                     }
                 }
-                "r rax" => emu.regs.show_rax(&emu.maps, 0),
-                "r rbx" => emu.regs.show_rbx(&emu.maps, 0),
-                "r rcx" => emu.regs.show_rcx(&emu.maps, 0),
-                "r rdx" => emu.regs.show_rdx(&emu.maps, 0),
-                "r rsi" => emu.regs.show_rsi(&emu.maps, 0),
-                "r rdi" => emu.regs.show_rdi(&emu.maps, 0),
-                "r rbp" => log::info!("\trbp: 0x{:x}", emu.regs.rbp),
-                "r rsp" => log::info!("\trsp: 0x{:x}", emu.regs.rsp),
-                "r rip" => log::info!("\trip: 0x{:x}", emu.regs.rip),
-                "r eax" => emu.regs.show_eax(&emu.maps, 0),
-                "r ebx" => emu.regs.show_ebx(&emu.maps, 0),
-                "r ecx" => emu.regs.show_ecx(&emu.maps, 0),
-                "r edx" => emu.regs.show_edx(&emu.maps, 0),
-                "r esi" => emu.regs.show_esi(&emu.maps, 0),
-                "r edi" => emu.regs.show_edi(&emu.maps, 0),
-                "r esp" => log::info!("\tesp: 0x{:x}", emu.regs.get_esp() as u32),
-                "r ebp" => log::info!("\tebp: 0x{:x}", emu.regs.get_ebp() as u32),
-                "r eip" => log::info!("\teip: 0x{:x}", emu.regs.get_eip() as u32),
-                "r r8" => emu.regs.show_r8(&emu.maps, 0),
-                "r r9" => emu.regs.show_r9(&emu.maps, 0),
-                "r r10" => emu.regs.show_r10(&emu.maps, 0),
-                "r r11" => emu.regs.show_r11(&emu.maps, 0),
-                "r r12" => emu.regs.show_r12(&emu.maps, 0),
-                "r r13" => emu.regs.show_r13(&emu.maps, 0),
-                "r r14" => emu.regs.show_r14(&emu.maps, 0),
-                "r r15" => emu.regs.show_r15(&emu.maps, 0),
-                "r r8d" => emu.regs.show_r8d(&emu.maps, 0),
-                "r r9d" => emu.regs.show_r9d(&emu.maps, 0),
-                "r r10d" => emu.regs.show_r10d(&emu.maps, 0),
-                "r r11d" => emu.regs.show_r11d(&emu.maps, 0),
-                "r r12d" => emu.regs.show_r12d(&emu.maps, 0),
-                "r r13d" => emu.regs.show_r13d(&emu.maps, 0),
-                "r r14d" => emu.regs.show_r14d(&emu.maps, 0),
-                "r r15d" => emu.regs.show_r15d(&emu.maps, 0),
-                "r r8w" => emu.regs.show_r8w(&emu.maps, 0),
-                "r r9w" => emu.regs.show_r9w(&emu.maps, 0),
-                "r r10w" => emu.regs.show_r10w(&emu.maps, 0),
-                "r r11w" => emu.regs.show_r11w(&emu.maps, 0),
-                "r r12w" => emu.regs.show_r12w(&emu.maps, 0),
-                "r r13w" => emu.regs.show_r13w(&emu.maps, 0),
-                "r r14w" => emu.regs.show_r14w(&emu.maps, 0),
-                "r r15w" => emu.regs.show_r15w(&emu.maps, 0),
-                "r r8l" => emu.regs.show_r8l(&emu.maps, 0),
-                "r r9l" => emu.regs.show_r9l(&emu.maps, 0),
-                "r r10l" => emu.regs.show_r10l(&emu.maps, 0),
-                "r r11l" => emu.regs.show_r11l(&emu.maps, 0),
-                "r r12l" => emu.regs.show_r12l(&emu.maps, 0),
-                "r r13l" => emu.regs.show_r13l(&emu.maps, 0),
-                "r r14l" => emu.regs.show_r14l(&emu.maps, 0),
-                "r r15l" => emu.regs.show_r15l(&emu.maps, 0),
-                "r xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs.xmm0),
-                "r xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs.xmm1),
-                "r xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs.xmm2),
-                "r xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs.xmm3),
-                "r xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs.xmm4),
-                "r xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs.xmm5),
-                "r xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs.xmm6),
-                "r xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs.xmm7),
-                "r xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs.xmm8),
-                "r xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs.xmm9),
-                "r xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs.xmm10),
-                "r xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs.xmm11),
-                "r xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs.xmm12),
-                "r xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs.xmm13),
-                "r xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs.xmm14),
-                "r xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs.xmm15),
-                "r ymm0" => log::info!("\tymm0: 0x{:x}", emu.regs.ymm0),
-                "r ymm1" => log::info!("\tymm1: 0x{:x}", emu.regs.ymm1),
-                "r ymm2" => log::info!("\tymm2: 0x{:x}", emu.regs.ymm2),
-                "r ymm3" => log::info!("\tymm3: 0x{:x}", emu.regs.ymm3),
-                "r ymm4" => log::info!("\tymm4: 0x{:x}", emu.regs.ymm4),
-                "r ymm5" => log::info!("\tymm5: 0x{:x}", emu.regs.ymm5),
-                "r ymm6" => log::info!("\tymm6: 0x{:x}", emu.regs.ymm6),
-                "r ymm7" => log::info!("\tymm7: 0x{:x}", emu.regs.ymm7),
-                "r ymm8" => log::info!("\tymm8: 0x{:x}", emu.regs.ymm8),
-                "r ymm9" => log::info!("\tymm9: 0x{:x}", emu.regs.ymm9),
-                "r ymm10" => log::info!("\tymm10: 0x{:x}", emu.regs.ymm10),
-                "r ymm11" => log::info!("\tymm11: 0x{:x}", emu.regs.ymm11),
-                "r ymm12" => log::info!("\tymm12: 0x{:x}", emu.regs.ymm12),
-                "r ymm13" => log::info!("\tymm13: 0x{:x}", emu.regs.ymm13),
-                "r ymm14" => log::info!("\tymm14: 0x{:x}", emu.regs.ymm14),
-                "r ymm15" => log::info!("\tymm15: 0x{:x}", emu.regs.ymm15),
+                "r rax" => emu.regs().show_rax(&emu.maps, 0),
+                "r rbx" => emu.regs().show_rbx(&emu.maps, 0),
+                "r rcx" => emu.regs().show_rcx(&emu.maps, 0),
+                "r rdx" => emu.regs().show_rdx(&emu.maps, 0),
+                "r rsi" => emu.regs().show_rsi(&emu.maps, 0),
+                "r rdi" => emu.regs().show_rdi(&emu.maps, 0),
+                "r rbp" => log::info!("\trbp: 0x{:x}", emu.regs().rbp),
+                "r rsp" => log::info!("\trsp: 0x{:x}", emu.regs().rsp),
+                "r rip" => log::info!("\trip: 0x{:x}", emu.regs().rip),
+                "r eax" => emu.regs().show_eax(&emu.maps, 0),
+                "r ebx" => emu.regs().show_ebx(&emu.maps, 0),
+                "r ecx" => emu.regs().show_ecx(&emu.maps, 0),
+                "r edx" => emu.regs().show_edx(&emu.maps, 0),
+                "r esi" => emu.regs().show_esi(&emu.maps, 0),
+                "r edi" => emu.regs().show_edi(&emu.maps, 0),
+                "r esp" => log::info!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
+                "r ebp" => log::info!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
+                "r eip" => log::info!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
+                "r r8" => emu.regs().show_r8(&emu.maps, 0),
+                "r r9" => emu.regs().show_r9(&emu.maps, 0),
+                "r r10" => emu.regs().show_r10(&emu.maps, 0),
+                "r r11" => emu.regs().show_r11(&emu.maps, 0),
+                "r r12" => emu.regs().show_r12(&emu.maps, 0),
+                "r r13" => emu.regs().show_r13(&emu.maps, 0),
+                "r r14" => emu.regs().show_r14(&emu.maps, 0),
+                "r r15" => emu.regs().show_r15(&emu.maps, 0),
+                "r r8d" => emu.regs().show_r8d(&emu.maps, 0),
+                "r r9d" => emu.regs().show_r9d(&emu.maps, 0),
+                "r r10d" => emu.regs().show_r10d(&emu.maps, 0),
+                "r r11d" => emu.regs().show_r11d(&emu.maps, 0),
+                "r r12d" => emu.regs().show_r12d(&emu.maps, 0),
+                "r r13d" => emu.regs().show_r13d(&emu.maps, 0),
+                "r r14d" => emu.regs().show_r14d(&emu.maps, 0),
+                "r r15d" => emu.regs().show_r15d(&emu.maps, 0),
+                "r r8w" => emu.regs().show_r8w(&emu.maps, 0),
+                "r r9w" => emu.regs().show_r9w(&emu.maps, 0),
+                "r r10w" => emu.regs().show_r10w(&emu.maps, 0),
+                "r r11w" => emu.regs().show_r11w(&emu.maps, 0),
+                "r r12w" => emu.regs().show_r12w(&emu.maps, 0),
+                "r r13w" => emu.regs().show_r13w(&emu.maps, 0),
+                "r r14w" => emu.regs().show_r14w(&emu.maps, 0),
+                "r r15w" => emu.regs().show_r15w(&emu.maps, 0),
+                "r r8l" => emu.regs().show_r8l(&emu.maps, 0),
+                "r r9l" => emu.regs().show_r9l(&emu.maps, 0),
+                "r r10l" => emu.regs().show_r10l(&emu.maps, 0),
+                "r r11l" => emu.regs().show_r11l(&emu.maps, 0),
+                "r r12l" => emu.regs().show_r12l(&emu.maps, 0),
+                "r r13l" => emu.regs().show_r13l(&emu.maps, 0),
+                "r r14l" => emu.regs().show_r14l(&emu.maps, 0),
+                "r r15l" => emu.regs().show_r15l(&emu.maps, 0),
+                "r xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs().xmm0),
+                "r xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs().xmm1),
+                "r xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs().xmm2),
+                "r xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs().xmm3),
+                "r xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs().xmm4),
+                "r xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs().xmm5),
+                "r xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs().xmm6),
+                "r xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs().xmm7),
+                "r xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs().xmm8),
+                "r xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs().xmm9),
+                "r xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs().xmm10),
+                "r xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs().xmm11),
+                "r xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs().xmm12),
+                "r xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs().xmm13),
+                "r xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs().xmm14),
+                "r xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs().xmm15),
+                "r ymm0" => log::info!("\tymm0: 0x{:x}", emu.regs().ymm0),
+                "r ymm1" => log::info!("\tymm1: 0x{:x}", emu.regs().ymm1),
+                "r ymm2" => log::info!("\tymm2: 0x{:x}", emu.regs().ymm2),
+                "r ymm3" => log::info!("\tymm3: 0x{:x}", emu.regs().ymm3),
+                "r ymm4" => log::info!("\tymm4: 0x{:x}", emu.regs().ymm4),
+                "r ymm5" => log::info!("\tymm5: 0x{:x}", emu.regs().ymm5),
+                "r ymm6" => log::info!("\tymm6: 0x{:x}", emu.regs().ymm6),
+                "r ymm7" => log::info!("\tymm7: 0x{:x}", emu.regs().ymm7),
+                "r ymm8" => log::info!("\tymm8: 0x{:x}", emu.regs().ymm8),
+                "r ymm9" => log::info!("\tymm9: 0x{:x}", emu.regs().ymm9),
+                "r ymm10" => log::info!("\tymm10: 0x{:x}", emu.regs().ymm10),
+                "r ymm11" => log::info!("\tymm11: 0x{:x}", emu.regs().ymm11),
+                "r ymm12" => log::info!("\tymm12: 0x{:x}", emu.regs().ymm12),
+                "r ymm13" => log::info!("\tymm13: 0x{:x}", emu.regs().ymm13),
+                "r ymm14" => log::info!("\tymm14: 0x{:x}", emu.regs().ymm14),
+                "r ymm15" => log::info!("\tymm15: 0x{:x}", emu.regs().ymm15),
 
                 "rc" => {
                     con.print("register name");
@@ -271,7 +271,7 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.regs.set_by_name(reg.as_str(), value);
+                    emu.regs_mut().set_by_name(reg.as_str(), value);
                 }
                 "mr" | "rm" => {
                     con.print("memory argument");
@@ -375,20 +375,20 @@ impl Console {
                 "cls" => log::info!("{}", emu.colors.clear_screen),
                 "s" => {
                     if emu.cfg.is_64bits {
-                        emu.maps.dump_qwords(emu.regs.rsp, 10);
+                        emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
-                        emu.maps.dump_dwords(emu.regs.get_esp(), 10);
+                        emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
                     if emu.cfg.is_64bits {
-                        emu.maps.dump_qwords(emu.regs.rbp - 0x100, 100);
+                        emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
-                        emu.maps.dump_dwords(emu.regs.get_ebp() - 0x100, 100);
+                        emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
                     }
                     emu.maps
                         .get_mem("stack")
-                        .print_dwords_from_to(emu.regs.get_ebp(), emu.regs.get_ebp() + 0x100);
+                        .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                 }
                 "sv" => {
                     con.print("verbose level");
@@ -422,10 +422,10 @@ impl Console {
                     emu.is_running.store(1, atomic::Ordering::Relaxed);
                     return;
                 }
-                "f" => emu.flags.print(),
-                "fc" => emu.flags.clear(),
-                "fz" => emu.flags.f_zf = !emu.flags.f_zf,
-                "fs" => emu.flags.f_sf = !emu.flags.f_sf,
+                "f" => emu.flags().print(),
+                "fc" => emu.flags_mut().clear(),
+                "fz" => emu.flags_mut().f_zf = !emu.flags().f_zf,
+                "fs" => emu.flags_mut().f_sf = !emu.flags().f_sf,
                 "mc" => {
                     con.print("name ");
                     let name = con.cmd();
@@ -481,7 +481,7 @@ impl Console {
                     let name = con.cmd();
                     con.print("filename");
                     let filename = con.cmd();
-                    emu.maps.get_mem(name.as_str()).load(filename.as_str());
+                    emu.maps.get_mem_mut(name.as_str()).load(filename.as_str());
                 }
                 "mn" => {
                     con.print("address");
@@ -633,7 +633,7 @@ impl Console {
                             continue;
                         }
                     };
-                    //emu.regs.set_eip(addr);
+                    //emu.regs_mut().set_eip(addr);
                     emu.set_eip(addr, false);
                     emu.force_break = true;
                     break;
@@ -650,7 +650,7 @@ impl Console {
                     emu.set_rip(addr, false);
                     emu.force_break = true;
                     break;
-                    //emu.regs.rip = addr;
+                    //emu.regs_mut().rip = addr;
                 }
                 "push" => {
                     con.print("value");
@@ -685,7 +685,7 @@ impl Console {
                     }
                 }
                 "fpu" => {
-                    emu.fpu.print();
+                    emu.fpu_mut().print();
                 }
                 "md5" => {
                     con.print("map name");
@@ -758,10 +758,10 @@ impl Console {
                     emu.maps.search_string_in_all(kw);
                 }
                 "seh" => {
-                    log::info!("0x{:x}", emu.seh);
+                    log::info!("0x{:x}", emu.seh());
                 }
                 "veh" => {
-                    log::info!("0x{:x}", emu.veh);
+                    log::info!("0x{:x}", emu.veh());
                 }
                 "ll" => {
                     con.print("ptr");

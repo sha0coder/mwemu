@@ -30,7 +30,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -39,8 +39,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 fn MessageBoxA(emu: &mut emu::Emu) {
-    let titleptr = emu.regs.rcx;
-    let msgptr = emu.regs.rdx;
+    let titleptr = emu.regs().rcx;
+    let msgptr = emu.regs().rdx;
     let msg = emu.maps.read_string(msgptr);
     let title = emu.maps.read_string(titleptr);
 
@@ -53,7 +53,7 @@ fn MessageBoxA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn GetDesktopWindow(emu: &mut emu::Emu) {
@@ -63,8 +63,8 @@ fn GetDesktopWindow(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    //emu.regs.rax = 0x11223344; // current window handle
-    emu.regs.rax = 0; // no windows handler is more stealthy
+    //emu.regs_mut().rax = 0x11223344; // current window handle
+    emu.regs_mut().rax = 0; // no windows handler is more stealthy
 }
 
 /*
@@ -73,7 +73,7 @@ int GetSystemMetrics(
 );
 */
 fn GetSystemMetrics(emu: &mut emu::Emu) {
-    let nindex = emu.regs.rcx as usize;
+    let nindex = emu.regs().rcx as usize;
     log::info!(
         "{}** {} user32!GetSystemMetrics nindex: {}{}",
         emu.colors.light_red,
@@ -82,7 +82,7 @@ fn GetSystemMetrics(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: do something
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -94,10 +94,10 @@ BOOL SystemParametersInfoA(
 );
 */
 fn SystemParametersInfoA(emu: &mut emu::Emu) {
-    let ui_action = emu.regs.rcx;
-    let ui_param = emu.regs.rdx;
-    let pv_param = emu.regs.r8;
-    let f_win_ini = emu.regs.r9;
+    let ui_action = emu.regs().rcx;
+    let ui_param = emu.regs().rdx;
+    let pv_param = emu.regs().r8;
+    let f_win_ini = emu.regs().r9;
     log_red!(
         emu,
         "** {} user32!SystemParametersInfoA {} {} {} {}",
@@ -108,7 +108,7 @@ fn SystemParametersInfoA(emu: &mut emu::Emu) {
         f_win_ini
     );
     // TODO: write pvParam
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -118,8 +118,8 @@ HICON LoadIconA(
 );
 */
 fn LoadIconA(emu: &mut emu::Emu) {
-    let hinstance = emu.regs.rcx;
-    let lpiconname = emu.regs.rdx;
+    let hinstance = emu.regs().rcx;
+    let lpiconname = emu.regs().rdx;
     log_red!(
         emu,
         "** {} user32!LoadIconA {} {}",
@@ -128,7 +128,7 @@ fn LoadIconA(emu: &mut emu::Emu) {
         lpiconname
     );
     // TODO: do not return null
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -138,8 +138,8 @@ HCURSOR LoadCursorA(
 );
 */
 fn LoadCursorA(emu: &mut emu::Emu) {
-    let hinstance = emu.regs.rcx;
-    let lpcursorname = emu.regs.rdx;
+    let hinstance = emu.regs().rcx;
+    let lpcursorname = emu.regs().rdx;
     log_red!(
         emu,
         "** {} user32!LoadCursorA {} {}",
@@ -148,7 +148,7 @@ fn LoadCursorA(emu: &mut emu::Emu) {
         lpcursorname
     );
     // TODO: do not return null
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -157,10 +157,10 @@ ATOM RegisterClassA(
 );
 */
 fn RegisterClassA(emu: &mut emu::Emu) {
-    let lpwndclass = emu.regs.rcx;
+    let lpwndclass = emu.regs().rcx;
     log_red!(emu, "** {} user32!RegisterClassA {}", emu.pos, lpwndclass);
     // TODO: do not return null
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -169,10 +169,10 @@ ATOM RegisterClassW(
 );
 */
 fn RegisterClassW(emu: &mut emu::Emu) {
-    let lpwndclass = emu.regs.rcx;
+    let lpwndclass = emu.regs().rcx;
     log_red!(emu, "** {} user32!RegisterClassW {}", emu.pos, lpwndclass);
     // TODO: do not return null
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -181,10 +181,10 @@ HDC GetDC(
 );
 */
 fn GetDC(emu: &mut emu::Emu) {
-    let hwnd = emu.regs.rcx;
+    let hwnd = emu.regs().rcx;
     log_red!(emu, "** {} user32!GetDC {}", emu.pos, hwnd);
     // TODO: do something / do not return null
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -194,9 +194,9 @@ int ReleaseDC(
 );
 */
 fn ReleaseDC(emu: &mut emu::Emu) {
-    let hwnd = emu.regs.rcx;
-    let hdc = emu.regs.rdx;
+    let hwnd = emu.regs().rcx;
+    let hdc = emu.regs().rdx;
     log_red!(emu, "** {} user32!ReleaseDC {} {}", emu.pos, hwnd, hdc);
     // TODO: do something
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }

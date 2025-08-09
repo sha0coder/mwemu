@@ -35,7 +35,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -55,14 +55,14 @@ lazy_static! {
 fn GetModuleHandleW(emu: &mut emu::Emu) {
     let mod_name_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("kernel32!GetModuleHandleW cannot read mod_name_ptr") as u64;
 
     let mod_name: String;
 
     if mod_name_ptr == 0 {
         mod_name = "self".to_string();
-        emu.regs.rax = match emu.maps.get_base() {
+        emu.regs_mut().rax = match emu.maps.get_base() {
             Some(base) => base,
             None => helper::handler_create(&mod_name),
         }
@@ -71,11 +71,11 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
         let mod_mem = match emu.maps.get_mem2(&mod_name) {
             Some(m) => m,
             None => {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
                 return;
             }
         };
-        emu.regs.rax = mod_mem.get_base();
+        emu.regs_mut().rax = mod_mem.get_base();
     }
 
     log::info!(
@@ -93,19 +93,19 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
 fn LoadStringW(emu: &mut emu::Emu) {
     let hndl = emu
         .maps
-        .read_dword(emu.regs.rsp)
+        .read_dword(emu.regs().rsp)
         .expect("kernelbase!LoadStringW error reading param");
     let id = emu
         .maps
-        .read_dword(emu.regs.rsp + 4)
+        .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!LoadStringW error reading param");
     let buff = emu
         .maps
-        .read_dword(emu.regs.rsp + 8)
+        .read_dword(emu.regs().rsp + 8)
         .expect("kernelbase!LoadStringW error reading param");
     let len = emu
         .maps
-        .read_dword(emu.regs.rsp + 12)
+        .read_dword(emu.regs().rsp + 12)
         .expect("kernelbase!LoadStringW error reading param");
 
     log::info!(
@@ -121,17 +121,17 @@ fn LoadStringW(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.stack_pop32(false);
     emu.stack_pop32(false);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn _initterm(emu: &mut emu::Emu) {
     let ptr1 = emu
         .maps
-        .read_dword(emu.regs.rsp)
+        .read_dword(emu.regs().rsp)
         .expect("kernelbase!_initterm error reading param");
     let ptr2 = emu
         .maps
-        .read_dword(emu.regs.rsp + 4)
+        .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm error reading param");
     log::info!(
         "{}** {} kernelbase!_initterm 0x{:x} 0x{:x} {}",
@@ -143,17 +143,17 @@ fn _initterm(emu: &mut emu::Emu) {
     );
     emu.stack_pop32(false);
     emu.stack_pop32(false);
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn _initterm_e(emu: &mut emu::Emu) {
     let ptr1 = emu
         .maps
-        .read_dword(emu.regs.rsp)
+        .read_dword(emu.regs().rsp)
         .expect("kernelbase!_initterm_e error reading param");
     let ptr2 = emu
         .maps
-        .read_dword(emu.regs.rsp + 4)
+        .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm_e error reading param");
     log::info!(
         "{}** {} kernelbase!_initterm_e 0x{:x} 0x{:x} {}",
@@ -165,13 +165,13 @@ fn _initterm_e(emu: &mut emu::Emu) {
     );
     emu.stack_pop32(false);
 emu.stack_pop32(false);
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
     let ptr1 = emu
         .maps
-        .read_dword(emu.regs.rsp)
+        .read_dword(emu.regs().rsp)
         .expect("kernelbase!SetUnhandledExceptionFilter error reading param");
 
     log::info!(
@@ -182,9 +182,9 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.feh = ptr1 as u64;
+    emu.set_feh(ptr1 as u64);
 
     emu.stack_pop32(false);
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 

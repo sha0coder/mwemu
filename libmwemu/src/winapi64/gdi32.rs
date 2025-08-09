@@ -22,7 +22,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -39,7 +39,7 @@ fn CreateFontIndirectA(emu: &mut emu::Emu) {
     log_red!(emu, "** {} gdi32!CreateFontIndirectA", emu.pos);
     // TODO: return a handle to a logical font?
     // TODO: don't return failure
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -49,9 +49,9 @@ int GetDeviceCaps(
 );
 */
 fn GetDeviceCaps(emu: &mut emu::Emu) {
-    let hdc = emu.regs.rcx;
-    let index = emu.regs.rdx;
+    let hdc = emu.regs().rcx;
+    let index = emu.regs().rdx;
     log_red!(emu, "** {} gdi32!GetDeviceCaps {} {}", emu.pos, hdc, index);
     // TODO: do something
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }

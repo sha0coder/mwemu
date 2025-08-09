@@ -58,7 +58,7 @@ impl Script {
             };
             return a;
         }
-        emu.regs.get_by_name(arg)
+        emu.regs().get_by_name(arg)
     }
 
     pub fn to_int(&self, s: &str) -> Option<u64> {
@@ -146,75 +146,75 @@ impl Script {
                             emu.featured_regs32();
                         }
                     } else {
-                        self.result = emu.regs.get_by_name(args[1]);
+                        self.result = emu.regs().get_by_name(args[1]);
 
                         match args[1] {
-                            "rax" => emu.regs.show_rax(&emu.maps, 0),
-                            "rbx" => emu.regs.show_rbx(&emu.maps, 0),
-                            "rcx" => emu.regs.show_rcx(&emu.maps, 0),
-                            "rdx" => emu.regs.show_rdx(&emu.maps, 0),
-                            "rsi" => emu.regs.show_rsi(&emu.maps, 0),
-                            "rdi" => emu.regs.show_rdi(&emu.maps, 0),
-                            "rbp" => log::info!("\trbp: 0x{:x}", emu.regs.rbp),
-                            "rsp" => log::info!("\trsp: 0x{:x}", emu.regs.rsp),
-                            "rip" => log::info!("\trip: 0x{:x}", emu.regs.rip),
-                            "eax" => emu.regs.show_eax(&emu.maps, 0),
-                            "ebx" => emu.regs.show_ebx(&emu.maps, 0),
-                            "ecx" => emu.regs.show_ecx(&emu.maps, 0),
-                            "edx" => emu.regs.show_edx(&emu.maps, 0),
-                            "esi" => emu.regs.show_esi(&emu.maps, 0),
-                            "edi" => emu.regs.show_edi(&emu.maps, 0),
-                            "esp" => log::info!("\tesp: 0x{:x}", emu.regs.get_esp() as u32),
-                            "ebp" => log::info!("\tebp: 0x{:x}", emu.regs.get_ebp() as u32),
-                            "eip" => log::info!("\teip: 0x{:x}", emu.regs.get_eip() as u32),
-                            "r8" => emu.regs.show_r8(&emu.maps, 0),
-                            "r9" => emu.regs.show_r9(&emu.maps, 0),
-                            "r10" => emu.regs.show_r10(&emu.maps, 0),
-                            "r11" => emu.regs.show_r11(&emu.maps, 0),
-                            "r12" => emu.regs.show_r12(&emu.maps, 0),
-                            "r13" => emu.regs.show_r13(&emu.maps, 0),
-                            "r14" => emu.regs.show_r14(&emu.maps, 0),
-                            "r15" => emu.regs.show_r15(&emu.maps, 0),
-                            "r8d" => emu.regs.show_r8d(&emu.maps, 0),
-                            "r9d" => emu.regs.show_r9d(&emu.maps, 0),
-                            "r10d" => emu.regs.show_r10d(&emu.maps, 0),
-                            "r11d" => emu.regs.show_r11d(&emu.maps, 0),
-                            "r12d" => emu.regs.show_r12d(&emu.maps, 0),
-                            "r13d" => emu.regs.show_r13d(&emu.maps, 0),
-                            "r14d" => emu.regs.show_r14d(&emu.maps, 0),
-                            "r15d" => emu.regs.show_r15d(&emu.maps, 0),
-                            "r8w" => emu.regs.show_r8w(&emu.maps, 0),
-                            "r9w" => emu.regs.show_r9w(&emu.maps, 0),
-                            "r10w" => emu.regs.show_r10w(&emu.maps, 0),
-                            "r11w" => emu.regs.show_r11w(&emu.maps, 0),
-                            "r12w" => emu.regs.show_r12w(&emu.maps, 0),
-                            "r13w" => emu.regs.show_r13w(&emu.maps, 0),
-                            "r14w" => emu.regs.show_r14w(&emu.maps, 0),
-                            "r15w" => emu.regs.show_r15w(&emu.maps, 0),
-                            "r8l" => emu.regs.show_r8l(&emu.maps, 0),
-                            "r9l" => emu.regs.show_r9l(&emu.maps, 0),
-                            "r10l" => emu.regs.show_r10l(&emu.maps, 0),
-                            "r11l" => emu.regs.show_r11l(&emu.maps, 0),
-                            "r12l" => emu.regs.show_r12l(&emu.maps, 0),
-                            "r13l" => emu.regs.show_r13l(&emu.maps, 0),
-                            "r14l" => emu.regs.show_r14l(&emu.maps, 0),
-                            "r15l" => emu.regs.show_r15l(&emu.maps, 0),
-                            "xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs.xmm0),
-                            "xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs.xmm1),
-                            "xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs.xmm2),
-                            "xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs.xmm3),
-                            "xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs.xmm4),
-                            "xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs.xmm5),
-                            "xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs.xmm6),
-                            "xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs.xmm7),
-                            "xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs.xmm8),
-                            "xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs.xmm9),
-                            "xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs.xmm10),
-                            "xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs.xmm11),
-                            "xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs.xmm12),
-                            "xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs.xmm13),
-                            "xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs.xmm14),
-                            "xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs.xmm15),
+                            "rax" => emu.regs().show_rax(&emu.maps, 0),
+                            "rbx" => emu.regs().show_rbx(&emu.maps, 0),
+                            "rcx" => emu.regs().show_rcx(&emu.maps, 0),
+                            "rdx" => emu.regs().show_rdx(&emu.maps, 0),
+                            "rsi" => emu.regs().show_rsi(&emu.maps, 0),
+                            "rdi" => emu.regs().show_rdi(&emu.maps, 0),
+                            "rbp" => log::info!("\trbp: 0x{:x}", emu.regs().rbp),
+                            "rsp" => log::info!("\trsp: 0x{:x}", emu.regs().rsp),
+                            "rip" => log::info!("\trip: 0x{:x}", emu.regs().rip),
+                            "eax" => emu.regs().show_eax(&emu.maps, 0),
+                            "ebx" => emu.regs().show_ebx(&emu.maps, 0),
+                            "ecx" => emu.regs().show_ecx(&emu.maps, 0),
+                            "edx" => emu.regs().show_edx(&emu.maps, 0),
+                            "esi" => emu.regs().show_esi(&emu.maps, 0),
+                            "edi" => emu.regs().show_edi(&emu.maps, 0),
+                            "esp" => log::info!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
+                            "ebp" => log::info!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
+                            "eip" => log::info!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
+                            "r8" => emu.regs().show_r8(&emu.maps, 0),
+                            "r9" => emu.regs().show_r9(&emu.maps, 0),
+                            "r10" => emu.regs().show_r10(&emu.maps, 0),
+                            "r11" => emu.regs().show_r11(&emu.maps, 0),
+                            "r12" => emu.regs().show_r12(&emu.maps, 0),
+                            "r13" => emu.regs().show_r13(&emu.maps, 0),
+                            "r14" => emu.regs().show_r14(&emu.maps, 0),
+                            "r15" => emu.regs().show_r15(&emu.maps, 0),
+                            "r8d" => emu.regs().show_r8d(&emu.maps, 0),
+                            "r9d" => emu.regs().show_r9d(&emu.maps, 0),
+                            "r10d" => emu.regs().show_r10d(&emu.maps, 0),
+                            "r11d" => emu.regs().show_r11d(&emu.maps, 0),
+                            "r12d" => emu.regs().show_r12d(&emu.maps, 0),
+                            "r13d" => emu.regs().show_r13d(&emu.maps, 0),
+                            "r14d" => emu.regs().show_r14d(&emu.maps, 0),
+                            "r15d" => emu.regs().show_r15d(&emu.maps, 0),
+                            "r8w" => emu.regs().show_r8w(&emu.maps, 0),
+                            "r9w" => emu.regs().show_r9w(&emu.maps, 0),
+                            "r10w" => emu.regs().show_r10w(&emu.maps, 0),
+                            "r11w" => emu.regs().show_r11w(&emu.maps, 0),
+                            "r12w" => emu.regs().show_r12w(&emu.maps, 0),
+                            "r13w" => emu.regs().show_r13w(&emu.maps, 0),
+                            "r14w" => emu.regs().show_r14w(&emu.maps, 0),
+                            "r15w" => emu.regs().show_r15w(&emu.maps, 0),
+                            "r8l" => emu.regs().show_r8l(&emu.maps, 0),
+                            "r9l" => emu.regs().show_r9l(&emu.maps, 0),
+                            "r10l" => emu.regs().show_r10l(&emu.maps, 0),
+                            "r11l" => emu.regs().show_r11l(&emu.maps, 0),
+                            "r12l" => emu.regs().show_r12l(&emu.maps, 0),
+                            "r13l" => emu.regs().show_r13l(&emu.maps, 0),
+                            "r14l" => emu.regs().show_r14l(&emu.maps, 0),
+                            "r15l" => emu.regs().show_r15l(&emu.maps, 0),
+                            "xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs().xmm0),
+                            "xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs().xmm1),
+                            "xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs().xmm2),
+                            "xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs().xmm3),
+                            "xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs().xmm4),
+                            "xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs().xmm5),
+                            "xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs().xmm6),
+                            "xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs().xmm7),
+                            "xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs().xmm8),
+                            "xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs().xmm9),
+                            "xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs().xmm10),
+                            "xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs().xmm11),
+                            "xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs().xmm12),
+                            "xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs().xmm13),
+                            "xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs().xmm14),
+                            "xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs().xmm15),
                             _ => log::info!("unknown register r `{}` in line {}", args[1], i),
                         }
                     }
@@ -224,7 +224,7 @@ impl Script {
                         log::info!("expected: rc <register> <value>");
                     } else {
                         let value: u64 = self.resolve(args[2], i, emu);
-                        emu.regs.set_by_name(args[1], value);
+                        emu.regs_mut().set_by_name(args[1], value);
                     }
                 }
                 "mr" | "rm" => {
@@ -340,20 +340,20 @@ impl Script {
                 }
                 "s" => {
                     if emu.cfg.is_64bits {
-                        emu.maps.dump_qwords(emu.regs.rsp, 10);
+                        emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
-                        emu.maps.dump_dwords(emu.regs.get_esp(), 10);
+                        emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
                     if emu.cfg.is_64bits {
-                        emu.maps.dump_qwords(emu.regs.rbp - 0x100, 100);
+                        emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
-                        emu.maps.dump_dwords(emu.regs.get_ebp() - 0x100, 100);
+                        emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
                     }
                     emu.maps
                         .get_mem("stack")
-                        .print_dwords_from_to(emu.regs.get_ebp(), emu.regs.get_ebp() + 0x100);
+                        .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                 }
                 "sv" => {
                     if args.len() < 2 {
@@ -395,10 +395,10 @@ impl Script {
                         .store(1, std::sync::atomic::Ordering::Relaxed);
                     emu.run(None);
                 }
-                "f" => emu.flags.print(),
-                "fc" => emu.flags.clear(),
-                "fz" => emu.flags.f_zf = !emu.flags.f_zf,
-                "fs" => emu.flags.f_sf = !emu.flags.f_sf,
+                "f" => emu.flags().print(),
+                "fc" => emu.flags_mut().clear(),
+                "fz" => emu.flags_mut().f_zf = !emu.flags().f_zf,
+                "fs" => emu.flags_mut().f_sf = !emu.flags().f_sf,
                 "mc" => {
                     // mc mymap 1024
                     if args.len() != 3 {
@@ -446,7 +446,7 @@ impl Script {
                         log::info!("error in line {}, `ml` needs mapname and a filename", i);
                         return;
                     }
-                    emu.maps.get_mem(args[1]).load(args[2]);
+                    emu.maps.get_mem_mut(args[1]).load(args[2]);
                 }
                 "mn" => {
                     // mn <address>
@@ -658,7 +658,7 @@ impl Script {
                         self.result = value as u64;
                     }
                 }
-                "fpu" => emu.fpu.print(),
+                "fpu" => emu.fpu_mut().print(),
                 "md5" => {
                     // md5 <mapname>
                     if args.len() != 2 {
@@ -751,10 +751,10 @@ impl Script {
                     emu.maps.search_string_in_all(s);
                 }
                 "seh" => {
-                    log::info!("0x{:x}", emu.seh);
+                    log::info!("0x{:x}", emu.seh());
                 }
                 "veh" => {
-                    log::info!("0x{:x}", emu.veh);
+                    log::info!("0x{:x}", emu.veh());
                 }
                 "ll" => {
                     // ll <addr>
@@ -1000,11 +1000,11 @@ impl Script {
                     // push return address
                     let retaddr: u64;
                     if emu.cfg.is_64bits {
-                        retaddr = emu.regs.rip;
-                        emu.stack_push64(emu.regs.rip);
+                        retaddr = emu.regs().rip;
+                        emu.stack_push64(emu.regs().rip);
                     } else {
-                        retaddr = emu.regs.get_eip();
-                        emu.stack_push32(emu.regs.get_eip() as u32);
+                        retaddr = emu.regs().get_eip();
+                        emu.stack_push32(emu.regs().get_eip() as u32);
                     }
 
                     if emu.cfg.is_64bits {

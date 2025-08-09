@@ -24,7 +24,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -36,11 +36,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn SysAllocStringLen(emu: &mut emu::Emu) {
     let str_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("oleaut32!SysAllocStringLen cannot read str_ptr") as u64;
     let mut size = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("oleaut32!SysAllocStringLen cannot read size") as u64;
 
     if size == 0xffffffff {
@@ -70,13 +70,13 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         emu.stack_pop32(false);
     }
 
-    emu.regs.rax = base + 8;
+    emu.regs_mut().rax = base + 8;
 }
 
 fn SysFreeString(emu: &mut emu::Emu) {
     let str_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("oleaut32!SysFreeString cannot read host_port") as u64;
 
     log::info!(

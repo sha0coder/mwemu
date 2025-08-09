@@ -28,7 +28,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -40,11 +40,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn MessageBoxA(emu: &mut emu::Emu) {
     let titleptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("user32_MessageBoxA: error reading title") as u64;
     let msgptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("user32_MessageBoxA: error reading message") as u64;
     let msg = emu.maps.read_string(msgptr);
     let title = emu.maps.read_string(titleptr);
@@ -58,7 +58,7 @@ fn MessageBoxA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
     for _ in 0..4 {
         emu.stack_pop32(false);
     }
@@ -67,11 +67,11 @@ fn MessageBoxA(emu: &mut emu::Emu) {
 fn MessageBoxW(emu: &mut emu::Emu) {
     let titleptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("user32_MessageBoxA: error reading title") as u64;
     let msgptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("user32_MessageBoxA: error reading message") as u64;
     let msg = emu.maps.read_wide_string(msgptr);
     let title = emu.maps.read_wide_string(titleptr);
@@ -85,7 +85,7 @@ fn MessageBoxW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
     for _ in 0..4 {
         emu.stack_pop32(false);
     }
@@ -98,8 +98,8 @@ fn GetDesktopWindow(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    //emu.regs.rax = 0x11223344; // current window handle
-    emu.regs.rax = 0; // no windows handler is more stealthy
+    //emu.regs_mut().rax = 0x11223344; // current window handle
+    emu.regs_mut().rax = 0; // no windows handler is more stealthy
 }
 
 fn wsprintfW(emu: &mut emu::Emu) {}
@@ -112,29 +112,29 @@ fn GetProcessWindowStation(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0x1337; // get handler
+    emu.regs_mut().rax = 0x1337; // get handler
 }
 
 fn GetUserObjectInformationW(emu: &mut emu::Emu) {
     let hndl = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
     let nidx = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
     let out_vinfo = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
     let nlen = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
     let out_len = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
 
     log::info!(
@@ -148,13 +148,13 @@ fn GetUserObjectInformationW(emu: &mut emu::Emu) {
         emu.stack_pop32(false);
     }
 
-    emu.regs.rax = 1; // get handler
+    emu.regs_mut().rax = 1; // get handler
 }
 
 fn CharLowerW(emu: &mut emu::Emu) {
     let ptr_str = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!CharLowerW: error reading param") as u64;
 
     let s = emu.maps.read_wide_string(ptr_str);
@@ -170,21 +170,21 @@ fn CharLowerW(emu: &mut emu::Emu) {
     emu.maps.write_wide_string(ptr_str, &s.to_lowercase());
 
     emu.stack_pop32(false);
-    emu.regs.rax = ptr_str;
+    emu.regs_mut().rax = ptr_str;
 }
 
 fn wsprintfA(emu: &mut emu::Emu) {
     let out = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("user32!wsprintfA: error reading out") as u64;
     let in_fmt = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("user32!wsprintfA: error reading in_fmt") as u64;
     let mut multiple = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("user32!wsprintfA: error reading multiple") as u64;
 
     let fmt = emu.maps.read_string(in_fmt);
@@ -246,5 +246,5 @@ fn wsprintfA(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.stack_pop32(false);
 
-    emu.regs.rax = result.len() as u64;
+    emu.regs_mut().rax = result.len() as u64;
 }

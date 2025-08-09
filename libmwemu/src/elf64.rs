@@ -389,7 +389,7 @@ impl Elf64 {
     // elf64_libc.craft_got(&maps, "elf64bin");
 
     pub fn craft_libc_got(&mut self, maps: &mut Maps, name: &str) {
-        let got = maps.get_mem(&format!("{}.got", name));
+        let got = maps.get_mem_mut(&format!("{}.got", name));
         let got_base = got.get_base();
 
         self.craft_got_sym(got_base, got, "__GI___libc_free");

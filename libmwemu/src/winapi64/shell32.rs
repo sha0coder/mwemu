@@ -22,7 +22,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -31,17 +31,17 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 fn RealShellExecuteA(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let operation = emu.regs.rdx;
-    let file_ptr = emu.regs.r8;
-    let params_ptr = emu.regs.r9;
+    let handle = emu.regs().rcx;
+    let operation = emu.regs().rdx;
+    let file_ptr = emu.regs().r8;
+    let params_ptr = emu.regs().r9;
     let dir = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("cannot read parameter");
     let bShowWindow = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("cannot read parameter");
 
     let file = emu.maps.read_string(file_ptr);
@@ -56,7 +56,7 @@ fn RealShellExecuteA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 34;
+    emu.regs_mut().rax = 34;
 }
 
 fn SHGetFolderPathW(emu: &mut emu::Emu) {
@@ -69,13 +69,13 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
         [out] LPWSTR pszPath
     );
     */
-    let hwnd = emu.regs.rcx;
-    let csidl = emu.regs.rdx as i32;
-    let h_token = emu.regs.r8;
-    let dw_flags = emu.regs.r9 as u32;
+    let hwnd = emu.regs().rcx;
+    let csidl = emu.regs().rdx as i32;
+    let h_token = emu.regs().r8;
+    let dw_flags = emu.regs().r9 as u32;
     let psz_path = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("shell32!SHGetFolderPathW error reading pszPath");
 
     log::info!(
@@ -125,5 +125,5 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
     }
 
     // Return S_OK (0x00000000)
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }

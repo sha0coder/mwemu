@@ -66,7 +66,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -86,8 +86,8 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
             [in]      ULONG     Protect
     */
 
-    let addr_ptr = emu.regs.rcx;
-    let size_ptr = emu.regs.rdx;
+    let addr_ptr = emu.regs().rcx;
+    let size_ptr = emu.regs().rdx;
 
     let addr = emu
         .maps
@@ -139,12 +139,12 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
         panic!("NtAllocateVirtualMemory: cannot write on address pointer");
     }
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn stricmp(emu: &mut emu::Emu) {
-    let str1ptr = emu.regs.rcx;
-    let str2ptr = emu.regs.rdx;
+    let str1ptr = emu.regs().rcx;
+    let str2ptr = emu.regs().rdx;
     let str1 = emu.maps.read_string(str1ptr);
     let str2 = emu.maps.read_string(str2ptr);
 
@@ -158,15 +158,15 @@ fn stricmp(emu: &mut emu::Emu) {
     );
 
     if str1 == str2 {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     }
 }
 
 fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let addr = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let addr = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!NtQueryVirtualMemory addr: 0x{:x} {}",
@@ -184,7 +184,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
         }
     }
 
-    let out_meminfo_ptr = emu.regs.r9;
+    let out_meminfo_ptr = emu.regs().r9;
 
     if !emu.maps.is_mapped(addr) {
         log::info!(
@@ -192,7 +192,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
             addr
         );
 
-        emu.regs.rax = constants::STATUS_INVALID_PARAMETER;
+        emu.regs_mut().rax = constants::STATUS_INVALID_PARAMETER;
         return;
     }
 
@@ -206,7 +206,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
     mem_info.typ = constants::MEM_PRIVATE;
     mem_info.save(out_meminfo_ptr, &mut emu.maps);
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn LdrLoadDll(emu: &mut emu::Emu) {
@@ -216,8 +216,8 @@ fn LdrLoadDll(emu: &mut emu::Emu) {
     //      IN PUNICODE_STRING DllName,
     //      OUT PVOID *BaseAddress)
 
-    let libname_ptr = emu.regs.r8;
-    let libaddr_ptr = emu.regs.r9;
+    let libname_ptr = emu.regs().r8;
+    let libaddr_ptr = emu.regs().r9;
 
     let libname = emu.maps.read_wide_string(libname_ptr);
     log::info!(
@@ -245,12 +245,12 @@ fn LdrLoadDll(emu: &mut emu::Emu) {
         }
     }
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn RtlAddVectoredExceptionHandler(emu: &mut emu::Emu) {
-    let p1 = emu.regs.rcx;
-    let fptr = emu.regs.rdx;
+    let p1 = emu.regs().rcx;
+    let fptr = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!RtlAddVectoredExceptionHandler  {} callback: 0x{:x} {}",
@@ -261,13 +261,13 @@ fn RtlAddVectoredExceptionHandler(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.veh = fptr;
-    emu.regs.rax = 0x2c2878;
+    emu.set_veh(fptr);
+    emu.regs_mut().rax = 0x2c2878;
 }
 
 fn RtlRemoveVectoredExceptionHandler(emu: &mut emu::Emu) {
-    let p1 = emu.regs.rcx;
-    let fptr = emu.regs.rdx;
+    let p1 = emu.regs().rcx;
+    let fptr = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!RtlRemoveVectoredExceptionHandler  {} callback: 0x{:x} {}",
@@ -278,13 +278,13 @@ fn RtlRemoveVectoredExceptionHandler(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.veh = 0;
-    emu.regs.rax = 0;
+    emu.set_veh(0);
+    emu.regs_mut().rax = 0;
 }
 
 fn NtGetContextThread(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let ctx_ptr = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let ctx_ptr = emu.regs().rdx;
     let ctx_ptr2 = emu
         .maps
         .read_qword(ctx_ptr)
@@ -297,10 +297,10 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let ctx = Context64::new(&emu.regs);
+    let ctx = Context64::new(&emu.regs());
     ctx.save(ctx_ptr2, &mut emu.maps);
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn RtlExitUserThread(emu: &mut emu::Emu) {
@@ -315,13 +315,13 @@ fn RtlExitUserThread(emu: &mut emu::Emu) {
 }
 
 fn ZwQueueApcThread(emu: &mut emu::Emu) {
-    let thread_handle = emu.regs.rcx;
-    let apc_routine = emu.regs.rdx;
-    let apc_ctx = emu.regs.r8;
-    let arg1 = emu.regs.r9;
+    let thread_handle = emu.regs().rcx;
+    let apc_routine = emu.regs().rdx;
+    let apc_ctx = emu.regs().r8;
+    let arg1 = emu.regs().r9;
     let arg2 = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!ZwQueueApcThread cannot read arg2");
 
     log::info!(
@@ -336,13 +336,13 @@ fn ZwQueueApcThread(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn RtlAllocateHeap(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let mut size = emu.regs.r8;
+    let handle = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let mut size = emu.regs().r8;
     let alloc_addr: u64;
 
     /*
@@ -378,13 +378,13 @@ fn RtlAllocateHeap(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = alloc_addr;
+    emu.regs_mut().rax = alloc_addr;
 }
 
 fn RtlQueueWorkItem(emu: &mut emu::Emu) {
-    let fptr = emu.regs.rcx;
-    let ctx = emu.regs.rdx;
-    let flags = emu.regs.r8;
+    let fptr = emu.regs().rcx;
+    let ctx = emu.regs().rdx;
+    let flags = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!RtlQueueWorkItem  fptr: 0x{:x} ctx: 0x{:x} flags: {} {}",
@@ -401,13 +401,13 @@ fn RtlQueueWorkItem(emu: &mut emu::Emu) {
         log::info!("api: {} ", name);
     }
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn NtWaitForSingleObject(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let bAlert = emu.regs.rdx;
-    let timeout = emu.regs.r8;
+    let handle = emu.regs().rcx;
+    let bAlert = emu.regs().rdx;
+    let timeout = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!NtWaitForSingleObject  hndl: 0x{:x} timeout: {} {}",
@@ -418,13 +418,13 @@ fn NtWaitForSingleObject(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0x102; //constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = 0x102; //constants::STATUS_SUCCESS;
 }
 
 fn sscanf(emu: &mut emu::Emu) {
-    let buffer_ptr = emu.regs.rcx;
-    let fmt_ptr = emu.regs.rdx;
-    let list = emu.regs.r8;
+    let buffer_ptr = emu.regs().rcx;
+    let fmt_ptr = emu.regs().rdx;
+    let list = emu.regs().r8;
 
     let buffer = emu.maps.read_string(buffer_ptr);
     let fmt = emu.maps.read_string(fmt_ptr);
@@ -458,12 +458,12 @@ fn NtGetTickCount(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = emu.tick as u64;
+    emu.regs_mut().rax = emu.tick as u64;
 }
 
 fn NtQueryPerformanceCounter(emu: &mut emu::Emu) {
-    let perf_counter_ptr = emu.regs.rcx;
-    let perf_freq_ptr = emu.regs.rdx;
+    let perf_counter_ptr = emu.regs().rcx;
+    let perf_freq_ptr = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!NtQueryPerformanceCounter {}",
@@ -473,12 +473,12 @@ fn NtQueryPerformanceCounter(emu: &mut emu::Emu) {
     );
 
     emu.maps.write_dword(perf_counter_ptr, 0);
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn RtlGetProcessHeaps(emu: &mut emu::Emu) {
-    let num_of_heaps = emu.regs.rcx;
-    let out_process_heaps = emu.regs.rcx;
+    let num_of_heaps = emu.regs().rcx;
+    let out_process_heaps = emu.regs().rcx;
 
     log::info!(
         "{}** {} ntdll!RtlGetProcessHeaps num: {} out: 0x{:x} {}",
@@ -489,7 +489,7 @@ fn RtlGetProcessHeaps(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 struct CurDir {
@@ -498,10 +498,10 @@ struct CurDir {
 }
 
 fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
-    let dos_path_name_ptr = emu.regs.rcx;
-    let nt_path_name_ptr = emu.regs.rdx;
-    let nt_file_name_part_ptr = emu.regs.r8;
-    let curdir_ptr = emu.regs.r9;
+    let dos_path_name_ptr = emu.regs().rcx;
+    let nt_path_name_ptr = emu.regs().rdx;
+    let nt_file_name_part_ptr = emu.regs().r8;
+    let curdir_ptr = emu.regs().r9;
 
     let dos_path_name = emu.maps.read_wide_string(dos_path_name_ptr);
 
@@ -610,37 +610,37 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 }
 
 fn NtCreateFile(emu: &mut emu::Emu) {
-    let out_hndl_ptr = emu.regs.rcx;
-    let access_mask = emu.regs.rdx;
-    let oattrib = emu.regs.r8;
-    let iostat = emu.regs.r9;
+    let out_hndl_ptr = emu.regs().rcx;
+    let access_mask = emu.regs().rdx;
+    let oattrib = emu.regs().r8;
+    let iostat = emu.regs().r9;
     let alloc_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtCreateFile error reading alloc_sz param");
     let fattrib = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("ntdll!NtCreateFile error reading fattrib param");
     let share_access = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("ntdll!NtCreateFile error reading share_access param");
     let create_disp = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)
+        .read_qword(emu.regs().rsp + 0x38)
         .expect("ntdll!NtCreateFile error reading create_disp param");
     let create_opt = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x40)
+        .read_qword(emu.regs().rsp + 0x40)
         .expect("ntdll!NtCreateFile error reading create_opt param");
     let ea_buff = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x40)
+        .read_qword(emu.regs().rsp + 0x40)
         .expect("ntdll!NtCreateFile error reading ea_buff param");
     let ea_len = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x50)
+        .read_qword(emu.regs().rsp + 0x50)
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
     let obj_name_ptr = emu
@@ -662,13 +662,13 @@ fn NtCreateFile(emu: &mut emu::Emu) {
             .write_dword(out_hndl_ptr, helper::handler_create(&filename) as u32);
     }
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn RtlFreeHeap(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let base_addr = emu.regs.r8;
+    let hndl = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let base_addr = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!RtlFreeHeap 0x{} {}",
@@ -682,20 +682,21 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     let name = emu
         .maps
         .get_addr_name(base_addr)
-        .unwrap_or("");
+        .unwrap_or("")
+        .to_string();
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
             log::info!("map not allocated, so cannot free it.");
         }
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
     if name.starts_with("alloc_") {
         emu.maps.dealloc(base_addr);
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         if emu.cfg.verbose >= 1 {
             log::info!("trying to free a systems map {}", name);
         }
@@ -703,7 +704,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
 }
 
 fn RtlFreeAnsiString(emu: &mut emu::Emu) {
-    let ptr = emu.regs.rcx;
+    let ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} ntdll!RtlFreeAnsiString 0x{} {}",
@@ -717,13 +718,13 @@ fn RtlFreeAnsiString(emu: &mut emu::Emu) {
 }
 
 fn NtQueryInformationFile(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let stat = emu.regs.rdx;
-    let fileinfo = emu.regs.r8;
-    let len = emu.regs.r9;
+    let hndl = emu.regs().rcx;
+    let stat = emu.regs().rdx;
+    let fileinfo = emu.regs().r8;
+    let len = emu.regs().r9;
     let fileinfoctls = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtQueryInformationFile cannot read fileinfoctls param");
 
     log::info!(
@@ -733,17 +734,17 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn NtSetInformationFile(emu: &mut emu::Emu) {
-    let file_handle = emu.regs.rcx;
-    let io_status_block = emu.regs.rdx;
-    let file_information = emu.regs.r8;
-    let length = emu.regs.r9;
+    let file_handle = emu.regs().rcx;
+    let io_status_block = emu.regs().rdx;
+    let file_information = emu.regs().r8;
+    let length = emu.regs().r9;
     let file_information_class = emu
         .maps
-        .read_dword(emu.regs.rsp + 0x28)
+        .read_dword(emu.regs().rsp + 0x28)
         .expect("ntdll!NtSetInformationFile cannot read FileInformationClass param");
 
     log::info!(
@@ -758,33 +759,33 @@ fn NtSetInformationFile(emu: &mut emu::Emu) {
 
     // TODO: implement something?
 
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn NtReadFile(emu: &mut emu::Emu) {
-    let file_hndl = emu.regs.rcx;
-    let ev_hndl = emu.regs.rdx;
-    let apc_rout = emu.regs.r8;
-    let apc_ctx = emu.regs.r9;
+    let file_hndl = emu.regs().rcx;
+    let ev_hndl = emu.regs().rdx;
+    let apc_rout = emu.regs().r8;
+    let apc_ctx = emu.regs().r9;
     let stat = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtReadFile error reading stat param");
     let buff = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("ntdll!NtReadFile error reading buff param");
     let len = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("ntdll!NtReadFile error reading len param") as usize;
     let off = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)
+        .read_qword(emu.regs().rsp + 0x38)
         .expect("ntdll!NtReadFile error reading off param");
     let key = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x40)
+        .read_qword(emu.regs().rsp + 0x40)
         .expect("ntdll!NtReadFile error reading key param");
 
     let file = helper::handler_get_uri(file_hndl);
@@ -801,11 +802,11 @@ fn NtReadFile(emu: &mut emu::Emu) {
     );
 
     emu.maps.memset(buff, 0x90, len);
-    emu.regs.rax = constants::STATUS_SUCCESS;
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
 fn NtClose(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
+    let hndl = emu.regs().rcx;
 
     let uri = helper::handler_get_uri(hndl);
 
@@ -819,15 +820,15 @@ fn NtClose(emu: &mut emu::Emu) {
     );
 
     if uri.is_empty() {
-        emu.regs.rax = constants::STATUS_INVALID_HANDLE;
+        emu.regs_mut().rax = constants::STATUS_INVALID_HANDLE;
     } else {
-        emu.regs.rax = constants::STATUS_SUCCESS;
+        emu.regs_mut().rax = constants::STATUS_SUCCESS;
     }
 }
 
 fn RtlInitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs.rcx;
-    let spin_count = emu.regs.rdx;
+    let crit_sect = emu.regs().rcx;
+    let spin_count = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!RtlInitializeCriticalSectionAndSpinCount {}",
@@ -836,17 +837,17 @@ fn RtlInitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
-    let sz = emu.regs.rcx;
-    let status = emu.regs.rdx;
-    let page_number = emu.regs.r8;
-    let page = emu.regs.r9;
+    let sz = emu.regs().rcx;
+    let status = emu.regs().rdx;
+    let page_number = emu.regs().r8;
+    let page = emu.regs().r9;
     let prot = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtProtectVirtualMemory error reading old prot param");
 
     log::info!(
@@ -858,11 +859,11 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::STATUS_SUCCESS
+    emu.regs_mut().rax = constants::STATUS_SUCCESS
 }
 
 fn RtlEnterCriticalSection(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
+    let hndl = emu.regs().rcx;
 
     log::info!(
         "{}** {} ntdll!RtlEnterCriticalSection {}",
@@ -871,11 +872,11 @@ fn RtlEnterCriticalSection(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn RtlGetVersion(emu: &mut emu::Emu) {
-    let versioninfo_ptr = emu.regs.rcx;
+    let versioninfo_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} ntdll!RtlGetVersion {}",
@@ -887,13 +888,13 @@ fn RtlGetVersion(emu: &mut emu::Emu) {
     let versioninfo = structures::OsVersionInfo::new();
     versioninfo.save(versioninfo_ptr, &mut emu.maps);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn RtlInitializeCriticalSectionEx(emu: &mut emu::Emu) {
-    let crit_sect_ptr = emu.regs.rcx;
-    let spin_count = emu.regs.rdx;
-    let flags = emu.regs.r8;
+    let crit_sect_ptr = emu.regs().rcx;
+    let spin_count = emu.regs().rdx;
+    let flags = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!RtlInitializeCriticalSectionEx {}",
@@ -902,13 +903,13 @@ fn RtlInitializeCriticalSectionEx(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn memset(emu: &mut emu::Emu) {
-    let ptr = emu.regs.rcx;
-    let byte = emu.regs.rdx;
-    let count = emu.regs.r8;
+    let ptr = emu.regs().rcx;
+    let byte = emu.regs().rdx;
+    let count = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!memset ptr: 0x{:x} byte: {} count: {} {}",
@@ -922,11 +923,11 @@ fn memset(emu: &mut emu::Emu) {
 
     emu.maps.memset(ptr, byte as u8, count as usize);
 
-    emu.regs.rax = ptr;
+    emu.regs_mut().rax = ptr;
 }
 
 fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
-    let filter = emu.regs.rcx;
+    let filter = emu.regs().rcx;
 
     log::info!(
         "{}** {} ntdll!RtlSetUnhandledExceptionFilter filter: 0x{:x} {}",
@@ -936,8 +937,8 @@ fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.feh = filter;
-    emu.regs.rax = 1;
+    emu.set_feh(filter);
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -948,9 +949,9 @@ void RtlCopyMemory(
 );
 */
 fn RtlCopyMemory(emu: &mut emu::Emu) {
-    let dst = emu.regs.rcx;
-    let src = emu.regs.rdx;
-    let sz = emu.regs.r8 as usize;
+    let dst = emu.regs().rcx;
+    let src = emu.regs().rdx;
+    let sz = emu.regs().r8 as usize;
     let result = emu.maps.memcpy(dst, src, sz);
     if result == false {
         panic!("RtlCopyMemory failed to copy");
@@ -966,12 +967,12 @@ fn RtlCopyMemory(emu: &mut emu::Emu) {
 }
 
 fn RtlReAllocateHeap(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let sz = emu.regs.r8;
+    let hndl = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let sz = emu.regs().r8;
 
     let mapname = format!("valloc_{:x}", hndl);
-    emu.regs.rax = match emu.maps.get_map_by_name_mut(&mapname) {
+    emu.regs_mut().rax = match emu.maps.get_map_by_name_mut(&mapname) {
         Some(mem) => {
             mem.set_size(sz + 1024);
             mem.get_base()
@@ -990,9 +991,9 @@ fn RtlReAllocateHeap(emu: &mut emu::Emu) {
 }
 
 fn NtFlushInstructionCache(emu: &mut emu::Emu) {
-    let proc_hndl = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let sz = emu.regs.r8;
+    let proc_hndl = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let sz = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!NtFlushInstructionCache hndl: {:x} 0x{:x} sz: {} {}",
@@ -1004,18 +1005,18 @@ fn NtFlushInstructionCache(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn LdrGetDllHandleEx(emu: &mut emu::Emu) {
     //LdrGetDllHandleEx (_In_ ULONG Flags, _In_opt_ PWSTR DllPath, _In_opt_ PULONG DllCharacteristics, _In_ PUNICODE_STRING DllName, _Out_opt_ PVOID *DllHandle)
-    let flags = emu.regs.rcx;
-    let path_ptr = emu.regs.rdx;
-    let characteristics = emu.regs.r8;
-    let dll_name_ptr = emu.regs.r9;
+    let flags = emu.regs().rcx;
+    let path_ptr = emu.regs().rdx;
+    let characteristics = emu.regs().r8;
+    let dll_name_ptr = emu.regs().r9;
     let out_hndl = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!LdrGetDllHandleEx error reading out_hdl");
 
     let dll_name = emu.maps.read_wide_string(dll_name_ptr);
@@ -1036,12 +1037,12 @@ fn LdrGetDllHandleEx(emu: &mut emu::Emu) {
     let handle = helper::handler_create(&dll_name);
     emu.maps.write_qword(out_hndl, handle);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn NtTerminateThread(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let exit_status = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let exit_status = emu.regs().rdx;
 
     log::info!(
         "{}** {} ntdll!NtTerminateThread {:x} {} {}",
@@ -1052,7 +1053,7 @@ fn NtTerminateThread(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 /*
@@ -1063,9 +1064,9 @@ NTSYSAPI BOOLEAN RtlAddFunctionTable(
 );
 */
 fn RtlAddFunctionTable(emu: &mut emu::Emu) {
-    let function_table = emu.regs.rcx;
-    let entry_count = emu.regs.rdx;
-    let base_address = emu.regs.r8;
+    let function_table = emu.regs().rcx;
+    let entry_count = emu.regs().rdx;
+    let base_address = emu.regs().r8;
 
     log::info!(
         "{}** {} ntdll!RtlAddFunctionTable {}",
@@ -1076,7 +1077,7 @@ fn RtlAddFunctionTable(emu: &mut emu::Emu) {
 
     // TODO: do something with it
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -1085,7 +1086,7 @@ NTSYSAPI VOID RtlCaptureContext(
 );
 */
 fn RtlCaptureContext(emu: &mut emu::Emu) {
-    let context_record = emu.regs.rcx as usize;
+    let context_record = emu.regs().rcx as usize;
     log_red!(
         emu,
         "** {} ntdll!RtlCaptureContext {:x}",
@@ -1103,9 +1104,9 @@ NTSYSAPI PRUNTIME_FUNCTION RtlLookupFunctionEntry(
 );
 */
 fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
-    let control_pc = emu.regs.rcx as usize;
-    let image_base = emu.regs.rdx as usize;
-    let history_table = emu.regs.r8 as usize;
+    let control_pc = emu.regs().rcx as usize;
+    let image_base = emu.regs().rdx as usize;
+    let history_table = emu.regs().r8 as usize;
     log_red!(
         emu,
         "** {} ntdll!RtlLookupFunctionEntry {:x} {:x} {:x}",
@@ -1115,15 +1116,15 @@ fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
         history_table
     );
     // TODO: implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn strlen(emu: &mut emu::Emu) {
-    let s_ptr = emu.regs.rcx as usize;
+    let s_ptr = emu.regs().rcx as usize;
     log_red!(emu, "** {} ntdll!strlen {:x}", emu.pos, s_ptr);
 
     if s_ptr == 0 {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -1139,14 +1140,14 @@ fn strlen(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = l as u32 as u64;
+    emu.regs_mut().rax = l as u32 as u64;
 }
 
 fn NtSetInformationThread(emu: &mut emu::Emu) {
-   let thread_handle = emu.regs.rcx;
-   let thread_info_class = emu.regs.rdx;
-   let thread_info_ptr = emu.regs.r8;
-   let thread_info_length = emu.regs.r9;
+   let thread_handle = emu.regs().rcx;
+   let thread_info_class = emu.regs().rdx;
+   let thread_info_ptr = emu.regs().r8;
+   let thread_info_length = emu.regs().r9;
    
    // TODO: Parse ThreadInformationClass values:
    //   - ThreadHideFromDebugger = 17 (common anti-debug technique)
@@ -1179,5 +1180,5 @@ fn NtSetInformationThread(emu: &mut emu::Emu) {
    //   - STATUS_INVALID_HANDLE = 0xC0000008
    //   - STATUS_INVALID_PARAMETER = 0xC000000D
    //   - STATUS_INFO_LENGTH_MISMATCH = 0xC0000004
-   emu.regs.rax = 0x00000000; // STATUS_SUCCESS for now
+   emu.regs_mut().rax = 0x00000000; // STATUS_SUCCESS for now
 }
