@@ -21,6 +21,7 @@ use crate::serialization::instant::SerializableInstant;
 use crate::serialization::maps::SerializableMaps;
 use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
+use crate::serialization::thread_context::SerializableThreadContext;
 use crate::structures::MemoryOperation;
 
 #[derive(Serialize, Deserialize)]
@@ -79,6 +80,8 @@ pub struct SerializableEmu {
     pub base: u64,
     pub call_stack: Vec<String>,
     pub heap_addr: u64,
+    pub threads: Vec<SerializableThreadContext>,
+    pub current_thread_id: usize,
 }
 
 impl<'a> From<&'a Emu> for SerializableEmu {
@@ -137,6 +140,8 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             base: emu.base,
             call_stack: emu.call_stack().clone(),
             heap_addr: emu.heap_addr,
+            threads: emu.threads.iter().map(|t| t.into()).collect(),
+            current_thread_id: emu.current_thread_id,
         }
     }
 }
@@ -151,23 +156,11 @@ impl From<SerializableEmu> for Emu {
         };
 
         Emu {
-            regs: serialized.regs,
-            pre_op_regs: serialized.pre_op_regs(),
-            post_op_regs: serialized.post_op_regs(),
-            flags: serialized.flags,
-            pre_op_flags: serialized.pre_op_flags,
-            post_op_flags: serialized.post_op_flags,
-            eflags: serialized.eflags,
-            fpu: serialized.fpu().into(),
             maps: serialized.maps.into(),
             hooks: Hooks::default(), // not possible
             exp: serialized.exp,
             break_on_alert: serialized.break_on_alert,
             bp: serialized.bp,
-            seh: serialized.seh(),
-            veh: serialized.veh(),
-            feh: serialized.feh,
-            eh_ctx: serialized.eh_ctx,
             cfg: serialized.cfg.clone(),
             colors: serialized.colors,
             pos: serialized.pos,
@@ -175,9 +168,6 @@ impl From<SerializableEmu> for Emu {
             force_break: serialized.force_break,
             force_reload: serialized.force_reload,
             tls_callbacks: serialized.tls_callbacks,
-            tls32: serialized.tls32,
-            tls64: serialized.tls64,
-            fls: serialized.fls,
             instruction: serialized.instruction,
             decoder_position: serialized.decoder_position,
             memory_operations: serialized.memory_operations,
@@ -193,7 +183,6 @@ impl From<SerializableEmu> for Emu {
             banzai: serialized.banzai,
             mnemonic: serialized.mnemonic,
             linux: serialized.linux,
-            fs: serialized.fs,
             now: serialized.now.to_instant(),
             skip_apicall: serialized.skip_apicall,
             its_apicall: serialized.its_apicall,
@@ -204,11 +193,11 @@ impl From<SerializableEmu> for Emu {
             tick: serialized.tick,
             trace_file: trace_file,
             base: serialized.base,
-            call_stack: serialized.call_stack,
             formatter: Default::default(),
-            fileName: "".to_string(),
             heap_addr: serialized.heap_addr,
-            rng: RefCell::new(rand::rng())
+            rng: RefCell::new(rand::rng()),
+            threads: serialized.threads.into_iter().map(|t| t.into()).collect(),
+            current_thread_id: serialized.current_thread_id,
         }
     }
 }
@@ -228,35 +217,35 @@ impl Default for SerializableEmu {
             maps: SerializableMaps::default(),
             exp: emu.exp,
             break_on_alert: emu.break_on_alert,
-            bp: emu.bp,
+            bp: emu.bp.clone(),
             seh: emu.seh(),
             veh: emu.veh(),
             feh: emu.feh().clone(),
             eh_ctx: emu.eh_ctx().clone(),
-            cfg: emu.cfg,
-            colors: emu.colors,
+            cfg: emu.cfg.clone(),
+            colors: emu.colors.clone(),
             pos: emu.pos,
             max_pos: emu.max_pos,
             force_break: emu.force_break,
             force_reload: emu.force_reload,
-            tls_callbacks: emu.tls_callbacks,
+            tls_callbacks: emu.tls_callbacks.clone(),
             tls32: emu.tls32().clone(),
             tls64: emu.tls64().clone(),
             fls: emu.fls().clone(),
             instruction: emu.instruction,
             decoder_position: emu.decoder_position,
-            memory_operations: emu.memory_operations,
+            memory_operations: emu.memory_operations.clone(),
             main_thread_cont: emu.main_thread_cont,
             gateway_return: emu.gateway_return,
             is_running: emu.is_running.load(std::sync::atomic::Ordering::Relaxed),
             break_on_next_cmp: emu.break_on_next_cmp,
             break_on_next_return: emu.break_on_next_return,
-            filename: emu.filename,
+            filename: emu.filename.clone(),
             enabled_ctrlc: emu.enabled_ctrlc,
             run_until_ret: emu.run_until_ret,
             running_script: emu.running_script,
-            banzai: emu.banzai,
-            mnemonic: emu.mnemonic,
+            banzai: emu.banzai.clone(),
+            mnemonic: emu.mnemonic.clone(),
             linux: emu.linux,
             fs: emu.fs().clone(),
             now: SerializableInstant::from(emu.now),
@@ -270,6 +259,8 @@ impl Default for SerializableEmu {
             base: emu.base,
             call_stack: emu.call_stack().clone(),
             heap_addr: emu.heap_addr,
+            threads: emu.threads.iter().map(|t| t.into()).collect(),
+            current_thread_id: emu.current_thread_id,
         }
     }
 }

@@ -131,7 +131,6 @@ pub struct Emu {
     pub trace_file: Option<File>,
     pub base: u64,
     pub formatter: IntelFormatter,
-    pub fileName: String,
     pub heap_addr: u64,
     pub rng: RefCell<rand::rngs::ThreadRng>,
     // Thread management
@@ -189,7 +188,6 @@ impl Emu {
             tick: 0,
             trace_file: None,
             base: 0,
-            fileName: String::new(),
             heap_addr: 0,
             rng: RefCell::new(rand::rng()),
             // Initialize with main thread as thread 0
