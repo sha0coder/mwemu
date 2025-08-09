@@ -227,7 +227,8 @@ pub fn emulate_instruction(
             poped = emu.stack_pop32(false).unwrap_or(0) as u64;
             emu.regs_mut().set_ebp(poped);
 
-            emu.regs_mut().set_esp(emu.regs().get_esp() + 4); // skip esp
+            let esp = emu.regs().get_esp() + 4;
+            emu.regs_mut().set_esp(esp); // skip esp
 
             poped = emu.stack_pop32(false).unwrap_or(0) as u64;
             emu.regs_mut().set_ebx(poped);
@@ -364,7 +365,8 @@ pub fn emulate_instruction(
                         return false;
                     }
 
-                    emu.regs_mut().set_esp(emu.regs().get_esp() + arg);
+                    let esp = emu.regs().get_esp() + arg;
+                    emu.regs_mut().set_esp(esp);
                     //emu.stack_lvl[emu.stack_lvl_idx] -= arg as i32 / 4;
                 }
             }
@@ -4026,7 +4028,8 @@ pub fn emulate_instruction(
                     None => return false,
                 };
             } else {
-                emu.regs_mut().set_esp(emu.regs().get_ebp());
+                let esp = emu.regs().get_ebp();
+                emu.regs_mut().set_esp(esp);
                 let val = match emu.stack_pop32(true) {
                     Some(v) => v as u64,
                     None => return false,
@@ -8329,7 +8332,7 @@ pub fn emulate_instruction(
             emu.show_instruction(color!("Red"), ins);
 
             let value = emu.get_operand_value(ins, 0, true).unwrap_or(0);
-            emu.fpu().mxcsr = value as u32;
+            emu.fpu_mut().mxcsr = value as u32;
         }
 
         Mnemonic::Fnstcw => {
@@ -8419,7 +8422,8 @@ pub fn emulate_instruction(
                 emu.regs_mut().rsp -= allocSZ;
             } else {
                 emu.regs_mut().set_ebp(frameTmp);
-                emu.regs_mut().set_esp(emu.regs().get_esp() - allocSZ);
+                let esp = emu.regs().get_esp() - allocSZ;
+                emu.regs_mut().set_esp(esp);
             }
         }
 

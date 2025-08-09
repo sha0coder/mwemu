@@ -620,20 +620,17 @@ impl Emu {
     pub fn init_stack32(&mut self) {
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
-            {
-                self.cfg.stack_addr = 0x212000;
-                let esp = self.cfg.stack_addr + 0x1c000 + 4;
-                let ebp = self.cfg.stack_addr + 0x1c000 + 4 + 0x1000;
-                self.regs_mut().set_esp(esp);
-                self.regs_mut().set_ebp(ebp);
-            }
+            self.cfg.stack_addr = 0x212000;
+            let esp = self.cfg.stack_addr + 0x1c000 + 4;
+            let ebp = self.cfg.stack_addr + 0x1c000 + 4 + 0x1000;
+            self.regs_mut().set_esp(esp);
+            self.regs_mut().set_ebp(ebp);
         }
 
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, 0x030000)
-            .expect("cannot create stack map")
-            .clone();
+            .expect("cannot create stack map");
 
         assert!(self.regs().get_esp() < self.regs().get_ebp());
         assert!(self.regs().get_esp() > stack.get_base());
@@ -660,8 +657,7 @@ impl Emu {
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
-            .expect("cannot create stack map")
-            .clone();
+            .expect("cannot create stack map");
 
         assert!(self.regs().rsp < self.regs().rbp);
         assert!(self.regs().rsp > stack.get_base());
@@ -747,7 +743,7 @@ impl Emu {
         } else {
             // 32bits
             self.maps.is_64bits = false;
-            self.regs().sanitize32();
+            self.regs_mut().sanitize32();
             self.init_mem32();
             self.init_stack32();
         }
@@ -1557,7 +1553,7 @@ impl Emu {
                 log::info!("shellcode not found, select the file with -f");
                 std::process::exit(1);
             }
-            let code = self.maps.get_mem("code");
+            let code = self.maps.get_mem_mut("code");
             code.extend(0xffff); // this could overlap an existing map
         }
 
@@ -1634,7 +1630,8 @@ impl Emu {
                 self.pos, self.regs().rip, 32, self.regs().get_esp(), value, name);
         }
 
-        self.regs_mut().set_esp(self.regs().get_esp() - 4);
+        let esp = self.regs().get_esp() - 4;
+        self.regs_mut().set_esp(esp);
         //self.stack_lvl[self.stack_lvl_idx] += 1;
         //log::info!("push32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
 
@@ -1750,7 +1747,8 @@ impl Emu {
             {
                 log::info!("/!\\ poping a code address 0x{:x}", value);
             }
-            self.regs_mut().set_esp(self.regs().get_esp() + 4);
+            let esp = self.regs().get_esp() + 4;
+            self.regs_mut().set_esp(esp);
             return Some(value);
         }
 
@@ -1816,7 +1814,8 @@ impl Emu {
                 self.pos, self.regs().rip, 32, self.regs().get_esp(), value);
         }
 
-        self.regs_mut().set_esp(self.regs().get_esp() + 4);
+        let esp = self.regs().get_esp() + 4;
+        self.regs_mut().set_esp(esp);
         //self.stack_lvl[self.stack_lvl_idx] -= 1;
         //log::info!("pop32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
@@ -2071,7 +2070,8 @@ impl Emu {
         // could be normal using part of code as stack
         if !stack.inside(self.regs().get_esp()) {
             //hack: redirect stack
-            self.regs_mut().set_esp(stack.get_base() + 0x1ff);
+            let esp = stack.get_base() + 0x1ff;
+            self.regs_mut().set_esp(esp);
             panic!("/!\\ fixing stack.")
         }
 
@@ -2175,7 +2175,7 @@ impl Emu {
     pub fn memory_write(&mut self, operand: &str, value: u64) -> bool {
         if operand.contains("fs:[0]") {
             log::info!("Setting SEH fs:[0]  0x{:x}", value);
-            self.seh() = value;
+            self.set_seh(value);
             return true;
         }
 
@@ -2548,7 +2548,7 @@ impl Emu {
 
             let cmd = con.cmd();
             if cmd == "y" {
-                self.seh() = next;
+                self.set_seh(next);
                 exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
@@ -2950,7 +2950,7 @@ impl Emu {
         match ins.op_kind(noperand) {
             OpKind::Register => {
                 if self.regs().is_fpu(ins.op_register(noperand)) {
-                    self.fpu().set_streg(ins.op_register(noperand), value as f64);
+                    self.fpu_mut().set_streg(ins.op_register(noperand), value as f64);
                 } else {
                     self.regs_mut().set_reg(ins.op_register(noperand), value);
                 }
@@ -3599,14 +3599,14 @@ impl Emu {
 
     #[inline]
     pub fn capture_pre_op(&mut self) {
-        self.set_pre_op_regs(self.regs());
-        self.set_pre_op_flags(self.flags());
+        self.set_pre_op_regs(*self.regs());
+        self.set_pre_op_flags(*self.flags());
     }
 
     #[inline]
     pub fn capture_post_op(&mut self) {
-        self.set_post_op_regs(self.regs());
-        self.set_post_op_flags(self.flags());
+        self.set_post_op_regs(*self.regs());
+        self.set_post_op_flags(*self.flags());
     }
 
     /// dump the registers and memory write operations to file
@@ -3687,7 +3687,9 @@ impl Emu {
                 registers, self.pre_op_regs().r15, self.post_op_regs().r15
             );
         } else {
-            registers = Regs64::diff(self.pre_op_regs(), self.post_op_regs());
+            let pre_op_regs = self.pre_op_regs();
+            let post_op_regs = self.post_op_regs();            
+            registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
         let mut flags = String::new();
@@ -3806,6 +3808,8 @@ impl Emu {
 
         let mut s = self.maps.read_string(addr);
         self.maps.filter_string(&mut s);
+        let bytes = self.maps
+            .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE);
         log::info!(
             "\tmem_inspect: rip = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
             self.regs().rip,
@@ -3813,8 +3817,7 @@ impl Emu {
             value,
             value,
             s,
-            self.maps
-                .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE)
+            bytes
         );
     }
 

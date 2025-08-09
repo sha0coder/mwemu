@@ -276,7 +276,7 @@ impl Regs64 {
         }
     }
 
-    pub fn diff(a: Regs64, b: Regs64) -> String {
+    pub fn diff(a: &Regs64, b: &Regs64) -> String {
         let mut output = String::new();
         if a.dr0 != b.dr0 {
             output = format!("{}{}: {:x} -> {:x} ", output, "dr0", a.dr0, b.dr0);

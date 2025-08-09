@@ -87,7 +87,7 @@ pub struct SerializableEmu {
 impl<'a> From<&'a Emu> for SerializableEmu {
     fn from(emu: &'a Emu) -> Self {
         SerializableEmu {
-            regs: emu.regs(),
+            regs: emu.regs().clone(),
             pre_op_regs: *emu.pre_op_regs(),
             post_op_regs: *emu.post_op_regs(),
             flags: *emu.flags(),
