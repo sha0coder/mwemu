@@ -22,17 +22,22 @@ pub struct Mem64 {
 
 impl Default for Mem64 {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Mem64 {
-    pub fn new() -> Mem64 {
         Mem64 {
             mem_name: "".to_string(),
             base_addr: 0,
             bottom_addr: 0,
             mem: Vec::new(),
+        }
+    }
+}
+
+impl Mem64 {
+    pub fn new(mem_name: String, base_addr: u64, bottom_addr: u64, mem: Vec<u8>) -> Mem64 {
+        Mem64 {
+            mem_name,
+            base_addr,
+            bottom_addr,
+            mem
         }
     }
 
@@ -410,6 +415,21 @@ impl Mem64 {
         }
         String::from_utf16(&s).expect("invalid utf-16")
     }
+
+    pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {
+        let mut s: Vec<u16> = Vec::new();
+        let mut idx = addr;
+        for _ in 0..max_chars {
+            let b = self.read_word(idx);
+            if b == 0 {
+                break;
+            }
+            s.push(b);
+            idx += 2;
+        }
+        String::from_utf16_lossy(&s)
+    }
+
     pub fn print_bytes(&self) {
         log::info!("---mem---");
         for b in self.mem.iter() {
@@ -501,7 +521,7 @@ impl Mem64 {
         let blob = self.mem.get(idx..sz2).unwrap();
 
         match f.write_all(blob) {
-            Ok(_) => log::info!(
+            Ok(_) => log::debug!(
                 "saved. addr: 0x{:x} size: {} filename: {}",
                 addr,
                 size,

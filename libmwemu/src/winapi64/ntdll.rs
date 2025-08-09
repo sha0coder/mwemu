@@ -30,6 +30,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "NtCreateFile" => NtCreateFile(emu),
         "RtlFreeHeap" => RtlFreeHeap(emu),
         "NtQueryInformationFile" => NtQueryInformationFile(emu),
+        "NtSetInformationFile" => NtSetInformationFile(emu),
         "NtReadFile" => NtReadFile(emu),
         "NtClose" => NtClose(emu),
         "RtlInitializeCriticalSectionAndSpinCount" => RtlInitializeCriticalSectionAndSpinCount(emu),
@@ -37,6 +38,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "RtlEnterCriticalSection" => RtlEnterCriticalSection(emu),
         "RtlGetVersion" => RtlGetVersion(emu),
         "RtlInitializeCriticalSectionEx" => RtlInitializeCriticalSectionEx(emu),
+        "RtlFreeAnsiString" => RtlFreeAnsiString(emu),
         "memset" => memset(emu),
         "RtlSetUnhandledExceptionFilter" => RtlSetUnhandledExceptionFilter(emu),
         "RtlCopyMemory" => RtlCopyMemory(emu),
@@ -48,6 +50,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "RtlCaptureContext" => RtlCaptureContext(emu),
         "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
         "strlen" => strlen(emu),
+        "NtSetInformationThread" => NtSetInformationThread(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -548,6 +551,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address.");
 
         if dst_map_name.starts_with("alloc_") {
+            // Existing allocated buffer - reuse it
             let result = emu.maps.memcpy(
                 nt_path_name_ptr,
                 dos_path_name_ptr,
@@ -557,28 +561,50 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                 panic!("RtlDosPathNameToNtPathName_U failed to copy");
             }
         } else {
-            match emu.maps.alloc(255) {
-                Some(a) => {
-                    let mem = emu
-                        .maps
-                        .create_map("nt_alloc", a, 255)
-                        .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
-                    emu.maps.write_dword(nt_path_name_ptr, a as u32);
-                    let result = emu.maps.memcpy(
-                        a,
-                        dos_path_name_ptr,
-                        emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-                    );
-                    if result == false {
-                        panic!("RtlDosPathNameToNtPathName_U failed to copy");
-                    }
-                }
-                None => {
-                    if emu.cfg.verbose >= 1 {
-                        log::info!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
-                    }
-                }
+            // Check if we already have an nt_alloc map we can reuse
+            let required_size = emu.maps.sizeof_wide(dos_path_name_ptr) * 2;        
+            let existing_base_addr = if let Some(existing_addr) = emu.maps.get_map_by_name("nt_alloc") {
+                Some(existing_addr.get_base())
+            } else {
+                None
             };
+            if let Some(base_addr) = existing_base_addr {
+                // TODO: Check if existing map is large enough for required_size
+                // Reuse existing allocation
+                emu.maps.write_dword(nt_path_name_ptr, base_addr as u32);
+                let result = emu.maps.memcpy(
+                    base_addr,
+                    dos_path_name_ptr,
+                    required_size,
+                );
+                if result == false {
+                    panic!("RtlDosPathNameToNtPathName_U failed to copy");
+                }
+            } else {
+                // Create new allocation only if needed
+                match emu.maps.alloc(255) {
+                    Some(a) => {
+                        let mem = emu
+                            .maps
+                            .create_map("nt_alloc", a, 255)
+                            .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
+                        emu.maps.write_dword(nt_path_name_ptr, a as u32);
+                        let result = emu.maps.memcpy(
+                            a,
+                            dos_path_name_ptr,
+                            emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
+                        );
+                        if result == false {
+                            panic!("RtlDosPathNameToNtPathName_U failed to copy");
+                        }
+                    }
+                    None => {
+                        if emu.cfg.verbose >= 1 {
+                            log::info!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
+                        }
+                    }
+                };
+            }
         }
     }
 }
@@ -676,6 +702,20 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     }
 }
 
+fn RtlFreeAnsiString(emu: &mut emu::Emu) {
+    let ptr = emu.regs.rcx;
+
+    log::info!(
+        "{}** {} ntdll!RtlFreeAnsiString 0x{} {}",
+        emu.colors.light_red,
+        emu.pos,
+        ptr,
+        emu.colors.nc
+    );
+
+    // TODO: no-op?
+}
+
 fn NtQueryInformationFile(emu: &mut emu::Emu) {
     let hndl = emu.regs.rcx;
     let stat = emu.regs.rdx;
@@ -692,6 +732,31 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
+
+    emu.regs.rax = constants::STATUS_SUCCESS;
+}
+
+fn NtSetInformationFile(emu: &mut emu::Emu) {
+    let file_handle = emu.regs.rcx;
+    let io_status_block = emu.regs.rdx;
+    let file_information = emu.regs.r8;
+    let length = emu.regs.r9;
+    let file_information_class = emu
+        .maps
+        .read_dword(emu.regs.rsp + 0x28)
+        .expect("ntdll!NtSetInformationFile cannot read FileInformationClass param");
+
+    log::info!(
+        "{}** {} ntdll!NtSetInformationFile handle: 0x{:x} info_class: {} length: {} {}",
+        emu.colors.light_red,
+        emu.pos,
+        file_handle,
+        file_information_class,
+        length,
+        emu.colors.nc
+    );
+
+    // TODO: implement something?
 
     emu.regs.rax = constants::STATUS_SUCCESS;
 }
@@ -1075,4 +1140,44 @@ fn strlen(emu: &mut emu::Emu) {
     );
 
     emu.regs.rax = l as u32 as u64;
+}
+
+fn NtSetInformationThread(emu: &mut emu::Emu) {
+   let thread_handle = emu.regs.rcx;
+   let thread_info_class = emu.regs.rdx;
+   let thread_info_ptr = emu.regs.r8;
+   let thread_info_length = emu.regs.r9;
+   
+   // TODO: Parse ThreadInformationClass values:
+   //   - ThreadHideFromDebugger = 17 (common anti-debug technique)
+   //   - ThreadBreakOnTermination = 18
+   //   - ThreadPriority = 0
+   //   - ThreadBasePriority = 3
+   //   - ThreadAffinityMask = 4
+   //   - ThreadImpersonationToken = 5
+   //   - ThreadQuerySetWin32StartAddress = 9
+   //   - ThreadZeroTlsCell = 16
+   
+   // TODO: Read ThreadInformation data based on class and length
+   // TODO: Handle ThreadHideFromDebugger (sets thread to not be debugged)
+   // TODO: Handle other thread information classes as needed
+   // TODO: Validate thread_handle (GetCurrentThread() = -2, real handles > 0)
+   
+   log::info!(
+       "{}** {} ntdll!NtSetInformationThread handle: 0x{:x} class: {} info_ptr: 0x{:x} length: {} {}",
+       emu.colors.light_red,
+       emu.pos,
+       thread_handle,
+       thread_info_class,
+       thread_info_ptr,
+       thread_info_length,
+       emu.colors.nc
+   );
+
+   // TODO: Return appropriate NTSTATUS:
+   //   - STATUS_SUCCESS = 0x00000000
+   //   - STATUS_INVALID_HANDLE = 0xC0000008
+   //   - STATUS_INVALID_PARAMETER = 0xC000000D
+   //   - STATUS_INFO_LENGTH_MISMATCH = 0xC0000004
+   emu.regs.rax = 0x00000000; // STATUS_SUCCESS for now
 }

@@ -25,17 +25,8 @@ pub struct Maps {
     tlb: RefCell<TLB>,
 }
 
-
 impl Default for Maps {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Maps {
-    const DEFAULT_ALIGNMENT: u64 = 0x1000; //16;
-
-    pub fn new() -> Maps {
         Maps {
             mem_slab: Slab::with_capacity(200),
             maps: BTreeMap::<u64, usize>::default(),
@@ -43,6 +34,28 @@ impl Maps {
             is_64bits: false,
             banzai: false,
             tlb: RefCell::new(TLB::new()),
+        }
+    }
+}
+
+impl Maps {
+    const DEFAULT_ALIGNMENT: u64 = 0x1000; //16;
+
+    pub fn new(
+        mem_slab: Slab<Mem64>, 
+        maps: BTreeMap<u64, usize>, 
+        name_map: AHashMap<String, usize>, 
+        is_64bits: bool, 
+        banzai: bool, 
+        tlb: RefCell<TLB>
+    ) -> Maps {
+        Maps {
+            banzai,
+            mem_slab,
+            maps,
+            name_map,
+            is_64bits,
+            tlb,
         }
     }
 
@@ -116,7 +129,6 @@ impl Maps {
             })
     }
 
-
     pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
         //if size == 0 {
         //    return Err(format!("map size cannot be 0"));
@@ -131,7 +143,7 @@ impl Maps {
             return Err(format!("this map name {} already exists!", name));
         }
 
-        let mut mem = Mem64::new();
+        let mut mem = Mem64::default();
         mem.set_name(name);
         mem.set_base(base);
         mem.set_size(size);
@@ -806,6 +818,17 @@ impl Maps {
             .get_mem_by_addr(addr)
             .expect(format!("No memory map found at 0x{:x}", addr).as_str());
         mem.read_wide_string(addr)
+    }
+
+    pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {
+        if addr == 0 {
+            return "".to_string();
+        }
+
+        let mem = self
+            .get_mem_by_addr(addr)
+            .expect(format!("No memory map found at 0x{:x}", addr).as_str());
+        mem.read_wide_string_n(addr, max_chars)
     }
 
     pub fn search_string(&self, kw: &str, map_name: &str) -> Option<Vec<u64>> {
