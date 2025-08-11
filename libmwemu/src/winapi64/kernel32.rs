@@ -1,17 +1,15 @@
-use crate::console;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+
 use crate::constants;
 use crate::emu;
-use crate::emu::ThreadContext;
+use crate::thread_context::ThreadContext;
 use crate::peb64;
 use crate::serialization;
 use crate::structures;
 use crate::winapi32::helper;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::context64;
-use lazy_static::lazy_static;
-use rand::Rng as _;
-use std::sync::Mutex;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
