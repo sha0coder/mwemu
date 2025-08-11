@@ -1128,17 +1128,30 @@ fn CreateThread(emu: &mut emu::Emu) {
     new_thread.regs.rcx = param;
     new_thread.regs.rax = 0;
     
-    // Allocate stack if requested (otherwise will share/reuse current stack)
-    if stack_sz > 0 {
-        if let Some(stack_base) = emu.maps.alloc(stack_sz) {
-            new_thread.regs.rsp = stack_base + stack_sz - 8; // Stack grows down
-            new_thread.regs.rbp = new_thread.regs.rsp;
-            emu.maps.create_map(
-                &format!("thread_stack_{:x}", new_thread_id),
-                stack_base,
-                stack_sz,
-            ).ok();
-        }
+    // Allocate stack for the new thread
+    let stack_size = if stack_sz > 0 { stack_sz } else { 0x10000 }; // Default 64KB stack
+    
+    if let Some(stack_base) = emu.maps.alloc(stack_size) {
+        new_thread.regs.rsp = stack_base + stack_size - 8; // Stack grows down
+        new_thread.regs.rbp = new_thread.regs.rsp;
+        
+        // Set up thread entry point on stack
+        // Push a return address (when thread function returns)
+        new_thread.regs.rsp -= 8;
+        emu.maps.write_qword(new_thread.regs.rsp, constants::RETURN_THREAD.into());
+        
+        emu.maps.create_map(
+            &format!("thread_stack_{:x}", new_thread_id),
+            stack_base,
+            stack_size,
+        ).ok();
+        
+        log::info!("Allocated stack for thread {}: base=0x{:x}, size=0x{:x}", 
+                  new_thread_id, stack_base, stack_size);
+    } else {
+        log::error!("Failed to allocate stack for thread {}", new_thread_id);
+        emu.regs_mut().rax = 0; // Return NULL handle on failure
+        return;
     }
     
     // Sync FPU instruction pointer
@@ -1147,51 +1160,28 @@ fn CreateThread(emu: &mut emu::Emu) {
     // Set suspended state if CREATE_SUSPENDED flag is set
     if flags == constants::CREATE_SUSPENDED {
         new_thread.suspended = true;
+        log::info!("Thread {} created in suspended state", new_thread_id);
     }
     
+    // Add the new thread to the thread list
     emu.threads.push(new_thread);
     
+    // Write thread ID to output pointer if provided
     if tid_ptr > 0 {
         emu.maps.write_dword(tid_ptr, new_thread_id as u32);
     }
 
     log::info!(
-        "{}** {} kernel32!CreateThread code: 0x{:x} param: 0x{:x} {}",
+        "{}** {} kernel32!CreateThread created thread {} - code: 0x{:x} param: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
+        new_thread_id,
         code,
         param,
         emu.colors.nc
     );
 
-    if flags == constants::CREATE_SUSPENDED {
-        log::info!("\tcreated suspended!");
-    }
-
-    /*let con = console::Console::new();
-    con.print("Continue emulating the created thread (y/n)? ");
-    let line = con.cmd();
-
-    if line == "y" || line == "yes" {
-        if emu.maps.is_mapped(code) {
-            // Switch to the new thread
-            emu.current_thread_id = emu.threads.len() - 1;
-            
-            // Set up the new thread's context (already initialized above)
-            emu.regs_mut().rip = code;
-            emu.regs_mut().rax = 0;
-            emu.regs_mut().rcx = param;
-            emu.main_thread_cont = emu.gateway_return;
-            emu.stack_push64(param);
-            emu.stack_push64(constants::RETURN_THREAD.into());
-
-            // Stack is already allocated above if stack_sz > 0
-            return;
-        } else {
-            log::info!("cannot emulate the thread, the function pointer is not mapped.");
-        }
-    }*/
-
+    // Return thread handle
     emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", new_thread_id));
 }
 

@@ -3783,13 +3783,59 @@ impl Emu {
         );
     }
 
-    /// Execute a single instruction for a specific thread
-    fn step_thread(&mut self, thread_id: usize) -> bool {
-        // Save current thread and switch to target thread
-        let saved_thread_id = self.current_thread_id;
-        self.current_thread_id = thread_id;
+    /// Advance the instruction pointer by the given size
+    /// Handles both 32-bit and 64-bit modes, and respects force_reload flag
+    fn advance_ip(&mut self, sz: usize) {
+        if self.force_reload {
+            // Don't advance IP if force_reload is set
+            // This allows hooks or other code to manually set the IP
+            self.force_reload = false;
+        } else if self.cfg.is_64bits {
+            // 64-bit mode: advance RIP
+            self.regs_mut().rip += sz as u64;
+        } else {
+            // 32-bit mode: advance EIP
+            let eip = self.regs().get_eip() + sz as u64;
+            self.regs_mut().set_eip(eip);
+        }
+    }
+
+    /// Switch to a different thread - simplified version
+    pub fn switch_to_thread(&mut self, new_thread_id: usize) -> bool {
+        if new_thread_id >= self.threads.len() {
+            log::error!("Invalid thread ID: {}", new_thread_id);
+            return false;
+        }
         
-        // code
+        if new_thread_id == self.current_thread_id {
+            return true; // Already on this thread
+        }
+        
+        let old_thread_id = self.current_thread_id;
+        
+        log::debug!("Switching from thread {} (0x{:x}) to thread {} (0x{:x})",
+                   old_thread_id, 
+                   self.threads[old_thread_id].id,
+                   new_thread_id,
+                   self.threads[new_thread_id].id);
+        
+        // Just change the current thread ID - that's it!
+        self.current_thread_id = new_thread_id;
+        
+        log::debug!("Thread switch complete - now at RIP: 0x{:x}", self.regs().rip);
+        
+        true
+    }
+
+     /// Execute a single instruction for a specific thread
+    fn step_thread(&mut self, thread_id: usize) -> bool {
+        // Switch to target thread if different
+        if self.current_thread_id != thread_id {
+            if !self.switch_to_thread(thread_id) {
+                return false;
+            }
+        }
+
         let rip = self.regs().rip;
         let code = match self.maps.get_mem_by_addr(rip) {
             Some(c) => c,
@@ -3797,77 +3843,57 @@ impl Emu {
                 log::info!(
                     "thread {} redirecting code flow to non mapped address 0x{:x}",
                     self.threads[thread_id].id,
-                    self.regs().rip
+                    rip
                 );
-                // Restore thread context before returning
-                self.current_thread_id = saved_thread_id;
                 Console::spawn_console(self);
                 return false;
             }
         };
 
-        // block
-        let block = code.read_from(rip).to_vec(); // reduce code block for more speed
+        let block = code.read_from(rip).to_vec();
 
-        // decoder
-        let mut decoder;
-        if self.cfg.is_64bits {
-            decoder = Decoder::with_ip(64, &block, self.regs().rip, DecoderOptions::NONE);
+        let ins = if self.cfg.is_64bits {
+            Decoder::with_ip(64, &block, rip, DecoderOptions::NONE).decode()
         } else {
-            decoder = Decoder::with_ip(32, &block, self.regs().get_eip(), DecoderOptions::NONE);
-        }
+            let eip = self.regs().get_eip();
+            Decoder::with_ip(32, &block, eip, DecoderOptions::NONE).decode()
+        };
 
-        // get first instruction from iterator
-        let ins = decoder.decode();
         let sz = ins.len();
-        let addr = ins.ip();
-        let position = decoder.position();
+        let position = if self.cfg.is_64bits {
+            Decoder::with_ip(64, &block, rip, DecoderOptions::NONE).position()
+        } else {
+            let eip = self.regs().get_eip();
+            Decoder::with_ip(32, &block, eip, DecoderOptions::NONE).position()
+        };
 
-        // clear
         self.memory_operations.clear();
-
-        // format
         self.instruction = Some(ins);
         self.decoder_position = position;
 
-        // Run pre-instruction hook
-        if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-            if !hook_fn(self, self.regs().rip, &ins, sz) {
-                // update eip/rip
-                if self.force_reload {
-                    self.force_reload = false;
-                } else if self.cfg.is_64bits {
-                    self.regs_mut().rip += sz as u64;
-                } else {
-                    let eip = self.regs().get_eip() + sz as u64;
-                    self.regs_mut().set_eip(eip);
-                }
-                // Restore thread context
-                self.current_thread_id = saved_thread_id;
-                return true; // skip instruction emulation
+        // Pre-instruction hook - extract values first to avoid borrowing conflicts
+        if self.hooks.hook_on_pre_instruction.is_some() {
+            let hook_fn = self.hooks.hook_on_pre_instruction.unwrap();
+            if !hook_fn(self, rip, &ins, sz) { // Use the cloned instruction directly
+                self.advance_ip(sz);
+                return true;
             }
         }
-        // emulate
+
+        // Execute the instruction
         let result_ok = engine::emulate_instruction(self, &ins, sz, true);
         self.last_instruction_size = sz;
 
-        // Run post-instruction hook
+        // Post-instruction hook
         if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-            hook_fn(self, self.regs().rip, &ins, sz, result_ok)
+            let instruction = self.instruction.take().unwrap();
+            hook_fn(self, rip, &instruction, sz, result_ok);
+            self.instruction = Some(instruction);
         }
 
-        // update eip/rip
-        if self.force_reload {
-            self.force_reload = false;
-        } else if self.cfg.is_64bits {
-            self.regs_mut().rip += sz as u64;
-        } else {
-            let eip = self.regs().get_eip() + sz as u64;
-            self.regs_mut().set_eip(eip);
-        }
+        // Advance IP
+        self.advance_ip(sz);
 
-        // Restore original thread context
-        self.current_thread_id = saved_thread_id;
         result_ok
     }
 
