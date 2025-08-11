@@ -162,7 +162,7 @@ impl ThreadScheduler {
         // Force reload of instruction cache
         emu.force_reload = true;
         
-        log::debug!(
+        log::trace!(
             "Switched to thread {} (ID: 0x{:x})",
             thread_id,
             emu.threads[thread_id].id

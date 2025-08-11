@@ -4055,29 +4055,6 @@ impl Emu {
                     self.memory_operations.clear();
                     self.pos += 1;
 
-                    // Thread scheduling - switch threads after each instruction for fairness
-                    if self.threads.len() > 1 {
-                        let old_rip = self.regs().rip;
-                        let old_thread = self.current_thread_id;
-                        
-                        // Try to schedule the next thread (round-robin)
-                        if crate::threading::ThreadScheduler::schedule_next_thread(self) {
-                            // Thread switched, need to reload at new RIP
-                            log::debug!(
-                                "Thread switch in run(): thread {} (RIP: 0x{:x}) -> thread {} (RIP: 0x{:x})",
-                                old_thread, old_rip,
-                                self.current_thread_id, self.regs().rip
-                            );
-                            
-                            // Clear any instruction state from the previous thread
-                            self.instruction = None;
-                            
-                            // Break from decoder loop to reload with new thread's context
-                            break;
-                        }
-                        // If no switch occurred, continue with current thread
-                    }
-
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
 
@@ -4309,6 +4286,29 @@ impl Emu {
                             let new_eip = self.regs().get_eip() + sz as u64;
                             self.regs_mut().set_eip(new_eip);
                         }
+                    }
+
+                    // Thread scheduling - switch threads after executing each instruction
+                    if self.threads.len() > 1 {
+                        let old_rip = self.regs().rip;
+                        let old_thread = self.current_thread_id;
+                        
+                        // Try to schedule the next thread (round-robin)
+                        if crate::threading::ThreadScheduler::schedule_next_thread(self) {
+                            // Thread switched, need to reload at new RIP
+                            log::trace!(
+                                "Thread switch in run(): thread {} (RIP: 0x{:x}) -> thread {} (RIP: 0x{:x})",
+                                old_thread, old_rip,
+                                self.current_thread_id, self.regs().rip
+                            );
+                            
+                            // Clear any instruction state from the previous thread
+                            self.instruction = None;
+                            
+                            // Break from decoder loop to reload with new thread's context
+                            break;
+                        }
+                        // If no switch occurred, continue with current thread
                     }
 
                     if self.force_break {
