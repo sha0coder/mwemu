@@ -1210,11 +1210,21 @@ fn advance_tick(emu: &mut emu::Emu, millis: u64) {
 
 fn Sleep(emu: &mut emu::Emu) {
     let millis = emu.regs().rcx;
+    
+    if millis > 0 {
+        // Set wake tick for this thread
+        let thread_idx = emu.current_thread_id;
+        emu.threads[thread_idx].wake_tick = emu.tick + millis as usize;
+    }
+    
+    // Advance global tick
     advance_tick(emu, millis);
+    
     log::info!(
-        "{}** {} kernel32!Sleep millis: {} {}",
+        "{}** {} kernel32!Sleep thread: 0x{:x} millis: {} {}",
         emu.colors.light_red,
         emu.pos,
+        emu.current_thread().id,
         millis,
         emu.colors.nc
     );
@@ -3696,38 +3706,68 @@ fn GetModuleFileNameW(emu: &mut emu::Emu) {
 }
 
 fn EnterCriticalSection(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs().rcx;
+    let cs_ptr = emu.regs().rcx;
+    let tid = emu.current_thread().id;
 
     log::info!(
-        "{}** {} kernel32!EnterCriticalSection 0x{:x} {}",
+        "{}** {} kernel32!EnterCriticalSection thread: 0x{:x} cs: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
-        crit_sect,
+        tid,
+        cs_ptr,
         emu.colors.nc
     );
 
-    // Add variable delay to simulate contention by advancing ticks
-    // Random delay 0-20 ticks
-    let delay = emu.rng.borrow_mut().random_range(0..21);
-    for _ in 0..delay {
+    let acquired = emu.global_locks.enter(cs_ptr, tid);
+
+    if acquired {
+        // Lock acquired immediately
+        // Small delay to simulate atomic operation overhead
         advance_tick(emu, 1);
+    } else {
+        // Thread is blocked — mark it as waiting
+        let thread_idx = emu.current_thread_id;
+        emu.threads[thread_idx].blocked_on_cs = Some(cs_ptr);
+        // Don't set wake_tick here - it will be cleared when lock is released
+        
+        // Simulate the wait by advancing tick slightly
+        // The actual blocking will be handled by the scheduler
+        advance_tick(emu, 2);
     }
 
-    emu.regs_mut().rax = crit_sect;
+    emu.regs_mut().rax = cs_ptr;
 }
 
 fn LeaveCriticalSection(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs().rcx;
+    let cs_ptr = emu.regs().rcx;
+    let tid = emu.current_thread().id;
 
     log::info!(
-        "{}** {} kernel32!LeaveCriticalSection 0x{:x} {}",
+        "{}** {} kernel32!LeaveCriticalSection thread: 0x{:x} cs: 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
-        crit_sect,
+        tid,
+        cs_ptr,
         emu.colors.nc
     );
 
-    emu.regs_mut().rax = crit_sect;
+    // Release the lock and get any thread that should be woken up
+    if let Some(wake_tid) = emu.global_locks.leave(cs_ptr, tid) {
+        // Find the thread to wake up and clear its blocked state
+        for thread in &mut emu.threads {
+            if thread.id == wake_tid {
+                thread.blocked_on_cs = None;
+                thread.wake_tick = 0; // Make it runnable immediately
+                log::info!("  Waking thread 0x{:x}", wake_tid);
+                break;
+            }
+        }
+    }
+
+    // Small delay to simulate atomic operation overhead
+    advance_tick(emu, 1);
+
+    emu.regs_mut().rax = cs_ptr;
 }
 
 /*

@@ -41,6 +41,9 @@ pub mod syscall64;
 pub mod winapi32;
 pub mod winapi64;
 pub mod kuser_shared;
+pub mod crit_state;
+pub mod global_locks;
+pub mod thread_context;
 
 #[cfg(test)]
 mod tests;

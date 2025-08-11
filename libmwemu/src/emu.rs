@@ -19,7 +19,6 @@ use crate::config::Config;
 use crate::console::Console;
 use crate::eflags::Eflags;
 use crate::elf32::Elf32;
-//use crate::elf64;
 use crate::elf64::Elf64;
 use crate::engine;
 use crate::err::MwemuError;
@@ -27,6 +26,7 @@ use crate::exception;
 use crate::exception_type;
 use crate::flags::Flags;
 use crate::fpu::FPU;
+use crate::global_locks::GlobalLocks;
 use crate::hooks::Hooks;
 use crate::maps::Maps;
 use crate::pe32::PE32;
@@ -38,60 +38,12 @@ use crate::regs64::Regs64;
 use crate::serialization;
 use crate::structures;
 use crate::structures::MemoryOperation;
+use crate::thread_context::ThreadContext;
 use crate::winapi32;
 use crate::winapi64;
 use crate::{constants, kuser_shared};
 use crate::{get_bit, set_bit, to32};
 use crate::constants::BLOCK_LEN;
-
-#[derive(Clone)]
-pub struct ThreadContext {
-    pub id: u64,  // Thread ID (e.g., 0x1000, 0x1001, etc.)
-    pub suspended: bool,  // Whether thread is suspended
-    pub regs: Regs64,
-    pub pre_op_regs: Regs64,
-    pub post_op_regs: Regs64,
-    pub flags: Flags,
-    pub pre_op_flags: Flags,
-    pub post_op_flags: Flags,
-    pub eflags: Eflags,
-    pub fpu: FPU,
-    pub seh: u64,
-    pub veh: u64,
-    pub feh: u64,
-    pub eh_ctx: u32,
-    pub tls32: Vec<u32>,
-    pub tls64: Vec<u64>,
-    pub fls: Vec<u32>,
-    pub fs: BTreeMap<u64, u64>,
-    pub call_stack: Vec<String>,
-}
-
-impl ThreadContext {
-    pub fn new(id: u64) -> Self {
-        ThreadContext {
-            id,
-            suspended: false,
-            regs: Regs64::new(),
-            pre_op_regs: Regs64::new(),
-            post_op_regs: Regs64::new(),
-            flags: Flags::new(),
-            pre_op_flags: Flags::new(),
-            post_op_flags: Flags::new(),
-            eflags: Eflags::new(),
-            fpu: FPU::new(),
-            seh: 0,
-            veh: 0,
-            feh: 0,
-            eh_ctx: 0,
-            tls32: Vec::new(),
-            tls64: Vec::new(),
-            fls: Vec::new(),
-            fs: BTreeMap::new(),
-            call_stack: Vec::new(),
-        }
-    }
-}
 
 pub struct Emu {
     // Global/shared state
@@ -138,6 +90,7 @@ pub struct Emu {
     // Thread management
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
+    pub global_locks: GlobalLocks,  // Critical section lock tracking
 }
 
 impl Default for Emu {
@@ -195,6 +148,7 @@ impl Emu {
             // Initialize with main thread as thread 0
             threads: vec![ThreadContext::new(0x1000)],
             current_thread_id: 0,
+            global_locks: GlobalLocks::new(),
         }
     }
 
@@ -214,23 +168,6 @@ impl Emu {
     
     pub fn regs_mut(&mut self) -> &mut Regs64 {
         &mut self.threads[self.current_thread_id].regs
-    }
-    
-    // Helper methods for common register operations to avoid borrow conflicts
-    pub fn set_rsp(&mut self, value: u64) {
-        self.threads[self.current_thread_id].regs.rsp = value;
-    }
-    
-    pub fn set_rbp(&mut self, value: u64) {
-        self.threads[self.current_thread_id].regs.rbp = value;
-    }
-    
-    pub fn get_rsp(&self) -> u64 {
-        self.threads[self.current_thread_id].regs.rsp
-    }
-    
-    pub fn get_rbp(&self) -> u64 {
-        self.threads[self.current_thread_id].regs.rbp
     }
     
     // Helper method to sync FPU instruction pointer with RIP
@@ -3967,26 +3904,53 @@ impl Emu {
 
         // Thread scheduling - find next runnable thread
         let num_threads = self.threads.len();
+        let current_tick = self.tick;
+        
+        // Check if current thread can run
+        let current_can_run = !self.threads[self.current_thread_id].suspended
+            && self.threads[self.current_thread_id].wake_tick <= current_tick
+            && self.threads[self.current_thread_id].blocked_on_cs.is_none();
+        
         if num_threads > 1 {
             // Round-robin scheduling: try each thread starting from next one
             for i in 0..num_threads {
                 let thread_idx = (self.current_thread_id + i + 1) % num_threads;
-                if !self.threads[thread_idx].suspended {
+                let thread = &self.threads[thread_idx];
+                
+                // Check if thread is runnable
+                if !thread.suspended 
+                    && thread.wake_tick <= current_tick
+                    && thread.blocked_on_cs.is_none() {
                     // Found a runnable thread, execute it
                     return self.step_thread(thread_idx);
                 }
             }
         }
         
-        // If no other threads are runnable or only one thread exists, 
-        // execute current thread if not suspended
-        if !self.threads[self.current_thread_id].suspended {
-            self.step_thread(self.current_thread_id)
-        } else {
-            // All threads are suspended
-            log::info!("All threads are suspended, cannot continue execution");
-            false
+        // If no other threads are runnable, try current thread
+        if current_can_run {
+            return self.step_thread(self.current_thread_id);
         }
+        
+        // All threads are blocked or suspended - advance time to next wake point
+        let mut next_wake = usize::MAX;
+        for thread in &self.threads {
+            if !thread.suspended && thread.wake_tick > current_tick {
+                next_wake = next_wake.min(thread.wake_tick);
+            }
+        }
+        
+        if next_wake != usize::MAX && next_wake > current_tick {
+            // Advance time to next wake point
+            self.tick = next_wake;
+            log::info!("All threads blocked, advancing tick to {}", next_wake);
+            // Try scheduling again
+            return self.step();
+        }
+        
+        // All threads are permanently blocked or suspended
+        log::info!("All threads are blocked/suspended, cannot continue execution");
+        false
     }
 
     /// Run until a specific position (emu.pos)
