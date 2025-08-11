@@ -36,7 +36,7 @@ impl ThreadScheduler {
             
             if Self::is_thread_runnable(emu, thread_idx) {
                 // Found a runnable thread - switch to it
-                log::debug!(
+                /*log::debug!(
                     "🔄 Thread switch: {} -> {} at step {}",
                     current_thread_id,
                     thread_idx,
@@ -46,7 +46,7 @@ impl ThreadScheduler {
                     "   From RIP: 0x{:x} -> To RIP: 0x{:x}",
                     emu.threads[current_thread_id].regs.rip,
                     emu.threads[thread_idx].regs.rip
-                );
+                );*/
                 
                 Self::switch_to_thread(emu, thread_idx);
                 return true;
@@ -162,11 +162,11 @@ impl ThreadScheduler {
         // Don't set force_reload - we want the thread to continue from its current position
         // force_reload would prevent IP advancement which causes instructions to execute twice
         
-        log::trace!(
+        /*log::trace!(
             "Switched to thread {} (ID: 0x{:x})",
             thread_id,
             emu.threads[thread_id].id
-        );
+        );*/
         
         true
     }

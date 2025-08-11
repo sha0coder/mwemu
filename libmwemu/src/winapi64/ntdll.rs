@@ -636,7 +636,7 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         .expect("ntdll!NtCreateFile error reading create_opt param");
     let ea_buff = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x40)
+        .read_qword(emu.regs().rsp + 0x48)
         .expect("ntdll!NtCreateFile error reading ea_buff param");
     let ea_len = emu
         .maps

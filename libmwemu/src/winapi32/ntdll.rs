@@ -690,13 +690,26 @@ fn NtCreateFile(emu: &mut emu::Emu) {
            PVOID           SecurityQualityOfService;
          } OBJECT_ATTRIBUTES;
 
+        typedef struct _UNICODE_STRING {
+            USHORT Length;
+            USHORT MaximumLength;
+            PWSTR  Buffer;
+        } UNICODE_STRING;
     */
 
     let obj_name_ptr = emu
         .maps
         .read_dword(oattrib + 8)
         .expect("ntdll!NtCreateFile error reading oattrib +8") as u64;
-    let filename = emu.maps.read_wide_string(obj_name_ptr);
+    let unicode_string_ptr = emu
+        .maps
+        .read_dword(oattrib + 8) 
+        .expect("ntdll!NtCreateFile error reading unicode_string_ptr8") as u64;
+    let buffer_ptr = emu
+        .maps
+        .read_qword(unicode_string_ptr + 8)
+        .expect("ntdll!NtCreateFile error reading buffer_ptr") as u64;
+    let filename = emu.maps.read_wide_string(buffer_ptr);
 
     log::info!(
         "{}** {} ntdll!NtCreateFile {} {}",

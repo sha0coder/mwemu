@@ -3823,30 +3823,25 @@ impl Emu {
         
         // Debug logging for threading
         if num_threads > 1 {
-            // Only log occasionally to avoid spam, but always log on thread changes
-            let should_log = true;
+            /*log::info!("=== THREAD SCHEDULER DEBUG ===");
+            log::info!("Step {}: {} threads, current_thread_id={}, tick={}", 
+                    self.pos, num_threads, self.current_thread_id, current_tick);
             
-            if should_log {
-                log::info!("=== THREAD SCHEDULER DEBUG ===");
-                log::info!("Step {}: {} threads, current_thread_id={}, tick={}", 
-                        self.pos, num_threads, self.current_thread_id, current_tick);
+            for (i, thread) in self.threads.iter().enumerate() {
+                let status = if thread.suspended {
+                    "SUSPENDED".to_string()
+                } else if thread.wake_tick > current_tick {
+                    format!("SLEEPING(wake={})", thread.wake_tick)
+                } else if thread.blocked_on_cs.is_some() {
+                    "BLOCKED_CS".to_string()
+                } else {
+                    "RUNNABLE".to_string()
+                };
                 
-                for (i, thread) in self.threads.iter().enumerate() {
-                    let status = if thread.suspended {
-                        "SUSPENDED".to_string()
-                    } else if thread.wake_tick > current_tick {
-                        format!("SLEEPING(wake={})", thread.wake_tick)
-                    } else if thread.blocked_on_cs.is_some() {
-                        "BLOCKED_CS".to_string()
-                    } else {
-                        "RUNNABLE".to_string()
-                    };
-                    
-                    let marker = if i == self.current_thread_id { ">>> " } else { "    " };
-                    log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}", 
-                            marker, i, thread.id, thread.regs.rip, status);
-                }
-            }
+                let marker = if i == self.current_thread_id { ">>> " } else { "    " };
+                log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}", 
+                        marker, i, thread.id, thread.regs.rip, status);
+            }*/
         }
         
         // Check if current thread can run
@@ -3855,16 +3850,16 @@ impl Emu {
             && self.threads[self.current_thread_id].blocked_on_cs.is_none();
         
         if num_threads > 1 {
-            log::debug!("Current thread {} can run: {}", self.current_thread_id, current_can_run);
+            //log::debug!("Current thread {} can run: {}", self.current_thread_id, current_can_run);
             
             // Round-robin scheduling: try each thread starting from next one
             for i in 0..num_threads {
                 let thread_idx = (self.current_thread_id + i + 1) % num_threads;
                 let thread = &self.threads[thread_idx];
                 
-                log::debug!("Checking thread {}: suspended={}, wake_tick={}, blocked={}", 
+                /*log::debug!("Checking thread {}: suspended={}, wake_tick={}, blocked={}", 
                         thread_idx, thread.suspended, thread.wake_tick, 
-                        thread.blocked_on_cs.is_some());
+                        thread.blocked_on_cs.is_some());*/
                 
                 // Check if thread is runnable
                 if !thread.suspended 
@@ -3872,11 +3867,11 @@ impl Emu {
                     && thread.blocked_on_cs.is_none() {
                     // Found a runnable thread, execute it
                     if thread_idx != self.current_thread_id {
-                        log::info!("🔄 THREAD SWITCH: {} -> {} (step {})", 
+                        /*log::info!("🔄 THREAD SWITCH: {} -> {} (step {})", 
                                 self.current_thread_id, thread_idx, self.pos);
                         log::info!("   From RIP: 0x{:x} -> To RIP: 0x{:x}", 
                                 self.threads[self.current_thread_id].regs.rip,
-                                thread.regs.rip);
+                                thread.regs.rip);*/
                     }
                     return crate::threading::ThreadScheduler::execute_thread_instruction(self, thread_idx);
                 }
@@ -3887,9 +3882,9 @@ impl Emu {
         
         // If no other threads are runnable, try current thread
         if current_can_run {
-            if num_threads > 1 {
+            /*if num_threads > 1 {
                 log::debug!("Continuing with current thread {}", self.current_thread_id);
-            }
+            }*/
             return crate::threading::ThreadScheduler::execute_thread_instruction(self, self.current_thread_id);
         }
         
@@ -3984,19 +3979,19 @@ impl Emu {
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 // turn on verbosity after a lot of pos
-                if self.cfg.verbose != 3 && self.pos > 500653754 {
+                /*if self.cfg.verbose != 3 && self.pos > 500653754 {
                     self.cfg.verbose = 3;
                     self.set_verbose(self.cfg.verbose);
-                }
+                }*/
 
                 // Debug: Track which thread we're executing
                 if self.threads.len() > 1 && self.cfg.verbose >= 3 {
-                    log::debug!(
+                    /*log::debug!(
                         "Executing thread {} (ID: 0x{:x}) at RIP: 0x{:x}",
                         self.current_thread_id,
                         self.threads[self.current_thread_id].id,
                         self.regs().rip
-                    );
+                    );*/
                 }
 
                 let rip = self.regs().rip;
@@ -4048,12 +4043,12 @@ impl Emu {
 
                     // Verify instruction belongs to current thread
                     if self.threads.len() > 1 && self.cfg.verbose >= 4 {
-                        log::debug!(
+                        /*log::debug!(
                             "Thread {} decoding instruction at 0x{:x} (ins.ip: 0x{:x})",
                             self.current_thread_id,
                             self.regs().rip,
                             addr
-                        );
+                        );*/
                     }
                     
                     self.instruction = Some(ins);
@@ -4105,8 +4100,9 @@ impl Emu {
                         }
                     }
 
-                    // prevent infinite loop
-                    if self.rep.is_none() {
+                    // prevent infinite loop (only for single-threaded execution)
+                    // With multiple threads, addresses will naturally repeat as threads execute similar code
+                    if self.rep.is_none() && self.threads.len() == 1 {
                         if addr == prev_addr {
                             // || addr == prev_prev_addr {
                             repeat_counter += 1;
@@ -4139,6 +4135,10 @@ impl Emu {
                             }*/
                             //TODO: if more than x addresses remove the bottom ones
                         }
+                    } else if self.rep.is_none() && self.threads.len() > 1 {
+                        // For multi-threaded execution, just update prev_addr for tracking
+                        // but don't check for infinite loops
+                        prev_addr = addr;
                     }
 
                     if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
@@ -4302,11 +4302,11 @@ impl Emu {
                         // Try to schedule the next thread (round-robin)
                         if crate::threading::ThreadScheduler::schedule_next_thread(self) {
                             // Thread switched, need to reload at new RIP
-                            log::trace!(
+                            /*log::trace!(
                                 "Thread switch in run(): thread {} (RIP: 0x{:x}) -> thread {} (RIP: 0x{:x})",
                                 old_thread, old_rip,
                                 self.current_thread_id, self.regs().rip
-                            );
+                            );*/
                             
                             // Clear any instruction state from the previous thread
                             self.instruction = None;
