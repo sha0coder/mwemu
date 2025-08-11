@@ -3983,6 +3983,12 @@ impl Emu {
         block.resize(BLOCK_LEN, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
+                // turn on verbosity after a lot of pos
+                if self.cfg.verbose != 3 && self.pos > 500653754 {
+                    self.cfg.verbose = 3;
+                    self.set_verbose(self.cfg.verbose);
+                }
+
                 // Debug: Track which thread we're executing
                 if self.threads.len() > 1 && self.cfg.verbose >= 3 {
                     log::debug!(

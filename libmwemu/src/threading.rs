@@ -159,8 +159,8 @@ impl ThreadScheduler {
         // Restore new thread's FPU state
         *emu.fpu_mut() = emu.threads[thread_id].fpu.clone();
         
-        // Force reload of instruction cache
-        emu.force_reload = true;
+        // Don't set force_reload - we want the thread to continue from its current position
+        // force_reload would prevent IP advancement which causes instructions to execute twice
         
         log::trace!(
             "Switched to thread {} (ID: 0x{:x})",
