@@ -47,6 +47,7 @@ use crate::constants::BLOCK_LEN;
 #[derive(Clone)]
 pub struct ThreadContext {
     pub id: u64,  // Thread ID (e.g., 0x1000, 0x1001, etc.)
+    pub suspended: bool,  // Whether thread is suspended
     pub regs: Regs64,
     pub pre_op_regs: Regs64,
     pub post_op_regs: Regs64,
@@ -70,6 +71,7 @@ impl ThreadContext {
     pub fn new(id: u64) -> Self {
         ThreadContext {
             id,
+            suspended: false,
             regs: Regs64::new(),
             pre_op_regs: Regs64::new(),
             post_op_regs: Regs64::new(),
@@ -3844,47 +3846,24 @@ impl Emu {
         );
     }
 
-
-    /// Emulate a single step from the current point.
-    /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
-    /// the current emulation moment. 
-    /// If you do a loop with emu.step() will have more control of the emulator but it will be
-    /// slow.
-    /// Is more convinient using run and run_to or even setting breakpoints.
-    pub fn step(&mut self) -> bool {
-        self.pos += 1;
-
-        // exit
-        if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
-            log::info!("exit position reached");
-
-            if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump_to_file(
-                    self,
-                    self.cfg.dump_filename.as_ref().unwrap(),
-                );
-            }
-
-            if self.cfg.trace_filename.is_some() {
-                self.trace_file
-                    .as_ref()
-                    .unwrap()
-                    .flush()
-                    .expect("failed to flush trace file");
-            }
-
-            return false;
-        }
-
+    /// Execute a single instruction for a specific thread
+    fn step_thread(&mut self, thread_id: usize) -> bool {
+        // Save current thread and switch to target thread
+        let saved_thread_id = self.current_thread_id;
+        self.current_thread_id = thread_id;
+        
         // code
         let rip = self.regs().rip;
         let code = match self.maps.get_mem_by_addr(rip) {
             Some(c) => c,
             None => {
                 log::info!(
-                    "redirecting code flow to non maped address 0x{:x}",
+                    "thread {} redirecting code flow to non mapped address 0x{:x}",
+                    self.threads[thread_id].id,
                     self.regs().rip
                 );
+                // Restore thread context before returning
+                self.current_thread_id = saved_thread_id;
                 Console::spawn_console(self);
                 return false;
             }
@@ -3926,6 +3905,8 @@ impl Emu {
                     let eip = self.regs().get_eip() + sz as u64;
                     self.regs_mut().set_eip(eip);
                 }
+                // Restore thread context
+                self.current_thread_id = saved_thread_id;
                 return true; // skip instruction emulation
             }
         }
@@ -3948,7 +3929,64 @@ impl Emu {
             self.regs_mut().set_eip(eip);
         }
 
+        // Restore original thread context
+        self.current_thread_id = saved_thread_id;
         result_ok
+    }
+
+    /// Emulate a single step from the current point.
+    /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
+    /// the current emulation moment. 
+    /// If you do a loop with emu.step() will have more control of the emulator but it will be
+    /// slow.
+    /// Is more convinient using run and run_to or even setting breakpoints.
+    pub fn step(&mut self) -> bool {
+        self.pos += 1;
+
+        // exit
+        if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
+            log::info!("exit position reached");
+
+            if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
+                serialization::Serialization::dump_to_file(
+                    self,
+                    self.cfg.dump_filename.as_ref().unwrap(),
+                );
+            }
+
+            if self.cfg.trace_filename.is_some() {
+                self.trace_file
+                    .as_ref()
+                    .unwrap()
+                    .flush()
+                    .expect("failed to flush trace file");
+            }
+
+            return false;
+        }
+
+        // Thread scheduling - find next runnable thread
+        let num_threads = self.threads.len();
+        if num_threads > 1 {
+            // Round-robin scheduling: try each thread starting from next one
+            for i in 0..num_threads {
+                let thread_idx = (self.current_thread_id + i + 1) % num_threads;
+                if !self.threads[thread_idx].suspended {
+                    // Found a runnable thread, execute it
+                    return self.step_thread(thread_idx);
+                }
+            }
+        }
+        
+        // If no other threads are runnable or only one thread exists, 
+        // execute current thread if not suspended
+        if !self.threads[self.current_thread_id].suspended {
+            self.step_thread(self.current_thread_id)
+        } else {
+            // All threads are suspended
+            log::info!("All threads are suspended, cannot continue execution");
+            false
+        }
     }
 
     /// Run until a specific position (emu.pos)
