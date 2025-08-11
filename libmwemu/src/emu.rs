@@ -3783,119 +3783,8 @@ impl Emu {
         );
     }
 
-    /// Advance the instruction pointer by the given size
-    /// Handles both 32-bit and 64-bit modes, and respects force_reload flag
-    fn advance_ip(&mut self, sz: usize) {
-        if self.force_reload {
-            // Don't advance IP if force_reload is set
-            // This allows hooks or other code to manually set the IP
-            self.force_reload = false;
-        } else if self.cfg.is_64bits {
-            // 64-bit mode: advance RIP
-            self.regs_mut().rip += sz as u64;
-        } else {
-            // 32-bit mode: advance EIP
-            let eip = self.regs().get_eip() + sz as u64;
-            self.regs_mut().set_eip(eip);
-        }
-    }
 
-    /// Switch to a different thread - simplified version
-    pub fn switch_to_thread(&mut self, new_thread_id: usize) -> bool {
-        if new_thread_id >= self.threads.len() {
-            log::error!("Invalid thread ID: {}", new_thread_id);
-            return false;
-        }
-        
-        if new_thread_id == self.current_thread_id {
-            return true; // Already on this thread
-        }
-        
-        let old_thread_id = self.current_thread_id;
-        
-        log::debug!("Switching from thread {} (0x{:x}) to thread {} (0x{:x})",
-                   old_thread_id, 
-                   self.threads[old_thread_id].id,
-                   new_thread_id,
-                   self.threads[new_thread_id].id);
-        
-        // Just change the current thread ID - that's it!
-        self.current_thread_id = new_thread_id;
-        
-        log::debug!("Thread switch complete - now at RIP: 0x{:x}", self.regs().rip);
-        
-        true
-    }
 
-    /// Execute a single instruction for a specific thread
-    fn step_thread(&mut self, thread_id: usize) -> bool {
-        // Switch to target thread if different
-        if self.current_thread_id != thread_id {
-            if !self.switch_to_thread(thread_id) {
-                return false;
-            }
-        }
-
-        let rip = self.regs().rip;
-        let code = match self.maps.get_mem_by_addr(rip) {
-            Some(c) => c,
-            None => {
-                log::info!(
-                    "thread {} redirecting code flow to non mapped address 0x{:x}",
-                    self.threads[thread_id].id,
-                    rip
-                );
-                Console::spawn_console(self);
-                return false;
-            }
-        };
-
-        let block = code.read_from(rip).to_vec();
-
-        let ins = if self.cfg.is_64bits {
-            Decoder::with_ip(64, &block, rip, DecoderOptions::NONE).decode()
-        } else {
-            let eip = self.regs().get_eip();
-            Decoder::with_ip(32, &block, eip, DecoderOptions::NONE).decode()
-        };
-
-        let sz = ins.len();
-        let position = if self.cfg.is_64bits {
-            Decoder::with_ip(64, &block, rip, DecoderOptions::NONE).position()
-        } else {
-            let eip = self.regs().get_eip();
-            Decoder::with_ip(32, &block, eip, DecoderOptions::NONE).position()
-        };
-
-        self.memory_operations.clear();
-        self.instruction = Some(ins);
-        self.decoder_position = position;
-
-        // Pre-instruction hook - extract values first to avoid borrowing conflicts
-        if self.hooks.hook_on_pre_instruction.is_some() {
-            let hook_fn = self.hooks.hook_on_pre_instruction.unwrap();
-            if !hook_fn(self, rip, &ins, sz) { // Use the cloned instruction directly
-                self.advance_ip(sz);
-                return true;
-            }
-        }
-
-        // Execute the instruction
-        let result_ok = engine::emulate_instruction(self, &ins, sz, true);
-        self.last_instruction_size = sz;
-
-        // Post-instruction hook
-        if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-            let instruction = self.instruction.take().unwrap();
-            hook_fn(self, rip, &instruction, sz, result_ok);
-            self.instruction = Some(instruction);
-        }
-
-        // Advance IP
-        self.advance_ip(sz);
-
-        result_ok
-    }
 
     /// Emulate a single step from the current point.
     /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
@@ -3989,7 +3878,7 @@ impl Emu {
                                 self.threads[self.current_thread_id].regs.rip,
                                 thread.regs.rip);
                     }
-                    return self.step_thread(thread_idx);
+                    return crate::threading::ThreadScheduler::execute_thread_instruction(self, thread_idx);
                 }
             }
             
@@ -4001,7 +3890,7 @@ impl Emu {
             if num_threads > 1 {
                 log::debug!("Continuing with current thread {}", self.current_thread_id);
             }
-            return self.step_thread(self.current_thread_id);
+            return crate::threading::ThreadScheduler::execute_thread_instruction(self, self.current_thread_id);
         }
         
         // All threads are blocked or suspended - advance time to next wake point
@@ -4094,7 +3983,15 @@ impl Emu {
         block.resize(BLOCK_LEN, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                //log::info!("reloading rip 0x{:x}", self.regs().rip);
+                // Debug: Track which thread we're executing
+                if self.threads.len() > 1 && self.cfg.verbose >= 3 {
+                    log::debug!(
+                        "Executing thread {} (ID: 0x{:x}) at RIP: 0x{:x}",
+                        self.current_thread_id,
+                        self.threads[self.current_thread_id].id,
+                        self.regs().rip
+                    );
+                }
 
                 let rip = self.regs().rip;
                 let code = match self.maps.get_mem_by_addr(rip) {
@@ -4143,18 +4040,42 @@ impl Emu {
                         }
                     }
 
+                    // Verify instruction belongs to current thread
+                    if self.threads.len() > 1 && self.cfg.verbose >= 4 {
+                        log::debug!(
+                            "Thread {} decoding instruction at 0x{:x} (ins.ip: 0x{:x})",
+                            self.current_thread_id,
+                            self.regs().rip,
+                            addr
+                        );
+                    }
+                    
                     self.instruction = Some(ins);
                     self.decoder_position = decoder.position();
                     self.memory_operations.clear();
                     self.pos += 1;
 
-                    // Thread scheduling - check if we need to switch threads
-                    if self.threads.len() > 1 && self.pos % 100 == 0 {
-                        // Schedule every 100 instructions for fairness
+                    // Thread scheduling - switch threads after each instruction for fairness
+                    if self.threads.len() > 1 {
+                        let old_rip = self.regs().rip;
+                        let old_thread = self.current_thread_id;
+                        
+                        // Try to schedule the next thread (round-robin)
                         if crate::threading::ThreadScheduler::schedule_next_thread(self) {
                             // Thread switched, need to reload at new RIP
+                            log::debug!(
+                                "Thread switch in run(): thread {} (RIP: 0x{:x}) -> thread {} (RIP: 0x{:x})",
+                                old_thread, old_rip,
+                                self.current_thread_id, self.regs().rip
+                            );
+                            
+                            // Clear any instruction state from the previous thread
+                            self.instruction = None;
+                            
+                            // Break from decoder loop to reload with new thread's context
                             break;
                         }
+                        // If no switch occurred, continue with current thread
                     }
 
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {

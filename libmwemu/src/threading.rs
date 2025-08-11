@@ -6,7 +6,8 @@ use std::io::Write;
 pub struct ThreadScheduler;
 
 impl ThreadScheduler {
-    /// Schedule and switch to the next runnable thread
+    /// Schedule and switch to the next runnable thread (round-robin)
+    /// Always tries to switch to give each thread equal time
     /// Returns true if a thread switch occurred, false otherwise
     pub fn schedule_next_thread(emu: &mut Emu) -> bool {
         // Single thread case - no scheduling needed
@@ -17,22 +18,31 @@ impl ThreadScheduler {
         let current_tick = emu.tick;
         let current_thread_id = emu.current_thread_id;
         
-        // Check if current thread can still run
-        let current_can_run = Self::is_thread_runnable(emu, current_thread_id);
-        
-        // Try to find another runnable thread (round-robin)
-        for i in 1..emu.threads.len() {
+        // Round-robin: always try to switch to the next thread
+        // This ensures fair scheduling - each thread gets one instruction
+        for i in 1..=emu.threads.len() {
             let thread_idx = (current_thread_id + i) % emu.threads.len();
+            
+            // Skip back to current thread only if no other threads are runnable
+            if thread_idx == current_thread_id {
+                // We've checked all other threads, none are runnable
+                // Check if current thread can continue
+                if Self::is_thread_runnable(emu, current_thread_id) {
+                    return false; // Stay on current thread
+                }
+                // Current thread also can't run
+                break;
+            }
             
             if Self::is_thread_runnable(emu, thread_idx) {
                 // Found a runnable thread - switch to it
-                log::info!(
+                log::debug!(
                     "🔄 Thread switch: {} -> {} at step {}",
                     current_thread_id,
                     thread_idx,
                     emu.pos
                 );
-                log::info!(
+                log::debug!(
                     "   From RIP: 0x{:x} -> To RIP: 0x{:x}",
                     emu.threads[current_thread_id].regs.rip,
                     emu.threads[thread_idx].regs.rip
@@ -43,18 +53,16 @@ impl ThreadScheduler {
             }
         }
         
-        // No other threads are runnable
-        if !current_can_run {
-            // Try to advance time if threads are just sleeping
-            if Self::advance_to_next_wake(emu) {
-                // Recursively try scheduling again after time advance
-                return Self::schedule_next_thread(emu);
-            }
-            
-            // All threads are permanently blocked
-            Self::log_thread_states(emu);
-            log::error!("⚠️ All threads blocked or suspended - deadlock detected");
+        // No threads are runnable (including current)
+        // Try to advance time if threads are just sleeping
+        if Self::advance_to_next_wake(emu) {
+            // Recursively try scheduling again after time advance
+            return Self::schedule_next_thread(emu);
         }
+        
+        // All threads are permanently blocked
+        Self::log_thread_states(emu);
+        log::error!("⚠️ All threads blocked or suspended - deadlock detected");
         
         false
     }
@@ -215,13 +223,7 @@ impl ThreadScheduler {
         // Pre-instruction hook
         if let Some(hook_fn) = emu.hooks.hook_on_pre_instruction {
             if !hook_fn(emu, rip, &ins, sz) {
-                // Advance instruction pointer
-                if emu.cfg.is_64bits {
-                    emu.regs_mut().rip += sz as u64;
-                } else {
-                    let new_eip = emu.regs().get_eip() + sz as u64;
-                    emu.regs_mut().set_eip(new_eip);
-                }
+                Self::advance_ip(emu, sz);
                 return true;
             }
         }
@@ -238,14 +240,26 @@ impl ThreadScheduler {
         }
         
         // Advance instruction pointer
-        if emu.cfg.is_64bits {
-            emu.regs_mut().rip += sz as u64;
-        } else {
-            let new_eip = emu.regs().get_eip() + sz as u64;
-            emu.regs_mut().set_eip(new_eip);
-        }
+        Self::advance_ip(emu, sz);
         
         result_ok
+    }
+    
+    /// Advance the instruction pointer by the given size
+    /// Handles both 32-bit and 64-bit modes, and respects force_reload flag
+    pub fn advance_ip(emu: &mut Emu, sz: usize) {
+        if emu.force_reload {
+            // Don't advance IP if force_reload is set
+            // This allows hooks or other code to manually set the IP
+            emu.force_reload = false;
+        } else if emu.cfg.is_64bits {
+            // 64-bit mode: advance RIP
+            emu.regs_mut().rip += sz as u64;
+        } else {
+            // 32-bit mode: advance EIP
+            let eip = emu.regs().get_eip() + sz as u64;
+            emu.regs_mut().set_eip(eip);
+        }
     }
     
     /// Main thread scheduling step - replaces the complex logic in step()
