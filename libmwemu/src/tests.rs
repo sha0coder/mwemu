@@ -19,6 +19,7 @@ mod tests {
     use crate::structures;
     use std::process::Command;
     use crate::engine::logic;
+    use std::thread;
 
     static INIT: Once = Once::new();
 
@@ -696,27 +697,34 @@ mod tests {
     fn should_serialize() {
         setup();
 
-        // init
-        let mut emu = emu64();
+         let handle = thread::Builder::new()
+            .stack_size(1024 * 29055)
+            .spawn(|| {
 
-        // load maps
-        emu.cfg.maps_folder = "../maps64/".to_string();
-        
+                // init
+                let mut emu = emu64();
 
-        // load binary
-        emu.load_code("../test/exe64win_msgbox.bin");
+                // load maps
+                emu.cfg.maps_folder = "../maps64/".to_string();
+                
 
-        // set registers
-        emu.regs_mut().rdx = 0x1;
+                // load binary
+                emu.load_code("../test/exe64win_msgbox.bin");
 
-        // serialize
-        let serialized = Serialization::serialize(&emu);
+                // set registers
+                emu.regs.rdx = 0x1;
 
-        // deserialize
-        let emu: Emu = Serialization::deserialize(&serialized);
+                // serialize
+                let serialized = Serialization::serialize(&emu);
 
-        // assert
-        assert_eq!(emu.regs().rdx, 0x1);
+                // deserialize
+                let emu: Emu = Serialization::deserialize(&serialized);
+                // assert
+                assert_eq!(emu.regs.rdx, 0x1);
+              
+        }).unwrap();
+
+        handle.join().unwrap();
     }
 
 
