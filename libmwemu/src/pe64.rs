@@ -221,6 +221,7 @@ impl DelayLoadIAT {
 }
 
 pub struct PE64 {
+    pub filename: String,
     pub raw: Vec<u8>,
     pub dos: pe32::ImageDosHeader,
     pub nt: pe32::ImageNtHeaders,
@@ -250,7 +251,7 @@ impl PE64 {
         true
     }
 
-    pub fn load_from_raw(raw: &[u8]) -> PE64 {
+    pub fn load_from_raw(filename: &str, raw: &[u8]) -> PE64 {
         let dos = pe32::ImageDosHeader::load(&raw, 0);
         let nt = pe32::ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
         let fh = pe32::ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
@@ -331,6 +332,7 @@ impl PE64 {
         }
 
         PE64 {
+            filename: filename.to_string(),
             raw: raw.to_vec(),
             dos,
             fh,
@@ -349,7 +351,7 @@ impl PE64 {
         let mut raw: Vec<u8> = Vec::new();
         fd.read_to_end(&mut raw)
             .expect("couldnt read the pe64 binary");
-        PE64::load_from_raw(&raw)
+        PE64::load_from_raw(filename, &raw)
     }
 
     pub fn size(&self) -> u64 {

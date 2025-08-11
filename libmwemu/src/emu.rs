@@ -1,6 +1,7 @@
 use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{Code, Decoder, DecoderOptions, Formatter, Instruction, IntelFormatter, MemorySize, Mnemonic, OpKind, Register};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write as _;
@@ -101,6 +102,7 @@ pub struct Emu {
     pub formatter: IntelFormatter,
     pub fileName: String,
     pub heap_addr: u64,
+    pub rng: RefCell<rand::rngs::ThreadRng>,
 }
 
 impl Default for Emu {
@@ -124,7 +126,7 @@ impl Emu {
             post_op_flags: Flags::new(),
             eflags: Eflags::new(),
             fpu: FPU::new(),
-            maps: Maps::new(),
+            maps: Maps::default(),
             hooks: Hooks::new(),
             exp: 0,
             break_on_alert: false,
@@ -172,6 +174,7 @@ impl Emu {
             call_stack: vec![],
             fileName: String::new(),
             heap_addr: 0,
+            rng: RefCell::new(rand::rng())
         }
     }
 
@@ -2972,7 +2975,7 @@ impl Emu {
                     }
                 }
 
-            _ => unimplemented!("unimplemented operand type"),
+            _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         true
     }
@@ -3168,7 +3171,9 @@ impl Emu {
             OpKind::NearBranch64
             | OpKind::Immediate64
             | OpKind::Immediate32to64
-            | OpKind::Immediate8to64 => 64,
+            | OpKind::Immediate8to64 
+            | OpKind::MemoryESRDI 
+            | OpKind::MemorySegRSI => 64,
             OpKind::NearBranch32
             | OpKind::Immediate32
             | OpKind::Immediate8to32
@@ -3210,7 +3215,7 @@ impl Emu {
                 MemorySize::Packed256_UInt128 => 128,
                 _ => unimplemented!("memory size {:?}", ins.memory_size()),
             },
-            _ => unimplemented!("operand type {:?}", ins.op_kind(noperand)),
+            _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         }
     }
 

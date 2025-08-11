@@ -37,7 +37,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 
 fn SysAllocStringLen(emu: &mut emu::Emu) {
     let str_ptr = emu.regs.rcx;
-    let mut size = emu.regs.rdx;
+    let char_count = emu.regs.rdx;
 
     log::info!(
         "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
@@ -45,38 +45,39 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         emu.pos,
         emu.regs.rip,
         str_ptr,
-        size
+        char_count
     );
-
-    if size == 0xffffffff {
-        size = 1024;
-    }
-    size += 1; // null byte
-    size += 8; // metadata
-
-    let base = emu
-        .maps
-        .alloc(size + 100)
+    
+    // Handle special case
+    let actual_char_count = if char_count == 0xffffffff { 
+        1024  // or calculate actual length from str_ptr
+    } else { 
+        char_count 
+    };
+    
+    let byte_length = actual_char_count * 2;  // Wide chars are 2 bytes
+    let total_size = 4 + byte_length + 2;     // length prefix + data + null terminator
+    
+    let base = emu.maps.alloc(total_size + 100)
         .expect("oleaut32!SysAllocStringLen out of memory");
-    let name = format!("alloc_{:x}", base);
-    emu.maps.create_map(&name, base, size + 100);
 
+    let name = format!("alloc_{:x}", base);
+    emu.maps.create_map(&name, base, total_size + 100);
+    
+    // Write the byte length (not character count) at the beginning
+    emu.maps.write_dword(base, byte_length as u32);
+    
+    let bstr_ptr = base + 4;
+    
     // watch out for null?
     if str_ptr != 0 {
-        emu.maps.memcpy(base + 8, str_ptr, size as usize - 1);
+        emu.maps.memcpy(bstr_ptr, str_ptr, byte_length as usize);
     }
-
-    log::info!(
-        "{}** {}:{:x} oleaut32!SysAllocStringLen  ={} {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.regs.rip,
-        name,
-        size - 8,
-        emu.colors.nc
-    );
-
-    emu.regs.rax = base + 8;
+    
+    // Write null terminator
+    emu.maps.write_word(bstr_ptr + byte_length, 0);
+    
+    emu.regs.rax = bstr_ptr;  // Return pointer to string data, not base
 }
 
 fn SysFreeString(emu: &mut emu::Emu) {

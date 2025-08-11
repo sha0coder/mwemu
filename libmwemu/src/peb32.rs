@@ -1,4 +1,5 @@
 use crate::console::Console;
+use crate::constants;
 use crate::emu;
 use crate::structures::LdrDataTableEntry;
 use crate::structures::OrdinalTable;
@@ -6,7 +7,6 @@ use crate::structures::PebLdrData;
 use crate::structures::PEB;
 use crate::structures::TEB;
 use crate::structures::RtlUserProcessParameters32;
-use crate::constants;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData::size() + 100;

@@ -1175,7 +1175,7 @@ mod tests {
     fn mem64_test() {
         setup();
 
-        let mut mem = Mem64::new();
+        let mut mem = Mem64::default();
         mem.set_name("memtest");
         assert_eq!(mem.get_name(), "memtest");
 
@@ -1218,7 +1218,7 @@ mod tests {
 
         mem.clear();
 
-        let mut mem2 = Mem64::new();
+        let mut mem2 = Mem64::default();
         mem2.set_base(0x400000);
         mem2.set_size(16);
         mem2.load("../test/sc32win_donut.bin");
