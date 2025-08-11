@@ -1,6 +1,7 @@
 use crate::console;
 use crate::constants;
 use crate::emu;
+use crate::emu::ThreadContext;
 use crate::peb64;
 use crate::serialization;
 use crate::structures;
@@ -214,7 +215,6 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 lazy_static! {
     static ref COUNT_READ: Mutex<u32> = Mutex::new(0);
     static ref COUNT_WRITE: Mutex<u32> = Mutex::new(0);
-    static ref THREAD_IDS: Mutex<Vec<u64>> = Mutex::new(vec![0x1000]);
     static ref LAST_ERROR: Mutex<u64> = Mutex::new(0);
 }
 
@@ -1000,15 +1000,7 @@ fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
 }
 
 fn GetCurrentThreadId(emu: &mut emu::Emu) {
-    let thread_id = {
-        let thread_ids = THREAD_IDS.lock().unwrap();
-        if thread_ids.is_empty() {
-            0x1000  // Main thread ID
-        } else {
-            let index = emu.rng.borrow_mut().random_range(0..thread_ids.len());
-            thread_ids[index]
-        }
-    };
+    let thread_id = emu.current_thread().id;
     
     log::info!(
         "{}** {} kernel32!GetCurrentThreadId = 0x{:x} {}",
@@ -1130,14 +1122,34 @@ fn CreateThread(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateThread cannot read tid_ptr");
 
-    let thread_id_index = {
-        let mut thread_ids = THREAD_IDS.lock().unwrap();
-        let new_thread_id = 0x1000 + thread_ids.len() as u64;
-        thread_ids.push(new_thread_id);
-        new_thread_id
-    };
+    let new_thread_id = 0x1000 + emu.threads.len();
+    let mut new_thread = ThreadContext::new(new_thread_id as u64);
+    
+    // Initialize thread context with entry point and parameter
+    new_thread.regs.rip = code;
+    new_thread.regs.rcx = param;
+    new_thread.regs.rax = 0;
+    
+    // Allocate stack if requested (otherwise will share/reuse current stack)
+    if stack_sz > 0 {
+        if let Some(stack_base) = emu.maps.alloc(stack_sz) {
+            new_thread.regs.rsp = stack_base + stack_sz - 8; // Stack grows down
+            new_thread.regs.rbp = new_thread.regs.rsp;
+            emu.maps.create_map(
+                &format!("thread_stack_{:x}", new_thread_id),
+                stack_base,
+                stack_sz,
+            ).ok();
+        }
+    }
+    
+    // Sync FPU instruction pointer
+    new_thread.fpu.set_ip(code);
+    
+    emu.threads.push(new_thread);
+    
     if tid_ptr > 0 {
-        emu.maps.write_dword(tid_ptr, thread_id_index as u32);
+        emu.maps.write_dword(tid_ptr, new_thread_id as u32);
     }
 
     log::info!(
@@ -1173,7 +1185,7 @@ fn CreateThread(emu: &mut emu::Emu) {
         }
     }
 
-    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
+    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", new_thread_id));
 }
 
 fn advance_tick(emu: &mut emu::Emu, millis: u64) {
@@ -1285,14 +1297,36 @@ fn CreateRemoteThread(emu: &mut emu::Emu) {
         addr,
         emu.colors.nc
     );
-    let thread_id_index = {
-        let mut thread_ids = THREAD_IDS.lock().unwrap();
-        let new_thread_id = 0x1000 + thread_ids.len() as u64;
-        thread_ids.push(new_thread_id);
-        new_thread_id
-    };
-    emu.maps.write_dword(out_tid, thread_id_index as u32);
-    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
+    let new_thread_id = 0x1000 + emu.threads.len();
+    let mut new_thread = ThreadContext::new(new_thread_id as u64);
+    
+    // Initialize thread context with entry point and parameter
+    new_thread.regs.rip = addr;
+    new_thread.regs.rcx = param;
+    new_thread.regs.rax = 0;
+    
+    // Allocate stack if requested (otherwise will share/reuse current stack)
+    if stack_size > 0 {
+        if let Some(stack_base) = emu.maps.alloc(stack_size) {
+            new_thread.regs.rsp = stack_base + stack_size - 8; // Stack grows down
+            new_thread.regs.rbp = new_thread.regs.rsp;
+            emu.maps.create_map(
+                &format!("remote_thread_stack_{:x}", new_thread_id),
+                stack_base,
+                stack_size,
+            ).ok();
+        }
+    }
+    
+    // Sync FPU instruction pointer
+    new_thread.fpu.set_ip(addr);
+    
+    emu.threads.push(new_thread);
+    
+    if out_tid > 0 {
+        emu.maps.write_dword(out_tid, new_thread_id as u32);
+    }
+    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", new_thread_id));
 }
 
 fn CreateNamedPipeA(emu: &mut emu::Emu) {
