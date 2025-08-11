@@ -3827,7 +3827,7 @@ impl Emu {
         true
     }
 
-     /// Execute a single instruction for a specific thread
+    /// Execute a single instruction for a specific thread
     fn step_thread(&mut self, thread_id: usize) -> bool {
         // Switch to target thread if different
         if self.current_thread_id != thread_id {
@@ -3932,29 +3932,75 @@ impl Emu {
         let num_threads = self.threads.len();
         let current_tick = self.tick;
         
+        // Debug logging for threading
+        if num_threads > 1 {
+            // Only log occasionally to avoid spam, but always log on thread changes
+            let should_log = true;
+            
+            if should_log {
+                log::info!("=== THREAD SCHEDULER DEBUG ===");
+                log::info!("Step {}: {} threads, current_thread_id={}, tick={}", 
+                        self.pos, num_threads, self.current_thread_id, current_tick);
+                
+                for (i, thread) in self.threads.iter().enumerate() {
+                    let status = if thread.suspended {
+                        "SUSPENDED".to_string()
+                    } else if thread.wake_tick > current_tick {
+                        format!("SLEEPING(wake={})", thread.wake_tick)
+                    } else if thread.blocked_on_cs.is_some() {
+                        "BLOCKED_CS".to_string()
+                    } else {
+                        "RUNNABLE".to_string()
+                    };
+                    
+                    let marker = if i == self.current_thread_id { ">>> " } else { "    " };
+                    log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}", 
+                            marker, i, thread.id, thread.regs.rip, status);
+                }
+            }
+        }
+        
         // Check if current thread can run
         let current_can_run = !self.threads[self.current_thread_id].suspended
             && self.threads[self.current_thread_id].wake_tick <= current_tick
             && self.threads[self.current_thread_id].blocked_on_cs.is_none();
         
         if num_threads > 1 {
+            log::debug!("Current thread {} can run: {}", self.current_thread_id, current_can_run);
+            
             // Round-robin scheduling: try each thread starting from next one
             for i in 0..num_threads {
                 let thread_idx = (self.current_thread_id + i + 1) % num_threads;
                 let thread = &self.threads[thread_idx];
+                
+                log::debug!("Checking thread {}: suspended={}, wake_tick={}, blocked={}", 
+                        thread_idx, thread.suspended, thread.wake_tick, 
+                        thread.blocked_on_cs.is_some());
                 
                 // Check if thread is runnable
                 if !thread.suspended 
                     && thread.wake_tick <= current_tick
                     && thread.blocked_on_cs.is_none() {
                     // Found a runnable thread, execute it
+                    if thread_idx != self.current_thread_id {
+                        log::info!("🔄 THREAD SWITCH: {} -> {} (step {})", 
+                                self.current_thread_id, thread_idx, self.pos);
+                        log::info!("   From RIP: 0x{:x} -> To RIP: 0x{:x}", 
+                                self.threads[self.current_thread_id].regs.rip,
+                                thread.regs.rip);
+                    }
                     return self.step_thread(thread_idx);
                 }
             }
+            
+            log::debug!("No other threads runnable, checking current thread");
         }
         
         // If no other threads are runnable, try current thread
         if current_can_run {
+            if num_threads > 1 {
+                log::debug!("Continuing with current thread {}", self.current_thread_id);
+            }
             return self.step_thread(self.current_thread_id);
         }
         
@@ -3969,13 +4015,21 @@ impl Emu {
         if next_wake != usize::MAX && next_wake > current_tick {
             // Advance time to next wake point
             self.tick = next_wake;
-            log::info!("All threads blocked, advancing tick to {}", next_wake);
+            log::info!("⏰ All threads blocked, advancing tick from {} to {}", current_tick, next_wake);
             // Try scheduling again
             return self.step();
         }
         
         // All threads are permanently blocked or suspended
-        log::info!("All threads are blocked/suspended, cannot continue execution");
+        log::info!("💀 All threads are blocked/suspended, cannot continue execution");
+        if num_threads > 1 {
+            log::info!("Final thread states:");
+            for (i, thread) in self.threads.iter().enumerate() {
+                log::info!("  Thread[{}]: ID=0x{:x}, suspended={}, wake_tick={}, blocked={}", 
+                        i, thread.id, thread.suspended, thread.wake_tick, 
+                        thread.blocked_on_cs.is_some());
+            }
+        }
         false
     }
 
