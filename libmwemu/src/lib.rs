@@ -44,6 +44,7 @@ pub mod kuser_shared;
 pub mod crit_state;
 pub mod global_locks;
 pub mod thread_context;
+pub mod threading;
 
 #[cfg(test)]
 mod tests;

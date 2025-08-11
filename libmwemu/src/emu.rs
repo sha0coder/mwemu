@@ -4148,6 +4148,15 @@ impl Emu {
                     self.memory_operations.clear();
                     self.pos += 1;
 
+                    // Thread scheduling - check if we need to switch threads
+                    if self.threads.len() > 1 && self.pos % 100 == 0 {
+                        // Schedule every 100 instructions for fairness
+                        if crate::threading::ThreadScheduler::schedule_next_thread(self) {
+                            // Thread switched, need to reload at new RIP
+                            break;
+                        }
+                    }
+
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
 
