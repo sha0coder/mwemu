@@ -643,11 +643,48 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x50)
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
-    let obj_name_ptr = emu
-        .maps
-        .read_dword(oattrib + 8)
-        .expect("ntdll!NtCreateFile error reading oattrib +8") as u64;
-    let filename = emu.maps.read_wide_string(obj_name_ptr);
+    // Handle OBJECT_ATTRIBUTES structure properly
+    /*
+    typedef struct _OBJECT_ATTRIBUTES {
+        ULONG           Length;
+        HANDLE          RootDirectory;
+        PUNICODE_STRING ObjectName;
+        ULONG           Attributes;
+        PVOID           SecurityDescriptor;
+        PVOID           SecurityQualityOfService;
+    } OBJECT_ATTRIBUTES;
+    */
+    let filename = if oattrib != 0 {
+        // Read ObjectName field (PUNICODE_STRING at offset +16 in 64-bit)
+        let obj_name_ptr = emu
+            .maps
+            .read_qword(oattrib + 16)
+            .expect("ntdll!NtCreateFile error reading ObjectName");
+        
+        if obj_name_ptr != 0 {
+            // Read UNICODE_STRING structure
+            /*
+            typedef struct _UNICODE_STRING {
+                USHORT Length;
+                USHORT MaximumLength;
+                PWSTR  Buffer;
+            } UNICODE_STRING;
+            */
+            let _length = emu.maps.read_word(obj_name_ptr).expect("failed to read length");
+            let _max_length = emu.maps.read_word(obj_name_ptr + 2).expect("failed to read max_length");
+            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).expect("failed to read buffer_ptr");
+            
+            if buffer_ptr != 0 {
+                emu.maps.read_wide_string(buffer_ptr)
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
 
     log::info!(
         "{}** {} ntdll!NtCreateFile {} {}",
@@ -659,7 +696,7 @@ fn NtCreateFile(emu: &mut emu::Emu) {
 
     if out_hndl_ptr > 0 {
         emu.maps
-            .write_dword(out_hndl_ptr, helper::handler_create(&filename) as u32);
+            .write_qword(out_hndl_ptr, helper::handler_create(&filename) as u64);
     }
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
