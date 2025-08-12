@@ -5,11 +5,11 @@ use lazy_static::lazy_static;
 use crate::constants;
 use crate::emu;
 use crate::thread_context::ThreadContext;
-use crate::peb64;
+use crate::peb::peb64;
 use crate::serialization;
 use crate::structures;
-use crate::winapi32::helper;
-use crate::context64;
+use crate::winapi::winapi32::helper;
+use crate::context::context64;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
