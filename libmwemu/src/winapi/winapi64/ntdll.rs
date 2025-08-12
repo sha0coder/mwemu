@@ -884,16 +884,9 @@ fn NtReadFile(emu: &mut emu::Emu) {
 
     let file = helper::handler_get_uri(file_hndl);
 
-    log::info!(
-        "{}** {} ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        file,
-        buff,
-        len,
-        off,
-        emu.colors.nc
-    );
+    // TODO: read from filesystem based off of handle?
+
+    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", file, buff, len, off);
 
     emu.maps.memset(buff, 0x90, len);
     emu.regs_mut().rax = constants::STATUS_SUCCESS;

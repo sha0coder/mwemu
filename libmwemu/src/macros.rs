@@ -36,8 +36,10 @@ macro_rules! to32 {
 macro_rules! log_red {
     ($emu:expr, $($arg:tt)*) => {
         log::info!(
-            "{}{}{}",
+            "{}** {}:{:x} {}{}",
             $emu.colors.light_red,
+            $emu.pos,
+            $emu.regs().rip,
             format!($($arg)*),
             $emu.colors.nc
         );

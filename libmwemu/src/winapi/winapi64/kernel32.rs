@@ -1000,13 +1000,7 @@ fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
 fn GetCurrentThreadId(emu: &mut emu::Emu) {
     let thread_id = emu.current_thread().id;
     
-    log::info!(
-        "{}** {} kernel32!GetCurrentThreadId = 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        thread_id,
-        emu.colors.nc
-    );
+    log_red!(emu, "kernel32!GetCurrentThreadId = 0x{:x}", thread_id);
     
     emu.regs_mut().rax = thread_id;
 }
@@ -3824,14 +3818,7 @@ fn EnterCriticalSection(emu: &mut emu::Emu) {
     let cs_ptr = emu.regs().rcx;
     let tid = emu.current_thread().id;
 
-    log::info!(
-        "{}** {} kernel32!EnterCriticalSection thread: 0x{:x} cs: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        tid,
-        cs_ptr,
-        emu.colors.nc
-    );
+    log_red!(emu, "kernel32!EnterCriticalSection thread: 0x{:x} cs: 0x{:x}", tid, cs_ptr);
 
     let acquired = emu.global_locks.enter(cs_ptr, tid);
 
