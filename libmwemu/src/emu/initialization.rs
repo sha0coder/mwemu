@@ -9,7 +9,8 @@ use iced_x86::{Formatter as _, IntelFormatter};
 
 use crate::console::Console;
 use crate::emu::Emu;
-use crate::{get_bit, kuser_shared, peb32, peb64, set_bit, structures, winapi32, winapi64};
+use crate::peb::{peb32, peb64};
+use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 use crate::{banzai::Banzai, breakpoint::Breakpoint, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
 
 impl Emu {

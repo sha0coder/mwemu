@@ -18,3 +18,4 @@ test.zip*
 *.zip
 *.log
 .idea
+.claude

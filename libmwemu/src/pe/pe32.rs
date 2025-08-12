@@ -8,7 +8,7 @@ use std::str;
 
 use crate::emu;
 use crate::structures;
-use crate::winapi32;
+use crate::winapi::winapi32;
 
 macro_rules! read_u8 {
     ($raw:expr, $off:expr) => {

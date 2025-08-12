@@ -1,6 +1,6 @@
-use super::constants;
-use super::err::MwemuError;
-use super::maps::mem64::Mem64;
+use crate::constants;
+use crate::err::MwemuError;
+use crate::maps::mem64::Mem64;
 use crate::maps::Maps;
 use std::fs::File;
 use std::io::Read;

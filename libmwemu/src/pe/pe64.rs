@@ -3,10 +3,10 @@
  */
 
 use crate::emu;
-use crate::pe32;
-use crate::pe32::PE32;
+use crate::pe::pe32::{HintNameItem, IMAGE_DIRECTORY_ENTRY_IAT, IMAGE_DIRECTORY_ENTRY_TLS};
+use crate::pe::pe32::{DelayLoadDirectory, ImageDataDirectory, ImageDosHeader, ImageExportDirectory, ImageFileHeader, ImageImportDescriptor, ImageImportDirectory, ImageNtHeaders, ImageSectionHeader, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NUMBEROF_DIRECTORY_ENTRIES, PE32, SECTION_HEADER_SZ};
 use crate::structures;
-use crate::winapi64;
+use crate::winapi::winapi64;
 use std::fs::File;
 use std::io::Read;
 use std::str;
@@ -122,15 +122,15 @@ pub struct ImageOptionalHeader64 {
     pub size_of_heap_commit: u64,
     pub loader_flags: u32,
     pub number_of_rva_and_sizes: u32,
-    pub data_directory: Vec<pe32::ImageDataDirectory>, //  IMAGE_NUMBEROF_DIRECTORY_ENTRIES
+    pub data_directory: Vec<ImageDataDirectory>, //  IMAGE_NUMBEROF_DIRECTORY_ENTRIES
 }
 
 impl ImageOptionalHeader64 {
     pub fn load(raw: &Vec<u8>, off: usize) -> ImageOptionalHeader64 {
-        let mut dd: Vec<pe32::ImageDataDirectory> = Vec::new();
+        let mut dd: Vec<ImageDataDirectory> = Vec::new();
         let mut pos = 112; //+ 144;   //108;
-        for i in 0..pe32::IMAGE_NUMBEROF_DIRECTORY_ENTRIES {
-            let idd = pe32::ImageDataDirectory::load(raw, off + pos);
+        for i in 0..IMAGE_NUMBEROF_DIRECTORY_ENTRIES {
+            let idd = ImageDataDirectory::load(raw, off + pos);
             //log::info!("{} 0x{:x} {}", i, idd.virtual_address, idd.size);
             dd.push(idd);
             pos += 8;
@@ -223,22 +223,22 @@ impl DelayLoadIAT {
 pub struct PE64 {
     pub filename: String,
     pub raw: Vec<u8>,
-    pub dos: pe32::ImageDosHeader,
-    pub nt: pe32::ImageNtHeaders,
-    pub fh: pe32::ImageFileHeader,
+    pub dos: ImageDosHeader,
+    pub nt: ImageNtHeaders,
+    pub fh: ImageFileHeader,
     pub opt: ImageOptionalHeader64,
-    pub sect_hdr: Vec<pe32::ImageSectionHeader>,
-    pub delay_load_dir: Vec<pe32::DelayLoadDirectory>,
-    pub image_import_descriptor: Vec<pe32::ImageImportDescriptor>,
+    pub sect_hdr: Vec<ImageSectionHeader>,
+    pub delay_load_dir: Vec<DelayLoadDirectory>,
+    pub image_import_descriptor: Vec<ImageImportDescriptor>,
 }
 
 impl PE64 {
     pub fn is_pe64(filename: &str) -> bool {
         // log::info!("checking if pe64: {}", filename);
         let mut fd = File::open(filename).expect("file not found");
-        let mut raw = vec![0u8; pe32::ImageDosHeader::size()];
+        let mut raw = vec![0u8; ImageDosHeader::size()];
         fd.read_exact(&mut raw).expect("couldnt read the file");
-        let dos = pe32::ImageDosHeader::load(&raw, 0);
+        let dos = ImageDosHeader::load(&raw, 0);
 
         if dos.e_magic != 0x5a4d {
             return false;
@@ -252,41 +252,41 @@ impl PE64 {
     }
 
     pub fn load_from_raw(filename: &str, raw: &[u8]) -> PE64 {
-        let dos = pe32::ImageDosHeader::load(&raw, 0);
-        let nt = pe32::ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
-        let fh = pe32::ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
+        let dos = ImageDosHeader::load(&raw, 0);
+        let nt = ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
+        let fh = ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
         let opt = ImageOptionalHeader64::load(&raw.to_vec(), dos.e_lfanew as usize + 24);
-        let dos = pe32::ImageDosHeader::load(&raw, 0);
-        let nt = pe32::ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
-        let fh = pe32::ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
+        let dos = ImageDosHeader::load(&raw, 0);
+        let nt = ImageNtHeaders::load(&raw, dos.e_lfanew as usize);
+        let fh = ImageFileHeader::load(&raw, dos.e_lfanew as usize + 4);
         let opt = ImageOptionalHeader64::load(&raw.to_vec(), dos.e_lfanew as usize + 24);
-        let mut sect: Vec<pe32::ImageSectionHeader> = Vec::new();
+        let mut sect: Vec<ImageSectionHeader> = Vec::new();
 
         let mut off = dos.e_lfanew as usize + 24 + fh.size_of_optional_header as usize;
         for i in 0..fh.number_of_sections {
-            let s = pe32::ImageSectionHeader::load(&raw, off);
+            let s = ImageSectionHeader::load(&raw, off);
             sect.push(s);
-            off += pe32::SECTION_HEADER_SZ;
+            off += SECTION_HEADER_SZ;
         }
 
-        let importd: pe32::ImageImportDirectory;
-        let exportd: pe32::ImageExportDirectory;
-        let import_va = opt.data_directory[pe32::IMAGE_DIRECTORY_ENTRY_IMPORT].virtual_address;
-        let export_va = opt.data_directory[pe32::IMAGE_DIRECTORY_ENTRY_EXPORT].virtual_address;
+        let importd: ImageImportDirectory;
+        let exportd: ImageExportDirectory;
+        let import_va = opt.data_directory[IMAGE_DIRECTORY_ENTRY_IMPORT].virtual_address;
+        let export_va = opt.data_directory[IMAGE_DIRECTORY_ENTRY_EXPORT].virtual_address;
         let delay_load_va =
-            opt.data_directory[pe32::IMAGE_DIRECTORY_ENTRY_DELAY_LOAD].virtual_address;
+            opt.data_directory[IMAGE_DIRECTORY_ENTRY_DELAY_LOAD].virtual_address;
         let mut import_off: usize;
         let mut delay_load_off: usize;
 
-        let mut image_import_descriptor: Vec<pe32::ImageImportDescriptor> = Vec::new();
-        let mut delay_load_dir: Vec<pe32::DelayLoadDirectory> = Vec::new();
+        let mut image_import_descriptor: Vec<ImageImportDescriptor> = Vec::new();
+        let mut delay_load_dir: Vec<DelayLoadDirectory> = Vec::new();
 
         if delay_load_va > 0 {
             //log::info!("delay load detected!");
             delay_load_off = PE32::vaddr_to_off(&sect, delay_load_va) as usize;
             if delay_load_off > 0 {
                 loop {
-                    let mut delay_load = pe32::DelayLoadDirectory::load(&raw, delay_load_off);
+                    let mut delay_load = DelayLoadDirectory::load(&raw, delay_load_off);
                     //log::info!("{:#x?}", delay_load);
                     if delay_load.handle == 0 || delay_load.name_ptr == 0 {
                         break;
@@ -299,7 +299,7 @@ impl PE64 {
                     let libname = PE32::read_string(&raw, off);
                     delay_load.name = libname.to_string();
                     delay_load_dir.push(delay_load);
-                    delay_load_off += pe32::DelayLoadDirectory::size();
+                    delay_load_off += DelayLoadDirectory::size();
                 }
             }
         }
@@ -309,7 +309,7 @@ impl PE64 {
 
             if import_off > 0 {
                 loop {
-                    let mut iid = pe32::ImageImportDescriptor::load(&raw, import_off);
+                    let mut iid = ImageImportDescriptor::load(&raw, import_off);
                     if iid.name_ptr == 0 {
                         break;
                     }
@@ -322,7 +322,7 @@ impl PE64 {
                     iid.name = libname.to_string();
 
                     image_import_descriptor.push(iid);
-                    import_off += pe32::ImageImportDescriptor::size();
+                    import_off += ImageImportDescriptor::size();
                 }
             } else {
                 //log::info!("no import directory at va 0x{:x}.", import_va);
@@ -404,7 +404,7 @@ impl PE64 {
         None
     }
 
-    pub fn get_section(&self, id: usize) -> &pe32::ImageSectionHeader {
+    pub fn get_section(&self, id: usize) -> &ImageSectionHeader {
         &self.sect_hdr[id]
     }
 
@@ -443,13 +443,13 @@ impl PE64 {
         let mut callbacks: Vec<u64> = Vec::new();
         //if tls_off == 0 {
 
-        if self.opt.data_directory.len() < pe32::IMAGE_DIRECTORY_ENTRY_TLS {
+        if self.opt.data_directory.len() < IMAGE_DIRECTORY_ENTRY_TLS {
             log::info!("/!\\ alert there is .tls section but not tls directory entry");
             return callbacks;
         }
 
-        let entry_tls = self.opt.data_directory[pe32::IMAGE_DIRECTORY_ENTRY_TLS].virtual_address;
-        let iat = self.opt.data_directory[pe32::IMAGE_DIRECTORY_ENTRY_IAT].virtual_address;
+        let entry_tls = self.opt.data_directory[IMAGE_DIRECTORY_ENTRY_TLS].virtual_address;
+        let iat = self.opt.data_directory[IMAGE_DIRECTORY_ENTRY_IAT].virtual_address;
         let align = self.opt.file_alignment;
 
         //tls_off = (entry_tls - (iat + align)) as usize;
@@ -492,12 +492,12 @@ impl PE64 {
                     break;
                 }
 
-                let hint = pe32::HintNameItem::load(&self.raw, off_name);
+                let hint = HintNameItem::load(&self.raw, off_name);
                 let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
                 let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
                 if off2 == 0 {
                     //|| addr < 0x100 {
-                    off_name += pe32::HintNameItem::size();
+                    off_name += HintNameItem::size();
                     off_addr += 8;
                     continue;
                 }
@@ -514,7 +514,7 @@ impl PE64 {
                 }*/
                 write_u64_le!(self.raw, off_addr, real_addr);
 
-                off_name += pe32::HintNameItem::size();
+                off_name += HintNameItem::size();
                 off_addr += 8;
             }
         }
@@ -598,12 +598,12 @@ impl PE64 {
                 break;
             }
 
-            let hint = pe32::HintNameItem::load(&self.raw, off_name);
+            let hint = HintNameItem::load(&self.raw, off_name);
             let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
             let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
 
             if off2 == 0 {
-                off_name += pe32::HintNameItem::size();
+                off_name += HintNameItem::size();
                 if flipflop {
                     break;
                 }
@@ -627,7 +627,7 @@ impl PE64 {
             //println!("writing real_addr: 0x{:x} {} 0x{:x} -> 0x{:x} ", off_addr, func_name, fake_addr, real_addr);
             write_u64_le!(self.raw, off_addr, real_addr);
 
-            off_name += pe32::HintNameItem::size();
+            off_name += HintNameItem::size();
             off_addr += 8;
         }
     }
@@ -657,12 +657,12 @@ impl PE64 {
                     break;
                 }
 
-                let hint = pe32::HintNameItem::load(&self.raw, off_name);
+                let hint = HintNameItem::load(&self.raw, off_name);
                 let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
                 let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
                 if off2 == 0 {
                     //|| addr < 0x100 {
-                    off_name += pe32::HintNameItem::size();
+                    off_name += HintNameItem::size();
                     //off_addr += 8;
                     continue;
                 }
@@ -672,7 +672,7 @@ impl PE64 {
                     return func_name;
                 }
 
-                off_name += pe32::HintNameItem::size();
+                off_name += HintNameItem::size();
                 off_addr += 8;
             }
         }

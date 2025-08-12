@@ -1,6 +1,12 @@
 use iced_x86::Register;
 
-use crate::{constants, elf32::Elf32, elf64::Elf64, emu::Emu, pe32::PE32, pe64::PE64, peb32, peb64};
+use crate::constants;
+use crate::elf::elf32::Elf32;
+use crate::elf::elf64::Elf64;
+use crate::emu::Emu;
+use crate::pe::pe32::PE32;
+use crate::pe::pe64::PE64;
+use crate::peb::{peb32, peb64};
 
 impl Emu {
     /// Complex funtion called from many places and with multiple purposes.

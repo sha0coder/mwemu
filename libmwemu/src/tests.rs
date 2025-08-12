@@ -8,8 +8,8 @@ mod tests {
     use crate::maps::mem64::Mem64;
     use std::sync::Once;
     use crate::constants;
-    use crate::winapi64;
-    use crate::winapi32;
+    use crate::winapi::winapi64;
+    use crate::winapi::winapi32;
     use crate::emu::Emu;
     use crate::fpu::FPU;
     use crate::fpu::f80::F80;

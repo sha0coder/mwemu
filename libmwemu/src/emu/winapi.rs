@@ -1,4 +1,4 @@
-use crate::{emu::Emu, exception_type::ExceptionType, peb32, peb64, winapi32, winapi64};
+use crate::{emu::Emu, exception_type::ExceptionType, peb::{peb32, peb64}, winapi::{winapi32, winapi64}};
 
 impl Emu {
     //TODO: check this, this is used only on pyscemu

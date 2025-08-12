@@ -1,14 +1,5 @@
 use crate::emu;
 use iced_x86::Formatter;
-/*
-use crate::console;
-use crate::constants;
-use crate::context32;
-use crate::peb32;
-use crate::structures;
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-*/
 
 pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
     match syscall {

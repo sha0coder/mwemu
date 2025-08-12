@@ -1,4 +1,4 @@
-use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi32, winapi64};
+use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi::winapi32, winapi::winapi64};
 
 impl Emu {
     /// Redirect execution flow on 64bits.
