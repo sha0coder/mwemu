@@ -675,6 +675,20 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 0x50)  // 11th parameter - FIXED: was 0x58
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
+    log_red!(emu, "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
+        emu.pos,
+        out_hndl_ptr,
+        access_mask,
+        oattrib,
+        iostat,
+        alloc_sz,
+        fattrib,
+        share_access,
+        create_disp,
+        create_opt,
+        ea_buff,
+        ea_len
+    );
     // Handle OBJECT_ATTRIBUTES structure properly
     /*
     typedef struct _OBJECT_ATTRIBUTES {
@@ -687,44 +701,60 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     } OBJECT_ATTRIBUTES;
     */
     let filename = if oattrib != 0 {
+        log_red!(emu, "** {} Reading OBJECT_ATTRIBUTES at 0x{:x}", emu.pos, oattrib);
+        
         // Read ObjectName field (PUNICODE_STRING at offset +0x10 in 64-bit)
         let obj_name_ptr = emu
             .maps
             .read_qword(oattrib + 0x10)
-            .expect("ntdll!NtCreateFile error reading ObjectName");
+            .unwrap_or(0);
+        
+        log_red!(emu, "** {} ObjectName pointer: 0x{:x}", emu.pos, obj_name_ptr);
         
         if obj_name_ptr != 0 {
-            // Read UNICODE_STRING structure
-            /*
-            typedef struct _UNICODE_STRING {
-                USHORT Length;        // +0x00 (2 bytes)
-                USHORT MaximumLength; // +0x02 (2 bytes)
-                PWSTR  Buffer;        // +0x08 (8 bytes on x64, aligned)
-            } UNICODE_STRING;
-            */
-            let _length = emu.maps.read_word(obj_name_ptr).expect("failed to read length");
-            let _max_length = emu.maps.read_word(obj_name_ptr + 2).expect("failed to read max_length");
-            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).expect("failed to read buffer_ptr");
+            // Read UNICODE_STRING manually due to alignment issues
+            // The actual Windows UNICODE_STRING layout:
+            // typedef struct _UNICODE_STRING {
+            //     USHORT Length;        // +0x00 (2 bytes)
+            //     USHORT MaximumLength; // +0x02 (2 bytes) 
+            //     PWSTR  Buffer;        // +0x08 (8 bytes on x64, 4-byte padding after MaximumLength)
+            // } UNICODE_STRING;
             
-            if buffer_ptr != 0 {
-                emu.maps.read_wide_string(buffer_ptr)
+            let length = emu.maps.read_word(obj_name_ptr).unwrap_or(0);
+            let max_length = emu.maps.read_word(obj_name_ptr + 2).unwrap_or(0);
+            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
+            
+            log_red!(emu, "** {} UNICODE_STRING - Length: {}, MaxLength: {}, Buffer: 0x{:x}", 
+                emu.pos, length, max_length, buffer_ptr);
+            
+            // Also dump the raw bytes to see what we're actually reading
+            log_red!(emu, "** {} Raw UNICODE_STRING bytes at 0x{:x}:", emu.pos, obj_name_ptr);
+            for i in 0..16 {
+                if let Some(byte) = emu.maps.read_byte(obj_name_ptr + i) {
+                    log_red!(emu, "** {}   +0x{:02x}: 0x{:02x}", emu.pos, i, byte);
+                } else {
+                    log_red!(emu, "** {}   +0x{:02x}: <unmapped>", emu.pos, i);
+                }
+            }
+            
+            if buffer_ptr != 0 && length > 0 && length <= 1024 { // Sanity check
+                let filename = emu.maps.read_wide_string(buffer_ptr);
+                log_red!(emu, "** {} Successfully read filename: '{}'", emu.pos, filename);
+                filename
             } else {
-                String::new()
+                log_red!(emu, "** {} Invalid UNICODE_STRING - buffer: 0x{:x}, length: {}", emu.pos, buffer_ptr, length);
+                String::from("<invalid_unicode_string>")
             }
         } else {
-            String::new()
+            log_red!(emu, "** {} ObjectName pointer is null", emu.pos);
+            String::from("<null_objname>")
         }
     } else {
-        String::new()
+        log_red!(emu, "** {} OBJECT_ATTRIBUTES pointer is null", emu.pos);
+        String::from("<null_oattrib>")
     };
 
-    log::info!(
-        "{}** {} ntdll!NtCreateFile {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        filename,
-        emu.colors.nc
-    );
+    log_red!(emu, "** {} ntdll!NtCreateFile filename: '{}'", emu.pos, filename);
 
     if out_hndl_ptr > 0 {
         emu.maps
