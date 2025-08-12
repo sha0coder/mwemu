@@ -1,11 +1,11 @@
 use crate::console::Console;
 use crate::constants;
-use crate::context32::Context32;
+use crate::context::context32::Context32;
 use crate::emu;
 use crate::serialization;
 use crate::structures;
-use crate::winapi32::helper;
-use crate::winapi32::kernel32;
+use crate::winapi::winapi32::helper;
+use crate::winapi::winapi32::kernel32;
 
 use scan_fmt::scan_fmt_some;
 

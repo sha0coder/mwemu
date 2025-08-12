@@ -1,7 +1,7 @@
 use crate::emu;
 use crate::serialization;
-use crate::winapi32::helper;
-use crate::winapi32::kernel32;
+use crate::winapi::winapi32::helper;
+use crate::winapi::winapi32::kernel32;
 //use crate::endpoint;
 
 // msvcrt is an exception and these functions dont have to compensate the stack.

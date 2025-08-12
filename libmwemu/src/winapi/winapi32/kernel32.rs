@@ -1,11 +1,11 @@
 use crate::console;
 use crate::constants;
-use crate::context32;
+use crate::context::context32;
 use crate::emu;
-use crate::peb32;
+use crate::peb::peb32;
 use crate::serialization;
 use crate::structures;
-use crate::winapi32::helper;
+use crate::winapi::winapi32::helper;
 
 use lazy_static::lazy_static;
 use std::sync::Mutex;

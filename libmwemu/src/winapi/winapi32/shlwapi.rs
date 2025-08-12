@@ -1,6 +1,6 @@
 use crate::emu;
 use crate::serialization;
-use crate::winapi32::kernel32;
+use crate::winapi::winapi32::kernel32;
 //use crate::winapi32::helper;
 //use crate::endpoint;
 

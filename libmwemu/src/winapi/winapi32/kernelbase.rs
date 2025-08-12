@@ -4,9 +4,9 @@ use crate::emu;
 //use crate::context32;
 //use crate::peb32;
 //use crate::structures;
-use crate::winapi32::helper;
+use crate::winapi::winapi32::helper;
 use crate::serialization;
-use crate::winapi32::kernel32;
+use crate::winapi::winapi32::kernel32;
 
 use lazy_static::lazy_static;
 use std::sync::Mutex;
