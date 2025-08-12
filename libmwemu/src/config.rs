@@ -36,6 +36,7 @@ pub struct Config {
     pub skip_unimplemented: bool,
     pub stack_addr: u64,
     pub arguments: String,
+    pub enable_threading: bool,  // Enable multi-threading support
 }
 
 impl Default for Config {
@@ -80,6 +81,7 @@ impl Config {
             skip_unimplemented: false,
             stack_addr: 0,
             arguments: "".to_string(),
+            enable_threading: false,  // Default to single-threaded for backward compatibility
         }
     }
 }
