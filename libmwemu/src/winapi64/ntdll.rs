@@ -630,73 +630,76 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
     
+    // Windows x64 calling convention: parameters 5+ go on stack starting at RSP+0x20
+    // (0x20 bytes of shadow space for first 4 register parameters)
+    
     // AllocationSize is PLARGE_INTEGER (pointer to 64-bit value)
     let alloc_sz = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x28)  // 5th parameter
+        .read_qword(emu.regs().rsp + 0x20)  // 5th parameter - FIXED: was 0x28
         .expect("ntdll!NtCreateFile error reading alloc_sz param");
     
-    // FileAttributes is ULONG (32-bit)  
+    // FileAttributes is ULONG (32-bit even on x64 Windows due to LLP64 model)
     let fattrib = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x30)  // 6th parameter
+        .read_dword(emu.regs().rsp + 0x28)  // 6th parameter - FIXED: was 0x30
         .expect("ntdll!NtCreateFile error reading fattrib param");
     
     // ShareAccess is ULONG (32-bit)
     let share_access = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x38)  // 7th parameter
+        .read_dword(emu.regs().rsp + 0x30)  // 7th parameter - FIXED: was 0x38
         .expect("ntdll!NtCreateFile error reading share_access param");
     
     // CreateDisposition is ULONG (32-bit)
     let create_disp = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x40)  // 8th parameter
+        .read_dword(emu.regs().rsp + 0x38)  // 8th parameter - FIXED: was 0x40
         .expect("ntdll!NtCreateFile error reading create_disp param");
     
     // CreateOptions is ULONG (32-bit)
     let create_opt = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x48)  // 9th parameter
+        .read_dword(emu.regs().rsp + 0x40)  // 9th parameter - FIXED: was 0x48
         .expect("ntdll!NtCreateFile error reading create_opt param");
     
-    // EaBuffer is PVOID (pointer)
+    // EaBuffer is PVOID (pointer - 64-bit on x64)
     let ea_buff = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x50)  // 10th parameter
+        .read_qword(emu.regs().rsp + 0x48)  // 10th parameter - FIXED: was 0x50
         .expect("ntdll!NtCreateFile error reading ea_buff param");
     
     // EaLength is ULONG (32-bit)
     let ea_len = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x58)  // 11th parameter
+        .read_dword(emu.regs().rsp + 0x50)  // 11th parameter - FIXED: was 0x58
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
     // Handle OBJECT_ATTRIBUTES structure properly
     /*
     typedef struct _OBJECT_ATTRIBUTES {
-        ULONG           Length;
-        HANDLE          RootDirectory;
-        PUNICODE_STRING ObjectName;
-        ULONG           Attributes;
-        PVOID           SecurityDescriptor;
-        PVOID           SecurityQualityOfService;
+        ULONG           Length;           // +0x00 (4 bytes)
+        HANDLE          RootDirectory;    // +0x08 (8 bytes on x64)
+        PUNICODE_STRING ObjectName;       // +0x10 (8 bytes on x64)
+        ULONG           Attributes;       // +0x18 (4 bytes)
+        PVOID           SecurityDescriptor;        // +0x20 (8 bytes on x64)
+        PVOID           SecurityQualityOfService;  // +0x28 (8 bytes on x64)
     } OBJECT_ATTRIBUTES;
     */
     let filename = if oattrib != 0 {
-        // Read ObjectName field (PUNICODE_STRING at offset +16 in 64-bit)
+        // Read ObjectName field (PUNICODE_STRING at offset +0x10 in 64-bit)
         let obj_name_ptr = emu
             .maps
-            .read_qword(oattrib + 16)
+            .read_qword(oattrib + 0x10)
             .expect("ntdll!NtCreateFile error reading ObjectName");
         
         if obj_name_ptr != 0 {
             // Read UNICODE_STRING structure
             /*
             typedef struct _UNICODE_STRING {
-                USHORT Length;
-                USHORT MaximumLength;
-                PWSTR  Buffer;
+                USHORT Length;        // +0x00 (2 bytes)
+                USHORT MaximumLength; // +0x02 (2 bytes)
+                PWSTR  Buffer;        // +0x08 (8 bytes on x64, aligned)
             } UNICODE_STRING;
             */
             let _length = emu.maps.read_word(obj_name_ptr).expect("failed to read length");
