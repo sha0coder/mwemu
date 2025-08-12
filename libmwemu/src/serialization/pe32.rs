@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::pe32::PE32;
+use crate::pe::pe32::PE32;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializablePE32 {

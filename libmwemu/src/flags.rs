@@ -34,7 +34,6 @@ const fn build_parity_table() -> [bool; 256] {
 
 pub const PARITY_LOOKUP_TABLE: [bool; 256] = build_parity_table();
 
-
 macro_rules! get_bit {
     ($val:expr, $count:expr) => {
         ($val & (1 << $count)) >> $count

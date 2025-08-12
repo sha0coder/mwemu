@@ -30,7 +30,7 @@ bitfield = "0.19.1"
 ureq = { version = "2.10", default-features = false, features = ["tls"] }
 zip = "0.6"
 serde_arrays = "0.2.0"
-slab = { version = "0.4.10", features=["serde"]}
+slab = { version = "0.4.10", features=["serde"] }
 bytemuck = "1.23.1"
 minidump = "0.26.0"
 

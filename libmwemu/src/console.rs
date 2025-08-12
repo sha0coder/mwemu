@@ -2,13 +2,13 @@ use std::io::Write;
 use std::num::ParseIntError;
 use std::sync::atomic;
 use crate::emu::Emu;
-use crate::peb32;
-use crate::peb64;
+use crate::peb::peb32;
+use crate::peb::peb64;
 use crate::serialization;
 use crate::structures;
 use crate::to32;
-use crate::winapi32;
-use crate::winapi64;
+use crate::winapi::winapi32;
+use crate::winapi::winapi64;
 
 pub struct Console {}
 

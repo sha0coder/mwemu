@@ -284,28 +284,19 @@ impl Maps {
         }
     }
 
-    pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) {
-        //TODO: fix map jump
-        let end_addr = addr + data.len() as u64 - 1;
-        let banzai = self.banzai;
-        match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) => mem.write_bytes(addr, data.as_slice()),
-            Some(_) => {
-                log::warn!(
-                    "Memory region boundary violation at 0x{:x} to 0x{:x}\n(controlled warning, todo: improve maps.write_bytes)",
-                    addr,
-                    end_addr
-                );
-                return;
+    pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) -> bool {
+        if data.is_empty() {
+            return true;
+        }
+        
+        // Write byte by byte to handle any boundary issues
+        for (i, &byte) in data.iter().enumerate() {
+            if !self.write_byte(addr + i as u64, byte) {
+                return false;
             }
-            None if banzai => {
-                log::warn!("Writing bytes to unmapped region at 0x{:x}", addr);
-                return;
-            }
-            None => {
-                panic!("Writing bytes to unmapped region at 0x{:x}", addr);
-            }
-        };
+        }
+        
+        true
     }
 
     pub fn read_128bits_be(&self, addr: u64) -> Option<u128> {
@@ -818,7 +809,6 @@ impl Maps {
         if addr == 0 {
             return "".to_string();
         }
-
         let mem = self
             .get_mem_by_addr(addr)
             .expect(format!("No memory map found at 0x{:x}", addr).as_str());

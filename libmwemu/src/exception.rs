@@ -1,5 +1,5 @@
 /*
-        SEH, VEH and UEF
+    SEH, VEH and UEF
 
     - SEH: structured exception handler (try/catch, stack items)
     - VEH: vectorized exception handler (API)
@@ -12,8 +12,8 @@
 */
 
 use crate::exception_type;
-use crate::context32::Context32;
-use crate::context64::Context64;
+use crate::context::context32::Context32;
+use crate::context::context64::Context64;
 use crate::emu;
 
 pub fn enter(emu: &mut emu::Emu, ex_type: exception_type::ExceptionType) {

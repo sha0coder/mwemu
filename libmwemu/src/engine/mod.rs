@@ -6,11 +6,11 @@ use crate::exception;
 use crate::exception_type;
 use crate::fpu::FPUState;
 use crate::fpu::f80::F80;
-use crate::ntapi32;
+use crate::ntapi;
 use crate::regs64;
 use crate::serialization;
-use crate::syscall32;
-use crate::syscall64;
+use crate::syscall::syscall32;
+use crate::syscall::syscall64;
 use crate::{get_bit, set_bit, to32};
 use iced_x86::{Formatter, Instruction, Mnemonic, Register};
 
@@ -5151,7 +5151,7 @@ pub fn emulate_instruction(
             if emu.cfg.is_64bits {
                 unimplemented!("ntapi64 not implemented yet");
             } else {
-                ntapi32::gateway(emu.regs().get_eax(), emu.regs().get_edx(), emu);
+                ntapi::ntapi32::gateway(emu.regs().get_eax(), emu.regs().get_edx(), emu);
             }
         }
 

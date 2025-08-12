@@ -5,11 +5,11 @@ use std::vec::Vec;
 
 use crate::console::Console;
 use crate::emu::Emu;
-use crate::peb32;
-use crate::peb64;
+use crate::peb::peb32;
+use crate::peb::peb64;
 use crate::structures;
-use crate::winapi32;
-use crate::winapi64;
+use crate::winapi::winapi32;
+use crate::winapi::winapi64;
 
 pub struct Script {
     code: Vec<String>,

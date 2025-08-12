@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
-use crate::emu::ThreadContext;
+use crate::thread_context::ThreadContext;
 use crate::eflags::Eflags;
 use crate::flags::Flags;
 use crate::regs64::Regs64;
@@ -10,6 +10,9 @@ use crate::serialization::fpu::SerializableFPU;
 #[derive(Serialize, Deserialize)]
 pub struct SerializableThreadContext {
     pub id: u64,
+    pub suspended: bool,
+    pub wake_tick: usize,
+    pub blocked_on_cs: Option<u64>,
     pub regs: Regs64,
     pub pre_op_regs: Regs64,
     pub post_op_regs: Regs64,
@@ -33,6 +36,9 @@ impl From<&ThreadContext> for SerializableThreadContext {
     fn from(thread: &ThreadContext) -> Self {
         SerializableThreadContext {
             id: thread.id,
+            suspended: thread.suspended,
+            wake_tick: thread.wake_tick,
+            blocked_on_cs: thread.blocked_on_cs,
             regs: thread.regs,
             pre_op_regs: thread.pre_op_regs,
             post_op_regs: thread.post_op_regs,
@@ -58,6 +64,9 @@ impl From<SerializableThreadContext> for ThreadContext {
     fn from(serialized: SerializableThreadContext) -> Self {
         ThreadContext {
             id: serialized.id,
+            suspended: serialized.suspended,
+            wake_tick: serialized.wake_tick,
+            blocked_on_cs: serialized.blocked_on_cs,
             regs: serialized.regs,
             pre_op_regs: serialized.pre_op_regs,
             post_op_regs: serialized.post_op_regs,
