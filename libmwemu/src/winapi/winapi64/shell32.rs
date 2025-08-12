@@ -75,7 +75,7 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
     let dw_flags = emu.regs().r9 as u32;
     let psz_path = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("shell32!SHGetFolderPathW error reading pszPath");
 
     log::info!(
