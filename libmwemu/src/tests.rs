@@ -712,7 +712,7 @@ mod tests {
                 emu.load_code("../test/exe64win_msgbox.bin");
 
                 // set registers
-                emu.regs.rdx = 0x1;
+                emu.regs_mut().rdx = 0x1;
 
                 // serialize
                 let serialized = Serialization::serialize(&emu);
@@ -720,7 +720,7 @@ mod tests {
                 // deserialize
                 let emu: Emu = Serialization::deserialize(&serialized);
                 // assert
-                assert_eq!(emu.regs.rdx, 0x1);
+                assert_eq!(emu.regs().rdx, 0x1);
               
         }).unwrap();
 
