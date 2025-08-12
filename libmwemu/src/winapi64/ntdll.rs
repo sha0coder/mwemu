@@ -744,7 +744,7 @@ fn NtSetInformationFile(emu: &mut emu::Emu) {
     let length = emu.regs().r9;
     let file_information_class = emu
         .maps
-        .read_dword(emu.regs().rsp + 0x28)
+        .read_dword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtSetInformationFile cannot read FileInformationClass param");
 
     log::info!(
