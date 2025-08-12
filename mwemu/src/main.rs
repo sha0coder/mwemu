@@ -23,7 +23,7 @@ macro_rules! match_register_arg {
                 16,
             )
             .expect("invalid address");
-            $emu.regs.set_reg_by_name($reg, value);
+            $emu.regs_mut().set_reg_by_name($reg, value);
         }
     };
 }
@@ -118,18 +118,18 @@ fn log_emu_state(emu: &mut libmwemu::emu::Emu) {
     
     // Log general purpose registers
     log::error!("Registers:");
-    log::error!("  RAX: 0x{:016x}  RBX: 0x{:016x}", emu.regs.rax, emu.regs.rbx);
-    log::error!("  RCX: 0x{:016x}  RDX: 0x{:016x}", emu.regs.rcx, emu.regs.rdx);
-    log::error!("  RSI: 0x{:016x}  RDI: 0x{:016x}", emu.regs.rsi, emu.regs.rdi);
-    log::error!("  RBP: 0x{:016x}  RSP: 0x{:016x}", emu.regs.rbp, emu.regs.rsp);
-    log::error!("  R8:  0x{:016x}  R9:  0x{:016x}", emu.regs.r8, emu.regs.r9);
-    log::error!("  R10: 0x{:016x}  R11: 0x{:016x}", emu.regs.r10, emu.regs.r11);
-    log::error!("  R12: 0x{:016x}  R13: 0x{:016x}", emu.regs.r12, emu.regs.r13);
-    log::error!("  R14: 0x{:016x}  R15: 0x{:016x}", emu.regs.r14, emu.regs.r15);
-    log::error!("  RIP: 0x{:016x}", emu.regs.rip);
+    log::error!("  RAX: 0x{:016x}  RBX: 0x{:016x}", emu.regs().rax, emu.regs().rbx);
+    log::error!("  RCX: 0x{:016x}  RDX: 0x{:016x}", emu.regs().rcx, emu.regs().rdx);
+    log::error!("  RSI: 0x{:016x}  RDI: 0x{:016x}", emu.regs().rsi, emu.regs().rdi);
+    log::error!("  RBP: 0x{:016x}  RSP: 0x{:016x}", emu.regs().rbp, emu.regs().rsp);
+    log::error!("  R8:  0x{:016x}  R9:  0x{:016x}", emu.regs().r8, emu.regs().r9);
+    log::error!("  R10: 0x{:016x}  R11: 0x{:016x}", emu.regs().r10, emu.regs().r11);
+    log::error!("  R12: 0x{:016x}  R13: 0x{:016x}", emu.regs().r12, emu.regs().r13);
+    log::error!("  R14: 0x{:016x}  R15: 0x{:016x}", emu.regs().r14, emu.regs().r15);
+    log::error!("  RIP: 0x{:016x}", emu.regs().rip);
     
     // Log flags
-    log::error!("EFLAGS: 0x{:08x}", emu.flags.dump());
+    log::error!("EFLAGS: 0x{:08x}", emu.flags().dump());
     
     // Log last instruction if available
     if let Some(ref _instruction) = emu.instruction {
@@ -138,9 +138,9 @@ fn log_emu_state(emu: &mut libmwemu::emu::Emu) {
     }
     
     // Log call stack
-    if !emu.call_stack.is_empty() {
-        log::error!("Call stack (last {} entries):", emu.call_stack.len().min(10));
-        for (i, entry) in emu.call_stack.iter().rev().take(10).enumerate() {
+    if !emu.call_stack().is_empty() {
+        log::error!("Call stack (last {} entries):", emu.call_stack().len().min(10));
+        for (i, entry) in emu.call_stack().iter().rev().take(10).enumerate() {
             log::error!("  {}: {}", i, entry);
         }
     }
@@ -377,7 +377,7 @@ fn main() {
             16,
         )
             .expect("invalid address");
-        emu.flags.load(value as u32);
+        emu.flags_mut().load(value as u32);
     }
     if matches.is_present("mxcsr") {
         let value = u64::from_str_radix(
@@ -388,7 +388,7 @@ fn main() {
             16,
         )
             .expect("invalid address");
-        emu.fpu.mxcsr = value as u32;
+        emu.fpu_mut().mxcsr = value as u32;
     }
 
     // endpoint
@@ -454,7 +454,7 @@ fn main() {
 
     // trace fpu
     if matches.is_present("fpu") {
-        emu.fpu.trace = true;
+        emu.fpu_mut().trace = true;
     }
 
     if matches.is_present("flags") {

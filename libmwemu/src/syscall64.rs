@@ -21,7 +21,7 @@ use std::path::Path;
 //TODO: check if buff is mapped
 
 pub fn gateway(emu: &mut emu::Emu) {
-    match emu.regs.rax {
+    match emu.regs().rax {
         constants::NR64_RESTART_SYSCALL => {
             log::info!(
                 "{}** {} syscall restart_syscall {}",
@@ -38,7 +38,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            std::process::exit(emu.regs.rdi as i32); 
+            std::process::exit(emu.regs().rdi as i32); 
         }
 
         constants::NR64_FORK => {
@@ -52,9 +52,9 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_READ => {
-            let fd = emu.regs.rdi;
-            let buff = emu.regs.rsi;
-            let sz = emu.regs.rdx;
+            let fd = emu.regs().rdi;
+            let buff = emu.regs().rsi;
+            let sz = emu.regs().rdx;
 
             if helper::handler_exist(fd) {
                 let filepath = helper::handler_get_uri(fd);
@@ -89,16 +89,16 @@ pub fn gateway(emu: &mut emu::Emu) {
                             }
 
                             emu.maps.write_bytes(buff, lib_buff);
-                            emu.regs.rax = sz;
+                            emu.regs_mut().rax = sz;
                         }
                         Err(_) => {
                             log::info!("file not found");
-                            emu.regs.rax = 0;
+                            emu.regs_mut().rax = 0;
                         }
                     };
                 }
             } else {
-                emu.regs.rax = sz;
+                emu.regs_mut().rax = sz;
             }
 
             log::info!(
@@ -108,16 +108,16 @@ pub fn gateway(emu: &mut emu::Emu) {
                 fd,
                 buff,
                 sz,
-                emu.regs.rax,
+                emu.regs().rax,
                 emu.colors.nc
             );
         }
 
         constants::NR64_WRITE => {
-            let fd = emu.regs.rdi;
-            let buff = emu.regs.rsi;
-            let sz = emu.regs.rdx;
-            emu.regs.rax = sz;
+            let fd = emu.regs().rdi;
+            let buff = emu.regs().rsi;
+            let sz = emu.regs().rdx;
+            emu.regs_mut().rax = sz;
             log::info!(
                 "{}** {} syscall write() fd: {} buf: 0x{:x} sz: {} {}",
                 emu.colors.light_red,
@@ -139,10 +139,10 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         /*
         constants::NR64_WRITEV => {
-            let fd = emu.regs.rdi;
-            let buff = emu.regs.rsi;
-            let sz = emu.regs.rdx;
-            emu.regs.rax = sz;
+            let fd = emu.regs().rdi;
+            let buff = emu.regs().rsi;
+            let sz = emu.regs().rdx;
+            emu.regs_mut().rax = sz;
             log::info!(
                 "{}** {} syscall write() fd: {} buf: 0x{:x} sz: {} {}",
                 emu.colors.light_red, emu.pos, fd, buff, sz, emu.colors.nc
@@ -157,10 +157,10 @@ pub fn gateway(emu: &mut emu::Emu) {
             }
         }*/
         constants::NR64_OPEN => {
-            let file_path = emu.maps.read_string(emu.regs.rdi);
+            let file_path = emu.maps.read_string(emu.regs().rdi);
             let fd = helper::handler_create(&file_path);
 
-            emu.regs.rax = fd;
+            emu.regs_mut().rax = fd;
             log::info!(
                 "{}** {} syscall open({}) ={} {}",
                 emu.colors.light_red,
@@ -172,8 +172,8 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_OPENAT => {
-            let dirfd = emu.regs.rdi;
-            let file_path = emu.maps.read_string(emu.regs.rsi);
+            let dirfd = emu.regs().rdi;
+            let file_path = emu.maps.read_string(emu.regs().rsi);
             let mut fd: u64 = 0xffffffff_ffffffff;
 
             let path = Path::new(&file_path);
@@ -191,18 +191,18 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = fd;
+            emu.regs_mut().rax = fd;
         }
 
         constants::NR64_CLOSE => {
-            let fd = emu.regs.rdi;
+            let fd = emu.regs().rdi;
 
             if helper::handler_exist(fd) {
                 helper::handler_close(fd);
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             } else {
                 helper::socket_close(fd);
-                emu.regs.rax = 0xffffffff_ffffffff;
+                emu.regs_mut().rax = 0xffffffff_ffffffff;
             }
 
             /*
@@ -215,7 +215,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.light_red,
                 emu.pos,
                 fd,
-                emu.regs.rax,
+                emu.regs().rax,
                 emu.colors.nc
             );
         }
@@ -231,18 +231,18 @@ pub fn gateway(emu: &mut emu::Emu) {
                 .expect("cannot create heap map from brk syscall");
             */
 
-            if emu.regs.rdi == 0 {
-                emu.regs.r11 = 0x346;
-                emu.regs.rcx = 0x4679f7;
-                emu.regs.rax = emu.heap_addr;
+            if emu.regs_mut().rdi == 0 {
+                emu.regs_mut().r11 = 0x346;
+                emu.regs_mut().rcx = 0x4679f7;
+                emu.regs_mut().rax = emu.heap_addr;
             } else {
-                // let bottom = emu.regs.rdi;
+                // let bottom = emu.regs().rdi;
                 // let new_sz = bottom - heap_base;
                 // heap.set_size(new_sz);
-                emu.regs.rax = emu.regs.rdi;
-                emu.regs.rcx = 0x4679f7;
-                emu.regs.rdx = 0x2f;
-                emu.regs.r11 = 0x302;
+                emu.regs_mut().rax = emu.regs().rdi;
+                emu.regs_mut().rcx = 0x4679f7;
+                emu.regs_mut().rdx = 0x2f;
+                emu.regs_mut().r11 = 0x302;
             }
 
             //emu.fs.insert(0xffffffffffffffc8, 0x4b6c50);
@@ -251,14 +251,14 @@ pub fn gateway(emu: &mut emu::Emu) {
                 "{}** {} syscall brk({:x}) ={:x} {}",
                 emu.colors.light_red,
                 emu.pos,
-                emu.regs.rdi,
-                emu.regs.rax,
+                emu.regs().rdi,
+                emu.regs().rax,
                 emu.colors.nc
             );
         }
 
         constants::NR64_EXECVE => {
-            let cmd = emu.maps.read_string(emu.regs.rdi);
+            let cmd = emu.maps.read_string(emu.regs().rdi);
             log::info!(
                 "{}** {} syscall execve()  cmd: {} {}",
                 emu.colors.light_red,
@@ -266,11 +266,11 @@ pub fn gateway(emu: &mut emu::Emu) {
                 cmd,
                 emu.colors.nc
             );
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_CHDIR => {
-            let path = emu.maps.read_string(emu.regs.rdi);
+            let path = emu.maps.read_string(emu.regs().rdi);
             log::info!(
                 "{}** {} syscall chdir() path: {} {}",
                 emu.colors.light_red,
@@ -281,8 +281,8 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_CHMOD => {
-            let file_path = emu.maps.read_string(emu.regs.rdi);
-            let perm = emu.regs.rsi;
+            let file_path = emu.maps.read_string(emu.regs().rdi);
+            let perm = emu.regs().rsi;
             log::info!(
                 "{}** {} syscall chmod() file: {} perm: {} {}",
                 emu.colors.light_red,
@@ -294,7 +294,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_LSEEK => {
-            let fd = emu.regs.rdi;
+            let fd = emu.regs().rdi;
             log::info!(
                 "{}** {} syscall lseek()  fd: {} {}",
                 emu.colors.light_red,
@@ -305,8 +305,8 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_KILL => {
-            let pid = emu.regs.rdi;
-            let sig = emu.regs.rsi;
+            let pid = emu.regs().rdi;
+            let sig = emu.regs().rsi;
             log::info!(
                 "{}** {} syscall kill() pid: {} sig: {} {}",
                 emu.colors.light_red,
@@ -318,7 +318,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_DUP => {
-            let fd = emu.regs.rdi;
+            let fd = emu.regs().rdi;
             log::info!(
                 "{}** {} syscall dup() fd: {} {}",
                 emu.colors.light_red,
@@ -329,8 +329,8 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_DUP2 => {
-            let old_fd = emu.regs.rdi;
-            let new_fd = emu.regs.rsi;
+            let old_fd = emu.regs().rdi;
+            let new_fd = emu.regs().rsi;
             log::info!(
                 "{}** {} syscall dup2() oldfd: {} newfd: {} {}",
                 emu.colors.light_red,
@@ -343,9 +343,9 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         constants::NR64_SOCKET => {
             let sock = helper::socket_create();
-            let fam = emu.regs.rdi;
-            let typ = emu.regs.rsi;
-            let proto = emu.regs.rdx;
+            let fam = emu.regs().rdi;
+            let typ = emu.regs().rsi;
+            let proto = emu.regs().rdx;
 
             log::info!(
                 "{}** {} syscall socketcall socket()  fam: {} type: {} proto: {} sock: {} {}",
@@ -357,13 +357,13 @@ pub fn gateway(emu: &mut emu::Emu) {
                 sock,
                 emu.colors.nc
             );
-            emu.regs.rax = sock;
+            emu.regs_mut().rax = sock;
         }
 
         constants::NR64_BIND => {
-            let sock = emu.regs.rdi;
-            let sockaddr = emu.regs.rsi;
-            let len = emu.regs.rdx;
+            let sock = emu.regs().rdi;
+            let sockaddr = emu.regs().rsi;
+            let len = emu.regs().rdx;
 
             if sockaddr > 0 && emu.maps.is_mapped(sockaddr) {
                 let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
@@ -397,9 +397,9 @@ pub fn gateway(emu: &mut emu::Emu) {
 
                 if !helper::socket_exist(sock) {
                     log::info!("\tbad socket/");
-                    emu.regs.rax = constants::ENOTSOCK;
+                    emu.regs_mut().rax = constants::ENOTSOCK;
                 } else {
-                    emu.regs.rax = 0;
+                    emu.regs_mut().rax = 0;
                 }
             } else {
                 log::info!(
@@ -409,14 +409,14 @@ pub fn gateway(emu: &mut emu::Emu) {
                     sock,
                     emu.colors.nc
                 );
-                emu.regs.rax = constants::EINVAL;
+                emu.regs_mut().rax = constants::EINVAL;
             }
         }
 
         constants::NR64_CONNECT => {
-            let sock = emu.regs.rdi;
-            let sockaddr = emu.regs.rsi;
-            let len = emu.regs.rdx;
+            let sock = emu.regs().rdi;
+            let sockaddr = emu.regs().rsi;
+            let len = emu.regs().rdx;
 
             if sockaddr > 0 && emu.maps.is_mapped(sockaddr) {
                 let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
@@ -450,7 +450,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
                 if !helper::socket_exist(sock) {
                     log::info!("\tbad socket/");
-                    emu.regs.rax = constants::ENOTSOCK;
+                    emu.regs_mut().rax = constants::ENOTSOCK;
                     return;
                 }
 
@@ -463,7 +463,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     }
                 }*/
 
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             } else {
                 log::info!(
                     "{}** {} syscall socketcall connect() sock: {} bad sockaddr! {}",
@@ -472,13 +472,13 @@ pub fn gateway(emu: &mut emu::Emu) {
                     sock,
                     emu.colors.nc
                 );
-                emu.regs.rax = constants::EINVAL;
+                emu.regs_mut().rax = constants::EINVAL;
             }
         }
 
         constants::NR64_LISTEN => {
-            let sock = emu.regs.rdi;
-            let conns = emu.regs.rsi;
+            let sock = emu.regs().rdi;
+            let conns = emu.regs().rsi;
 
             log::info!(
                 "{}** {} syscall socketcall listen() sock: {} conns: {} {}",
@@ -491,16 +491,16 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
             } else {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             }
         }
 
         constants::NR64_ACCEPT => {
-            let sock = emu.regs.rdi;
-            let sockaddr = emu.regs.rsi;
-            let len = emu.regs.rdx;
+            let sock = emu.regs().rdi;
+            let sockaddr = emu.regs().rsi;
+            let len = emu.regs().rdx;
 
             let port: u16 = 8080;
             let incoming_ip: u32 = 0x11223344;
@@ -520,14 +520,14 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
             } else {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             }
         }
 
         constants::NR64_GETSOCKNAME => {
-            let sock = emu.regs.rdi;
+            let sock = emu.regs().rdi;
             log::info!(
                 "{}** {} syscall socketcall getsockname() sock: {} {}",
                 emu.colors.light_red,
@@ -535,7 +535,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 sock,
                 emu.colors.nc
             );
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_GETPEERNAME => {
@@ -545,7 +545,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_SOCKETPAIR => {
@@ -555,20 +555,20 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.pos,
                 emu.colors.nc
             );
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         /*constants::NR64_SEND => {
-            let sock = emu.maps.read_dword(emu.regs.rsp).expect("send() cannot read sock");
-            let buf = emu.maps.read_dword(emu.regs.rsp+4).expect("send() cannot read buff");
-            let len = emu.maps.read_dword(emu.regs.rsp+8).expect("send() cannot read len");
-            let flags = emu.maps.read_dword(emu.regs.rsp+12).expect("send() cannot read flags");
+            let sock = emu.maps.read_dword(emu.regs().rsp).expect("send() cannot read sock");
+            let buf = emu.maps.read_dword(emu.regs().rsp+4).expect("send() cannot read buff");
+            let len = emu.maps.read_dword(emu.regs().rsp+8).expect("send() cannot read len");
+            let flags = emu.maps.read_dword(emu.regs().rsp+12).expect("send() cannot read flags");
 
             log::info!("{}** {} syscall socketcall send() sock: {} buff: {} len: {} {}", emu.colors.light_red, emu.pos, sock, buf, len, emu.colors.nc);
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
                 return;
             }
 
@@ -576,23 +576,23 @@ pub fn gateway(emu: &mut emu::Emu) {
                 let buffer = emu.maps.read_buffer(buf, len as usize);
                 let n = endpoint::sock_send(&buffer);
                 log::info!("\tsent {} bytes.", n);
-                emu.regs.rax = n;
+                emu.regs_mut().rax = n;
             } else {
-                emu.regs.rax = len;
+                emu.regs_mut().rax = len;
             }
         }
 
         constants::NR64_RECV => {
-            let sock = emu.maps.read_dword(emu.regs.rsp).expect("recv() cannot read sock");
-            let buf = emu.maps.read_dword(emu.regs.rsp+4).expect("recv() cannot read buff");
-            let len = emu.maps.read_dword(emu.regs.rsp+8).expect("recv() cannot read len");
-            let flags = emu.maps.read_dword(emu.regs.rsp+12).expect("recv() cannot read flags");
+            let sock = emu.maps.read_dword(emu.regs().rsp).expect("recv() cannot read sock");
+            let buf = emu.maps.read_dword(emu.regs().rsp+4).expect("recv() cannot read buff");
+            let len = emu.maps.read_dword(emu.regs().rsp+8).expect("recv() cannot read len");
+            let flags = emu.maps.read_dword(emu.regs().rsp+12).expect("recv() cannot read flags");
 
             log::info!("{}** {} syscall socketcall recv() sock: {} buff: {} len: {}  {}", emu.colors.light_red, emu.pos, sock, buf, len, emu.colors.nc);
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
                 return;
             }
 
@@ -602,19 +602,19 @@ pub fn gateway(emu: &mut emu::Emu) {
                 let n = endpoint::sock_recv(&mut rbuff);
                 emu.maps.write_buffer(buf, &rbuff);
                 log::info!("\nreceived {} bytes from the endpoint.", n);
-                emu.regs.rax = n;
+                emu.regs_mut().rax = n;
 
             } else {
-                emu.regs.rax = len; //TODO: avoid loops
+                emu.regs_mut().rax = len; //TODO: avoid loops
             }
         }*/
         constants::NR64_SENDTO => {
-            let sock = emu.regs.rdi;
-            let buf = emu.regs.rsi;
-            let len = emu.regs.rdx;
-            let flags = emu.regs.r10;
-            let sockaddr = emu.regs.r8;
-            let addrlen = emu.regs.r9;
+            let sock = emu.regs().rdi;
+            let buf = emu.regs().rsi;
+            let len = emu.regs().rdx;
+            let flags = emu.regs().r10;
+            let sockaddr = emu.regs().r8;
+            let addrlen = emu.regs().r9;
 
             if sockaddr != 0 && emu.maps.is_mapped(sockaddr) {
                 let fam: u16 = emu.maps.read_word(sockaddr).expect("cannot read family id");
@@ -650,19 +650,19 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
             } else {
-                emu.regs.rax = len;
+                emu.regs_mut().rax = len;
             }
         }
 
         constants::NR64_RECVFROM => {
-            let sock = emu.regs.rdi;
-            let buf = emu.regs.rsi;
-            let len = emu.regs.rdx;
-            let flags = emu.regs.r10;
-            let sockaddr = emu.regs.r8;
-            let addrlen = emu.regs.r9;
+            let sock = emu.regs().rdi;
+            let buf = emu.regs().rsi;
+            let len = emu.regs().rdx;
+            let flags = emu.regs().r10;
+            let sockaddr = emu.regs().r8;
+            let addrlen = emu.regs().r9;
 
             if sockaddr != 0 && emu.maps.is_mapped(sockaddr) {
                 let port: u16 = 8080;
@@ -685,9 +685,9 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             if !helper::socket_exist(sock) {
                 log::info!("\tbad socket/");
-                emu.regs.rax = constants::ENOTSOCK;
+                emu.regs_mut().rax = constants::ENOTSOCK;
             } else {
-                emu.regs.rax = len; //TODO: avoid loops
+                emu.regs_mut().rax = len; //TODO: avoid loops
             }
         }
 
@@ -765,33 +765,33 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_ARCH_PRCTL => {
-            let mode = emu.regs.rdi;
-            let ptr = emu.regs.rsi;
-            emu.regs.rax = 0;
+            let mode = emu.regs().rdi;
+            let ptr = emu.regs().rsi;
+            emu.regs_mut().rax = 0;
             let mut op: String = "unimplemented operation".to_string();
 
             match mode {
                 constants::ARCH_SET_GS => {
                     op = "set gs".to_string();
-                    emu.regs.gs = emu
+                    emu.regs_mut().gs = emu
                         .maps
                         .read_qword(ptr)
                         .expect("kernel64 cannot read ptr for set gs");
                 }
                 constants::ARCH_SET_FS => {
                     op = "set fs".to_string();
-                    emu.regs.fs = emu
+                    emu.regs_mut().fs = emu
                         .maps
                         .read_qword(ptr)
                         .expect("kernel64 cannot read ptr for set fs");
                 }
                 constants::ARCH_GET_FS => {
                     op = "get fs".to_string();
-                    emu.maps.write_qword(ptr, emu.regs.fs);
+                    emu.maps.write_qword(ptr, emu.regs().fs);
                 }
                 constants::ARCH_GET_GS => {
                     op = "get gs".to_string();
-                    emu.maps.write_qword(ptr, emu.regs.gs);
+                    emu.maps.write_qword(ptr, emu.regs().gs);
                 }
                 _ => {}
             }
@@ -806,14 +806,14 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_UNAME => {
-            emu.regs.rax = 0;
-            let ptr = emu.regs.rdi;
+            emu.regs_mut().rax = 0;
+            let ptr = emu.regs().rdi;
 
             if emu.maps.is_valid_ptr(ptr) {
                 emu.maps.write_bytes(ptr, constants::UTSNAME.to_vec());
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             } else {
-                emu.regs.rax = constants::EINVAL;
+                emu.regs_mut().rax = constants::EINVAL;
             }
 
             log::info!(
@@ -826,7 +826,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         constants::NR64_ACCESS => {
-            let filename = emu.maps.read_string(emu.regs.rdi);
+            let filename = emu.maps.read_string(emu.regs().rdi);
 
             log::info!(
                 "{}** {} syscall access({})  {}",
@@ -837,15 +837,15 @@ pub fn gateway(emu: &mut emu::Emu) {
             );
 
             if filename == "/etc/ld.so.preload" {
-                emu.regs.rax = constants::ENOENT;
+                emu.regs_mut().rax = constants::ENOENT;
             } else {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             }
         }
 
         constants::NR64_MUNMAP => {
-            let addr = emu.regs.rdi;
-            let sz = emu.regs.rsi;
+            let addr = emu.regs().rdi;
+            let sz = emu.regs().rsi;
 
             emu.maps.dealloc(addr);
 
@@ -858,16 +858,16 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_MMAP => {
-            let mut addr = emu.regs.rdi;
-            let mut sz = emu.regs.rsi;
-            let prot = emu.regs.rdx;
-            let flags = emu.regs.r10;
-            let fd = emu.regs.r8;
-            let off = emu.regs.r9;
+            let mut addr = emu.regs().rdi;
+            let mut sz = emu.regs().rsi;
+            let prot = emu.regs().rdx;
+            let flags = emu.regs().r10;
+            let fd = emu.regs().r8;
+            let off = emu.regs().r9;
 
             if addr == 0 || emu.maps.is_mapped(addr) {
                 if sz > 0xffffff {
@@ -919,11 +919,11 @@ pub fn gateway(emu: &mut emu::Emu) {
                             }
 
                             emu.maps.write_bytes(addr, lib_buff);
-                            emu.regs.rax = sz;
+                            emu.regs_mut().rax = sz;
                         }
                         Err(_) => {
                             log::info!("file not found");
-                            emu.regs.rax = 0;
+                            emu.regs_mut().rax = 0;
                         }
                     };
                 }
@@ -940,12 +940,12 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = addr;
+            emu.regs_mut().rax = addr;
         }
 
         constants::NR64_FSTAT => {
-            let fd = emu.regs.rdi;
-            let stat_ptr = emu.regs.rsi;
+            let fd = emu.regs().rdi;
+            let stat_ptr = emu.regs().rsi;
             let mut stat = structures::Stat::fake();
 
             if helper::handler_exist(fd) {
@@ -966,16 +966,16 @@ pub fn gateway(emu: &mut emu::Emu) {
                 "{}** {} syscall ftat(0x{:x})  =0 {}",
                 emu.colors.light_red,
                 emu.pos,
-                emu.regs.rdi,
+                emu.regs().rdi,
                 emu.colors.nc
             );
 
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_STAT => {
-            let filename_ptr = emu.regs.rdi;
-            let stat_ptr = emu.regs.rsi;
+            let filename_ptr = emu.regs().rdi;
+            let stat_ptr = emu.regs().rsi;
             let filename = emu.maps.read_string(filename_ptr);
 
             let stat = structures::Stat::fake();
@@ -996,19 +996,19 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         constants::NR64_READLINK => {
-            let link_ptr = emu.regs.rdi;
-            let buff = emu.regs.rsi;
-            let buffsz = emu.regs.rdx;
+            let link_ptr = emu.regs().rdi;
+            let buff = emu.regs().rsi;
+            let buffsz = emu.regs().rdx;
 
             let link = emu.maps.read_string(link_ptr);
             let sym_link_dest = match fs::read_link(&link) {
                 Ok(link) => link,
                 Err(_) => {
-                    emu.regs.rax = 0xffffffffffffffff;
+                    emu.regs_mut().rax = 0xffffffffffffffff;
                     log::info!(
                         "{}** {} syscall uname({}) err! {}",
                         emu.colors.light_red,
@@ -1030,27 +1030,27 @@ pub fn gateway(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = sym_link_dest.as_os_str().len() as u64;
+            emu.regs_mut().rax = sym_link_dest.as_os_str().len() as u64;
         }
 
         constants::NR64_MPROTECT => {
-            let addr = emu.regs.rdi;
-            let sz = emu.regs.rsi;
-            let prot = emu.regs.rdx;
+            let addr = emu.regs().rdi;
+            let sz = emu.regs().rsi;
+            let prot = emu.regs().rdx;
 
             /*if emu.maps.is_mapped(addr) {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
             } else {
-                emu.regs.rax = 0xffffffff_ffffffff;
+                emu.regs_mut().rax = 0xffffffff_ffffffff;
             }*/
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
 
             log::info!(
                 "{}** {} syscall mprotect(0x{:x}) ={:x} {}",
                 emu.colors.light_red,
                 emu.pos,
                 addr,
-                emu.regs.rax,
+                emu.regs().rax,
                 emu.colors.nc
             );
         }
@@ -1419,18 +1419,18 @@ pub fn gateway(emu: &mut emu::Emu) {
                 "process_mrelease".to_string(),
             ];
 
-            if emu.regs.rax >= data.len() as u64 {
+            if emu.regs().rax >= data.len() as u64 {
                 log::info!(
                     "{}** interrupt 0x80 bad rax value 0x{:x} {}",
                     emu.colors.light_red,
-                    emu.regs.rax,
+                    emu.regs().rax,
                     emu.colors.nc
                 );
             } else {
                 log::info!(
                     "{}** interrupt 0x80 function:{} {}",
                     emu.colors.light_red,
-                    data[emu.regs.rax as usize],
+                    data[emu.regs().rax as usize],
                     emu.colors.nc
                 );
             }

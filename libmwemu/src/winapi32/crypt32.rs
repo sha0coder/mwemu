@@ -29,7 +29,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -41,11 +41,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn PkiInitializeCriticalSection(emu: &mut emu::Emu) {
     let addr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("crypt32!PkiInitializeCriticalSection error getting flags param");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("crypt32!PkiInitializeCriticalSection error getting addr param");
 
     log::info!(
@@ -60,37 +60,37 @@ fn PkiInitializeCriticalSection(emu: &mut emu::Emu) {
     for _ in 0..2 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CryptStringToBinaryA(emu: &mut emu::Emu) {
     let string = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("crypt32!CryptStringToBinaryA error getting flags param");
     let num_chars = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("crypt32!PCryptStringToBinaryA error getting addr param");
     let flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("crypt32!CryptStringToBinaryA error getting flags param");
     let ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("crypt32!PCryptStringToBinaryA error getting addr param");
     let inout_sz = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 16)
+        .read_dword(emu.regs().get_esp() + 16)
         .expect("crypt32!CryptStringToBinaryA error getting flags param");
     let skip = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 20)
+        .read_dword(emu.regs().get_esp() + 20)
         .expect("crypt32!PCryptStringToBinaryA error getting addr param");
     let out_flags = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 24)
+        .read_dword(emu.regs().get_esp() + 24)
         .expect("crypt32!CryptStringToBinaryA error getting flags param");
 
     let dflags = match flags {
@@ -126,5 +126,5 @@ fn CryptStringToBinaryA(emu: &mut emu::Emu) {
     for _ in 0..7 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }

@@ -394,7 +394,12 @@ impl Maps {
     }
 
     // deprecated
-    pub fn get_mem(&mut self, name: &str) -> &mut Mem64 {
+    pub fn get_mem(&self, name: &str) -> &Mem64 {
+        self.get_map_by_name(name)
+            .expect("incorrect memory map name")
+    }
+
+    pub fn get_mem_mut(&mut self, name: &str) -> &mut Mem64 {
         self.get_map_by_name_mut(name)
             .expect("incorrect memory map name")
     }
@@ -759,8 +764,8 @@ impl Maps {
         }
     }
 
-    pub fn read_bytes(&mut self, addr: u64, sz: usize) -> &[u8] {
-        let mem = match self.get_mem_by_addr_mut(addr) {
+    pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
+        let mem = match self.get_mem_by_addr(addr) {
             Some(v) => v,
             None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
         };

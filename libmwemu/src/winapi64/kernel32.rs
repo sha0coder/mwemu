@@ -203,7 +203,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 
                 unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
             }
-            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs.rip);
+            log::warn!("calling unimplemented API 0x{:x} {} at 0x{:x}", addr, api, emu.regs().rip);
             return api;
         }
     }
@@ -379,7 +379,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     let mut dll = libname.to_string().to_lowercase();
 
     if dll.is_empty() {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return 0;
     }
 
@@ -421,7 +421,7 @@ pub fn get_library_handle(emu: &mut emu::Emu, libname: &str) -> u64 {
     let mut dll = libname.to_string().to_lowercase();
 
     if dll.is_empty() {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return 0;
     }
 
@@ -445,69 +445,69 @@ pub fn get_library_handle(emu: &mut emu::Emu, libname: &str) -> u64 {
 }
 
 fn LoadLibraryA(emu: &mut emu::Emu) {
-    let dllptr = emu.regs.rcx;
+    let dllptr = emu.regs().rcx;
     let dll = emu.maps.read_string(dllptr);
 
-    emu.regs.rax = load_library(emu, &dll);
+    emu.regs_mut().rax = load_library(emu, &dll);
 
-    log_red!(emu, "** {} kernel32!LoadLibraryA  '{}' =0x{:x} rip: 0x{:x}", emu.pos, &dll, emu.regs.get_eax() as u32, emu.regs.rip);
+    log_red!(emu, "** {} kernel32!LoadLibraryA  '{}' =0x{:x} rip: 0x{:x}", emu.pos, &dll, emu.regs().get_eax() as u32, emu.regs().rip);
 }
 
 fn LoadLibraryW(emu: &mut emu::Emu) {
-    let dllptr = emu.regs.rcx;
+    let dllptr = emu.regs().rcx;
     let dll = emu.maps.read_wide_string(dllptr);
 
-    emu.regs.rax = load_library(emu, &dll);
+    emu.regs_mut().rax = load_library(emu, &dll);
 
-    log_red!(emu, "** {} kernel32!LoadLibraryW  '{}' =0x{:x} rip: 0x{:x}", emu.pos, &dll, emu.regs.get_eax() as u32, emu.regs.rip);
+    log_red!(emu, "** {} kernel32!LoadLibraryW  '{}' =0x{:x} rip: 0x{:x}", emu.pos, &dll, emu.regs().get_eax() as u32, emu.regs().rip);
 }
 
 fn LoadLibraryExA(emu: &mut emu::Emu) {
-    let dllptr = emu.regs.rcx;
+    let dllptr = emu.regs().rcx;
     let dll = emu.maps.read_string(dllptr);
 
-    emu.regs.rax = load_library(emu, &dll);
+    emu.regs_mut().rax = load_library(emu, &dll);
 
     log::info!(
         "{}** {} kernel32!LoadLibraryExA  '{}' =0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
         dll,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn LoadLibraryExW(emu: &mut emu::Emu) {
-    let dllptr = emu.regs.rcx;
+    let dllptr = emu.regs().rcx;
     let dll = emu.maps.read_wide_string(dllptr);
 
-    emu.regs.rax = load_library(emu, &dll);
+    emu.regs_mut().rax = load_library(emu, &dll);
 
     log::info!(
         "{}** {} kernel32!LoadLibraryExW '{}' =0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
         dll,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn GetProcAddress(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let func_ptr = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let func_ptr = emu.regs().rdx;
 
     let func = emu.maps.read_string(func_ptr).to_lowercase();
     if func == "zwcopyfilechunk" {
-        emu.regs.rax = 0x7ff7e0001337;
+        emu.regs_mut().rax = 0x7ff7e0001337;
         log::info!(
             "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
             emu.colors.light_red,
             emu.pos,
             "kernel32",
             "zwcopyfilechunk",
-            emu.regs.rax,
+            emu.regs().rax,
             emu.colors.nc
         );
         return;
@@ -528,14 +528,14 @@ fn GetProcAddress(emu: &mut emu::Emu) {
                 // log::info!("func name {}!{}", flink.mod_name, ordinal.func_name);
 
                 if ordinal.func_name.to_lowercase() == func {
-                    emu.regs.rax = ordinal.func_va;
+                    emu.regs_mut().rax = ordinal.func_va;
                     log::info!(
                         "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
                         emu.colors.light_red,
                         emu.pos,
                         flink.mod_name,
                         ordinal.func_name,
-                        emu.regs.rax,
+                        emu.regs().rax,
                         emu.colors.nc
                     );
                     return;
@@ -548,12 +548,12 @@ fn GetProcAddress(emu: &mut emu::Emu) {
             break;
         }
     }
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
     log::warn!("kernel32!GetProcAddress error searching {}", func);
 }
 
 fn WinExec(emu: &mut emu::Emu) {
-    let cmdline_ptr = emu.regs.rcx;
+    let cmdline_ptr = emu.regs().rcx;
     let cmdline = emu.maps.read_string(cmdline_ptr);
 
     log::info!(
@@ -564,22 +564,22 @@ fn WinExec(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 32;
+    emu.regs_mut().rax = 32;
 }
 
 fn GetVersion(emu: &mut emu::Emu) {
-    emu.regs.rax = constants::VERSION;
+    emu.regs_mut().rax = constants::VERSION;
     log::info!(
         "{}** {} kernel32!GetVersion   =0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn GetVersionExW(emu: &mut emu::Emu) {
-    let version_info_ptr = emu.regs.rcx;
+    let version_info_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetVersionExW 0x{:x} {}",
@@ -592,11 +592,11 @@ fn GetVersionExW(emu: &mut emu::Emu) {
     let os_version_info = structures::OsVersionInfo::new();
     os_version_info.save(version_info_ptr, &mut emu.maps);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetVersionExA(emu: &mut emu::Emu) {
-    let version_info_ptr = emu.regs.rcx;
+    let version_info_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetVersionExA 0x{:x} {}",
@@ -609,12 +609,12 @@ fn GetVersionExA(emu: &mut emu::Emu) {
     let os_version_info = structures::OsVersionInfo::new();
     os_version_info.save(version_info_ptr, &mut emu.maps);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CreateToolhelp32Snapshot(emu: &mut emu::Emu) {
-    let flags = emu.regs.rcx;
-    let pid = emu.regs.rdx;
+    let flags = emu.regs().rcx;
+    let pid = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!CreateToolhelp32Snapshot flags: {:x} pid: {} {}",
@@ -626,12 +626,12 @@ fn CreateToolhelp32Snapshot(emu: &mut emu::Emu) {
     );
 
     let uri = format!("CreateToolhelp32Snapshot://{}", pid);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn Process32First(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let lppe = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let lppe = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!Process32First hndl: {:x} lppe: 0x{:x} {}",
@@ -643,7 +643,7 @@ fn Process32First(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(handle) {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -665,12 +665,12 @@ fn Process32First(emu: &mut emu::Emu) {
                 } PROCESSENTRY32;
     */
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn Process32Next(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let lppe = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let lppe = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!Process32Next hndl: {:x} lppe: 0x{:x} {}",
@@ -684,16 +684,16 @@ fn Process32Next(emu: &mut emu::Emu) {
     emu.maps.write_string(lppe + 44, "explorer.exe\x00");
 
     if !helper::handler_exist(handle) {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
-    emu.regs.rax = 0; // trigger exit loop
+    emu.regs_mut().rax = 0; // trigger exit loop
 }
 
 fn LStrCmpI(emu: &mut emu::Emu) {
-    let sptr1 = emu.regs.rcx;
-    let sptr2 = emu.regs.rdx;
+    let sptr1 = emu.regs().rcx;
+    let sptr2 = emu.regs().rdx;
 
     let s1 = emu.maps.read_string(sptr1);
     let s2 = emu.maps.read_string(sptr2);
@@ -707,7 +707,7 @@ fn LStrCmpI(emu: &mut emu::Emu) {
             s2,
             emu.colors.nc
         );
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
         log::info!(
             "{}** {} kernel32!lstrcmpi `{}` != `{}` {}",
@@ -717,13 +717,13 @@ fn LStrCmpI(emu: &mut emu::Emu) {
             s2,
             emu.colors.nc
         );
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     }
 }
 
 fn LStrCmpIW(emu: &mut emu::Emu) {
-    let sptr1 = emu.regs.rcx;
-    let sptr2 = emu.regs.rdx;
+    let sptr1 = emu.regs().rcx;
+    let sptr2 = emu.regs().rdx;
 
     let s1 = emu.maps.read_wide_string(sptr1);
     let s2 = emu.maps.read_wide_string(sptr2);
@@ -737,7 +737,7 @@ fn LStrCmpIW(emu: &mut emu::Emu) {
             s2,
             emu.colors.nc
         );
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
         log::info!(
             "{}** {} kernel32!lstrcmpiW `{}` != `{}` {}",
@@ -747,7 +747,7 @@ fn LStrCmpIW(emu: &mut emu::Emu) {
             s2,
             emu.colors.nc
         );
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     }
 }
 
@@ -758,12 +758,12 @@ fn AreFileApiIsAnsi(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn BeginUpdateResourceA(emu: &mut emu::Emu) {
-    let pFileName = emu.regs.rcx;
-    let bDeleteExistingResources = emu.regs.rdx;
+    let pFileName = emu.regs().rcx;
+    let bDeleteExistingResources = emu.regs().rdx;
 
     let filename = emu.maps.read_string(pFileName);
 
@@ -776,13 +776,13 @@ fn BeginUpdateResourceA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::handler_create(&filename);
+    emu.regs_mut().rax = helper::handler_create(&filename);
 }
 
 fn OpenProcess(emu: &mut emu::Emu) {
-    let access = emu.regs.rcx;
-    let inherit = emu.regs.rdx;
-    let pid = emu.regs.r8;
+    let access = emu.regs().rcx;
+    let inherit = emu.regs().rdx;
+    let pid = emu.regs().r8;
 
     log::info!(
         "{}** {} kernel32!OpenProcess pid: {} {}",
@@ -793,14 +793,14 @@ fn OpenProcess(emu: &mut emu::Emu) {
     );
 
     let uri = format!("pid://{}", pid);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 pub fn VirtualAlloc(emu: &mut emu::Emu) {
-    let addr = emu.regs.rcx;
-    let size = emu.regs.rdx;
-    let typ = emu.regs.r8 as u32;
-    let prot = emu.regs.r9 as u32;
+    let addr = emu.regs().rcx;
+    let size = emu.regs().rdx;
+    let typ = emu.regs().r8 as u32;
+    let prot = emu.regs().r9 as u32;
     let mem_reserve = (typ & constants::MEM_RESERVE) != 0;
     let mem_commit = (typ & constants::MEM_COMMIT) != 0;
     let mut base:u64 = 0;
@@ -815,7 +815,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
             typ,
             emu.colors.nc
         );
-        emu.regs.rax = 0
+        emu.regs_mut().rax = 0
     } else {
 
         let is_allocated = emu.maps.is_allocated(addr);
@@ -859,18 +859,18 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
             emu.colors.nc
         );
 
-        emu.regs.rax = base;
+        emu.regs_mut().rax = base;
     }
 }
 
 fn VirtualAllocEx(emu: &mut emu::Emu) {
-    let proc_hndl = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let size = emu.regs.r8;
-    let alloc_type = emu.regs.r9;
+    let proc_hndl = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let size = emu.regs().r8;
+    let alloc_type = emu.regs().r9;
     let protect = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!VirtualAllocEx cannot read_qword protect");
 
     let base = emu
@@ -893,17 +893,17 @@ fn VirtualAllocEx(emu: &mut emu::Emu) {
         .create_map(format!("alloc_{:x}", base).as_str(), base, size)
         .expect("kernel32!VirtualAllocEx out of memory");
 
-    emu.regs.rax = base;
+    emu.regs_mut().rax = base;
 }
 
 fn WriteProcessMemory(emu: &mut emu::Emu) {
-    let proc_hndl = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let buff = emu.regs.r8;
-    let size = emu.regs.r9;
+    let proc_hndl = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let buff = emu.regs().r8;
+    let size = emu.regs().r9;
     let written_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!WriteProcessMemory cannot read written_ptr");
 
     log::info!(
@@ -918,7 +918,7 @@ fn WriteProcessMemory(emu: &mut emu::Emu) {
     );
 
     if emu.maps.memcpy(buff, addr, size as usize) {
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
         log::info!(
             "{}\twritten succesfully{}",
             emu.colors.light_red,
@@ -928,7 +928,7 @@ fn WriteProcessMemory(emu: &mut emu::Emu) {
             log::info!("kernel32!WriteProcessMemory cannot write on written_ptr");
         }
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         log::info!(
             "{}\tcouldnt write all the bytes{}",
             emu.colors.light_red,
@@ -941,8 +941,8 @@ fn WriteProcessMemory(emu: &mut emu::Emu) {
 }
 
 fn Thread32First(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let entry = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let entry = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!Thread32First {}",
@@ -951,13 +951,13 @@ fn Thread32First(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
-    //emu.regs.rax = constants::ERROR_NO_MORE_FILES;
+    emu.regs_mut().rax = 1;
+    //emu.regs_mut().rax = constants::ERROR_NO_MORE_FILES;
 }
 
 fn Thread32Next(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let entry = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let entry = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!Thread32Next {}",
@@ -966,13 +966,13 @@ fn Thread32Next(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::ERROR_NO_MORE_FILES;
+    emu.regs_mut().rax = constants::ERROR_NO_MORE_FILES;
 }
 
 fn OpenThread(emu: &mut emu::Emu) {
-    let access = emu.regs.rcx;
-    let inherit = emu.regs.rdx;
-    let tid = emu.regs.r8;
+    let access = emu.regs().rcx;
+    let inherit = emu.regs().rdx;
+    let tid = emu.regs().r8;
 
     log::info!(
         "{}** {} kernel32!OpenThread tid: {} {}",
@@ -983,11 +983,11 @@ fn OpenThread(emu: &mut emu::Emu) {
     );
 
     let uri = format!("tid://{}", tid);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
-    let sys_time_ptr = emu.regs.rcx;
+    let sys_time_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetSystemTimeAsFileTime {}",
@@ -996,7 +996,7 @@ fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetCurrentThreadId(emu: &mut emu::Emu) {
@@ -1018,7 +1018,7 @@ fn GetCurrentThreadId(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     
-    emu.regs.rax = thread_id;
+    emu.regs_mut().rax = thread_id;
 }
 
 fn GetCurrentProcessId(emu: &mut emu::Emu) {
@@ -1029,11 +1029,11 @@ fn GetCurrentProcessId(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0x123;
+    emu.regs_mut().rax = 0x123;
 }
 
 fn QueryPerformanceCounter(emu: &mut emu::Emu) {
-    let counter_ptr = emu.regs.rcx;
+    let counter_ptr = emu.regs().rcx;
 
     // Use emu.tick directly, maybe scaled up to simulate higher frequency
     let counter_value = (emu.tick as u64) * 1000; // Scale to simulate ~1MHz frequency
@@ -1048,32 +1048,32 @@ fn QueryPerformanceCounter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1; // Return TRUE
+    emu.regs_mut().rax = 1; // Return TRUE
 }
 
 fn GetProcessHeap(emu: &mut emu::Emu) {
-    emu.regs.rax = helper::handler_create("heap");
+    emu.regs_mut().rax = helper::handler_create("heap");
 
     log::info!(
         "{}** {} kernel32!GetProcessHeap ={} {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn HeapAlloc(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let size = emu.regs.r8;
+    let hndl = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let size = emu.regs().r8;
 
-    emu.regs.rax = emu.maps.alloc(size).unwrap_or_default();
+    emu.regs_mut().rax = emu.maps.alloc(size).unwrap_or_default();
 
     emu.maps
         .create_map(
-            format!("alloc_{:x}", emu.regs.rax).as_str(),
-            emu.regs.rax,
+            format!("alloc_{:x}", emu.regs().rax).as_str(),
+            emu.regs().rax,
             size,
         )
         .expect("kernel32!HeapAlloc out of memory");
@@ -1082,19 +1082,19 @@ fn HeapAlloc(emu: &mut emu::Emu) {
         "{}** {} kernel32!HeapAlloc rip: 0x{:x} flags: 0x{:x} size: {} =0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rip,
+        emu.regs().rip,
         flags,
         size,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn CreateEventA(emu: &mut emu::Emu) {
-    let attributes = emu.regs.rcx;
-    let bManualReset = emu.regs.rdx;
-    let bInitialState = emu.regs.r8;
-    let name_ptr = emu.regs.r9;
+    let attributes = emu.regs().rcx;
+    let bManualReset = emu.regs().rdx;
+    let bInitialState = emu.regs().r8;
+    let name_ptr = emu.regs().r9;
 
     let mut name = String::new();
     if name_ptr > 0 {
@@ -1113,21 +1113,21 @@ fn CreateEventA(emu: &mut emu::Emu) {
     );
 
     let uri = format!("event://{}", name);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn CreateThread(emu: &mut emu::Emu) {
-    let sec_attr = emu.regs.rcx;
-    let stack_sz = emu.regs.rdx;
-    let code = emu.regs.r8;
-    let param = emu.regs.r9;
+    let sec_attr = emu.regs().rcx;
+    let stack_sz = emu.regs().rdx;
+    let code = emu.regs().r8;
+    let param = emu.regs().r9;
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!CreateThread cannot read flags");
     let tid_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateThread cannot read tid_ptr");
 
     let thread_id_index = {
@@ -1159,9 +1159,9 @@ fn CreateThread(emu: &mut emu::Emu) {
 
     if line == "y" || line == "yes" {
         if emu.maps.is_mapped(code) {
-            emu.regs.rip = code;
-            emu.regs.rax = 0;
-            emu.regs.rcx = param;
+            emu.regs_mut().rip = code;
+            emu.regs_mut().rax = 0;
+            emu.regs_mut().rcx = param;
             emu.main_thread_cont = emu.gateway_return;
             emu.stack_push64(param);
             emu.stack_push64(constants::RETURN_THREAD.into());
@@ -1173,7 +1173,7 @@ fn CreateThread(emu: &mut emu::Emu) {
         }
     }
 
-    emu.regs.rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
+    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
 }
 
 fn advance_tick(emu: &mut emu::Emu, millis: u64) {
@@ -1188,7 +1188,7 @@ fn advance_tick(emu: &mut emu::Emu, millis: u64) {
 }
 
 fn Sleep(emu: &mut emu::Emu) {
-    let millis = emu.regs.rcx;
+    let millis = emu.regs().rcx;
     advance_tick(emu, millis);
     log::info!(
         "{}** {} kernel32!Sleep millis: {} {}",
@@ -1200,8 +1200,8 @@ fn Sleep(emu: &mut emu::Emu) {
 }
 
 fn LocalAlloc(emu: &mut emu::Emu) {
-    let flags = emu.regs.rcx;
-    let bytes = emu.regs.rdx;
+    let flags = emu.regs().rcx;
+    let bytes = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!LocalAlloc flags: {:x} sz: {} {}",
@@ -1220,12 +1220,12 @@ fn LocalAlloc(emu: &mut emu::Emu) {
         .create_map(format!("alloc_{:x}", base).as_str(), base, bytes)
         .expect("kernel32!LocalAlloc out of memory");
 
-    emu.regs.rax = base;
+    emu.regs_mut().rax = base;
 }
 
 fn CreateProcessA(emu: &mut emu::Emu) {
-    let appname_ptr = emu.regs.rcx;
-    let cmdline_ptr = emu.regs.rdx;
+    let appname_ptr = emu.regs().rcx;
+    let cmdline_ptr = emu.regs().rdx;
     let appname = emu.maps.read_string(appname_ptr);
     let cmdline = emu.maps.read_string(cmdline_ptr);
 
@@ -1238,12 +1238,12 @@ fn CreateProcessA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CreateProcessW(emu: &mut emu::Emu) {
-    let appname_ptr = emu.regs.rcx;
-    let cmdline_ptr = emu.regs.rdx;
+    let appname_ptr = emu.regs().rcx;
+    let cmdline_ptr = emu.regs().rdx;
     let appname = emu.maps.read_wide_string(appname_ptr);
     let cmdline = emu.maps.read_wide_string(cmdline_ptr);
 
@@ -1256,25 +1256,25 @@ fn CreateProcessW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CreateRemoteThread(emu: &mut emu::Emu) {
-    let proc_hndl = emu.regs.rcx;
-    let sec = emu.regs.rdx;
-    let stack_size = emu.regs.r8;
-    let addr = emu.regs.r9;
+    let proc_hndl = emu.regs().rcx;
+    let sec = emu.regs().rdx;
+    let stack_size = emu.regs().r8;
+    let addr = emu.regs().r9;
     let param = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("krenel32!CreateRemoteThread cannot read the param");
     let flags = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateRemoteThread cannot read the flags");
     let out_tid = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("kernel32!CreateRemoteThread cannot read the tid");
 
     log::info!(
@@ -1292,29 +1292,29 @@ fn CreateRemoteThread(emu: &mut emu::Emu) {
         new_thread_id
     };
     emu.maps.write_dword(out_tid, thread_id_index as u32);
-    emu.regs.rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
+    emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", thread_id_index));
 }
 
 fn CreateNamedPipeA(emu: &mut emu::Emu) {
-    let name_ptr = emu.regs.rcx;
-    let open_mode = emu.regs.rcx;
-    let pipe_mode = emu.regs.r8;
-    let instances = emu.regs.r9;
+    let name_ptr = emu.regs().rcx;
+    let open_mode = emu.regs().rcx;
+    let pipe_mode = emu.regs().r8;
+    let instances = emu.regs().r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)
+        .read_qword(emu.regs().rsp + 0x38)
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_string(name_ptr);
@@ -1329,29 +1329,29 @@ fn CreateNamedPipeA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::handler_create(&name);
+    emu.regs_mut().rax = helper::handler_create(&name);
 }
 
 fn CreateNamedPipeW(emu: &mut emu::Emu) {
-    let name_ptr = emu.regs.rcx;
-    let open_mode = emu.regs.rcx;
-    let pipe_mode = emu.regs.r8;
-    let instances = emu.regs.r9;
+    let name_ptr = emu.regs().rcx;
+    let open_mode = emu.regs().rcx;
+    let pipe_mode = emu.regs().r8;
+    let instances = emu.regs().r9;
     let out_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!CreateNamedPipeA cannot read the to_buff_sz");
     let in_buff_sz = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateNamedPipeA cannot read the in_buff_sz");
     let timeout = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("kernel32!CreateNamedPipeA cannot read the timeout");
     let security = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)
+        .read_qword(emu.regs().rsp + 0x38)
         .expect("kernel32!CreateNamedPipeA cannot read the security");
 
     let name = emu.maps.read_wide_string(name_ptr);
@@ -1366,12 +1366,12 @@ fn CreateNamedPipeW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::handler_create(&name);
+    emu.regs_mut().rax = helper::handler_create(&name);
 }
 
 fn ConnectNamedPipe(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
-    let overlapped = emu.regs.rdx;
+    let handle = emu.regs().rcx;
+    let overlapped = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!ConnectNamedPipe hndl: 0x{:x} {}",
@@ -1385,11 +1385,11 @@ fn ConnectNamedPipe(emu: &mut emu::Emu) {
         log::info!("\tinvalid handle.");
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn DisconnectNamedPipe(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
+    let handle = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!DisconnectNamedPipe hndl: 0x{:x} {}",
@@ -1399,7 +1399,7 @@ fn DisconnectNamedPipe(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -1412,13 +1412,13 @@ BOOL ReadFile(
 );
 */
 fn ReadFile(emu: &mut emu::Emu) {
-    let file_hndl = emu.regs.rcx;
-    let buff = emu.regs.rdx;
-    let size = emu.regs.r8;
-    let bytes_read = emu.regs.r9;
+    let file_hndl = emu.regs().rcx;
+    let buff = emu.regs().rdx;
+    let size = emu.regs().r8;
+    let bytes_read = emu.regs().r9;
     let overlapped = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!ReadFile cannot read the overlapped");
 
     log::info!(
@@ -1449,20 +1449,20 @@ fn ReadFile(emu: &mut emu::Emu) {
             emu.maps.write_qword(bytes_read, size);
         }
         emu.maps.write_bytes(buff, bytes);
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
         panic!("unknown file");
     }
 }
 
 fn WriteFile(emu: &mut emu::Emu) {
-    let file_hndl = emu.regs.rcx;
-    let buff = emu.regs.rdx;
-    let size = emu.regs.r8;
-    let bytes_written = emu.regs.r9;
+    let file_hndl = emu.regs().rcx;
+    let buff = emu.regs().rdx;
+    let size = emu.regs().r8;
+    let bytes_written = emu.regs().r9;
     let overlapped = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!WriteFile cannot read the overlapped");
 
     let mut count = COUNT_WRITE.lock().unwrap();
@@ -1484,11 +1484,11 @@ fn WriteFile(emu: &mut emu::Emu) {
         log::info!("\tinvalid handle.")
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CloseHandle(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx;
+    let handle = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!CloseHandle 0x{:X} {}",
@@ -1502,11 +1502,11 @@ fn CloseHandle(emu: &mut emu::Emu) {
         panic!("\tinvalid handle.")
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn ExitProcess(emu: &mut emu::Emu) {
-    let code = emu.regs.rcx;
+    let code = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!ExitProcess code: {} {}",
@@ -1519,8 +1519,8 @@ fn ExitProcess(emu: &mut emu::Emu) {
 }
 
 fn TerminateProcess(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let code = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let code = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!TerminateProcess hndl: {} code: {} {}",
@@ -1530,12 +1530,12 @@ fn TerminateProcess(emu: &mut emu::Emu) {
         code,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn WaitForSingleObject(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let millis = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let millis = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!WaitForSingleObject  hndl: {} millis: {} {}",
@@ -1546,14 +1546,14 @@ fn WaitForSingleObject(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::WAIT_TIMEOUT;
+    emu.regs_mut().rax = constants::WAIT_TIMEOUT;
 }
 
 fn GetThreadContext(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let ctx_ptr = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let ctx_ptr = emu.regs().rdx;
 
-    let ctx = context64::Context64::new(&emu.regs);
+    let ctx = context64::Context64::new(&emu.regs());
     ctx.save(ctx_ptr, &mut emu.maps);
 
     log::info!(
@@ -1563,17 +1563,17 @@ fn GetThreadContext(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn ReadProcessMemory(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let buff = emu.regs.r8;
-    let size = emu.regs.r9;
+    let hndl = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let buff = emu.regs().r8;
+    let size = emu.regs().r9;
     let bytes = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!ReadProcessMemory cannot read bytes");
 
     log::info!(
@@ -1590,12 +1590,12 @@ fn ReadProcessMemory(emu: &mut emu::Emu) {
     emu.maps.write_qword(bytes, size);
     emu.maps.memset(buff, 0x90, size as usize);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
-    let buff_len = emu.regs.rcx;
-    let buff_ptr = emu.regs.rdx;
+    let buff_len = emu.regs().rcx;
+    let buff_ptr = emu.regs().rdx;
 
     emu.maps.write_string(buff_ptr, "c:\\\x00");
     log::info!(
@@ -1605,12 +1605,12 @@ fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 3;
+    emu.regs_mut().rax = 3;
 }
 
 fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
-    let buff_ptr = emu.regs.rcx;
-    let buff_len = emu.regs.rdx as usize;
+    let buff_ptr = emu.regs().rcx;
+    let buff_len = emu.regs().rdx as usize;
 
     log::info!(
         "{}** {} kernel32!GetCurrentDirectoryW  {}",
@@ -1623,18 +1623,18 @@ fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     if emu.maps.is_mapped(buff_ptr) && buff_len > path.len() {
         emu.maps
             .write_string(buff_ptr, path);
-        emu.regs.rax = path.len() as u64;
+        emu.regs_mut().rax = path.len() as u64;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 
 }
 
 fn VirtualProtect(emu: &mut emu::Emu) {
-    let addr = emu.regs.rcx;
-    let size = emu.regs.rdx;
-    let new_prot = emu.regs.r8;
-    let old_prot_ptr = emu.regs.r9;
+    let addr = emu.regs().rcx;
+    let size = emu.regs().rdx;
+    let new_prot = emu.regs().r8;
+    let old_prot_ptr = emu.regs().r9;
 
     emu.maps.write_qword(old_prot_ptr, new_prot);
 
@@ -1648,17 +1648,17 @@ fn VirtualProtect(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn VirtualProtectEx(emu: &mut emu::Emu) {
-    let hproc = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let size = emu.regs.r8;
-    let new_prot = emu.regs.r9;
+    let hproc = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let size = emu.regs().r8;
+    let new_prot = emu.regs().r9;
     let oldld_prot_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!VirtualProtectEx cannot read old_prot");
 
     log::info!(
@@ -1672,11 +1672,11 @@ fn VirtualProtectEx(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn ResumeThread(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
+    let hndl = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!ResumeThread hndl: {} {}",
@@ -1686,14 +1686,14 @@ fn ResumeThread(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1; // previous suspend count
+    emu.regs_mut().rax = 1; // previous suspend count
 }
 
 fn GetFullPathNameA(emu: &mut emu::Emu) {
-    let file_ptr = emu.regs.rcx;
-    let size = emu.regs.rdx;
-    let buff = emu.regs.r8;
-    let path = emu.regs.r9;
+    let file_ptr = emu.regs().rcx;
+    let size = emu.regs().rdx;
+    let buff = emu.regs().r8;
+    let path = emu.regs().r9;
 
     let filename = emu.maps.read_string(file_ptr);
     log::info!(
@@ -1704,14 +1704,14 @@ fn GetFullPathNameA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: save the path to buff.
-    emu.regs.rax = 10;
+    emu.regs_mut().rax = 10;
 }
 
 fn GetFullPathNameW(emu: &mut emu::Emu) {
-    let file_ptr = emu.regs.rcx;
-    let size = emu.regs.rdx;
-    let buff = emu.regs.r8;
-    let path = emu.regs.r9;
+    let file_ptr = emu.regs().rcx;
+    let size = emu.regs().rdx;
+    let buff = emu.regs().r8;
+    let path = emu.regs().r9;
 
     let filename = emu.maps.read_wide_string(file_ptr);
     log::info!(
@@ -1722,13 +1722,13 @@ fn GetFullPathNameW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: save the path to buff.
-    emu.regs.rax = 10;
+    emu.regs_mut().rax = 10;
 }
 
 fn SystemTimeToTzSpecificLocalTime(emu: &mut emu::Emu) {
-    let tz_ptr = emu.regs.rcx;
-    let ut_ptr = emu.regs.rcx;
-    let lt_ptr = emu.regs.r8;
+    let tz_ptr = emu.regs().rcx;
+    let ut_ptr = emu.regs().rcx;
+    let lt_ptr = emu.regs().r8;
 
     log::info!(
         "{}** {} kernel32!SystemTimeToTzSpecificLocalTime {}",
@@ -1737,7 +1737,7 @@ fn SystemTimeToTzSpecificLocalTime(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetLogicalDrives(emu: &mut emu::Emu) {
@@ -1747,13 +1747,13 @@ fn GetLogicalDrives(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0xc;
+    emu.regs_mut().rax = 0xc;
 }
 
 fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
-    let size = emu.regs.r8;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
+    let size = emu.regs().r8;
 
     let src = emu.maps.read_string(src_ptr);
 
@@ -1765,13 +1765,13 @@ fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: expand typical environment varsl.
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn ExpandEnvironmentStringsW(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
-    let size = emu.regs.r8;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
+    let size = emu.regs().r8;
 
     let src = emu.maps.read_wide_string(src_ptr);
 
@@ -1783,11 +1783,11 @@ fn ExpandEnvironmentStringsW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: expand typical environment varsl.
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetFileAttributesA(emu: &mut emu::Emu) {
-    let filename_ptr = emu.regs.rcx;
+    let filename_ptr = emu.regs().rcx;
     let filename = emu.maps.read_string(filename_ptr);
 
     log::info!(
@@ -1797,11 +1797,11 @@ fn GetFileAttributesA(emu: &mut emu::Emu) {
         filename,
         emu.colors.nc
     );
-    emu.regs.rax = 0x123;
+    emu.regs_mut().rax = 0x123;
 }
 
 fn GetFileAttributesW(emu: &mut emu::Emu) {
-    let filename_ptr = emu.regs.rcx;
+    let filename_ptr = emu.regs().rcx;
     let filename = emu.maps.read_wide_string(filename_ptr);
 
     log::info!(
@@ -1811,12 +1811,12 @@ fn GetFileAttributesW(emu: &mut emu::Emu) {
         filename,
         emu.colors.nc
     );
-    emu.regs.rax = 0x123;
+    emu.regs_mut().rax = 0x123;
 }
 
 fn FileTimeToSystemTime(emu: &mut emu::Emu) {
-    let file_time = emu.regs.rcx;
-    let sys_time_ptr = emu.regs.rdx;
+    let file_time = emu.regs().rcx;
+    let sys_time_ptr = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!FileTimeToSystemTime {} ",
@@ -1824,12 +1824,12 @@ fn FileTimeToSystemTime(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FindFirstFileA(emu: &mut emu::Emu) {
-    let file_ptr = emu.regs.rcx;
-    let find_data = emu.regs.rdx;
+    let file_ptr = emu.regs().rcx;
+    let find_data = emu.regs().rdx;
 
     let file = emu.maps.read_string(file_ptr);
     log::info!(
@@ -1839,12 +1839,12 @@ fn FindFirstFileA(emu: &mut emu::Emu) {
         file,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FindFirstFileW(emu: &mut emu::Emu) {
-    let file_ptr = emu.regs.rcx;
-    let find_data = emu.regs.rdx;
+    let file_ptr = emu.regs().rcx;
+    let find_data = emu.regs().rdx;
 
     let file = emu.maps.read_wide_string(file_ptr);
     log::info!(
@@ -1854,12 +1854,12 @@ fn FindFirstFileW(emu: &mut emu::Emu) {
         file,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FindNextFileA(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let find_data = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let find_data = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!FindNextFileA {}",
@@ -1868,12 +1868,12 @@ fn FindNextFileA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::ERROR_NO_MORE_FILES;
+    emu.regs_mut().rax = constants::ERROR_NO_MORE_FILES;
 }
 
 fn FindNextFileW(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let find_data = emu.regs.rdx;
+    let hndl = emu.regs().rcx;
+    let find_data = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!FindNextFileW {}",
@@ -1882,13 +1882,13 @@ fn FindNextFileW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::ERROR_NO_MORE_FILES;
+    emu.regs_mut().rax = constants::ERROR_NO_MORE_FILES;
 }
 
 fn CopyFileA(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
-    let do_fail = emu.regs.r8;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
+    let do_fail = emu.regs().r8;
 
     let src = emu.maps.read_string(src_ptr);
     let dst = emu.maps.read_string(dst_ptr);
@@ -1902,13 +1902,13 @@ fn CopyFileA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CopyFileW(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
-    let do_fail = emu.regs.r8;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
+    let do_fail = emu.regs().r8;
 
     let src = emu.maps.read_wide_string(src_ptr);
     let dst = emu.maps.read_wide_string(dst_ptr);
@@ -1922,11 +1922,11 @@ fn CopyFileW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FindClose(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
+    let hndl = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!FindClose {}",
@@ -1935,12 +1935,12 @@ fn FindClose(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     helper::handler_close(hndl);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn MoveFileA(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
 
     let src = emu.maps.read_string(src_ptr);
     let dst = emu.maps.read_string(dst_ptr);
@@ -1953,12 +1953,12 @@ fn MoveFileA(emu: &mut emu::Emu) {
         dst,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn MoveFileW(emu: &mut emu::Emu) {
-    let src_ptr = emu.regs.rcx;
-    let dst_ptr = emu.regs.rdx;
+    let src_ptr = emu.regs().rcx;
+    let dst_ptr = emu.regs().rdx;
 
     let src = emu.maps.read_wide_string(src_ptr);
     let dst = emu.maps.read_wide_string(dst_ptr);
@@ -1971,17 +1971,17 @@ fn MoveFileW(emu: &mut emu::Emu) {
         dst,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn MapViewOfFile(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let access = emu.regs.rdx;
-    let off_high = emu.regs.r8;
-    let off_low = emu.regs.r9;
+    let hndl = emu.regs().rcx;
+    let access = emu.regs().rdx;
+    let off_high = emu.regs().r8;
+    let off_low = emu.regs().r9;
     let mut size = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!MapViewOfFile cannot read the size");
 
     let off: u64 = (off_high << 32) + off_low;
@@ -2015,7 +2015,7 @@ fn MapViewOfFile(emu: &mut emu::Emu) {
         log::info!("the non-zero offset is not implemented for now");
     }
 
-    emu.regs.rax = addr;
+    emu.regs_mut().rax = addr;
 }
 
 fn GetTickCount(emu: &mut emu::Emu) {
@@ -2026,23 +2026,23 @@ fn GetTickCount(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: increment the tick?
-    emu.regs.rax = emu.tick as u64;
+    emu.regs_mut().rax = emu.tick as u64;
 }
 
 fn InitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs.rcx;
-    let spin_count = emu.regs.rdx;
+    let crit_sect = emu.regs().rcx;
+    let spin_count = emu.regs().rdx;
 
     log::info!("{}** {} kernel32!InitializeCriticalSectionAndSpinCount crit_sect: 0x{:x} spin_count: {} {}", emu.colors.light_red,
         emu.pos, crit_sect, spin_count, emu.colors.nc);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetProcessAffinityMask(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let proc_affinity_mask_ptr = emu.regs.rdx;
-    let sys_affinity_mask_ptr = emu.regs.r8;
+    let hndl = emu.regs().rcx;
+    let proc_affinity_mask_ptr = emu.regs().rdx;
+    let sys_affinity_mask_ptr = emu.regs().r8;
 
     emu.maps.write_dword(proc_affinity_mask_ptr, 0x1337);
     emu.maps.write_dword(sys_affinity_mask_ptr, 0x1337);
@@ -2054,7 +2054,7 @@ fn GetProcessAffinityMask(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn IsDebuggerPresent(emu: &mut emu::Emu) {
@@ -2064,11 +2064,11 @@ fn IsDebuggerPresent(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0; // of course :p
+    emu.regs_mut().rax = 0; // of course :p
 }
 
 fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
-    let callback = emu.regs.rcx;
+    let callback = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!SetUnhandledExceptionFilter  callback: 0x{:x} {}",
@@ -2078,12 +2078,12 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = emu.seh;
-    emu.seh = callback;
+    emu.regs_mut().rax = emu.seh();
+    emu.set_seh(callback);
 }
 
 fn UnhandledExceptionFilter(emu: &mut emu::Emu) {
-    let exception_info = emu.regs.rcx;
+    let exception_info = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!UnhandledExceptionFilter  exception_info: 0x{:x} {}",
@@ -2093,7 +2093,7 @@ fn UnhandledExceptionFilter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = constants::EXCEPTION_EXECUTE_HANDLER as u64;
+    emu.regs_mut().rax = constants::EXCEPTION_EXECUTE_HANDLER as u64;
     // a debugger would had answered EXCEPTION_CONTINUE_SEARCH
 }
 
@@ -2104,21 +2104,21 @@ fn GetCurrentProcess(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = helper::handler_create("current process");
+    emu.regs_mut().rax = helper::handler_create("current process");
 }
 
 fn VirtualAllocExNuma(emu: &mut emu::Emu) {
-    let proc_hndl = emu.regs.rcx;
-    let addr = emu.regs.rdx;
-    let size = emu.regs.r8;
-    let alloc_type = emu.regs.r9;
+    let proc_hndl = emu.regs().rcx;
+    let addr = emu.regs().rdx;
+    let size = emu.regs().r8;
+    let alloc_type = emu.regs().r9;
     let protect = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!VirtualAllocExNuma cannot read the protect");
     let nnd = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
 
     log::info!(
@@ -2138,23 +2138,23 @@ fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         .create_map(format!("alloc_{:x}", base).as_str(), base, size)
         .expect("kernel32!VirtualAllocExNuma cannot create map");
 
-    emu.regs.rax = base;
+    emu.regs_mut().rax = base;
 }
 
 fn GetUserDefaultLangId(emu: &mut emu::Emu) {
-    emu.regs.rax = 0x000000000000ffff;
+    emu.regs_mut().rax = 0x000000000000ffff;
     log::info!(
         "{}** {} kernel32!GetUserDefaultLangID =0x{:x} {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rax as u16,
+        emu.regs().rax as u16,
         emu.colors.nc
     );
 }
 
 fn GetComputerNameA(emu: &mut emu::Emu) {
-    let buff_ptr = emu.regs.rcx;
-    let size_ptr = emu.regs.rdx;
+    let buff_ptr = emu.regs().rcx;
+    let size_ptr = emu.regs().rdx;
 
     emu.maps.write_dword(size_ptr, 6);
     emu.maps.write_string(buff_ptr, constants::HOST_NAME);
@@ -2167,12 +2167,12 @@ fn GetComputerNameA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetComputerNameW(emu: &mut emu::Emu) {
-    let buff_ptr = emu.regs.rcx;
-    let size_ptr = emu.regs.rdx;
+    let buff_ptr = emu.regs().rcx;
+    let size_ptr = emu.regs().rdx;
 
     emu.maps.write_dword(size_ptr, 12);
     emu.maps.write_wide_string(buff_ptr, constants::HOST_NAME);
@@ -2185,13 +2185,13 @@ fn GetComputerNameW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CreateMutexA(emu: &mut emu::Emu) {
-    let attr = emu.regs.rcx;
-    let owner = emu.regs.rdx;
-    let name_ptr = emu.regs.r8;
+    let attr = emu.regs().rcx;
+    let owner = emu.regs().rdx;
+    let name_ptr = emu.regs().r8;
 
     let name = emu.maps.read_string(name_ptr);
 
@@ -2204,13 +2204,13 @@ fn CreateMutexA(emu: &mut emu::Emu) {
     );
 
     let uri = format!("mutex://{}", name);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn CreateMutexW(emu: &mut emu::Emu) {
-    let attr = emu.regs.rcx;
-    let owner = emu.regs.rdx;
-    let name_ptr = emu.regs.r8;
+    let attr = emu.regs().rcx;
+    let owner = emu.regs().rdx;
+    let name_ptr = emu.regs().r8;
 
     let name = emu.maps.read_wide_string(name_ptr);
 
@@ -2223,33 +2223,33 @@ fn CreateMutexW(emu: &mut emu::Emu) {
     );
 
     let uri = format!("mutex://{}", name);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn GetLastError(emu: &mut emu::Emu) {
     let err = LAST_ERROR.lock().unwrap();
-    emu.regs.rax = *err;
+    emu.regs_mut().rax = *err;
     log::info!(
         "{}** {} kernel32!GetLastError ={} {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rax,
+        emu.regs().rax,
         emu.colors.nc
     );
 }
 
 fn CreateFileMappingA(emu: &mut emu::Emu) {
-    let hFile = emu.regs.rcx;
-    let attr = emu.regs.rdx;
-    let protect = emu.regs.r8;
-    let max_sz_high = emu.regs.r9;
+    let hFile = emu.regs().rcx;
+    let attr = emu.regs().rdx;
+    let protect = emu.regs().r8;
+    let max_sz_high = emu.regs().r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateFileMappingW cannot read name pointer");
 
     let mut name: String = String::new();
@@ -2257,29 +2257,29 @@ fn CreateFileMappingA(emu: &mut emu::Emu) {
         name = emu.maps.read_string(name_ptr);
     }
 
-    emu.regs.rax = helper::handler_create(&name);
+    emu.regs_mut().rax = helper::handler_create(&name);
     log::info!(
         "{}** {} kernel32!CreateFileMappingA '{}' ={} {}",
         emu.colors.light_red,
         emu.pos,
         name,
-        emu.regs.get_eax(),
+        emu.regs().get_eax(),
         emu.colors.nc
     );
 }
 
 fn CreateFileMappingW(emu: &mut emu::Emu) {
-    let hFile = emu.regs.rcx;
-    let attr = emu.regs.rdx;
-    let protect = emu.regs.r8;
-    let max_sz_high = emu.regs.r9;
+    let hFile = emu.regs().rcx;
+    let attr = emu.regs().rdx;
+    let protect = emu.regs().r8;
+    let max_sz_high = emu.regs().r9;
     let max_sz_low = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!CreateFileMappingW cannot read max size low");
     let name_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!CreateFileMappingW cannot read name pointer");
 
     let mut name: String = String::new();
@@ -2287,19 +2287,19 @@ fn CreateFileMappingW(emu: &mut emu::Emu) {
         name = emu.maps.read_wide_string(name_ptr);
     }
 
-    emu.regs.rax = helper::handler_create(&name);
+    emu.regs_mut().rax = helper::handler_create(&name);
     log::info!(
         "{}** {} kernel32!CreateFileMappingW '{}' ={} {}",
         emu.colors.light_red,
         emu.pos,
         name,
-        emu.regs.get_eax(),
+        emu.regs().get_eax(),
         emu.colors.nc
     );
 }
 
 fn GetSystemTime(emu: &mut emu::Emu) {
-    let out_time = emu.regs.rcx;
+    let out_time = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetSystemTime ptr: 0x{:x}' {}",
@@ -2314,8 +2314,8 @@ fn GetSystemTime(emu: &mut emu::Emu) {
 }
 
 fn lstrcatA(emu: &mut emu::Emu) {
-    let str1_ptr = emu.regs.rcx;
-    let str2_ptr = emu.regs.rdx;
+    let str1_ptr = emu.regs().rcx;
+    let str2_ptr = emu.regs().rdx;
 
     let mut str1 = emu.maps.read_string(str1_ptr);
     let str2 = emu.maps.read_string(str2_ptr);
@@ -2332,12 +2332,12 @@ fn lstrcatA(emu: &mut emu::Emu) {
     str1.push_str(&str2);
     emu.maps.write_string(str1_ptr, &str1);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn lstrcatW(emu: &mut emu::Emu) {
-    let str1_ptr = emu.regs.rcx;
-    let str2_ptr = emu.regs.rdx;
+    let str1_ptr = emu.regs().rcx;
+    let str2_ptr = emu.regs().rdx;
 
     let mut str1 = emu.maps.read_wide_string(str1_ptr);
     let str2 = emu.maps.read_wide_string(str2_ptr);
@@ -2354,11 +2354,11 @@ fn lstrcatW(emu: &mut emu::Emu) {
     str1.push_str(&str2);
     emu.maps.write_wide_string(str1_ptr, &str1);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn SetErrorMode(emu: &mut emu::Emu) {
-    let mode = emu.regs.rcx;
+    let mode = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!SetErrorMode 0x{:x} {}",
@@ -2368,12 +2368,12 @@ fn SetErrorMode(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn GetSystemDirectoryA(emu: &mut emu::Emu) {
-    let out_buff_ptr = emu.regs.rcx;
-    let size = emu.regs.rdx;
+    let out_buff_ptr = emu.regs().rcx;
+    let size = emu.regs().rdx;
 
     let output = "C:\\Windows\\";
     emu.maps.write_string(out_buff_ptr, &output);
@@ -2385,12 +2385,12 @@ fn GetSystemDirectoryA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = output.len() as u64;
+    emu.regs_mut().rax = output.len() as u64;
 }
 
 fn GetSystemDirectoryW(emu: &mut emu::Emu) {
-    let out_buff_ptr = emu.regs.rcx;
-    let size = emu.regs.rdx;
+    let out_buff_ptr = emu.regs().rcx;
+    let size = emu.regs().rdx;
 
     let output = "C:\\Windows\\";
     emu.maps.write_wide_string(out_buff_ptr, &output);
@@ -2402,11 +2402,11 @@ fn GetSystemDirectoryW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = output.len() as u64;
+    emu.regs_mut().rax = output.len() as u64;
 }
 
 fn GetStartupInfoA(emu: &mut emu::Emu) {
-    let startup_info_ptr = emu.regs.rcx;
+    let startup_info_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetStartupInfoA {}",
@@ -2421,7 +2421,7 @@ fn GetStartupInfoA(emu: &mut emu::Emu) {
 }
 
 fn GetStartupInfoW(emu: &mut emu::Emu) {
-    let startup_info_ptr = emu.regs.rcx;
+    let startup_info_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetStartupInfoW {}",
@@ -2436,11 +2436,11 @@ fn GetStartupInfoW(emu: &mut emu::Emu) {
 }
 
 fn FlsGetValue(emu: &mut emu::Emu) {
-    let idx = emu.regs.rcx;
-    if idx as usize > emu.fls.len() {
-        emu.regs.rax = 0;
+    let idx = emu.regs().rcx;
+    if idx as usize > emu.fls().len() {
+        emu.regs_mut().rax = 0;
     } else {
-        emu.regs.rax = emu.fls[idx as usize] as u64;
+        emu.regs_mut().rax = emu.fls()[idx as usize] as u64;
     }
 
     log::info!(
@@ -2448,13 +2448,13 @@ fn FlsGetValue(emu: &mut emu::Emu) {
         emu.colors.light_red,
         emu.pos,
         idx,
-        emu.regs.get_eax() as u32,
+        emu.regs().get_eax() as u32,
         emu.colors.nc
     );
 }
 
 fn IsProcessorFeaturePresent(emu: &mut emu::Emu) {
-    let feature = emu.regs.rcx as u32;
+    let feature = emu.regs().rcx as u32;
 
     let msg = match feature {
         constants::PF_ARM_64BIT_LOADSTORE_ATOMIC => "PF_ARM_64BIT_LOADSTORE_ATOMIC",
@@ -2508,11 +2508,11 @@ fn IsProcessorFeaturePresent(emu: &mut emu::Emu) {
         msg,
         emu.colors.nc
     );
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn InitializeCriticalSection(emu: &mut emu::Emu) {
-    let ptr_crit_sect = emu.regs.rcx;
+    let ptr_crit_sect = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!InitializeCriticalSection ptr: 0x{:x} {}",
@@ -2522,13 +2522,13 @@ fn InitializeCriticalSection(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn InitializeCriticalSectionEx(emu: &mut emu::Emu) {
-    let ptr_crit_sect = emu.regs.rcx;
-    let spin_count = emu.regs.rdx;
-    let flags = emu.regs.r9;
+    let ptr_crit_sect = emu.regs().rcx;
+    let spin_count = emu.regs().rdx;
+    let flags = emu.regs().r9;
 
     log::info!(
         "{}** {} kernel32!InitializeCriticalSectionEx ptr: 0x{:x} {}",
@@ -2538,11 +2538,11 @@ fn InitializeCriticalSectionEx(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FlsAlloc(emu: &mut emu::Emu) {
-    let callback = emu.regs.rcx;
+    let callback = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!FlsAlloc callback: 0x{:x} {}",
@@ -2552,12 +2552,12 @@ fn FlsAlloc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn FlsSetValue(emu: &mut emu::Emu) {
-    let idx = emu.regs.rcx;
-    let val = emu.regs.rdx as u32;
+    let idx = emu.regs().rcx;
+    let val = emu.regs().rdx as u32;
 
     log::info!(
         "{}** {} kernel32!FlsSetValue idx: {} val: {} {}",
@@ -2568,20 +2568,20 @@ fn FlsSetValue(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    if emu.fls.len() > idx as usize {
-        emu.fls[idx as usize] = val;
+    if emu.fls().len() > idx as usize {
+        emu.fls_mut()[idx as usize] = val;
     } else {
         for _ in 0..=idx {
-            emu.fls.push(0);
+            emu.fls_mut().push(0);
         }
-        emu.fls[idx as usize] = val;
+        emu.fls_mut()[idx as usize] = val;
     }
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn SetLastError(emu: &mut emu::Emu) {
-    let err_code = emu.regs.rcx;
+    let err_code = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!SetLastError err: {} {}",
@@ -2595,7 +2595,7 @@ fn SetLastError(emu: &mut emu::Emu) {
 }
 
 fn lstrlenA(emu: &mut emu::Emu) {
-    let s_ptr = emu.regs.rcx;
+    let s_ptr = emu.regs().rcx;
 
     let s = emu.maps.read_string(s_ptr);
     let len = s.len() as u64;
@@ -2609,11 +2609,11 @@ fn lstrlenA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = len;
+    emu.regs_mut().rax = len;
 }
 
 fn lstrlenW(emu: &mut emu::Emu) {
-    let s_ptr = emu.regs.rcx;
+    let s_ptr = emu.regs().rcx;
 
     let s = emu.maps.read_wide_string(s_ptr);
     let len = s.len() as u64;
@@ -2627,11 +2627,11 @@ fn lstrlenW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = len * 2;
+    emu.regs_mut().rax = len * 2;
 }
 
 fn GetSystemInfo(emu: &mut emu::Emu) {
-    let out_sysinfo = emu.regs.rcx;
+    let out_sysinfo = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!GetSystemInfo sysinfo: 0x{:x} {}",
@@ -2646,9 +2646,9 @@ fn GetSystemInfo(emu: &mut emu::Emu) {
 }
 
 fn HeapFree(emu: &mut emu::Emu) {
-    let heap = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let mem = emu.regs.r8;
+    let heap = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let mem = emu.regs().r8;
 
     log::info!(
         "{}** {} kernel32!HeapFree mem: 0x{:x} {}",
@@ -2658,11 +2658,11 @@ fn HeapFree(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn EncodePointer(emu: &mut emu::Emu) {
-    let ptr = emu.regs.rcx;
+    let ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!EncodePointer ptr: 0x{:x} {}",
@@ -2672,11 +2672,11 @@ fn EncodePointer(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = ptr;
+    emu.regs_mut().rax = ptr;
 }
 
 fn DecodePointer(emu: &mut emu::Emu) {
-    let ptr = emu.regs.rcx;
+    let ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!DecodePointer ptr: 0x{:x} {}",
@@ -2686,13 +2686,13 @@ fn DecodePointer(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = ptr;
+    emu.regs_mut().rax = ptr;
 }
 
 fn HeapCreate(emu: &mut emu::Emu) {
-    let opts = emu.regs.rcx;
-    let initSZ = emu.regs.rdx;
-    let maxSZ = emu.regs.r8;
+    let opts = emu.regs().rcx;
+    let initSZ = emu.regs().rdx;
+    let maxSZ = emu.regs().r8;
 
     log::info!(
         "{}** {} kernel32!HeapCreate maxSZ:{} {}",
@@ -2703,13 +2703,13 @@ fn HeapCreate(emu: &mut emu::Emu) {
     );
 
     let uri = format!("HeapCreate://{}", maxSZ);
-    emu.regs.rax = helper::handler_create(&uri);
+    emu.regs_mut().rax = helper::handler_create(&uri);
 }
 
 fn lstrcpyn(emu: &mut emu::Emu) {
-    let out_str1 = emu.regs.rcx;
-    let in_str2 = emu.regs.rdx;
-    let len = emu.regs.r8 as usize;
+    let out_str1 = emu.regs().rcx;
+    let in_str2 = emu.regs().rdx;
+    let len = emu.regs().r8 as usize;
 
     let mut s = emu.maps.read_string(in_str2);
     if s.len() - 1 > len {
@@ -2726,19 +2726,19 @@ fn lstrcpyn(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = out_str1;
+    emu.regs_mut().rax = out_str1;
 }
 
 fn GetModuleFileNameA(emu: &mut emu::Emu) {
-    let hndl = emu.regs.rcx;
-    let out_filename = emu.regs.rdx;
-    let sz = emu.regs.r8;
+    let hndl = emu.regs().rcx;
+    let out_filename = emu.regs().rdx;
+    let sz = emu.regs().r8;
 
     if sz >= 11 {
         emu.maps.write_string(out_filename, constants::EXE_NAME);
-        emu.regs.rax = 11;
+        emu.regs_mut().rax = 11;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 
     log::info!(
@@ -2751,7 +2751,7 @@ fn GetModuleFileNameA(emu: &mut emu::Emu) {
 }
 
 fn GetLocalTime(emu: &mut emu::Emu) {
-    let ptr = emu.regs.rcx;
+    let ptr = emu.regs().rcx;
 
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -2779,8 +2779,8 @@ fn GetLocalTime(emu: &mut emu::Emu) {
 }
 
 fn SystemTimeToFileTime(emu: &mut emu::Emu) {
-    let in_ptr = emu.regs.rcx;
-    let out_ptr = emu.regs.rdx;
+    let in_ptr = emu.regs().rcx;
+    let out_ptr = emu.regs().rdx;
 
     let now = structures::SystemTime::now();
     now.save(out_ptr, &mut emu.maps);
@@ -2794,7 +2794,7 @@ fn SystemTimeToFileTime(emu: &mut emu::Emu) {
 }
 
 fn GetNativeSystemInfo(emu: &mut emu::Emu) {
-    let ptr_sysinfo = emu.regs.rcx;
+    let ptr_sysinfo = emu.regs().rcx;
 
     let mut sysinfo = structures::SystemInfo64::new();
     sysinfo.save(ptr_sysinfo, &mut emu.maps);
@@ -2816,8 +2816,8 @@ fn GetNativeSystemInfo(emu: &mut emu::Emu) {
 }
 
 fn lstrcpyW(emu: &mut emu::Emu) {
-    let dst = emu.regs.rcx;
-    let src = emu.regs.rdx;
+    let dst = emu.regs().rcx;
+    let src = emu.regs().rdx;
 
     let s = emu.maps.read_wide_string(src);
     emu.maps.write_wide_string(dst, &s);
@@ -2834,15 +2834,15 @@ fn lstrcpyW(emu: &mut emu::Emu) {
     );
 
     if s.is_empty() {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
-        emu.regs.rax = dst;
+        emu.regs_mut().rax = dst;
     }
 }
 
 fn lstrcpy(emu: &mut emu::Emu) {
-    let dst = emu.regs.rcx;
-    let src = emu.regs.rdx;
+    let dst = emu.regs().rcx;
+    let src = emu.regs().rdx;
 
     let s = emu.maps.read_string(src);
     emu.maps.write_string(dst, &s);
@@ -2859,18 +2859,18 @@ fn lstrcpy(emu: &mut emu::Emu) {
     );
 
     if s.is_empty() {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
-        emu.regs.rax = dst;
+        emu.regs_mut().rax = dst;
     }
 }
 
 pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
-    let actctx = emu.regs.rcx;
-    let section_name_ptr = emu.regs.rdx;
-    let string_name_ptr = emu.regs.r8;
-    let string_value_ptr = emu.regs.r9;
-    let out_ptr = emu.maps.read_qword(emu.regs.rsp + 0x20)
+    let actctx = emu.regs().rcx;
+    let section_name_ptr = emu.regs().rdx;
+    let string_name_ptr = emu.regs().r8;
+    let string_value_ptr = emu.regs().r9;
+    let out_ptr = emu.maps.read_qword(emu.regs().rsp + 0x20)
         .expect("error reading out_ptr");
 
     let mut section_name = String::new();
@@ -2895,16 +2895,16 @@ pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
         emu.colors.light_red, emu.pos, section_name, string_name, string_value, emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetModuleHandleA(emu: &mut emu::Emu) {
-    let module_name_ptr = emu.regs.rcx;
+    let module_name_ptr = emu.regs().rcx;
     let mut module_name: String;
 
     if module_name_ptr == 0 {
         module_name = "self".to_string();
-        emu.regs.rax = match emu.maps.get_base() {
+        emu.regs_mut().rax = match emu.maps.get_base() {
             Some(base) => base,
             None => helper::handler_create(&module_name),
         }
@@ -2917,12 +2917,12 @@ fn GetModuleHandleA(emu: &mut emu::Emu) {
         let mod_mem = match emu.maps.get_mem2(&module_name) {
             Some(m) => m,
             None => {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
                 return;
             }
         };
 
-        emu.regs.rax = mod_mem.get_base();
+        emu.regs_mut().rax = mod_mem.get_base();
     }
 
     log::info!(
@@ -2935,12 +2935,12 @@ fn GetModuleHandleA(emu: &mut emu::Emu) {
 }
 
 fn GetModuleHandleW(emu: &mut emu::Emu) {
-    let module_name_ptr = emu.regs.rcx;
+    let module_name_ptr = emu.regs().rcx;
     let module_name: String;
 
     if module_name_ptr == 0 {
         module_name = "self".to_string();
-        emu.regs.rax = match emu.maps.get_base() {
+        emu.regs_mut().rax = match emu.maps.get_base() {
             Some(base) => base,
             None => helper::handler_create(&module_name),
         }
@@ -2949,12 +2949,12 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
         let mod_mem = match emu.maps.get_mem2(&module_name) {
             Some(m) => m,
             None => {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
                 return;
             }
         };
 
-        emu.regs.rax = mod_mem.get_base();
+        emu.regs_mut().rax = mod_mem.get_base();
     }
 
     log::info!(
@@ -2977,8 +2977,8 @@ fn TlsAlloc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.tls64.push(0);
-    emu.regs.rax = (emu.tls64.len() - 1) as u64;  // Return index of newly allocated slot
+    emu.tls64_mut().push(0);
+    emu.regs_mut().rax = (emu.tls64().len() - 1) as u64;  // Return index of newly allocated slot
 }
 
 /*
@@ -2987,7 +2987,7 @@ BOOL TlsFree(
 );
 */
 fn TlsFree(emu: &mut emu::Emu) {
-    let idx = emu.regs.rcx as usize;  // First parameter passed in RCX in x64
+    let idx = emu.regs().rcx as usize;  // First parameter passed in RCX in x64
 
     log::info!(
         "{}** {} kernel32!TlsFree idx: {} {}",
@@ -2997,11 +2997,11 @@ fn TlsFree(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    if idx < emu.tls64.len() {
-        emu.tls64[idx] = 0;  // Clear the slot
-        emu.regs.rax = 1;    // Return TRUE
+    if idx < emu.tls64().len() {
+        emu.tls64_mut()[idx] = 0;  // Clear the slot
+        emu.regs_mut().rax = 1;    // Return TRUE
     } else {
-        emu.regs.rax = 0;    // Return FALSE if invalid index
+        emu.regs_mut().rax = 0;    // Return FALSE if invalid index
     }
 }
 
@@ -3012,8 +3012,8 @@ BOOL TlsSetValue(
 );
 */
 fn TlsSetValue(emu: &mut emu::Emu) {
-    let idx = emu.regs.rcx as usize;     // First parameter in RCX
-    let val = emu.regs.rdx;              // Second parameter in RDX
+    let idx = emu.regs().rcx as usize;     // First parameter in RCX
+    let val = emu.regs().rdx;              // Second parameter in RDX
 
     log::info!(
         "{}** {} kernel32!TlsSetValue idx: {} val: 0x{:x} {}",
@@ -3024,17 +3024,17 @@ fn TlsSetValue(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    if idx < emu.tls64.len() {
-        emu.tls64[idx] = val;
+    if idx < emu.tls64().len() {
+        emu.tls64_mut()[idx] = val;
     } else {
         // Expand TLS array if needed
-        while emu.tls64.len() <= idx {
-            emu.tls64.push(0);
+        while emu.tls64().len() <= idx {
+            emu.tls64_mut().push(0);
         }
-        emu.tls64[idx] = val;
+        emu.tls64_mut()[idx] = val;
     }
 
-    emu.regs.rax = 1;  // Return TRUE
+    emu.regs_mut().rax = 1;  // Return TRUE
 }
 
 /*
@@ -3043,13 +3043,13 @@ DWORD TlsGetValue(
 );
 */
 fn TlsGetValue(emu: &mut emu::Emu) {
-    let idx = emu.regs.rcx as usize;  // Parameter passed in RCX in x64
+    let idx = emu.regs().rcx as usize;  // Parameter passed in RCX in x64
 
-    let val = if idx < emu.tls64.len() {
+    let val = if idx < emu.tls64().len() {
         // Set last error to SUCCESS when the function succeeds
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_SUCCESS;
-        emu.tls64[idx]
+        emu.tls64()[idx]
     } else {
         // Set last error to ERROR_INVALID_PARAMETER for invalid index
         let mut err = LAST_ERROR.lock().unwrap();
@@ -3057,7 +3057,7 @@ fn TlsGetValue(emu: &mut emu::Emu) {
         0
     };
 
-    emu.regs.rax = val;
+    emu.regs_mut().rax = val;
 
     log_red!(emu, "** {} kernel32!TlsGetValue idx: {} =0x{:x}",
         emu.pos,
@@ -3077,7 +3077,7 @@ fn GetACP(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0x00000409;
+    emu.regs_mut().rax = 0x00000409;
 }
 
 /*
@@ -3086,12 +3086,12 @@ HANDLE GetStdHandle(
 );
 */
 fn GetStdHandle(emu: &mut emu::Emu) {
-    let nstd = emu.regs.rcx as usize;  // Parameter passed in RCX in x64
+    let nstd = emu.regs().rcx as usize;  // Parameter passed in RCX in x64
     log_red!(emu, "** {} kernel32!GetStdHandle nstd: {}",
         emu.pos,
         nstd
     );
-    emu.regs.rax = nstd as u64;
+    emu.regs_mut().rax = nstd as u64;
 }
 
 fn GetConsoleCP(emu: &mut emu::Emu) {
@@ -3101,7 +3101,7 @@ fn GetConsoleCP(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0x00000409;
+    emu.regs_mut().rax = 0x00000409;
 }
 
 fn GetConsoleOutputCP(emu: &mut emu::Emu) {
@@ -3111,7 +3111,7 @@ fn GetConsoleOutputCP(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0x00000409;
+    emu.regs_mut().rax = 0x00000409;
 }
 
 fn GetCommandLineA(emu: &mut emu::Emu) {
@@ -3126,7 +3126,7 @@ fn GetCommandLineA(emu: &mut emu::Emu) {
     let name = format!("alloc_{:x}", addr);
     emu.maps.create_map(&name, addr, 1024);
     emu.maps.write_string(addr, constants::EXE_NAME);
-    emu.regs.rax = addr;
+    emu.regs_mut().rax = addr;
 }
 
 fn GetCommandLineW(emu: &mut emu::Emu) {
@@ -3141,7 +3141,7 @@ fn GetCommandLineW(emu: &mut emu::Emu) {
     let name = format!("alloc_{:x}", addr);
     emu.maps.create_map(&name, addr, 1024);
     emu.maps.write_wide_string(addr, constants::EXE_NAME);
-    emu.regs.rax = addr;
+    emu.regs_mut().rax = addr;
 }
 
 /*
@@ -3151,8 +3151,8 @@ BOOL GetCPInfo(
 );
 */
 fn GetCPInfo(emu: &mut emu::Emu) {
-    let code_page = emu.regs.rcx as usize;
-    let lp_cp_info = emu.regs.rdx;
+    let code_page = emu.regs().rcx as usize;
+    let lp_cp_info = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!GetCPInfo code_page: {} lp_cp_info: 0x{:x} {}",
@@ -3185,7 +3185,7 @@ fn GetCPInfo(emu: &mut emu::Emu) {
     cp_info.save(lp_cp_info, &mut emu.maps);
 
     // Return TRUE to indicate success
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3198,7 +3198,7 @@ fn GetUserDefaultLCID(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = constants::LOCALE_USER_DEFAULT;
+    emu.regs_mut().rax = constants::LOCALE_USER_DEFAULT;
 }
 
 /*
@@ -3214,7 +3214,7 @@ fn SetThreadLocale(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: do something
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3227,7 +3227,7 @@ fn GetThreadLocale(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = constants::LOCALE_USER_DEFAULT; // TODO: 0x400 LOCALE_USER_DEFAULT or 0x409?
+    emu.regs_mut().rax = constants::LOCALE_USER_DEFAULT; // TODO: 0x400 LOCALE_USER_DEFAULT or 0x409?
 }
 
 /*
@@ -3239,17 +3239,17 @@ int GetLocaleInfoA(
 );
 */
 fn GetLocaleInfoA(emu: &mut emu::Emu) {
-    let locale = emu.regs.rcx as usize;
-    let lctype = emu.regs.rdx as usize;
-    let lp_lc_data = emu.regs.r8 as usize;
-    let cch_data = emu.regs.r9 as usize;
+    let locale = emu.regs().rcx as usize;
+    let lctype = emu.regs().rdx as usize;
+    let lp_lc_data = emu.regs().r8 as usize;
+    let cch_data = emu.regs().r9 as usize;
 
     let result = ".";
     let required_size = result.len() + 1; // Include null terminator
 
     // If cchData is 0, return required buffer size
     if cch_data == 0 {
-        emu.regs.rax = required_size as u64;
+        emu.regs_mut().rax = required_size as u64;
         clear_last_error(emu);
         return;
     }
@@ -3259,13 +3259,13 @@ fn GetLocaleInfoA(emu: &mut emu::Emu) {
         log::warn!("{} buffer too small for result cch_data: {} required_size: {}", emu.pos, cch_data, required_size);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
     // Write result directly to provided buffer
     emu.maps.write_string(lp_lc_data as u64, &result);
-    emu.regs.rax = result.len() as u64; // Return length without null terminator
+    emu.regs_mut().rax = result.len() as u64; // Return length without null terminator
     clear_last_error(emu);
 }
 
@@ -3278,10 +3278,10 @@ int GetLocaleInfoW(
 );
 */
 fn GetLocaleInfoW(emu: &mut emu::Emu) {
-    let locale = emu.regs.rcx as u64;
-    let lctype = emu.regs.rdx as u64;
-    let lp_lc_data = emu.regs.r8 as usize;
-    let cch_data = emu.regs.r9 as usize;
+    let locale = emu.regs().rcx as u64;
+    let lctype = emu.regs().rdx as u64;
+    let lp_lc_data = emu.regs().r8 as usize;
+    let cch_data = emu.regs().r9 as usize;
 
     log_red!(emu, "** {} kernel32!GetLocaleInfoW locale: {} lctype: {} lp_lc_data: 0x{:x} cch_data: {}",
         emu.pos,
@@ -3296,7 +3296,7 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
 
     // check if it wants buffer size
     if lp_lc_data == 0 && cch_data == 0 {
-        emu.regs.rax = required_size as u64;
+        emu.regs_mut().rax = required_size as u64;
         clear_last_error(emu);
         return;
     }
@@ -3306,13 +3306,13 @@ fn GetLocaleInfoW(emu: &mut emu::Emu) {
         log::warn!("{} buffer too small for result cch_data: {} required_size: {}", emu.pos, cch_data, result.len() + 1);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
     // write the result to the buffer
     emu.maps.write_wide_string(lp_lc_data as u64, &result);
-    emu.regs.rax = result.len() as u64;
+    emu.regs_mut().rax = result.len() as u64;
     clear_last_error(emu);
 }
 
@@ -3329,30 +3329,30 @@ int WideCharToMultiByte(
 );
 */
 fn WideCharToMultiByte(emu: &mut emu::Emu) {
-    let code_page = emu.regs.rcx as u64;
-    let dw_flags = emu.regs.rdx as usize;
-    let lp_wide_char_str = emu.regs.r8 as usize;
-    let cch_wide_char = emu.regs.r9 as isize;
+    let code_page = emu.regs().rcx as u64;
+    let dw_flags = emu.regs().rdx as usize;
+    let lp_wide_char_str = emu.regs().r8 as usize;
+    let cch_wide_char = emu.regs().r9 as isize;
     let lp_multi_byte_str = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let cb_multi_byte = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x28)
+        .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x30)
+        .read_qword(emu.regs().rsp + 0x30)
         .expect("kernel32!WideCharToMultiByte error reading param");
     let lp_used_default_char = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x38)
+        .read_qword(emu.regs().rsp + 0x38)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
     log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}",
         emu.pos,
-        emu.regs.rip,
+        emu.regs().rip,
         code_page,
         dw_flags,
         lp_wide_char_str,
@@ -3368,7 +3368,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INVALID_PARAMETER;
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -3379,7 +3379,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
             log::warn!("{} kernel32!WideCharToMultiByte invalid parameter", emu.pos);
             let mut err = LAST_ERROR.lock().unwrap();
             *err = constants::ERROR_INVALID_PARAMETER;
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
             return;
         }
     }
@@ -3394,7 +3394,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
 
     // 4. If this is just a size query
     if cb_multi_byte == 0 {
-        emu.regs.rax = input_len as u64;
+        emu.regs_mut().rax = input_len as u64;
         clear_last_error(emu);
         return;
     }
@@ -3405,7 +3405,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
         log::warn!("{} buffer too small for result cb_multi_byte: {} input_len: {}", emu.pos, cb_multi_byte, input_len);
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -3422,7 +3422,7 @@ fn WideCharToMultiByte(emu: &mut emu::Emu) {
     }
 
     // 7. Return number of bytes written
-    emu.regs.rax = if cch_wide_char == -1 {
+    emu.regs_mut().rax = if cch_wide_char == -1 {
         (s.len() + 1) as u64 // Include null terminator
     } else {
         s.len() as u64
@@ -3446,17 +3446,17 @@ https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset
 */
 
 fn MultiByteToWideChar(emu: &mut emu::Emu) {
-    let code_page = emu.regs.rcx;
-    let dw_flags = emu.regs.rdx;
-    let utf8_ptr = emu.regs.r8;
-    let cb_multi_byte = emu.regs.r9 as i64;
+    let code_page = emu.regs().rcx;
+    let dw_flags = emu.regs().rdx;
+    let utf8_ptr = emu.regs().r8;
+    let cb_multi_byte = emu.regs().r9 as i64;
     let wide_ptr = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
     let cch_wide_char = emu
         .maps
-        .read_dword(emu.regs.rsp + 0x28) // yes, read only half of the stack item
+        .read_dword(emu.regs().rsp + 0x28) // yes, read only half of the stack item
         .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i32;
 
     let mut utf8: String = String::new();
@@ -3502,7 +3502,7 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
         "{}** {}:{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}{}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rip,
+        emu.regs().rip,
         code_page,
         dw_flags,
         utf8_ptr,
@@ -3520,23 +3520,23 @@ fn MultiByteToWideChar(emu: &mut emu::Emu) {
 
     if cch_wide_char == 0 {
         // Return required buffer size for UTF-16 conversion
-        emu.regs.rax = wide.len() as u64;
+        emu.regs_mut().rax = wide.len() as u64;
     } else if wide_ptr != 0 {
         // Write string if buffer is large enough
         if cch_wide_char >= wide.len() as i32 {
             for (i, wchar) in wide.iter().enumerate() {
                 emu.maps.write_word(wide_ptr + (i * 2) as u64, *wchar);
             }
-            emu.regs.rax = wide.len() as u64;
+            emu.regs_mut().rax = wide.len() as u64;
         } else {
             let mut err = LAST_ERROR.lock().unwrap();
             *err = constants::ERROR_INSUFFICIENT_BUFFER;
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
     } else {
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INVALID_PARAMETER;
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
@@ -3547,8 +3547,8 @@ UINT GetWindowsDirectoryA(
 );
 */
 fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
-    let lp_buffer = emu.regs.rcx as usize;
-    let u_size = emu.regs.rdx as usize;
+    let lp_buffer = emu.regs().rcx as usize;
+    let u_size = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!GetWindowsDirectoryA lp_buffer: 0x{:x} u_size: {}",
         emu.pos,
         lp_buffer,
@@ -3556,12 +3556,12 @@ fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
     );
     let output = "C:\\Windows\\";
     emu.maps.write_string(lp_buffer as u64, output);
-    emu.regs.rax = output.len() as u64;
+    emu.regs_mut().rax = output.len() as u64;
 }
 
 fn GetWindowsDirectoryW(emu: &mut emu::Emu) {
-    let lp_buffer = emu.regs.rcx;
-    let u_size = emu.regs.rdx as usize;
+    let lp_buffer = emu.regs().rcx;
+    let u_size = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!GetWindowsDirectoryW lp_buffer: 0x{:x} u_size: {}",
         emu.pos,
         lp_buffer,
@@ -3570,9 +3570,9 @@ fn GetWindowsDirectoryW(emu: &mut emu::Emu) {
     let output = "C:\\Windows\\";
     if emu.maps.is_mapped(lp_buffer) && u_size > output.len()*2+2 {
         emu.maps.write_wide_string(lp_buffer, output);
-        emu.regs.rax = output.len() as u64 * 2;
+        emu.regs_mut().rax = output.len() as u64 * 2;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
@@ -3589,7 +3589,7 @@ fn ResetEvent(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: do something
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3607,7 +3607,7 @@ fn VirtualFree(emu: &mut emu::Emu) {
         emu.colors.nc
     );
     // TODO: do something
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3618,9 +3618,9 @@ DWORD GetModuleFileNameW(
 );
 */
 fn GetModuleFileNameW(emu: &mut emu::Emu) {
-    let module_handle = emu.regs.rcx as usize;
-    let lp_filename = emu.regs.rdx as usize;
-    let n_size = emu.regs.r8 as usize;
+    let module_handle = emu.regs().rcx as usize;
+    let lp_filename = emu.regs().rdx as usize;
+    let n_size = emu.regs().r8 as usize;
     log_red!(emu, "** {} kernel32!GetModuleFileNameW module: 0x{:x} lp_filename: 0x{:x} n_size: {}",
         emu.pos,
         module_handle,
@@ -3633,7 +3633,7 @@ fn GetModuleFileNameW(emu: &mut emu::Emu) {
 
     // watch out for no size?
     if n_size == 0 {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -3644,16 +3644,16 @@ fn GetModuleFileNameW(emu: &mut emu::Emu) {
         // Buffer too small - truncate and return n_size
         let truncated = &output[..n_size - 1];
         emu.maps.write_wide_string(lp_filename as u64, truncated);
-        emu.regs.rax = n_size as u64;
+        emu.regs_mut().rax = n_size as u64;
     } else {
         // Buffer is large enough
         emu.maps.write_wide_string(lp_filename as u64, output);
-        emu.regs.rax = output_len as u64;
+        emu.regs_mut().rax = output_len as u64;
     }
 }
 
 fn EnterCriticalSection(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs.rcx;
+    let crit_sect = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!EnterCriticalSection 0x{:x} {}",
@@ -3670,11 +3670,11 @@ fn EnterCriticalSection(emu: &mut emu::Emu) {
         advance_tick(emu, 1);
     }
 
-    emu.regs.rax = crit_sect;
+    emu.regs_mut().rax = crit_sect;
 }
 
 fn LeaveCriticalSection(emu: &mut emu::Emu) {
-    let crit_sect = emu.regs.rcx;
+    let crit_sect = emu.regs().rcx;
 
     log::info!(
         "{}** {} kernel32!LeaveCriticalSection 0x{:x} {}",
@@ -3684,7 +3684,7 @@ fn LeaveCriticalSection(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = crit_sect;
+    emu.regs_mut().rax = crit_sect;
 }
 
 /*
@@ -3693,13 +3693,13 @@ ATOM GlobalAddAtomA(
 );
 */
 fn GlobalAddAtomA(emu: &mut emu::Emu) {
-    let lp_string = emu.regs.rcx as usize;
+    let lp_string = emu.regs().rcx as usize;
     log_red!(emu, "** {} kernel32!GlobalAddAtomA lp_string: 0x{:x}",
         emu.pos,
         lp_string
     );
     // TODO: not sure what to do
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 
@@ -3711,9 +3711,9 @@ HRSRC FindResourceA(
 );
 */
 fn FindResourceA(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx as usize;
-    let lpName = emu.regs.rdx as usize;
-    let lpType = emu.regs.r8 as usize;
+    let handle = emu.regs().rcx as usize;
+    let lpName = emu.regs().rdx as usize;
+    let lpType = emu.regs().r8 as usize;
 
     let x: Option<(u64, usize)>;
 
@@ -3743,7 +3743,7 @@ fn FindResourceA(emu: &mut emu::Emu) {
 
     if x.is_none() {
         log::info!("{} resource not found!", emu.pos);
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -3753,13 +3753,13 @@ fn FindResourceA(emu: &mut emu::Emu) {
     log::info!("resource addr: 0x{:x} sz: {}", addr, size);
     let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
 
-    emu.regs.rax = hndl;
+    emu.regs_mut().rax = hndl;
 }
 
 fn FindResourceW(emu: &mut emu::Emu) {
-    let handle = emu.regs.rcx as usize;
-    let lpName = emu.regs.rdx as usize;
-    let lpType = emu.regs.r8 as usize;
+    let handle = emu.regs().rcx as usize;
+    let lpName = emu.regs().rdx as usize;
+    let lpType = emu.regs().r8 as usize;
 
     let x: Option<(u64, usize)>;
 
@@ -3789,7 +3789,7 @@ fn FindResourceW(emu: &mut emu::Emu) {
 
     if x.is_none() {
         log::info!("{} resource not found!", emu.pos);
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -3798,59 +3798,59 @@ fn FindResourceW(emu: &mut emu::Emu) {
     log::info!("resource addr: 0x{:x} sz: {}", addr, size);
     let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
 
-    emu.regs.rax = hndl;
+    emu.regs_mut().rax = hndl;
 }
 
 fn LoadResource(emu: &mut emu::Emu) {
-    let hModule = emu.regs.rcx;
-    let hResInfo = emu.regs.rdx as u64;
+    let hModule = emu.regs().rcx;
+    let hResInfo = emu.regs().rdx as u64;
 
     log_red!(emu, "** {} kernel32!LoadResource {:x} {:x}", emu.pos, hModule, hResInfo);
 
-    emu.regs.rax = hResInfo;
+    emu.regs_mut().rax = hResInfo;
 }
 
 fn SizeofResource(emu: &mut emu::Emu) {
-    let hModule = emu.regs.rcx;
-    let hResInfo = emu.regs.rdx as u64;
+    let hModule = emu.regs().rcx;
+    let hResInfo = emu.regs().rdx as u64;
 
     if helper::handler_exist(hResInfo) {
         let uri = helper::handler_get_uri(hResInfo);
         let size = uri.split("_").last().unwrap().parse::<usize>().unwrap();
         log::info!("** {} kernel32!SizeofResource {:x} {:x} size: {}", emu.pos, hModule, hResInfo, size);
-        emu.regs.rax = size as u64;
+        emu.regs_mut().rax = size as u64;
         return;
     }
 
     log_red!(emu, "** {} kernel32!SizeofResource {:x} {:x} not found", emu.pos, hModule, hResInfo);
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn LockResource(emu: &mut emu::Emu) {
-    let hResData = emu.regs.rcx;
+    let hResData = emu.regs().rcx;
 
     if helper::handler_exist(hResData) {
         let uri = helper::handler_get_uri(hResData);
         let ptr = uri.split("_").next().unwrap().parse::<u64>().unwrap() + emu.base as u64;
 
         log_red!(emu, "** {} kernel32!LockResource {:x} {:x}", emu.pos, hResData, ptr);
-        emu.regs.rax = ptr;
+        emu.regs_mut().rax = ptr;
         return;
     }
 
     log_red!(emu, "** {} kernel32!LockResource {:x} not found", emu.pos, hResData);
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn FreeResource(emu: &mut emu::Emu) {
-    let hResData = emu.regs.rcx;
+    let hResData = emu.regs().rcx;
 
     log_red!(emu, "** {} kernel32!FreeResource {:x}", emu.pos, hResData);
     helper::handler_close(hResData);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn GetEnvironmentStringsW(emu: &mut emu::Emu) {
@@ -3863,7 +3863,7 @@ fn GetEnvironmentStringsW(emu: &mut emu::Emu) {
     let addr = emu.alloc("environment", 1024);
     emu.maps
         .write_wide_string(addr, "PATH=c:\\Windows\\System32");
-    emu.regs.rax = addr;
+    emu.regs_mut().rax = addr;
 }
 
 /*
@@ -3872,10 +3872,10 @@ BOOL SetCurrentDirectory(
 );
 */
 fn SetCurrentDirectoryA(emu: &mut emu::Emu) {
-    let lp_path_name = emu.regs.rcx as usize;
+    let lp_path_name = emu.regs().rcx as usize;
     log_red!(emu, "** {} kernel32!SetCurrentDirectoryA lp_path_name: 0x{:x}", emu.pos, lp_path_name);
     // TODO: Implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3890,20 +3890,20 @@ HANDLE CreateFileA(
 );
 */
 fn CreateFileA(emu: &mut emu::Emu) {
-    let lp_file_name = emu.regs.rcx as usize;
-    let dw_desired_access = emu.regs.rdx as usize;
-    let dw_share_mode = emu.regs.r8 as usize;
-    let lp_security_attributes = emu.regs.r9 as usize;
-    let dw_creation_disposition = emu.regs.r10 as usize;
-    let dw_flags_and_attributes = emu.regs.r11 as usize;
-    let h_template_file = emu.regs.r12 as usize;
+    let lp_file_name = emu.regs().rcx as usize;
+    let dw_desired_access = emu.regs().rdx as usize;
+    let dw_share_mode = emu.regs().r8 as usize;
+    let lp_security_attributes = emu.regs().r9 as usize;
+    let dw_creation_disposition = emu.regs().r10 as usize;
+    let dw_flags_and_attributes = emu.regs().r11 as usize;
+    let h_template_file = emu.regs().r12 as usize;
     log_red!(emu, "** {} kernel32!CreateFileA lp_file_name: 0x{:x} dw_desired_access: 0x{:x} dw_share_mode: 0x{:x} lp_security_attributes: 0x{:x} dw_creation_disposition: 0x{:x} dw_flags_and_attributes: 0x{:x} h_template_file: 0x{:x}", emu.pos, lp_file_name, dw_desired_access, dw_share_mode, lp_security_attributes, dw_creation_disposition, dw_flags_and_attributes, h_template_file);
     let mut name: String = String::new();
     if lp_file_name > 0 {
         name = emu.maps.read_string(lp_file_name as u64);
     }
     log_red!(emu, "** {} kernel32!CreateFileA name = {name} {}", emu.pos, emu.colors.nc);
-    emu.regs.rax = helper::handler_create(&name);
+    emu.regs_mut().rax = helper::handler_create(&name);
 }
 
 /*
@@ -3913,8 +3913,8 @@ DWORD GetFileSize(
 );
 */
 fn GetFileSize(emu: &mut emu::Emu) {
-    let h_file = emu.regs.rcx;
-    let lp_file_size_high = emu.regs.rdx as usize;
+    let h_file = emu.regs().rcx;
+    let lp_file_size_high = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!GetFileSize {:x} {:x}", emu.pos, h_file, lp_file_size_high);
     // TODO: Implement this
 
@@ -3922,7 +3922,7 @@ fn GetFileSize(emu: &mut emu::Emu) {
     if name == "HaspEmul.dll" {
         let size = std::fs::metadata("/Users/jesus/Downloads/enigma/surprise.dll").unwrap().len();
         log::info!("** {} kernel32!GetFileSize {:x} {:x} size: {}", emu.pos, h_file, lp_file_size_high, size);
-        emu.regs.rax = size as u64;
+        emu.regs_mut().rax = size as u64;
     } else {
         panic!("unknown file");
     }
@@ -3935,16 +3935,16 @@ BOOL IsBadReadPtr(
 );
 */
 fn IsBadReadPtr(emu: &mut emu::Emu) {
-    let lp = emu.regs.rcx as usize;
-    let ucb = emu.regs.rdx as usize;
+    let lp = emu.regs().rcx as usize;
+    let ucb = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!IsBadReadPtr {:x} {:x}", emu.pos, lp, ucb);
     // TODO: implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {
-    let p1 = emu.regs.rcx as usize;
-    let fptr = emu.regs.rdx as usize;
+    let p1 = emu.regs().rcx as usize;
+    let fptr = emu.regs().rdx as usize;
 
     log::info!(
         "{}** {} kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x} {}",
@@ -3955,9 +3955,9 @@ fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.veh = fptr as u64;
+    emu.set_veh(fptr as u64);
 
-    emu.regs.rax = 0x2c2878;
+    emu.regs_mut().rax = 0x2c2878;
 }
 
 /*
@@ -3966,10 +3966,10 @@ BOOL SetThreadStackGuarantee(
 );
 */
 fn SetThreadStackGuarantee(emu: &mut emu::Emu) {
-    let stack_size_in_bytes = emu.regs.rcx as usize;
+    let stack_size_in_bytes = emu.regs().rcx as usize;
     log_red!(emu, "** {} kernel32!SetThreadStackGuarantee {:x}", emu.pos, stack_size_in_bytes);
     // TODO: implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -3978,7 +3978,7 @@ HANDLE GetCurrentThread();
 fn GetCurrentThread(emu: &mut emu::Emu) {
     log_red!(emu, "** {} kernel32!GetCurrentThread", emu.pos);
     // TODO: implement this
-    emu.regs.rax = 3;
+    emu.regs_mut().rax = 3;
 }
 
 /*
@@ -3988,12 +3988,12 @@ BOOL WINAPI GetConsoleMode(
 );
 */
 fn GetConsoleMode(emu: &mut emu::Emu) {
-    let h_console_handle = emu.regs.rcx;
-    let lp_mode = emu.regs.rdx as usize;
+    let h_console_handle = emu.regs().rcx;
+    let lp_mode = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!GetConsoleMode {:x} {:x}", emu.pos, h_console_handle, lp_mode);
     // TODO: implement this
     emu.maps.write_dword(lp_mode as u64, 0x00000003); //TODO: not sure what this is
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 
@@ -4007,13 +4007,13 @@ BOOL WINAPI WriteConsoleW(
 );
 */
 fn WriteConsoleW(emu: &mut emu::Emu) {
-    let h_console_output = emu.regs.rcx;
-    let lp_buffer = emu.regs.rdx as usize;
-    let n_number_of_chars_to_write = emu.regs.r8 as u32;
-    let lp_number_of_chars_written = emu.regs.r9 as usize;
+    let h_console_output = emu.regs().rcx;
+    let lp_buffer = emu.regs().rdx as usize;
+    let n_number_of_chars_to_write = emu.regs().r8 as u32;
+    let lp_number_of_chars_written = emu.regs().r9 as usize;
     let lp_reserved = emu
         .maps
-        .read_qword(emu.regs.rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!WriteConsoleW cannot read_qword lp_reserved");
 
     // Read the UTF-16 buffer
@@ -4032,7 +4032,7 @@ fn WriteConsoleW(emu: &mut emu::Emu) {
 
     // Write back the number of characters written
     emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -4041,10 +4041,10 @@ HANDLE CreateActCtxA(
 );
 */
 fn CreateActCtxA(emu: &mut emu::Emu) {
-    let p_act_ctx = emu.regs.rcx as usize;
+    let p_act_ctx = emu.regs().rcx as usize;
     log_red!(emu, "** {} kernel32!CreateActCtxA {:x}", emu.pos, p_act_ctx);
     // TODO: implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -4054,11 +4054,11 @@ BOOL ActivateActCtx(
 );
 */
 fn ActivateActCtx(emu: &mut emu::Emu) {
-    let h_act_ctx = emu.regs.rcx;
-    let lp_cookie = emu.regs.rdx as usize;
+    let h_act_ctx = emu.regs().rcx;
+    let lp_cookie = emu.regs().rdx as usize;
     log_red!(emu, "** {} kernel32!ActivateActCtx {:x} {:x}", emu.pos, h_act_ctx, lp_cookie);
     // TODO: implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -4070,10 +4070,10 @@ DECLSPEC_ALLOCATOR LPVOID HeapReAlloc(
 );
 */
 fn HeapReAlloc(emu: &mut emu::Emu) {
-    let heap_handle = emu.regs.rcx;
-    let flags = emu.regs.rdx;
-    let old_mem = emu.regs.r8;
-    let new_size = emu.regs.r9;
+    let heap_handle = emu.regs().rcx;
+    let flags = emu.regs().rdx;
+    let old_mem = emu.regs().r8;
+    let new_size = emu.regs().r9;
 
     log::info!(
         "{}** {} kernel32!HeapReAlloc heap: 0x{:x} flags: 0x{:x} old_mem: 0x{:x} new_size: {} {}",
@@ -4088,7 +4088,7 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
 
     // Check if we're dealing with a valid memory pointer
     if !emu.maps.is_mapped(old_mem) {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -4101,7 +4101,7 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
                 new_addr,
                 new_size,
             ) {
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
                 return;
             }
 
@@ -4114,7 +4114,7 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
 
                 // Copy the data
                 if !emu.maps.memcpy(old_mem, new_addr, copy_size) {
-                    emu.regs.rax = 0;
+                    emu.regs_mut().rax = 0;
                     return;
                 }
 
@@ -4126,14 +4126,14 @@ fn HeapReAlloc(emu: &mut emu::Emu) {
                 }
             } else {
                 // HEAP_REALLOC_IN_PLACE_ONLY was set but we couldn't comply
-                emu.regs.rax = 0;
+                emu.regs_mut().rax = 0;
                 return;
             }
 
-            emu.regs.rax = new_addr;
+            emu.regs_mut().rax = new_addr;
         }
         None => {
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
     }
 }
@@ -4147,13 +4147,13 @@ BOOL InitOnceBeginInitialize(
 );
 */
 fn InitOnceBeginInitialize(emu: &mut emu::Emu) {
-    let lp_init_once = emu.regs.rcx as usize;
-    let dw_flags = emu.regs.rdx as usize;
-    let f_pending = emu.regs.r8 as usize;
-    let lp_context = emu.regs.r9 as usize;
+    let lp_init_once = emu.regs().rcx as usize;
+    let dw_flags = emu.regs().rdx as usize;
+    let f_pending = emu.regs().r8 as usize;
+    let lp_context = emu.regs().r9 as usize;
     log_red!(emu, "** {} kernel32!InitOnceBeginInitialize {:x} {:x} {:x} {:x}", emu.pos, lp_init_once, dw_flags, f_pending, lp_context);
     // TODO: implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -4164,13 +4164,13 @@ DWORD GetEnvironmentVariableW(
 );
 */
 fn GetEnvironmentVariableW(emu: &mut emu::Emu) {
-    let lp_name = emu.regs.rcx as usize;
-    let lp_buffer = emu.regs.rdx as usize;
-    let n_size = emu.regs.r8 as usize;
+    let lp_name = emu.regs().rcx as usize;
+    let lp_buffer = emu.regs().rdx as usize;
+    let n_size = emu.regs().r8 as usize;
     let name = emu.maps.read_wide_string(lp_name as u64);
     log_red!(emu, "** {} kernel32!GetEnvironmentVariableW {:x} {:x} {:x} name: {}", emu.pos, lp_name, lp_buffer, n_size, name);
     // TODO: implement this
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn CompareStringW(emu: &mut emu::Emu) {
@@ -4184,14 +4184,14 @@ fn CompareStringW(emu: &mut emu::Emu) {
         [in] int                               cchCount2
     );
     */
-    let locale = emu.regs.rcx;
-    let dw_cmp_flags = emu.regs.rdx;
-    let lp_string1 = emu.regs.r8;
-    let cch_count1 = emu.regs.r9 as i32;
+    let locale = emu.regs().rcx;
+    let dw_cmp_flags = emu.regs().rdx;
+    let lp_string1 = emu.regs().r8;
+    let cch_count1 = emu.regs().r9 as i32;
     
     // Get stack parameters
-    let lp_string2_addr = emu.regs.rsp + 0x20;
-    let cch_count2_addr = emu.regs.rsp + 0x28;
+    let lp_string2_addr = emu.regs().rsp + 0x20;
+    let cch_count2_addr = emu.regs().rsp + 0x28;
     
     let lp_string2 = emu.maps.read_qword(lp_string2_addr).unwrap_or(0);
     let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32;
@@ -4242,7 +4242,7 @@ fn CompareStringW(emu: &mut emu::Emu) {
         }
     };
     
-    emu.regs.rax = result as u64;
+    emu.regs_mut().rax = result as u64;
 }
 
 fn GetTempPathW(emu: &mut emu::Emu) {
@@ -4252,8 +4252,8 @@ fn GetTempPathW(emu: &mut emu::Emu) {
         [out] LPWSTR lpBuffer
     );
     */
-    let n_buffer_length = emu.regs.rcx as u32;
-    let lp_buffer = emu.regs.rdx;
+    let n_buffer_length = emu.regs().rcx as u32;
+    let lp_buffer = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!GetTempPathW buffer_len: {} buffer: 0x{:x} {}",
@@ -4269,14 +4269,14 @@ fn GetTempPathW(emu: &mut emu::Emu) {
 
     // If buffer length is 0 or buffer is null, return required length
     if n_buffer_length == 0 || lp_buffer == 0 {
-        emu.regs.rax = required_length as u64;
+        emu.regs_mut().rax = required_length as u64;
         return;
     }
 
     // Check if buffer is large enough
     if n_buffer_length < required_length {
         // Buffer too small, return required length
-        emu.regs.rax = required_length as u64;
+        emu.regs_mut().rax = required_length as u64;
         return;
     }
 
@@ -4284,12 +4284,12 @@ fn GetTempPathW(emu: &mut emu::Emu) {
     emu.maps.write_wide_string(lp_buffer, temp_path);
 
     // Return the number of characters copied (excluding null terminator)
-    emu.regs.rax = (required_length - 1) as u64;
+    emu.regs_mut().rax = (required_length - 1) as u64;
 }
 
 fn VirtualLock(emu: &mut emu::Emu) {
-   let lp_address = emu.regs.rcx;
-   let dw_size = emu.regs.rdx;
+   let lp_address = emu.regs().rcx;
+   let dw_size = emu.regs().rdx;
 
    log::info!(
        "{}** {} kernel32!VirtualLock addr: 0x{:x} size: 0x{:x} {}",
@@ -4304,21 +4304,21 @@ fn VirtualLock(emu: &mut emu::Emu) {
    // VirtualLock locks pages in physical memory to prevent paging to disk
    // For emulation purposes, this is typically not critical
 
-   emu.regs.rax = 1; // Return TRUE (non-zero)
+   emu.regs_mut().rax = 1; // Return TRUE (non-zero)
 }
 
 fn FindFirstFileExW(emu: &mut emu::Emu) {
-   let filename_ptr = emu.regs.rcx;
-   let info_level = emu.regs.rdx;
-   let find_data_ptr = emu.regs.r8;
-   let search_op = emu.regs.r9;
+   let filename_ptr = emu.regs().rcx;
+   let info_level = emu.regs().rdx;
+   let find_data_ptr = emu.regs().r8;
+   let search_op = emu.regs().r9;
    let search_filter = emu
        .maps
-       .read_qword(emu.regs.rsp + 0x20)
+       .read_qword(emu.regs().rsp + 0x20)
        .expect("kernel32!FindFirstFileExW cannot read_qword search_filter");
    let additional_flags = emu
        .maps
-       .read_qword(emu.regs.rsp + 0x28)
+       .read_qword(emu.regs().rsp + 0x28)
        .expect("kernel32!FindFirstFileExW cannot read_qword additional_flags");
 
     let filename = emu.maps.read_wide_string(filename_ptr);
@@ -4357,14 +4357,14 @@ fn FindFirstFileExW(emu: &mut emu::Emu) {
 
    // TODO: Return valid HANDLE (not INVALID_HANDLE_VALUE = -1) on success
    // TODO: Set appropriate error code with SetLastError on failure
-   emu.regs.rax = 0xFFFFFFFFFFFFFFFF; // INVALID_HANDLE_VALUE for now
+   emu.regs_mut().rax = 0xFFFFFFFFFFFFFFFF; // INVALID_HANDLE_VALUE for now
 }
 
 fn GetSystemFirmwareTable(emu: &mut emu::Emu) {
-   let provider_signature = emu.regs.rcx;
-   let table_id = emu.regs.rdx;
-   let buffer_ptr = emu.regs.r8;
-   let buffer_size = emu.regs.r9;
+   let provider_signature = emu.regs().rcx;
+   let table_id = emu.regs().rdx;
+   let buffer_ptr = emu.regs().r8;
+   let buffer_size = emu.regs().r9;
    
    // TODO: Parse FirmwareTableProviderSignature values:
    //   - 'ACPI' = 0x41435049 (ACPI tables)
@@ -4396,5 +4396,5 @@ fn GetSystemFirmwareTable(emu: &mut emu::Emu) {
    );
 
    // TODO: Return actual bytes written/required, or 0 on error
-   emu.regs.rax = 0; // Return 0 (error) for now
+   emu.regs_mut().rax = 0; // Return 0 (error) for now
 }

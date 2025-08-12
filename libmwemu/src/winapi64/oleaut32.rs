@@ -26,7 +26,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -36,14 +36,14 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 fn SysAllocStringLen(emu: &mut emu::Emu) {
-    let str_ptr = emu.regs.rcx;
-    let char_count = emu.regs.rdx;
+    let str_ptr = emu.regs().rcx;
+    let char_count = emu.regs().rdx;
 
     log::info!(
         "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
         emu.colors.light_red,
         emu.pos,
-        emu.regs.rip,
+        emu.regs().rip,
         str_ptr,
         char_count
     );
@@ -77,11 +77,11 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     // Write null terminator
     emu.maps.write_word(bstr_ptr + byte_length, 0);
     
-    emu.regs.rax = bstr_ptr;  // Return pointer to string data, not base
+    emu.regs_mut().rax = bstr_ptr;  // Return pointer to string data, not base
 }
 
 fn SysFreeString(emu: &mut emu::Emu) {
-    let str_ptr = emu.regs.rcx;
+    let str_ptr = emu.regs().rcx;
 
     log::info!(
         "{}** {} oleaut32!SysFreeString  0x{:x} {}",
@@ -102,9 +102,9 @@ INT SysReAllocStringLen(
 );
 */
 fn SysReAllocStringLen(emu: &mut emu::Emu) {
-    let pbstr_ptr = emu.regs.rcx;
-    let psz = emu.regs.rdx;
-    let len = emu.regs.r8;
+    let pbstr_ptr = emu.regs().rcx;
+    let psz = emu.regs().rdx;
+    let len = emu.regs().r8;
 
     log::info!(
         "{}** {} oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {}",
@@ -117,7 +117,7 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
 
     // Check if pbstr_ptr is NULL
     if pbstr_ptr == 0 {
-        emu.regs.rax = 0; // Return FALSE
+        emu.regs_mut().rax = 0; // Return FALSE
         return;
     }
 
@@ -158,7 +158,7 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1; // Return TRUE for success
+    emu.regs_mut().rax = 1; // Return TRUE for success
 }
 
 /*
@@ -167,7 +167,7 @@ HRESULT VariantClear(
 );
 */
 fn VariantClear(emu: &mut emu::Emu) {
-    let pvarg = emu.regs.rcx;
+    let pvarg = emu.regs().rcx;
 
     log::info!(
         "{}** {} oleaut32!VariantClear pvarg: 0x{:x} {}",
@@ -179,5 +179,5 @@ fn VariantClear(emu: &mut emu::Emu) {
 
     // TODO: do something
 
-    emu.regs.rax = 0; // S_OK
+    emu.regs_mut().rax = 0; // S_OK
 }

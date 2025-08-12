@@ -44,7 +44,9 @@ use crate::{constants, kuser_shared};
 use crate::{get_bit, set_bit, to32};
 use crate::constants::BLOCK_LEN;
 
-pub struct Emu {
+#[derive(Clone)]
+pub struct ThreadContext {
+    pub id: u64,  // Thread ID (e.g., 0x1000, 0x1001, etc.)
     pub regs: Regs64,
     pub pre_op_regs: Regs64,
     pub post_op_regs: Regs64,
@@ -53,15 +55,49 @@ pub struct Emu {
     pub post_op_flags: Flags,
     pub eflags: Eflags,
     pub fpu: FPU,
+    pub seh: u64,
+    pub veh: u64,
+    pub feh: u64,
+    pub eh_ctx: u32,
+    pub tls32: Vec<u32>,
+    pub tls64: Vec<u64>,
+    pub fls: Vec<u32>,
+    pub fs: BTreeMap<u64, u64>,
+    pub call_stack: Vec<String>,
+}
+
+impl ThreadContext {
+    pub fn new(id: u64) -> Self {
+        ThreadContext {
+            id,
+            regs: Regs64::new(),
+            pre_op_regs: Regs64::new(),
+            post_op_regs: Regs64::new(),
+            flags: Flags::new(),
+            pre_op_flags: Flags::new(),
+            post_op_flags: Flags::new(),
+            eflags: Eflags::new(),
+            fpu: FPU::new(),
+            seh: 0,
+            veh: 0,
+            feh: 0,
+            eh_ctx: 0,
+            tls32: Vec::new(),
+            tls64: Vec::new(),
+            fls: Vec::new(),
+            fs: BTreeMap::new(),
+            call_stack: Vec::new(),
+        }
+    }
+}
+
+pub struct Emu {
+    // Global/shared state
     pub maps: Maps,
     pub hooks: Hooks,
     pub exp: u64,
     pub break_on_alert: bool,
     pub bp: Breakpoint,
-    pub seh: u64,
-    pub veh: u64,
-    pub feh: u64,
-    pub eh_ctx: u32,
     pub cfg: Config,
     pub colors: Colors,
     pub pos: u64,
@@ -69,9 +105,6 @@ pub struct Emu {
     pub force_break: bool,
     pub force_reload: bool,
     pub tls_callbacks: Vec<u64>,
-    pub tls32: Vec<u32>,
-    pub tls64: Vec<u64>,
-    pub fls: Vec<u32>,
     pub instruction: Option<Instruction>,
     pub decoder_position: usize,
     pub memory_operations: Vec<MemoryOperation>,
@@ -87,7 +120,6 @@ pub struct Emu {
     pub banzai: Banzai,
     pub mnemonic: String,
     pub linux: bool,
-    pub fs: BTreeMap<u64, u64>,
     pub now: Instant,
     pub skip_apicall: bool,
     pub its_apicall: Option<u64>,
@@ -98,11 +130,12 @@ pub struct Emu {
     pub tick: usize,
     pub trace_file: Option<File>,
     pub base: u64,
-    pub call_stack: Vec<String>,
     pub formatter: IntelFormatter,
-    pub fileName: String,
     pub heap_addr: u64,
     pub rng: RefCell<rand::rngs::ThreadRng>,
+    // Thread management
+    pub threads: Vec<ThreadContext>,
+    pub current_thread_id: usize,  // Index into threads vec
 }
 
 impl Default for Emu {
@@ -118,23 +151,11 @@ impl Emu {
         formatter.options_mut().set_first_operand_char_index(6);
         Emu {
             formatter,
-            regs: Regs64::new(),
-            pre_op_regs: Regs64::new(),
-            post_op_regs: Regs64::new(),
-            flags: Flags::new(),
-            pre_op_flags: Flags::new(),
-            post_op_flags: Flags::new(),
-            eflags: Eflags::new(),
-            fpu: FPU::new(),
             maps: Maps::default(),
             hooks: Hooks::new(),
             exp: 0,
             break_on_alert: false,
             bp: Breakpoint::new(),
-            seh: 0,
-            veh: 0,
-            feh: 0,
-            eh_ctx: 0,
             cfg: Config::new(),
             colors: Colors::new(),
             pos: 0,
@@ -142,9 +163,6 @@ impl Emu {
             force_break: false,
             force_reload: false,
             tls_callbacks: Vec::new(),
-            tls32: Vec::new(),
-            tls64: Vec::new(),
-            fls: Vec::new(),
             main_thread_cont: 0,
             gateway_return: 0,
             is_running: Arc::new(atomic::AtomicU32::new(0)),
@@ -157,7 +175,6 @@ impl Emu {
             banzai: Banzai::new(),
             mnemonic: String::new(),
             linux: false,
-            fs: BTreeMap::new(),
             now: Instant::now(),
             skip_apicall: false,
             its_apicall: None,
@@ -171,11 +188,197 @@ impl Emu {
             tick: 0,
             trace_file: None,
             base: 0,
-            call_stack: vec![],
-            fileName: String::new(),
             heap_addr: 0,
-            rng: RefCell::new(rand::rng())
+            rng: RefCell::new(rand::rng()),
+            // Initialize with main thread as thread 0
+            threads: vec![ThreadContext::new(0x1000)],
+            current_thread_id: 0,
         }
+    }
+
+    // Thread management helper methods
+    pub fn current_thread(&self) -> &ThreadContext {
+        &self.threads[self.current_thread_id]
+    }
+    
+    pub fn current_thread_mut(&mut self) -> &mut ThreadContext {
+        &mut self.threads[self.current_thread_id]
+    }
+
+    // Forwarding methods for thread-specific fields
+    pub fn regs(&self) -> &Regs64 {
+        &self.threads[self.current_thread_id].regs
+    }
+    
+    pub fn regs_mut(&mut self) -> &mut Regs64 {
+        &mut self.threads[self.current_thread_id].regs
+    }
+    
+    // Helper methods for common register operations to avoid borrow conflicts
+    pub fn set_rsp(&mut self, value: u64) {
+        self.threads[self.current_thread_id].regs.rsp = value;
+    }
+    
+    pub fn set_rbp(&mut self, value: u64) {
+        self.threads[self.current_thread_id].regs.rbp = value;
+    }
+    
+    pub fn get_rsp(&self) -> u64 {
+        self.threads[self.current_thread_id].regs.rsp
+    }
+    
+    pub fn get_rbp(&self) -> u64 {
+        self.threads[self.current_thread_id].regs.rbp
+    }
+    
+    // Helper method to sync FPU instruction pointer with RIP
+    pub fn sync_fpu_ip(&mut self) {
+        let rip = self.threads[self.current_thread_id].regs.rip;
+        self.threads[self.current_thread_id].fpu.set_ip(rip);
+    }
+    
+    pub fn set_pre_op_regs(&mut self, regs: Regs64) {
+        self.threads[self.current_thread_id].pre_op_regs = regs;
+    }
+    
+    pub fn set_post_op_regs(&mut self, regs: Regs64) {
+        self.threads[self.current_thread_id].post_op_regs = regs;
+    }
+    
+    pub fn set_pre_op_flags(&mut self, flags: Flags) {
+        self.threads[self.current_thread_id].pre_op_flags = flags;
+    }
+    
+    pub fn set_post_op_flags(&mut self, flags: Flags) {
+        self.threads[self.current_thread_id].post_op_flags = flags;
+    }
+    
+    pub fn pre_op_regs(&self) -> &Regs64 {
+        &self.threads[self.current_thread_id].pre_op_regs
+    }
+    
+    pub fn pre_op_regs_mut(&mut self) -> &mut Regs64 {
+        &mut self.threads[self.current_thread_id].pre_op_regs
+    }
+    
+    pub fn post_op_regs(&self) -> &Regs64 {
+        &self.threads[self.current_thread_id].post_op_regs
+    }
+    
+    pub fn post_op_regs_mut(&mut self) -> &mut Regs64 {
+        &mut self.threads[self.current_thread_id].post_op_regs
+    }
+    
+    pub fn flags(&self) -> &Flags {
+        &self.threads[self.current_thread_id].flags
+    }
+    
+    pub fn flags_mut(&mut self) -> &mut Flags {
+        &mut self.threads[self.current_thread_id].flags
+    }
+    
+    pub fn pre_op_flags(&self) -> &Flags {
+        &self.threads[self.current_thread_id].pre_op_flags
+    }
+    
+    pub fn pre_op_flags_mut(&mut self) -> &mut Flags {
+        &mut self.threads[self.current_thread_id].pre_op_flags
+    }
+    
+    pub fn post_op_flags(&self) -> &Flags {
+        &self.threads[self.current_thread_id].post_op_flags
+    }
+    
+    pub fn post_op_flags_mut(&mut self) -> &mut Flags {
+        &mut self.threads[self.current_thread_id].post_op_flags
+    }
+    
+    pub fn eflags(&self) -> &Eflags {
+        &self.threads[self.current_thread_id].eflags
+    }
+    
+    pub fn eflags_mut(&mut self) -> &mut Eflags {
+        &mut self.threads[self.current_thread_id].eflags
+    }
+    
+    pub fn fpu(&self) -> &FPU {
+        &self.threads[self.current_thread_id].fpu
+    }
+    
+    pub fn fpu_mut(&mut self) -> &mut FPU {
+        &mut self.threads[self.current_thread_id].fpu
+    }
+    
+    pub fn seh(&self) -> u64 {
+        self.threads[self.current_thread_id].seh
+    }
+    
+    pub fn set_seh(&mut self, value: u64) {
+        self.threads[self.current_thread_id].seh = value;
+    }
+    
+    pub fn veh(&self) -> u64 {
+        self.threads[self.current_thread_id].veh
+    }
+    
+    pub fn set_veh(&mut self, value: u64) {
+        self.threads[self.current_thread_id].veh = value;
+    }
+    
+    pub fn feh(&self) -> u64 {
+        self.threads[self.current_thread_id].feh
+    }
+    
+    pub fn set_feh(&mut self, value: u64) {
+        self.threads[self.current_thread_id].feh = value;
+    }
+    
+    pub fn eh_ctx(&self) -> u32 {
+        self.threads[self.current_thread_id].eh_ctx
+    }
+    
+    pub fn set_eh_ctx(&mut self, value: u32) {
+        self.threads[self.current_thread_id].eh_ctx = value;
+    }
+    
+    pub fn tls32(&self) -> &Vec<u32> {
+        &self.threads[self.current_thread_id].tls32
+    }
+    
+    pub fn tls32_mut(&mut self) -> &mut Vec<u32> {
+        &mut self.threads[self.current_thread_id].tls32
+    }
+    
+    pub fn tls64(&self) -> &Vec<u64> {
+        &self.threads[self.current_thread_id].tls64
+    }
+    
+    pub fn tls64_mut(&mut self) -> &mut Vec<u64> {
+        &mut self.threads[self.current_thread_id].tls64
+    }
+    
+    pub fn fls(&self) -> &Vec<u32> {
+        &self.threads[self.current_thread_id].fls
+    }
+    
+    pub fn fls_mut(&mut self) -> &mut Vec<u32> {
+        &mut self.threads[self.current_thread_id].fls
+    }
+    
+    pub fn fs(&self) -> &BTreeMap<u64, u64> {
+        &self.threads[self.current_thread_id].fs
+    }
+    
+    pub fn fs_mut(&mut self) -> &mut BTreeMap<u64, u64> {
+        &mut self.threads[self.current_thread_id].fs
+    }
+    
+    pub fn call_stack(&self) -> &Vec<String> {
+        &self.threads[self.current_thread_id].call_stack
+    }
+    
+    pub fn call_stack_mut(&mut self) -> &mut Vec<String> {
+        &mut self.threads[self.current_thread_id].call_stack
     }
 
     pub fn open_trace_file(&mut self) {
@@ -421,27 +624,34 @@ impl Emu {
 
     /// This inits the 32bits stack, it's called from init_cpu() and init()
     pub fn init_stack32(&mut self) {
-        // default if not set via clap args
+    // default if not set via clap args
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x212000;
-            self.regs.set_esp(self.cfg.stack_addr + 0x1c000 + 4);
-            self.regs
-                .set_ebp(self.cfg.stack_addr + 0x1c000 + 4 + 0x1000);
+            let esp = self.cfg.stack_addr + 0x1c000 + 4;
+            let ebp = self.cfg.stack_addr + 0x1c000 + 4 + 0x1000;
+            self.regs_mut().set_esp(esp);
+            self.regs_mut().set_ebp(ebp);
         }
+
+        // Store register values in local variables
+        let esp = self.regs().get_esp();
+        let ebp = self.regs().get_ebp();
 
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, 0x030000)
             .expect("cannot create stack map");
+        let stack_base = stack.get_base();
+        let stack_bottom = stack.get_bottom();
 
-        assert!(self.regs.get_esp() < self.regs.get_ebp());
-        assert!(self.regs.get_esp() > stack.get_base());
-        assert!(self.regs.get_esp() < stack.get_bottom());
-        assert!(self.regs.get_ebp() > stack.get_base());
-        assert!(self.regs.get_ebp() < stack.get_bottom());
-        assert!(stack.inside(self.regs.get_esp()));
-        assert!(stack.inside(self.regs.get_ebp()));
-
+        // Now do all the assertions using the local variables
+        assert!(esp < ebp);
+        assert!(esp > stack_base);
+        assert!(esp < stack_bottom);
+        assert!(ebp > stack_base);
+        assert!(ebp < stack_bottom);
+        assert!(stack.inside(esp));
+        assert!(stack.inside(ebp));
     }
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
@@ -452,65 +662,72 @@ impl Emu {
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x22a000;
             // Set up 1MB stack
-            self.regs.rsp = self.cfg.stack_addr + stack_size; // 1MB offset
-            self.regs.rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
+            self.regs_mut().rsp = self.cfg.stack_addr + stack_size; // 1MB offset
+            self.regs_mut().rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
         }
+
+        // Store register values in local variables
+        let rsp = self.regs().rsp;
+        let rbp = self.regs().rbp;
 
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
             .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
             .expect("cannot create stack map");
+        let stack_base = stack.get_base();
+        let stack_bottom = stack.get_bottom();
 
-        assert!(self.regs.rsp < self.regs.rbp);
-        assert!(self.regs.rsp > stack.get_base());
-        assert!(self.regs.rsp < stack.get_bottom());
-        assert!(self.regs.rbp > stack.get_base());
-        assert!(self.regs.rbp < stack.get_bottom());
-        assert!(stack.inside(self.regs.rsp));
-        assert!(stack.inside(self.regs.rbp));
+        // Now do all the assertions using the local variables
+        assert!(rsp < rbp);
+        assert!(rsp > stack_base);
+        assert!(rsp < stack_bottom);
+        assert!(rbp > stack_base);
+        assert!(rbp < stack_bottom);
+        assert!(stack.inside(rsp));
+        assert!(stack.inside(rbp));
     }
 
     //TODO: tests only in tests.rs
     pub fn init_stack64_tests(&mut self) {
-        let stack = self.maps.get_mem("stack");
-        self.regs.rsp = 0x000000000014F4B0;
-        self.regs.rbp = 0x0000000000000000;
+        self.regs_mut().rsp = 0x000000000014F4B0;
+        self.regs_mut().rbp = 0x0000000000000000;
+        let stack = self.maps.get_mem_mut("stack");
         stack.set_base(0x0000000000149000);
         stack.set_size(0x0000000000007000);
     }
 
     //TODO: tests only in tests.rs
     pub fn init_regs_tests(&mut self) {
-        self.regs.rax = 0x00000001448A76A4;
-        self.regs.rbx = 0x000000007FFE0385;
-        self.regs.rcx = 0x0000000140000000;
-        self.regs.rdx = 0x0000000000000001;
-        self.regs.rsi = 0x0000000000000001;
-        self.regs.rdi = 0x000000007FFE0384;
-        self.regs.r10 = 0x000000007FFE0384;
-        self.regs.r11 = 0x0000000000000246;
-        self.regs.r12 = 0x00000001448A76A4;
-        self.regs.r14 = 0x0000000140000000;
+        self.regs_mut().rax = 0x00000001448A76A4;
+        self.regs_mut().rbx = 0x000000007FFE0385;
+        self.regs_mut().rcx = 0x0000000140000000;
+        self.regs_mut().rdx = 0x0000000000000001;
+        self.regs_mut().rsi = 0x0000000000000001;
+        self.regs_mut().rdi = 0x000000007FFE0384;
+        self.regs_mut().r10 = 0x000000007FFE0384;
+        self.regs_mut().r11 = 0x0000000000000246;
+        self.regs_mut().r12 = 0x00000001448A76A4;
+        self.regs_mut().r14 = 0x0000000140000000;
     }
 
     //TODO: tests only in tests.rs
     pub fn init_flags_tests(&mut self) {
-        self.flags.clear();
+        self.flags_mut().clear();
 
-        self.flags.f_zf = true;
-        self.flags.f_pf = true;
-        self.flags.f_af = false;
+        self.flags_mut().f_zf = true;
+        self.flags_mut().f_pf = true;
+        self.flags_mut().f_af = false;
 
-        self.flags.f_of = false;
-        self.flags.f_sf = false;
-        self.flags.f_df = false;
+        self.flags_mut().f_of = false;
+        self.flags_mut().f_sf = false;
+        self.flags_mut().f_df = false;
 
-        self.flags.f_cf = false;
-        self.flags.f_tf = false;
-        self.flags.f_if = true;
+        self.flags_mut().f_cf = false;
+        self.flags_mut().f_tf = false;
+        self.flags_mut().f_if = true;
 
-        self.flags.f_nt = false;
+        self.flags_mut().f_nt = false;
     }
 
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
@@ -528,14 +745,14 @@ impl Emu {
 
         //log::info!("initializing regs");
         if clear_registers {
-            self.regs.clear::<64>();
+            self.regs_mut().clear::<64>();
         }
         if clear_flags {
-            self.flags.clear();
+            self.flags_mut().clear();
         }
-        //self.regs.rand();
+        //self.regs().rand();
 
-        self.regs.rip = self.cfg.entry_point;
+        self.regs_mut().rip = self.cfg.entry_point;
         if self.cfg.is_64bits {
             self.maps.is_64bits = true;
             //self.init_regs_tests(); // TODO: not sure why this was on
@@ -546,7 +763,7 @@ impl Emu {
         } else {
             // 32bits
             self.maps.is_64bits = false;
-            self.regs.sanitize32();
+            self.regs_mut().sanitize32();
             self.init_mem32();
             self.init_stack32();
         }
@@ -572,30 +789,30 @@ impl Emu {
     /// The minimum initializations necessary to emualte asm with no OS simulation.
     pub fn init_cpu(&mut self) {
         self.pos = 0;
-        self.regs.clear::<64>();
-        self.flags.clear();
+        self.regs_mut().clear::<64>();
+        self.flags_mut().clear();
 
         if self.cfg.is_64bits {
             self.maps.is_64bits = true;
             self.init_stack64();
         } else {
             self.maps.is_64bits = false;
-            self.regs.sanitize32();
+            self.regs_mut().sanitize32();
             self.init_stack32()
         }
     }
 
     /// Initialize linux simulation, it's called from load_code() if the sample is an ELF.
     pub fn init_linux64(&mut self, dyn_link: bool) {
-        self.regs.clear::<64>();
-        self.flags.clear();
-        self.flags.f_if = true;
+        self.regs_mut().clear::<64>();
+        self.flags_mut().clear();
+        self.flags_mut().f_if = true;
 
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
         if dyn_link {
-            //self.regs.rsp = 0x7fffffffe2b0;
-            self.regs.rsp = 0x7fffffffe790;
+            //self.regs_mut().rsp = 0x7fffffffe2b0;
+            self.regs_mut().rsp = 0x7fffffffe790;
             self.maps
                 .create_map("linux_dynamic_stack", 0x7ffffffde000, 0x100000)
                 .expect("cannot create linux_dynamic_stack map");
@@ -607,7 +824,7 @@ impl Emu {
                 .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000)
                 .expect("cannot create linker map");
         } else {
-            self.regs.rsp = 0x7fffffffe270;
+            self.regs_mut().rsp = 0x7fffffffe270;
             self.maps
                 .create_map("linux_static_stack", 0x7ffffffde000, 0x100000)
                 .expect("cannot create linux_static_stack map");
@@ -635,14 +852,14 @@ impl Emu {
             heap.load("heap.bin");
         }
 
-        self.regs.rbp = 0;
+        self.regs_mut().rbp = 0;
 
-        self.fs.insert(0xffffffffffffffc8, 0); //0x4b6c50
-        self.fs.insert(0xffffffffffffffd0, 0);
-        self.fs.insert(0xffffffffffffffd8, 0x4b27a0);
-        self.fs.insert(0xffffffffffffffa0, 0x4b3980);
-        self.fs.insert(0x18, 0);
-        self.fs.insert(40, 0x4b27a0);
+        self.fs_mut().insert(0xffffffffffffffc8, 0); //0x4b6c50
+        self.fs_mut().insert(0xffffffffffffffd0, 0);
+        self.fs_mut().insert(0xffffffffffffffd8, 0x4b27a0);
+        self.fs_mut().insert(0xffffffffffffffa0, 0x4b3980);
+        self.fs_mut().insert(0x18, 0);
+        self.fs_mut().insert(40, 0x4b27a0);
     }
 
     /// This is called from init(), this setup the 32bits windows memory simulation.
@@ -678,7 +895,7 @@ impl Emu {
         winapi32::kernel32::load_library(self, "shell32.dll");
         //winapi32::kernel32::load_library(self, "shlwapi.dll");
         
-        let teb_map = self.maps.get_mem("teb");
+        let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = self.cfg.stack_addr as u32;
         teb.nt_tib.stack_limit = (self.cfg.stack_addr + 0x30000) as u32;
@@ -789,7 +1006,7 @@ impl Emu {
         winapi64::kernel32::load_library(self, "shell32.dll");
         winapi64::kernel32::load_library(self, "shlwapi.dll");
 
-        let teb_map = self.maps.get_mem("teb");
+        let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = self.cfg.stack_addr;
         let stack_size = 0x100000;
@@ -885,14 +1102,14 @@ impl Emu {
 
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
-                self.regs.rip = base as u64 + pe32.opt.address_of_entry_point as u64;
-                log::info!("entry point at 0x{:x}", self.regs.rip);
+                self.regs_mut().rip = base as u64 + pe32.opt.address_of_entry_point as u64;
+                log::info!("entry point at 0x{:x}", self.regs().rip);
             } else {
-                self.regs.rip = self.cfg.entry_point;
+                self.regs_mut().rip = self.cfg.entry_point;
                 log::info!(
                     "entry point at 0x{:x} but forcing it at 0x{:x}",
                     base as u64 + pe32.opt.address_of_entry_point as u64,
-                    self.regs.rip
+                    self.regs().rip
                 );
             }
 
@@ -971,7 +1188,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb32::create_ldr_entry(self, base, self.regs.rip as u32, &filename2.clone(), 0, 0x2c1950);
+                peb32::create_ldr_entry(self, base, self.regs().rip as u32, &filename2.clone(), 0, 0x2c1950);
             peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
         }
 
@@ -1036,14 +1253,14 @@ impl Emu {
 
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
-                self.regs.rip = base + pe64.opt.address_of_entry_point as u64;
-                log::info!("entry point at 0x{:x}", self.regs.rip);
+                self.regs_mut().rip = base + pe64.opt.address_of_entry_point as u64;
+                log::info!("entry point at 0x{:x}", self.regs().rip);
             } else {
-                self.regs.rip = self.cfg.entry_point;
+                self.regs_mut().rip = self.cfg.entry_point;
                 log::info!(
                     "entry point at 0x{:x} but forcing it at 0x{:x} by -a flag",
                     base + pe64.opt.address_of_entry_point as u64,
-                    self.regs.rip
+                    self.regs().rip
                 );
             }
             println!("base: 0x{:x}", base);
@@ -1124,7 +1341,7 @@ impl Emu {
         // 5. ldr table entry creation and link
         if set_entry {
             let space_addr =
-                peb64::create_ldr_entry(self, base, self.regs.rip, &filename2.clone(), 0, 0x2c1950);
+                peb64::create_ldr_entry(self, base, self.regs().rip, &filename2.clone(), 0, 0x2c1950);
             peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
         }
 
@@ -1176,17 +1393,17 @@ impl Emu {
         // 1. Configured entry point
         if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
             println!("forcing entry point to 0x{:x}", self.cfg.entry_point);
-            self.regs.rip = self.cfg.entry_point;
+            self.regs_mut().rip = self.cfg.entry_point;
 
         // 2. Entry point pointing inside .text
         } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr+text_sz {
             println!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
-            self.regs.rip = elf64.elf_hdr.e_entry;
+            self.regs_mut().rip = elf64.elf_hdr.e_entry;
 
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
-            self.regs.rip = elf64.elf_hdr.e_entry + text_addr;
-            println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs.rip);
+            self.regs_mut().rip = elf64.elf_hdr.e_entry + text_addr;
+            println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs().rip);
 
         // 4. Entry point points below .text, weird case.
         } else {
@@ -1200,13 +1417,13 @@ impl Emu {
             //ld.load(&mut self.maps, "ld-linux", true, dyn_link, constants::CFG_DEFAULT_BASE);
             //log::info!("--- emulating ld-linux _start ---");
 
-            self.regs.rip = elf64.elf_hdr.e_entry;
+            self.regs_mut().rip = elf64.elf_hdr.e_entry;
 
             //TODO: emulate the linker
-            //self.regs.rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
+            //self.regs_mut().rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
             //self.run(None); 
         } else {
-            self.regs.rip = elf64.elf_hdr.e_entry;
+            self.regs_mut().rip = elf64.elf_hdr.e_entry;
         }*/
 
         /*
@@ -1263,10 +1480,10 @@ impl Emu {
             log::info!("elf32 detected.");
             let mut elf32 = Elf32::parse(filename).unwrap();
             elf32.load(&mut self.maps);
-            self.regs.rip = elf32.elf_hdr.e_entry.into();
+            self.regs_mut().rip = elf32.elf_hdr.e_entry.into();
             let stack_sz = 0x30000;
             let stack = self.alloc("stack", stack_sz);
-            self.regs.rsp = stack + (stack_sz / 2);
+            self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
         } else if Elf64::is_elf64(filename) {
             self.linux = true;
@@ -1282,33 +1499,33 @@ impl Emu {
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe32(filename, true, 0);
-            let ep = self.regs.rip;
+            let ep = self.regs().rip;
             // emulating tls callbacks
 
             /*
             for i in 0..self.tls_callbacks.len() {
-                self.regs.rip = self.tls_callbacks[i];
-                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs.rip);
+                self.regs_mut().rip = self.tls_callbacks[i];
+                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
                 self.stack_push32(base);
                 self.run(Some(base as u64));
             }*/
 
-            self.regs.rip = ep;
+            self.regs_mut().rip = ep;
         } else if self.cfg.is_64bits && PE64::is_pe64(filename) {
             log::info!("PE64 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe64(filename, true, 0);
-            let ep = self.regs.rip;
+            let ep = self.regs().rip;
 
             match self.pe64 {
                 Some(ref pe64) => {
                     // start loading dll
                     if pe64.is_dll() {
-                        self.regs.set_reg(Register::RCX, base);
-                        self.regs.set_reg(Register::RDX, 1);
-                        self.regs.set_reg(Register::R8L, 0);
+                        self.regs_mut().set_reg(Register::RCX, base);
+                        self.regs_mut().set_reg(Register::RDX, 1);
+                        self.regs_mut().set_reg(Register::R8L, 0);
                     }
                 }
                 _ =>  {
@@ -1318,13 +1535,13 @@ impl Emu {
             // emulating tls callbacks
             /*
             for i in 0..self.tls_callbacks.len() {
-                self.regs.rip = self.tls_callbacks[i];
-                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs.rip);
+                self.regs_mut().rip = self.tls_callbacks[i];
+                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
                 self.stack_push64(base);
                 self.run(Some(base));
             }*/
 
-            self.regs.rip = ep;
+            self.regs_mut().rip = ep;
         } else {
             // shellcode
             log::info!("shellcode detected.");
@@ -1356,12 +1573,12 @@ impl Emu {
                 log::info!("shellcode not found, select the file with -f");
                 std::process::exit(1);
             }
-            let code = self.maps.get_mem("code");
+            let code = self.maps.get_mem_mut("code");
             code.extend(0xffff); // this could overlap an existing map
         }
 
         if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
-            self.regs.rip = self.cfg.entry_point;
+            self.regs_mut().rip = self.cfg.entry_point;
         }
 
         /*if self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
@@ -1384,7 +1601,7 @@ impl Emu {
         let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64).expect("cannot create code map");
         let base = code.get_base();
         code.write_bytes(base, bytes);
-        self.regs.rip = code.get_base();
+        self.regs_mut().rip = code.get_base();
     }
 
     /// Remove from the memory the map name provided.
@@ -1413,59 +1630,60 @@ impl Emu {
     pub fn stack_push32(&mut self, value: u32) -> bool {
         if self.cfg.stack_trace {
             log::info!("--- stack push32 ---");
-            self.maps.dump_dwords(self.regs.get_esp(), 5);
+            self.maps.dump_dwords(self.regs().get_esp(), 5);
         }
 
         if self.cfg.trace_mem {
-            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs().get_esp()).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "write".to_string(),
                 bits: 32,
-                address: self.regs.get_esp() - 4,
-                old_value: self.maps.read_dword(self.regs.get_esp()).unwrap_or(0) as u64,
+                address: self.regs().get_esp() - 4,
+                old_value: self.maps.read_dword(self.regs().get_esp()).unwrap_or(0) as u64,
                 new_value: value as u64,
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
             log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
-                self.pos, self.regs.rip, 32, self.regs.get_esp(), value, name);
+                self.pos, self.regs().rip, 32, self.regs().get_esp(), value, name);
         }
 
-        self.regs.set_esp(self.regs.get_esp() - 4);
+        let esp = self.regs().get_esp() - 4;
+        self.regs_mut().set_esp(esp);
         //self.stack_lvl[self.stack_lvl_idx] += 1;
         //log::info!("push32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
 
         /*
         let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs.get_esp()) {
-            if !self.maps.write_dword(self.regs.get_esp(), value) {
-                //if !stack.write_dword(self.regs.get_esp(), value) {
+        if stack.inside(self.regs().get_esp()) {
+            if !self.maps.write_dword(self.regs().get_esp(), value) {
+                //if !stack.write_dword(self.regs().get_esp(), value) {
                 return false;
             }
         } else {
-            let mem = match self.maps.get_mem_by_addr(self.regs.get_esp()) {
+            let mem = match self.maps.get_mem_by_addr(self.regs().get_esp()) {
                 Some(m) => m,
                 None => {
                     log::info!(
                         "/!\\ pushing stack outside maps esp: 0x{:x}",
-                        self.regs.get_esp()
+                        self.regs().get_esp()
                     );
                     Console::spawn_console(self);
                     return false;
                 }
             };
-            if !self.maps.write_dword(self.regs.get_esp(), value) {
-                //if !mem.write_dword(self.regs.get_esp(), value) {
+            if !self.maps.write_dword(self.regs().get_esp(), value) {
+                //if !mem.write_dword(self.regs().get_esp(), value) {
                 return false;
             }
         }*/
 
-        if self.maps.write_dword(self.regs.get_esp(), value) {
+        if self.maps.write_dword(self.regs().get_esp(), value) {
             true
         } else {
-            log::info!("/!\\ pushing in non mapped mem 0x{:x}", self.regs.get_esp());
+            log::info!("/!\\ pushing in non mapped mem 0x{:x}", self.regs().get_esp());
             false
         }
     }
@@ -1475,52 +1693,52 @@ impl Emu {
     pub fn stack_push64(&mut self, value: u64) -> bool {
         if self.cfg.stack_trace {
             log::info!("--- stack push64  ---");
-            self.maps.dump_qwords(self.regs.rsp, 5);
+            self.maps.dump_qwords(self.regs().rsp, 5);
         }
 
         if self.cfg.trace_mem {
-            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs().rsp).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "write".to_string(),
                 bits: 64,
-                address: self.regs.rsp - 8,
-                old_value: self.maps.read_qword(self.regs.rsp).unwrap_or(0),
+                address: self.regs().rsp - 8,
+                old_value: self.maps.read_qword(self.regs().rsp).unwrap_or(0),
                 new_value: value,
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 64, self.regs.rsp, value, name);
+            log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, self.regs().rsp, value, name);
         }
 
-        self.regs.rsp -= 8;
+        self.regs_mut().rsp -= 8;
         //self.stack_lvl[self.stack_lvl_idx] += 1;
         //log::info!("push64 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
 
         /*
         let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs.rsp) {
-            stack.write_qword(self.regs.rsp, value);
+        if stack.inside(self.regs().rsp) {
+            stack.write_qword(self.regs().rsp, value);
         } else {
-            let mem = match self.maps.get_mem_by_addr(self.regs.rsp) {
+            let mem = match self.maps.get_mem_by_addr(self.regs().rsp) {
                 Some(m) => m,
                 None => {
                     log::info!(
                         "pushing stack outside maps rsp: 0x{:x}",
-                        self.regs.get_esp()
+                        self.regs().get_esp()
                     );
                     Console::spawn_console(self);
                     return false;
                 }
             };
-            mem.write_qword(self.regs.rsp, value);
+            mem.write_qword(self.regs().rsp, value);
         }*/
 
-        if self.maps.write_qword(self.regs.rsp, value) {
+        if self.maps.write_qword(self.regs().rsp, value) {
             true
         } else {
-            log::info!("/!\\ pushing in non mapped mem 0x{:x}", self.regs.rsp);
+            log::info!("/!\\ pushing in non mapped mem 0x{:x}", self.regs().rsp);
             false
         }
     }
@@ -1529,14 +1747,14 @@ impl Emu {
     pub fn stack_pop32(&mut self, pop_instruction: bool) -> Option<u32> {
         if self.cfg.stack_trace {
             log::info!("--- stack pop32 ---");
-            self.maps.dump_dwords(self.regs.get_esp(), 5);
+            self.maps.dump_dwords(self.regs().get_esp(), 5);
         }
 
         /*
         let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs.get_esp()) {
-            //let value = stack.read_dword(self.regs.get_esp());
-            let value = match self.maps.read_dword(self.regs.get_esp()) {
+        if stack.inside(self.regs().get_esp()) {
+            //let value = stack.read_dword(self.regs().get_esp());
+            let value = match self.maps.read_dword(self.regs().get_esp()) {
                 Some(v) => v,
                 None => {
                     log::info!("esp out of stack");
@@ -1549,23 +1767,24 @@ impl Emu {
             {
                 log::info!("/!\\ poping a code address 0x{:x}", value);
             }
-            self.regs.set_esp(self.regs.get_esp() + 4);
+            let esp = self.regs().get_esp() + 4;
+            self.regs_mut().set_esp(esp);
             return Some(value);
         }
 
-        let mem = match self.maps.get_mem_by_addr(self.regs.get_esp()) {
+        let mem = match self.maps.get_mem_by_addr(self.regs().get_esp()) {
             Some(m) => m,
             None => {
                 log::info!(
                     "poping stack outside map  esp: 0x{:x}",
-                    self.regs.get_esp() as u32
+                    self.regs().get_esp() as u32
                 );
                 Console::spawn_console(self);
                 return None;
             }
         };*/
 
-        let value = match self.maps.read_dword(self.regs.get_esp()) {
+        let value = match self.maps.read_dword(self.regs().get_esp()) {
             Some(v) => v,
             None => {
                 log::info!("esp point to non mapped mem");
@@ -1584,38 +1803,39 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self.maps.get_addr_name(self.regs.get_esp()).unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs().get_esp()).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "read".to_string(),
                 bits: 32,
-                address: self.regs.get_esp(),
+                address: self.regs().get_esp(),
                 old_value: 0, // not needed for read
                 new_value: value as u64,
                 name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
             log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
-                self.pos, self.regs.rip, 32, self.regs.get_esp(), value, name);
+                self.pos, self.regs().rip, 32, self.regs().get_esp(), value, name);
 
             // Record the write to register
             let write_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "write".to_string(),
                 bits: 32,
-                address: self.regs.get_esp(),
-                old_value: self.maps.read_dword(self.regs.get_esp()).unwrap_or(0) as u64,
+                address: self.regs().get_esp(),
+                old_value: self.maps.read_dword(self.regs().get_esp()).unwrap_or(0) as u64,
                 new_value: value as u64, // new value being written
                 name: "register".to_string(),
             };
             self.memory_operations.push(write_operation);
             log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'", 
-                self.pos, self.regs.rip, 32, self.regs.get_esp(), value);
+                self.pos, self.regs().rip, 32, self.regs().get_esp(), value);
         }
 
-        self.regs.set_esp(self.regs.get_esp() + 4);
+        let esp = self.regs().get_esp() + 4;
+        self.regs_mut().set_esp(esp);
         //self.stack_lvl[self.stack_lvl_idx] -= 1;
         //log::info!("pop32 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
@@ -1625,36 +1845,36 @@ impl Emu {
     pub fn stack_pop64(&mut self, pop_instruction: bool) -> Option<u64> {
         if self.cfg.stack_trace {
             log::info!("--- stack pop64 ---");
-            self.maps.dump_qwords(self.regs.rsp, 5);
+            self.maps.dump_qwords(self.regs().rsp, 5);
         }
 
         /*
         let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs.rsp) {
-            let value = stack.read_qword(self.regs.rsp);
+        if stack.inside(self.regs().rsp) {
+            let value = stack.read_qword(self.regs().rsp);
             if self.cfg.verbose >= 1
                 && pop_instruction
                 && self.maps.get_mem("code").inside(value.into())
             {
                 log::info!("/!\\ poping a code address 0x{:x}", value);
             }
-            self.regs.rsp += 8;
+            self.regs_mut().rsp += 8;
             return Some(value);
         }
 
-        let mem = match self.maps.get_mem_by_addr(self.regs.rsp) {
+        let mem = match self.maps.get_mem_by_addr(self.regs().rsp) {
             Some(m) => m,
             None => {
-                log::info!("poping stack outside map  esp: 0x{:x}", self.regs.rsp);
+                log::info!("poping stack outside map  esp: 0x{:x}", self.regs().rsp);
                 Console::spawn_console(self);
                 return None;
             }
         };
 
-        let value = mem.read_qword(self.regs.rsp);
+        let value = mem.read_qword(self.regs().rsp);
         */
 
-        let value = match self.maps.read_qword(self.regs.rsp) {
+        let value = match self.maps.read_qword(self.regs().rsp) {
             Some(v) => v,
             None => {
                 log::info!("rsp point to non mapped mem");
@@ -1664,40 +1884,40 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self.maps.get_addr_name(self.regs.rsp).unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(self.regs().rsp).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "read".to_string(),
                 bits: 64, // Changed from 32 to 64 for 64-bit operations
-                address: self.regs.rsp,
+                address: self.regs().rsp,
                 old_value: 0, // not needed for read
                 new_value: value as u64,
                 name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
             log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
-                self.pos, self.regs.rip, 64, self.regs.rsp, value, name);
+                self.pos, self.regs().rip, 64, self.regs().rsp, value, name);
 
             // Record the write to register
             let write_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "write".to_string(),
                 bits: 64, // Changed from 32 to 64 for 64-bit operations
-                address: self.regs.rsp,
-                old_value: self.maps.read_qword(self.regs.rsp).unwrap_or(0),
+                address: self.regs().rsp,
+                old_value: self.maps.read_qword(self.regs().rsp).unwrap_or(0),
                 new_value: value as u64, // new value being written
                 name: "register".to_string(),
             };
             self.memory_operations.push(write_operation);
             log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'", 
-                self.pos, self.regs.rip, 64, self.regs.rsp, value);
+                self.pos, self.regs().rip, 64, self.regs().rsp, value);
         }
 
-        self.regs.rsp += 8;
+        self.regs_mut().rsp += 8;
         //self.stack_lvl[self.stack_lvl_idx] -= 1;
-        //log::info!("0x{:x} pop64 stack level is {} deep {}", self.regs.rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
+        //log::info!("0x{:x} pop64 stack level is {} deep {}", self.regs().rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
     }
 
@@ -1783,8 +2003,8 @@ impl Emu {
                     );
                 }
 
-                let reg1_val = self.regs.get_by_name(spl[0]);
-                let reg2_val = self.regs.get_by_name(spl2[0]);
+                let reg1_val = self.regs().get_by_name(spl[0]);
+                let reg2_val = self.regs().get_by_name(spl2[0]);
                 let num = u64::from_str_radix(spl2[1].trim_start_matches("0x"), 16)
                     .expect("bad num conversion");
 
@@ -1807,8 +2027,8 @@ impl Emu {
             let sign = spl[1];
             //log::info!("disp --> {}  operand:{}", spl[2], operand);
 
-            let disp: u64 = if self.regs.is_reg(spl[2]) {
-                self.regs.get_by_name(spl[2])
+            let disp: u64 = if self.regs().is_reg(spl[2]) {
+                self.regs().get_by_name(spl[2])
             } else {
                 u64::from_str_radix(spl[2].trim_start_matches("0x"), 16).expect("bad disp")
             };
@@ -1818,10 +2038,10 @@ impl Emu {
             }
 
             if sign == "+" {
-                let r: u64 = self.regs.get_by_name(reg) + disp;
+                let r: u64 = self.regs().get_by_name(reg) + disp;
                 return r & 0xffffffff;
             } else {
-                return self.regs.get_by_name(reg) - disp;
+                return self.regs().get_by_name(reg) - disp;
             }
         }
 
@@ -1836,7 +2056,7 @@ impl Emu {
                 // weird but could be a hardcoded address [0x11223344]
             }
 
-            let reg_val = self.regs.get_by_name(reg);
+            let reg_val = self.regs().get_by_name(reg);
             return reg_val;
         }
 
@@ -1851,9 +2071,9 @@ impl Emu {
     pub fn memory_read(&mut self, operand: &str) -> Option<u64> {
         if operand.contains("fs:[0]") {
             if self.cfg.verbose >= 1 {
-                log::info!("{} Reading SEH fs:[0] 0x{:x}", self.pos, self.seh);
+                log::info!("{} Reading SEH fs:[0] 0x{:x}", self.pos, self.seh());
             }
-            return Some(self.seh);
+            return Some(self.seh());
         }
 
         let addr: u64 = self.memory_operand_to_address(operand);
@@ -1868,9 +2088,10 @@ impl Emu {
         let stack = self.maps.get_mem("stack");
 
         // could be normal using part of code as stack
-        if !stack.inside(self.regs.get_esp()) {
+        if !stack.inside(self.regs().get_esp()) {
             //hack: redirect stack
-            self.regs.set_esp(stack.get_base() + 0x1ff);
+            let esp = stack.get_base() + 0x1ff;
+            self.regs_mut().set_esp(esp);
             panic!("/!\\ fixing stack.")
         }
 
@@ -1884,7 +2105,7 @@ impl Emu {
                         };
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs.rip,
+                            rip: self.regs().rip,
                             op: "read".to_string(),
                             bits: 64,
                             address: addr,
@@ -1893,7 +2114,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 64, addr, v, name);
+                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, addr, v, name);
                     }
                     Some(v)
                 }
@@ -1905,7 +2126,7 @@ impl Emu {
                         let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs.rip,
+                            rip: self.regs().rip,
                             op: "read".to_string(),
                             bits: 32,
                             address: addr,
@@ -1914,7 +2135,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 32, addr, v, name);
+                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -1926,7 +2147,7 @@ impl Emu {
                         let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs.rip,
+                            rip: self.regs().rip,
                             op: "read".to_string(),
                             bits: 16,
                             address: addr,
@@ -1935,7 +2156,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 16, addr, v, name);
+                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 16, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -1947,7 +2168,7 @@ impl Emu {
                         let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs.rip,
+                            rip: self.regs().rip,
                             op: "read".to_string(),
                             bits: 8,
                             address: addr,
@@ -1956,7 +2177,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 8, addr, v, name);
+                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 8, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -1974,7 +2195,7 @@ impl Emu {
     pub fn memory_write(&mut self, operand: &str, value: u64) -> bool {
         if operand.contains("fs:[0]") {
             log::info!("Setting SEH fs:[0]  0x{:x}", value);
-            self.seh = value;
+            self.set_seh(value);
             return true;
         }
 
@@ -1998,7 +2219,7 @@ impl Emu {
         if self.cfg.trace_mem {
             let memory_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs.rip,
+                rip: self.regs().rip,
                 op: "write".to_string(),
                 bits: bits as u32,
                 address: addr,
@@ -2013,7 +2234,7 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, 32, addr, value, name);
+            log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, value, name);
         }
 
         match bits {
@@ -2067,7 +2288,7 @@ impl Emu {
     pub fn handle_winapi(&mut self, addr: u64) {
         if self.cfg.is_64bits {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-            self.regs.rip = self.gateway_return;
+            self.regs_mut().rip = self.gateway_return;
             let name = match self.maps.get_addr_name(addr) {
                 Some(n) => n,
                 None => {
@@ -2079,7 +2300,7 @@ impl Emu {
             winapi64::gateway(addr, name.to_string().as_str(), self);
         } else {
             self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
-            self.regs.rip = self.gateway_return;
+            self.regs_mut().rip = self.gateway_return;
             let name = match self.maps.get_addr_name(addr) {
                 Some(n) => n,
                 None => {
@@ -2099,7 +2320,7 @@ impl Emu {
 
         if addr == constants::RETURN_THREAD as u64 {
             log::info!("/!\\ Thread returned, continuing the main thread");
-            self.regs.rip = self.main_thread_cont;
+            self.regs_mut().rip = self.main_thread_cont;
             Console::spawn_console(self);
             self.force_break = true;
             return true;
@@ -2114,7 +2335,7 @@ impl Emu {
                 let api_name = self.pe64.as_ref().unwrap().import_addr_to_name(addr);
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-                    self.regs.rip = self.gateway_return;
+                    self.regs_mut().rip = self.gateway_return;
                     winapi64::gateway(addr, "not_loaded", self);
                     self.force_break = true;
                     return true;
@@ -2132,9 +2353,9 @@ impl Emu {
             || (!map_name.is_empty() && name.starts_with(&map_name))
             || name == "loader.text"
         {
-            self.regs.rip = addr;
+            self.regs_mut().rip = addr;
         } else if self.linux {
-            self.regs.rip = addr; // in linux libs are no implemented are emulated
+            self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
         } else {
             if self.cfg.verbose >= 1 {
                 log::info!("/!\\ changing RIP to {} ", name);
@@ -2146,10 +2367,10 @@ impl Emu {
             }
 
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-            self.regs.rip = self.gateway_return;
+            self.regs_mut().rip = self.gateway_return;
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs.rip, addr),
+                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
                 None => true,
             };
 
@@ -2170,7 +2391,7 @@ impl Emu {
 
         if addr == constants::RETURN_THREAD as u64 {
             log::info!("/!\\ Thread returned, continuing the main thread");
-            self.regs.rip = self.main_thread_cont;
+            self.regs_mut().rip = self.main_thread_cont;
             Console::spawn_console(self);
             self.force_break = true;
             return true;
@@ -2185,7 +2406,7 @@ impl Emu {
                 let api_name = self.pe32.as_ref().unwrap().import_addr_to_name(addr as u32);
                 if !api_name.is_empty() {
                     self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
-                    self.regs.rip = self.gateway_return;
+                    self.regs_mut().rip = self.gateway_return;
                     winapi32::gateway(addr as u32, "not_loaded", self);
                     self.force_break = true;
                     return true;
@@ -2203,7 +2424,7 @@ impl Emu {
             || (!map_name.is_empty() && name.starts_with(&map_name))
             || name == "loader.text"
         {
-            self.regs.set_eip(addr);
+            self.regs_mut().set_eip(addr);
         } else {
             if self.cfg.verbose >= 1 {
                 log::info!("/!\\ changing EIP to {} 0x{:x}", name, addr);
@@ -2215,11 +2436,11 @@ impl Emu {
             }
 
             self.gateway_return = self.stack_pop32(false).unwrap_or(0).into();
-
-            self.regs.set_eip(self.gateway_return);
+            let gateway_return = self.gateway_return;
+            self.regs_mut().set_eip(gateway_return);
 
             let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs.rip, addr),
+                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
                 None => true,
             };
 
@@ -2235,36 +2456,36 @@ impl Emu {
 
     /// display 32bits main registers
     pub fn featured_regs32(&self) {
-        self.regs.show_eax(&self.maps, 0);
-        self.regs.show_ebx(&self.maps, 0);
-        self.regs.show_ecx(&self.maps, 0);
-        self.regs.show_edx(&self.maps, 0);
-        self.regs.show_esi(&self.maps, 0);
-        self.regs.show_edi(&self.maps, 0);
-        log::info!("\tesp: 0x{:x}", self.regs.get_esp() as u32);
-        log::info!("\tebp: 0x{:x}", self.regs.get_ebp() as u32);
-        log::info!("\teip: 0x{:x}", self.regs.get_eip() as u32);
+        self.regs().show_eax(&self.maps, 0);
+        self.regs().show_ebx(&self.maps, 0);
+        self.regs().show_ecx(&self.maps, 0);
+        self.regs().show_edx(&self.maps, 0);
+        self.regs().show_esi(&self.maps, 0);
+        self.regs().show_edi(&self.maps, 0);
+        log::info!("\tesp: 0x{:x}", self.regs().get_esp() as u32);
+        log::info!("\tebp: 0x{:x}", self.regs().get_ebp() as u32);
+        log::info!("\teip: 0x{:x}", self.regs().get_eip() as u32);
     }
 
     /// display 64bits main registers
     pub fn featured_regs64(&self) {
-        self.regs.show_rax(&self.maps, 0);
-        self.regs.show_rbx(&self.maps, 0);
-        self.regs.show_rcx(&self.maps, 0);
-        self.regs.show_rdx(&self.maps, 0);
-        self.regs.show_rsi(&self.maps, 0);
-        self.regs.show_rdi(&self.maps, 0);
-        log::info!("\trsp: 0x{:x}", self.regs.rsp);
-        log::info!("\trbp: 0x{:x}", self.regs.rbp);
-        log::info!("\trip: 0x{:x}", self.regs.rip);
-        self.regs.show_r8(&self.maps, 0);
-        self.regs.show_r9(&self.maps, 0);
-        self.regs.show_r10(&self.maps, 0);
-        self.regs.show_r11(&self.maps, 0);
-        self.regs.show_r12(&self.maps, 0);
-        self.regs.show_r13(&self.maps, 0);
-        self.regs.show_r14(&self.maps, 0);
-        self.regs.show_r15(&self.maps, 0);
+        self.regs().show_rax(&self.maps, 0);
+        self.regs().show_rbx(&self.maps, 0);
+        self.regs().show_rcx(&self.maps, 0);
+        self.regs().show_rdx(&self.maps, 0);
+        self.regs().show_rsi(&self.maps, 0);
+        self.regs().show_rdi(&self.maps, 0);
+        log::info!("\trsp: 0x{:x}", self.regs().rsp);
+        log::info!("\trbp: 0x{:x}", self.regs().rbp);
+        log::info!("\trip: 0x{:x}", self.regs().rip);
+        self.regs().show_r8(&self.maps, 0);
+        self.regs().show_r9(&self.maps, 0);
+        self.regs().show_r10(&self.maps, 0);
+        self.regs().show_r11(&self.maps, 0);
+        self.regs().show_r12(&self.maps, 0);
+        self.regs().show_r13(&self.maps, 0);
+        self.regs().show_r14(&self.maps, 0);
+        self.regs().show_r15(&self.maps, 0);
     }
 
     /// Trigger an exception.
@@ -2275,7 +2496,7 @@ impl Emu {
         let next: u64;
 
         let handle_exception: bool = match self.hooks.hook_on_exception {
-            Some(hook_fn) => hook_fn(self, self.regs.rip, ex_type),
+            Some(hook_fn) => hook_fn(self, self.regs().rip, ex_type),
             None => true,
         };
 
@@ -2283,8 +2504,8 @@ impl Emu {
             return;
         }*/
 
-        if self.veh > 0 {
-            addr = self.veh;
+        if self.veh() > 0 {
+            addr = self.veh();
 
             exception::enter(self, ex_type);
             if self.cfg.is_64bits {
@@ -2292,8 +2513,8 @@ impl Emu {
             } else {
                 self.set_eip(addr, false);
             }
-        } else if self.feh > 0 {
-            addr = self.feh;
+        } else if self.feh() > 0 {
+            addr = self.feh();
 
             exception::enter(self, ex_type);
             if self.cfg.is_64bits {
@@ -2302,11 +2523,11 @@ impl Emu {
                 self.set_eip(addr, false);
             }
 
-        } else if self.seh == 0 {
+        } else if self.seh() == 0 {
                 log::info!(
                     "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                     self.pos,
-                    self.regs.rip
+                    self.regs().rip
                 );
                 if self.cfg.console_enabled {
                     Console::spawn_console(self);
@@ -2316,7 +2537,7 @@ impl Emu {
 
             // SEH
 
-            next = match self.maps.read_dword(self.seh) {
+            next = match self.maps.read_dword(self.seh()) {
                 Some(value) => value.into(),
                 None => {
                     log::info!("exception wihout correct SEH");
@@ -2324,7 +2545,7 @@ impl Emu {
                 }
             };
 
-            addr = match self.maps.read_dword(self.seh + 4) {
+            addr = match self.maps.read_dword(self.seh() + 4) {
                 Some(value) => value.into(),
                 None => {
                     log::info!("exception without correct SEH.");
@@ -2334,7 +2555,7 @@ impl Emu {
 
             let con = Console::new();
             if self.running_script {
-                self.seh = next;
+                self.set_seh(next);
                 exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
@@ -2347,7 +2568,7 @@ impl Emu {
 
             let cmd = con.cmd();
             if cmd == "y" {
-                self.seh = next;
+                self.set_seh(next);
                 exception::enter(self, ex_type);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
@@ -2419,7 +2640,7 @@ impl Emu {
             mem_displace
         }  else {
             let scale_index = ins.memory_index_scale();
-            let scale_factor = self.regs.get_reg(mem_index).wrapping_mul(scale_index as u64);
+            let scale_factor = self.regs().get_reg(mem_index).wrapping_mul(scale_index as u64);
             mem_displace.wrapping_add(scale_factor)
         };
 
@@ -2427,7 +2648,7 @@ impl Emu {
         let displace = if mem_base == Register::None {
             temp_displace
         } else {
-            self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+            self.regs().get_reg(mem_base).wrapping_add(temp_displace)
         };
 
         let displace_result = if !self.cfg.is_64bits {
@@ -2446,7 +2667,7 @@ impl Emu {
 
         if fs {
             if self.linux {
-                if let Some(val) = self.fs.get(&mem_addr) {
+                if let Some(val) = self.fs().get(&mem_addr) {
                     if self.cfg.verbose > 0 {
                         log::info!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
                     }
@@ -2518,9 +2739,9 @@ impl Emu {
                 }
                 0x00 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh);
+                        log::info!("Reading SEH 0x{:x}", self.seh());
                     }
-                    self.seh
+                    self.seh()
                 }
                 0x28 => {
                     // TODO  linux TCB
@@ -2591,13 +2812,13 @@ impl Emu {
                 }
                 0x1488 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh);
+                        log::info!("Reading SEH 0x{:x}", self.seh());
                     }
-                    self.seh
+                    self.seh()
                 }
                 0x8 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh);
+                        log::info!("Reading SEH 0x{:x}", self.seh());
                     }
                     if self.cfg.is_64bits {
                         self.maps.get_mem("peb").get_base()
@@ -2639,7 +2860,7 @@ impl Emu {
             let sz = self.get_operand_sz(ins, noperand);
 
             if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                hook_fn(self, self.regs.rip, mem_addr, sz)
+                hook_fn(self, self.regs().rip, mem_addr, sz)
             }
 
             value = match sz {
@@ -2686,7 +2907,7 @@ impl Emu {
                 let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                 let memory_operation = MemoryOperation {
                     pos: self.pos,
-                    rip: self.regs.rip,
+                    rip: self.regs().rip,
                     op: "read".to_string(),
                     bits: sz,
                     address: mem_addr,
@@ -2695,7 +2916,7 @@ impl Emu {
                     name: name.to_string(),
                 };
                 self.memory_operations.push(memory_operation);
-                log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value, name);
+                log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value, name);
             }
 
             if mem_addr == self.bp.get_mem_read() {
@@ -2733,7 +2954,7 @@ impl Emu {
             OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
             OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
 
-            OpKind::Register => self.regs.get_reg(ins.op_register(noperand)),
+            OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
             OpKind::Memory => self.handle_memory_get_operand(ins, noperand, do_derref).unwrap(),
 
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
@@ -2748,10 +2969,10 @@ impl Emu {
 
         match ins.op_kind(noperand) {
             OpKind::Register => {
-                if self.regs.is_fpu(ins.op_register(noperand)) {
-                    self.fpu.set_streg(ins.op_register(noperand), value as f64);
+                if self.regs().is_fpu(ins.op_register(noperand)) {
+                    self.fpu_mut().set_streg(ins.op_register(noperand), value as f64);
                 } else {
-                    self.regs.set_reg(ins.op_register(noperand), value);
+                    self.regs_mut().set_reg(ins.op_register(noperand), value);
                 }
             }
 
@@ -2770,7 +2991,7 @@ impl Emu {
                     mem_displace
                 }  else {
                     let scale_index = ins.memory_index_scale();
-                    let scale_factor = self.regs.get_reg(mem_index).wrapping_mul(scale_index as u64);
+                    let scale_factor = self.regs().get_reg(mem_index).wrapping_mul(scale_index as u64);
                     mem_displace.wrapping_add(scale_factor)
                 };
 
@@ -2780,14 +3001,14 @@ impl Emu {
                             log::info!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
                         }
                         if value == 0x4b6c50 {
-                            self.fs.insert(0xffffffffffffffc8, 0x4b6c50);
+                            self.fs_mut().insert(0xffffffffffffffc8, 0x4b6c50);
                         }
-                        self.fs.insert(temp_displace as u64, value);
+                        self.fs_mut().insert(temp_displace as u64, value);
                     } else {
                         if self.cfg.verbose >= 1 {
                             log::info!("fs:{:x} setting SEH to 0x{:x}", temp_displace, value);
                         }
-                        self.seh = value;
+                        self.set_seh(value);
                     }
 
                     return true;
@@ -2795,7 +3016,7 @@ impl Emu {
                 /* I don't think we can ever set fs and gs memory location and we have the faster method from above instead of calling virtual_address and switch statement
                 let mem_addr = ins
                     .virtual_address(noperand, 0, |reg, idx, _sz| {
-                        Some(self.regs.get_reg(reg))
+                        Some(self.regs().get_reg(reg))
                     })
                     .unwrap();
 
@@ -2807,7 +3028,7 @@ impl Emu {
                 let displace = if mem_base == Register::None {
                     temp_displace
                 } else {
-                    self.regs.get_reg(mem_base).wrapping_add(temp_displace)
+                    self.regs().get_reg(mem_base).wrapping_add(temp_displace)
                 };
 
                 let displace_result = if !self.cfg.is_64bits {
@@ -2827,7 +3048,7 @@ impl Emu {
 
                 let value2 = match self.hooks.hook_on_memory_write {
                     Some(hook_fn) => {
-                        hook_fn(self, self.regs.rip, mem_addr, sz, value as u128) as u64
+                        hook_fn(self, self.regs().rip, mem_addr, sz, value as u128) as u64
                     }
                     None => value,
                 };
@@ -2940,7 +3161,7 @@ impl Emu {
                         let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs.rip,
+                            rip: self.regs().rip,
                             op: "write".to_string(),
                             bits: sz,
                             address: mem_addr,
@@ -2949,7 +3170,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs.rip, sz, mem_addr, value2, name);
+                        log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
                     }
 
                     /*
@@ -2990,7 +3211,7 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         let value: u128 = match ins.op_kind(noperand) {
-            OpKind::Register => self.regs.get_xmm_reg(ins.op_register(noperand)),
+            OpKind::Register => self.regs().get_xmm_reg(ins.op_register(noperand)),
 
             OpKind::Immediate64 => ins.immediate64() as u128,
             OpKind::Immediate8 => ins.immediate8() as u128,
@@ -3003,7 +3224,7 @@ impl Emu {
 
             OpKind::Memory => {
                 let mem_addr = match ins
-                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs.get_reg(reg)))
+                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
                 {
                     Some(addr) => addr,
                     None => {
@@ -3015,7 +3236,7 @@ impl Emu {
 
                 if do_derref {
                     if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                        hook_fn(self, self.regs.rip, mem_addr, 128)
+                        hook_fn(self, self.regs().rip, mem_addr, 128)
                     }
 
                     let value: u128 = match self.maps.read_128bits_le(mem_addr) {
@@ -3041,10 +3262,10 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         match ins.op_kind(noperand) {
-            OpKind::Register => self.regs.set_xmm_reg(ins.op_register(noperand), value),
+            OpKind::Register => self.regs_mut().set_xmm_reg(ins.op_register(noperand), value),
             OpKind::Memory => {
                 let mem_addr = match ins
-                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs.get_reg(reg)))
+                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
                 {
                     Some(addr) => addr,
                     None => {
@@ -3055,7 +3276,7 @@ impl Emu {
                 };
 
                 let value2 = match self.hooks.hook_on_memory_write {
-                    Some(hook_fn) => hook_fn(self, self.regs.rip, mem_addr, 128, value),
+                    Some(hook_fn) => hook_fn(self, self.regs().rip, mem_addr, 128, value),
                     None => value,
                 };
 
@@ -3076,7 +3297,7 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         let value: regs64::U256 = match ins.op_kind(noperand) {
-            OpKind::Register => self.regs.get_ymm_reg(ins.op_register(noperand)),
+            OpKind::Register => self.regs().get_ymm_reg(ins.op_register(noperand)),
 
             OpKind::Immediate64 => regs64::U256::from(ins.immediate64()),
             OpKind::Immediate8 => regs64::U256::from(ins.immediate8() as u64),
@@ -3089,7 +3310,7 @@ impl Emu {
 
             OpKind::Memory => {
                 let mem_addr = match ins
-                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs.get_reg(reg)))
+                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
                 {
                     Some(addr) => addr,
                     None => {
@@ -3101,7 +3322,7 @@ impl Emu {
 
                 if do_derref {
                     if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                        hook_fn(self, self.regs.rip, mem_addr, 256)
+                        hook_fn(self, self.regs().rip, mem_addr, 256)
                     }
 
                     let bytes = self.maps.read_bytes(mem_addr, 32);
@@ -3127,10 +3348,10 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         match ins.op_kind(noperand) {
-            OpKind::Register => self.regs.set_ymm_reg(ins.op_register(noperand), value),
+            OpKind::Register => self.regs_mut().set_ymm_reg(ins.op_register(noperand), value),
             OpKind::Memory => {
                 let mem_addr = match ins
-                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs.get_reg(reg)))
+                    .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
                 {
                     Some(addr) => addr,
                     None => {
@@ -3143,7 +3364,7 @@ impl Emu {
                 // ymm dont support value modification from hook, for now
                 let value_u128: u128 = ((value.0[1] as u128) << 64) | value.0[0] as u128;
                 let value2 = match self.hooks.hook_on_memory_write {
-                    Some(hook_fn) => hook_fn(self, self.regs.rip, mem_addr, 256, value_u128),
+                    Some(hook_fn) => hook_fn(self, self.regs().rip, mem_addr, 256, value_u128),
                     None => value_u128,
                 };
 
@@ -3185,7 +3406,7 @@ impl Emu {
             | OpKind::Immediate16
             | OpKind::Immediate8to16 => 16,
             OpKind::Immediate8 => 8,
-            OpKind::Register => self.regs.get_size(ins.op_register(noperand)),
+            OpKind::Register => self.regs().get_size(ins.op_register(noperand)),
             
             OpKind::Memory => match ins.memory_size() {
                 MemorySize::Float16
@@ -3253,7 +3474,7 @@ impl Emu {
                 ins.ip(),
                 out,
                 addr,
-                self.regs.rax,
+                self.regs().rax,
                 self.colors.nc
             );
         }
@@ -3325,67 +3546,67 @@ impl Emu {
     /// The calling convention is stack, like winapi32.
     pub fn call32(&mut self, addr: u64, args: &[u64]) -> Result<u32, MwemuError> {
         //TODO: why this was u64?
-        if addr == self.regs.get_eip() {
+        if addr == self.regs().get_eip() {
             if addr == 0 {
                 return Err(MwemuError::new(
                     "return address reached after starting the call32, change eip.",
                 ));
             } else {
-                self.regs.rip = 0;
+                self.regs_mut().rip = 0;
             }
         }
-        let orig_stack = self.regs.get_esp();
+        let orig_stack = self.regs().get_esp();
         for arg in args.iter().rev() {
             self.stack_push32(*arg as u32);
         }
-        let ret_addr = self.regs.get_eip();
+        let ret_addr = self.regs().get_eip();
         self.stack_push32(ret_addr as u32);
-        self.regs.set_eip(addr);
+        self.regs_mut().set_eip(addr);
         self.run(Some(ret_addr))?;
-        self.regs.set_esp(orig_stack);
-        Ok(self.regs.get_eax() as u32)
+        self.regs_mut().set_esp(orig_stack);
+        Ok(self.regs().get_eax() as u32)
     }
 
     /// Call a 64bits function at addr, passing argument in an array of u64.
     /// The calling convention is registers rcx/rdx/48/r9 and then stack. Like windows64.
     /// Dont use for linux64 syscall like convention, on those cases craft stack/register manually.
     pub fn call64(&mut self, addr: u64, args: &[u64]) -> Result<u64, MwemuError> {
-        if addr == self.regs.rip {
+        if addr == self.regs().rip {
             if addr == 0 {
                 return Err(MwemuError::new(
                     "return address reached after starting the call64, change rip.",
                 ));
             } else {
-                self.regs.rip = 0;
+                self.regs_mut().rip = 0;
             }
         }
 
         let n = args.len();
         if n >= 1 {
-            self.regs.rcx = args[0];
+            self.regs_mut().rcx = args[0];
         }
         if n >= 2 {
-            self.regs.rdx = args[1];
+            self.regs_mut().rdx = args[1];
         }
         if n >= 3 {
-            self.regs.r8 = args[2];
+            self.regs_mut().r8 = args[2];
         }
         if n >= 4 {
-            self.regs.r9 = args[3];
+            self.regs_mut().r9 = args[3];
         }
-        let orig_stack = self.regs.rsp;
+        let orig_stack = self.regs().rsp;
         if n > 4 {
             for arg in args.iter().skip(4).rev() {
                 self.stack_push64(*arg);
             }
         }
 
-        let ret_addr = self.regs.rip;
+        let ret_addr = self.regs().rip;
         self.stack_push64(ret_addr);
-        self.regs.rip = addr;
+        self.regs_mut().rip = addr;
         self.run(Some(ret_addr))?;
-        self.regs.rsp = orig_stack;
-        Ok(self.regs.rax)
+        self.regs_mut().rsp = orig_stack;
+        Ok(self.regs().rax)
     }
 
     /// Start emulation until a ret instruction is found.
@@ -3398,14 +3619,14 @@ impl Emu {
 
     #[inline]
     pub fn capture_pre_op(&mut self) {
-        self.pre_op_regs = self.regs;
-        self.pre_op_flags = self.flags;
+        self.set_pre_op_regs(*self.regs());
+        self.set_pre_op_flags(*self.flags());
     }
 
     #[inline]
     pub fn capture_post_op(&mut self) {
-        self.post_op_regs = self.regs;
-        self.post_op_flags = self.flags;
+        self.set_post_op_regs(*self.regs());
+        self.set_post_op_flags(*self.flags());
     }
 
     /// dump the registers and memory write operations to file
@@ -3414,99 +3635,106 @@ impl Emu {
 
         let instruction = self.instruction.unwrap();
         let instruction_size = instruction.len();
-        let instruction_bytes = self.maps.read_bytes(self.regs.rip, instruction_size);
+        let instruction_bytes = self.maps.read_bytes(self.regs().rip, instruction_size);
+        let mut output: String = String::new();
+        self.formatter.format(&instruction, &mut output);
 
         let mut comments = String::new();
 
         // dump all registers on first, only differences on next
+        let pre_op_regs = self.pre_op_regs();
+        let post_op_regs = self.post_op_regs();
         let mut registers = String::new();
         if index == 0 {
             registers = format!(
                 "{} rax: {:x}-> {:x}",
-                registers, self.pre_op_regs.rax, self.post_op_regs.rax
+                registers, pre_op_regs.rax, post_op_regs.rax
             );
             registers = format!(
                 "{} rbx: {:x}-> {:x}",
-                registers, self.pre_op_regs.rbx, self.post_op_regs.rbx
+                registers, pre_op_regs.rbx, post_op_regs.rbx
             );
             registers = format!(
                 "{} rcx: {:x}-> {:x}",
-                registers, self.pre_op_regs.rcx, self.post_op_regs.rcx
+                registers, pre_op_regs.rcx, post_op_regs.rcx
             );
             registers = format!(
                 "{} rdx: {:x}-> {:x}",
-                registers, self.pre_op_regs.rdx, self.post_op_regs.rdx
+                registers, pre_op_regs.rdx, post_op_regs.rdx
             );
             registers = format!(
                 "{} rsp: {:x}-> {:x}",
-                registers, self.pre_op_regs.rsp, self.post_op_regs.rsp
+                registers, pre_op_regs.rsp, post_op_regs.rsp
             );
             registers = format!(
                 "{} rbp: {:x}-> {:x}",
-                registers, self.pre_op_regs.rbp, self.post_op_regs.rbp
+                registers, pre_op_regs.rbp, post_op_regs.rbp
             );
             registers = format!(
                 "{} rsi: {:x}-> {:x}",
-                registers, self.pre_op_regs.rsi, self.post_op_regs.rsi
+                registers, pre_op_regs.rsi, post_op_regs.rsi
             );
             registers = format!(
                 "{} rdi: {:x}-> {:x}",
-                registers, self.pre_op_regs.rdi, self.post_op_regs.rdi
+                registers, pre_op_regs.rdi, post_op_regs.rdi
             );
             registers = format!(
                 "{} r8: {:x}-> {:x}",
-                registers, self.pre_op_regs.r8, self.post_op_regs.r8
+                registers, pre_op_regs.r8, post_op_regs.r8
             );
             registers = format!(
                 "{} r9: {:x}-> {:x}",
-                registers, self.pre_op_regs.r9, self.post_op_regs.r9
+                registers, pre_op_regs.r9, post_op_regs.r9
             );
             registers = format!(
                 "{} r10: {:x}-> {:x}",
-                registers, self.pre_op_regs.r10, self.post_op_regs.r10
+                registers, pre_op_regs.r10, post_op_regs.r10
             );
             registers = format!(
                 "{} r11: {:x}-> {:x}",
-                registers, self.pre_op_regs.r11, self.post_op_regs.r11
+                registers, pre_op_regs.r11, post_op_regs.r11
             );
             registers = format!(
                 "{} r12: {:x}-> {:x}",
-                registers, self.pre_op_regs.r12, self.post_op_regs.r12
+                registers, pre_op_regs.r12, post_op_regs.r12
             );
             registers = format!(
                 "{} r13: {:x}-> {:x}",
-                registers, self.pre_op_regs.r13, self.post_op_regs.r13
+                registers, pre_op_regs.r13, post_op_regs.r13
             );
             registers = format!(
                 "{} r14: {:x}-> {:x}",
-                registers, self.pre_op_regs.r14, self.post_op_regs.r14
+                registers, pre_op_regs.r14, post_op_regs.r14
             );
             registers = format!(
                 "{} r15: {:x}-> {:x}",
-                registers, self.pre_op_regs.r15, self.post_op_regs.r15
+                registers, pre_op_regs.r15, post_op_regs.r15
             );
         } else {
-            registers = Regs64::diff(self.pre_op_regs, self.post_op_regs);
+            let post_op_regs = post_op_regs;            
+            registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
         let mut flags = String::new();
         // dump all flags on first, only differences on next
+        let pre_op_flags = self.pre_op_flags();
+        let post_op_flags = self.post_op_flags();
         if index == 0 {
             flags = format!(
                 "rflags: {:x}-> {:x}",
-                self.pre_op_flags.dump(),
-                self.post_op_flags.dump()
+                pre_op_flags.dump(),
+                post_op_flags.dump()
             );
-        } else if self.pre_op_flags.dump() != self.post_op_flags.dump() {
+        } else if pre_op_flags.dump() != post_op_flags.dump() {
             flags = format!(
                 "rflags: {:x}-> {:x}",
-                self.pre_op_flags.dump(),
-                self.post_op_flags.dump()
+                pre_op_flags.dump(),
+                post_op_flags.dump()
             );
             comments = format!(
                 "{} {}",
                 comments,
-                Flags::diff(self.pre_op_flags, self.post_op_flags)
+                Flags::diff(pre_op_flags, post_op_flags)
             );
         }
 
@@ -3524,13 +3752,11 @@ impl Emu {
 
         let mut trace_file = self.trace_file.as_ref().unwrap();
 
-        let mut output: String = String::new();
-        self.formatter.format(&instruction, &mut output);
         writeln!(
             trace_file,
             r#""{index:02X}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
             index = index,
-            address = self.pre_op_regs.rip,
+            address = pre_op_regs.rip,
             bytes = instruction_bytes,
             disassembly = output,
             registers = format!("{} {}", registers, flags),
@@ -3543,35 +3769,35 @@ impl Emu {
     fn trace_specific_register(&self, reg: &str) {
         //TODO: I think this is already implemented in regs64
         match reg {
-            "rax" => self.regs.show_rax(&self.maps, self.pos),
-            "rbx" => self.regs.show_rbx(&self.maps, self.pos),
-            "rcx" => self.regs.show_rcx(&self.maps, self.pos),
-            "rdx" => self.regs.show_rdx(&self.maps, self.pos),
-            "rsi" => self.regs.show_rsi(&self.maps, self.pos),
-            "rdi" => self.regs.show_rdi(&self.maps, self.pos),
-            "rbp" => log::info!("\t{} rbp: 0x{:x}", self.pos, self.regs.rbp),
-            "rsp" => log::info!("\t{} rsp: 0x{:x}", self.pos, self.regs.rsp),
-            "rip" => log::info!("\t{} rip: 0x{:x}", self.pos, self.regs.rip),
-            "r8" => self.regs.show_r8(&self.maps, self.pos),
-            "r9" => self.regs.show_r9(&self.maps, self.pos),
-            "r10" => self.regs.show_r10(&self.maps, self.pos),
-            "r10d" => self.regs.show_r10d(&self.maps, self.pos),
-            "r11" => self.regs.show_r11(&self.maps, self.pos),
-            "r11d" => self.regs.show_r11d(&self.maps, self.pos),
-            "r12" => self.regs.show_r12(&self.maps, self.pos),
-            "r13" => self.regs.show_r13(&self.maps, self.pos),
-            "r14" => self.regs.show_r14(&self.maps, self.pos),
-            "r15" => self.regs.show_r15(&self.maps, self.pos),
-            "eax" => self.regs.show_eax(&self.maps, self.pos),
-            "ebx" => self.regs.show_ebx(&self.maps, self.pos),
-            "ecx" => self.regs.show_ecx(&self.maps, self.pos),
-            "edx" => self.regs.show_edx(&self.maps, self.pos),
-            "esi" => self.regs.show_esi(&self.maps, self.pos),
-            "edi" => self.regs.show_edi(&self.maps, self.pos),
-            "esp" => log::info!("\t{} esp: 0x{:x}", self.pos, self.regs.get_esp() as u32),
-            "ebp" => log::info!("\t{} ebp: 0x{:x}", self.pos, self.regs.get_ebp() as u32),
-            "eip" => log::info!("\t{} eip: 0x{:x}", self.pos, self.regs.get_eip() as u32),
-            "xmm1" => log::info!("\t{} xmm1: 0x{:x}", self.pos, self.regs.xmm1),
+            "rax" => self.regs().show_rax(&self.maps, self.pos),
+            "rbx" => self.regs().show_rbx(&self.maps, self.pos),
+            "rcx" => self.regs().show_rcx(&self.maps, self.pos),
+            "rdx" => self.regs().show_rdx(&self.maps, self.pos),
+            "rsi" => self.regs().show_rsi(&self.maps, self.pos),
+            "rdi" => self.regs().show_rdi(&self.maps, self.pos),
+            "rbp" => log::info!("\t{} rbp: 0x{:x}", self.pos, self.regs().rbp),
+            "rsp" => log::info!("\t{} rsp: 0x{:x}", self.pos, self.regs().rsp),
+            "rip" => log::info!("\t{} rip: 0x{:x}", self.pos, self.regs().rip),
+            "r8" => self.regs().show_r8(&self.maps, self.pos),
+            "r9" => self.regs().show_r9(&self.maps, self.pos),
+            "r10" => self.regs().show_r10(&self.maps, self.pos),
+            "r10d" => self.regs().show_r10d(&self.maps, self.pos),
+            "r11" => self.regs().show_r11(&self.maps, self.pos),
+            "r11d" => self.regs().show_r11d(&self.maps, self.pos),
+            "r12" => self.regs().show_r12(&self.maps, self.pos),
+            "r13" => self.regs().show_r13(&self.maps, self.pos),
+            "r14" => self.regs().show_r14(&self.maps, self.pos),
+            "r15" => self.regs().show_r15(&self.maps, self.pos),
+            "eax" => self.regs().show_eax(&self.maps, self.pos),
+            "ebx" => self.regs().show_ebx(&self.maps, self.pos),
+            "ecx" => self.regs().show_ecx(&self.maps, self.pos),
+            "edx" => self.regs().show_edx(&self.maps, self.pos),
+            "esi" => self.regs().show_esi(&self.maps, self.pos),
+            "edi" => self.regs().show_edi(&self.maps, self.pos),
+            "esp" => log::info!("\t{} esp: 0x{:x}", self.pos, self.regs().get_esp() as u32),
+            "ebp" => log::info!("\t{} ebp: 0x{:x}", self.pos, self.regs().get_ebp() as u32),
+            "eip" => log::info!("\t{} eip: 0x{:x}", self.pos, self.regs().get_eip() as u32),
+            "xmm1" => log::info!("\t{} xmm1: 0x{:x}", self.pos, self.regs().xmm1),
             _ => panic!("invalid register."),
         }
     }
@@ -3605,15 +3831,16 @@ impl Emu {
 
         let mut s = self.maps.read_string(addr);
         self.maps.filter_string(&mut s);
+        let bytes = self.maps
+            .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE);
         log::info!(
             "\tmem_inspect: rip = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
-            self.regs.rip,
+            self.regs().rip,
             addr,
             value,
             value,
             s,
-            self.maps
-                .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE)
+            bytes
         );
     }
 
@@ -3650,12 +3877,13 @@ impl Emu {
         }
 
         // code
-        let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
+        let rip = self.regs().rip;
+        let code = match self.maps.get_mem_by_addr(rip) {
             Some(c) => c,
             None => {
                 log::info!(
                     "redirecting code flow to non maped address 0x{:x}",
-                    self.regs.rip
+                    self.regs().rip
                 );
                 Console::spawn_console(self);
                 return false;
@@ -3663,14 +3891,14 @@ impl Emu {
         };
 
         // block
-        let block = code.read_from(self.regs.rip).to_vec(); // reduce code block for more speed
+        let block = code.read_from(rip).to_vec(); // reduce code block for more speed
 
         // decoder
         let mut decoder;
         if self.cfg.is_64bits {
-            decoder = Decoder::with_ip(64, &block, self.regs.rip, DecoderOptions::NONE);
+            decoder = Decoder::with_ip(64, &block, self.regs().rip, DecoderOptions::NONE);
         } else {
-            decoder = Decoder::with_ip(32, &block, self.regs.get_eip(), DecoderOptions::NONE);
+            decoder = Decoder::with_ip(32, &block, self.regs().get_eip(), DecoderOptions::NONE);
         }
 
         // get first instruction from iterator
@@ -3688,14 +3916,15 @@ impl Emu {
 
         // Run pre-instruction hook
         if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-            if !hook_fn(self, self.regs.rip, &ins, sz) {
+            if !hook_fn(self, self.regs().rip, &ins, sz) {
                 // update eip/rip
                 if self.force_reload {
                     self.force_reload = false;
                 } else if self.cfg.is_64bits {
-                    self.regs.rip += sz as u64;
+                    self.regs_mut().rip += sz as u64;
                 } else {
-                    self.regs.set_eip(self.regs.get_eip() + sz as u64);
+                    let eip = self.regs().get_eip() + sz as u64;
+                    self.regs_mut().set_eip(eip);
                 }
                 return true; // skip instruction emulation
             }
@@ -3706,16 +3935,17 @@ impl Emu {
 
         // Run post-instruction hook
         if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-            hook_fn(self, self.regs.rip, &ins, sz, result_ok)
+            hook_fn(self, self.regs().rip, &ins, sz, result_ok)
         }
 
         // update eip/rip
         if self.force_reload {
             self.force_reload = false;
         } else if self.cfg.is_64bits {
-            self.regs.rip += sz as u64;
+            self.regs_mut().rip += sz as u64;
         } else {
-            self.regs.set_eip(self.regs.get_eip() + sz as u64);
+            let eip = self.regs().get_eip() + sz as u64;
+            self.regs_mut().set_eip(eip);
         }
 
         result_ok
@@ -3740,7 +3970,7 @@ impl Emu {
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
         
-        match self.maps.get_mem_by_addr(self.regs.rip) {
+        match self.maps.get_mem_by_addr(self.regs().rip) {
             Some(mem) =>  {
             }
             None => {
@@ -3782,14 +4012,15 @@ impl Emu {
         block.resize(BLOCK_LEN, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                //log::info!("reloading rip 0x{:x}", self.regs.rip);
+                //log::info!("reloading rip 0x{:x}", self.regs().rip);
 
-                let code = match self.maps.get_mem_by_addr_mut(self.regs.rip) {
+                let rip = self.regs().rip;
+                let code = match self.maps.get_mem_by_addr(rip) {
                     Some(c) => c,
                     None => {
                         log::info!(
                             "redirecting code flow to non mapped address 0x{:x}",
-                            self.regs.rip
+                            rip
                         );
                         Console::spawn_console(self);
                         return Err(MwemuError::new("cannot read program counter"));
@@ -3799,7 +4030,7 @@ impl Emu {
                 // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
                 let block_sz = BLOCK_LEN;
-                let block_temp = code.read_bytes(self.regs.rip, block_sz);
+                let block_temp = code.read_bytes(rip, block_sz);
                 let block_temp_len = block_temp.len();
                 if block_temp_len != block.len() {
                     block.resize(block_temp_len, 0);
@@ -3809,7 +4040,7 @@ impl Emu {
                      return Err(MwemuError::new("cannot read code block, weird address."));
                 } 
                 let mut decoder =
-                    Decoder::with_ip(arch, &block, self.regs.rip, DecoderOptions::NONE);
+                    Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
                 let mut sz: usize = 0;
                 let mut addr: u64 = 0;
 
@@ -3822,11 +4053,11 @@ impl Emu {
                         addr = ins.ip();
 
                         if end_addr.is_some() && Some(addr) == end_addr {
-                            return Ok(self.regs.rip);
+                            return Ok(self.regs().rip);
                         }
 
                         if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
-                            return Ok(self.regs.rip);
+                            return Ok(self.regs().rip);
                         }
                     }
 
@@ -3853,7 +4084,7 @@ impl Emu {
                                 .expect("failed to flush trace file");
                         }
 
-                        return Ok(self.regs.rip);
+                        return Ok(self.regs().rip);
                     }
 
                     if self.exp == self.pos
@@ -3862,7 +4093,7 @@ impl Emu {
                         || (self.cfg.console2 && self.cfg.console_addr == addr)
                     {
                         if self.running_script {
-                            return Ok(self.regs.rip);
+                            return Ok(self.regs().rip);
                         }
 
                         self.cfg.console2 = false;
@@ -3926,7 +4157,7 @@ impl Emu {
                     }
 
                     if self.cfg.trace_flags {
-                        self.flags.print_trace(self.pos);
+                        self.flags().print_trace(self.pos);
                     }
 
 
@@ -3938,7 +4169,7 @@ impl Emu {
                     //let info = info_factory.info(&ins);
 
                     if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-                        if !hook_fn(self, self.regs.rip, &ins, sz) {
+                        if !hook_fn(self, self.regs().rip, &ins, sz) {
                             continue;
                         }
                     }
@@ -3954,12 +4185,13 @@ impl Emu {
                         }
 
                         // if rcx is 0 in first rep step, skip instruction.
-                        if self.regs.rcx == 0 {
+                        if self.regs_mut().rcx == 0 {
                             self.rep = None;
                             if self.cfg.is_64bits {
-                                self.regs.rip += sz as u64;
+                                self.regs_mut().rip += sz as u64;
                             } else {
-                                self.regs.set_eip(self.regs.get_eip() + sz as u64);
+                                let new_eip = self.regs().get_eip() + sz as u64;
+                                self.regs_mut().set_eip(new_eip);
                             }
                             continue;
                         }
@@ -3972,11 +4204,11 @@ impl Emu {
 
                     if let Some(rep_count) = self.rep {
                         if self.cfg.verbose >= 3 {
-                            log::info!("    rcx: {}", self.regs.rcx);
+                            log::info!("    rcx: {}", self.regs().rcx);
                         }
-                        if self.regs.rcx > 0 {
-                            self.regs.rcx -= 1;
-                            if self.regs.rcx == 0 {
+                        if self.regs().rcx > 0 {
+                            self.regs_mut().rcx -= 1;
+                            if self.regs_mut().rcx == 0 {
                                 self.rep = None;
                             } else {
                                 self.rep = Some(rep_count + 1);
@@ -4013,10 +4245,10 @@ impl Emu {
                         if is_string_movement {
                             // do not clear rep if it is a string movement
                         } else if is_string_comparison {
-                            if ins.has_repe_prefix() && !self.flags.f_zf {
+                            if ins.has_repe_prefix() && !self.flags().f_zf {
                                 self.rep = None;
                             }
-                            if ins.has_repne_prefix() && self.flags.f_zf {
+                            if ins.has_repne_prefix() && self.flags().f_zf {
                                 self.rep = None;
                             }
                         } else {
@@ -4026,7 +4258,7 @@ impl Emu {
                     }
 
                     if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-                        hook_fn(self, self.regs.rip, &ins, sz, emulation_ok)
+                        hook_fn(self, self.regs().rip, &ins, sz, emulation_ok)
                     }
 
                     if self.cfg.inspect {
@@ -4043,11 +4275,11 @@ impl Emu {
                             Console::spawn_console(self);
                         } else {
                             if self.running_script {
-                                return Ok(self.regs.rip);
+                                return Ok(self.regs().rip);
                             } else {
                                 return Err(MwemuError::new(&format!(
                                     "emulation error at pos = {} rip = 0x{:x}",
-                                    self.pos, self.regs.rip
+                                    self.pos, self.regs().rip
                                 )));
                             }
                         }
@@ -4060,9 +4292,10 @@ impl Emu {
 
                     if self.rep.is_none() {
                         if self.cfg.is_64bits {
-                            self.regs.rip += sz as u64;
+                            self.regs_mut().rip += sz as u64;
                         } else {
-                            self.regs.set_eip(self.regs.get_eip() + sz as u64);
+                            let new_eip = self.regs().get_eip() + sz as u64;
+                            self.regs_mut().set_eip(new_eip);
                         }
                     }
 

@@ -35,7 +35,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -45,9 +45,9 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 pub fn PathCombineA(emu: &mut emu::Emu) {
-    let dst: u64 = emu.regs.rcx;
-    let dir = emu.regs.rdx;
-    let file = emu.regs.r8;
+    let dst: u64 = emu.regs().rcx;
+    let dir = emu.regs().rdx;
+    let file = emu.regs().r8;
 
     let mut path1 = String::new();
     let mut path2 = String::new();
@@ -72,13 +72,13 @@ pub fn PathCombineA(emu: &mut emu::Emu) {
         emu.maps.write_string(dst, &format!("{}\\{}", path1, path2));
     }
 
-    emu.regs.rax = dst;
+    emu.regs_mut().rax = dst;
 }
 
 pub fn PathCombineW(emu: &mut emu::Emu) {
-    let dst: u64 = emu.regs.rcx;
-    let dir = emu.regs.rdx;
-    let file = emu.regs.r8;
+    let dst: u64 = emu.regs().rcx;
+    let dir = emu.regs().rdx;
+    let file = emu.regs().r8;
 
     let mut path1 = String::new();
     let mut path2 = String::new();
@@ -104,11 +104,11 @@ pub fn PathCombineW(emu: &mut emu::Emu) {
             .write_wide_string(dst, &format!("{}\\{}", path1, path2));
     }
 
-    emu.regs.rax = dst;
+    emu.regs_mut().rax = dst;
 }
 
 pub fn IsCharAlphaNumericA(emu: &mut emu::Emu) {
-    let c = emu.regs.rcx as u8 as char;
+    let c = emu.regs().rcx as u8 as char;
 
     log::info!(
         "{}** {} kernelbase!IsCharAlphaNumericA char: {} {}",
@@ -118,15 +118,15 @@ pub fn IsCharAlphaNumericA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = if c.is_ascii_alphanumeric() { 1 } else { 0 };
+    emu.regs_mut().rax = if c.is_ascii_alphanumeric() { 1 } else { 0 };
 }
 
 pub fn GetTokenInformation(emu: &mut emu::Emu) {
-    let token_handle = emu.regs.rdx;
-    let token_information_class = emu.regs.rcx;
-    let token_information = emu.regs.r8;
-    let token_information_length = emu.regs.r9;
-    let return_length = emu.maps.read_qword(emu.regs.rsp + 0x20);
+    let token_handle = emu.regs().rdx;
+    let token_information_class = emu.regs().rcx;
+    let token_information = emu.regs().r8;
+    let token_information_length = emu.regs().r9;
+    let return_length = emu.maps.read_qword(emu.regs().rsp + 0x20);
 
     log::info!(
         "{}** {} kernelbase!GetTokenInformation token_information_class: 0x{:x} {}",
@@ -136,7 +136,7 @@ pub fn GetTokenInformation(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -146,8 +146,8 @@ DWORD GetFileVersionInfoSizeA(
 );
 */
 fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
-    let lptstr_filename = emu.regs.rcx as usize;
-    let lpdw_handle = emu.regs.rdx as usize;
+    let lptstr_filename = emu.regs().rcx as usize;
+    let lpdw_handle = emu.regs().rdx as usize;
     log_red!(
         emu,
         "** {} kernelbase!GetFileVersionInfoSizeA lptstr_filename: 0x{:x} lpdw_handle: 0x{:x}",
@@ -156,7 +156,7 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
         lpdw_handle
     );
     // TODO: just putting a rough number for now
-    emu.regs.rax = 0x100;
+    emu.regs_mut().rax = 0x100;
 }
 
 /*
@@ -168,10 +168,10 @@ BOOL GetFileVersionInfoA(
 );
 */
 fn GetFileVersionInfoA(emu: &mut emu::Emu) {
-    let lptstr_filename = emu.regs.rcx as usize;
-    let dw_handle = emu.regs.rdx as usize;
-    let dw_len = emu.regs.rcx as usize;
-    let lp_data = emu.regs.r8 as usize;
+    let lptstr_filename = emu.regs().rcx as usize;
+    let dw_handle = emu.regs().rdx as usize;
+    let dw_len = emu.regs().rcx as usize;
+    let lp_data = emu.regs().r8 as usize;
     log_red!(emu, "** {} kernelbase!GetFileVersionInfoA lptstr_filename: 0x{:x} dw_handle: 0x{:x} dw_len: 0x{:x} lp_data: 0x{:x}", 
         emu.pos,
         lptstr_filename,
@@ -180,7 +180,7 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
         lp_data
     );
     // TODO: write to lp_data
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 /*
@@ -192,10 +192,10 @@ BOOL VerQueryValueA(
 );
 */
 fn VerQueryValueA(emu: &mut emu::Emu) {
-    let p_block = emu.regs.rcx as usize;
-    let lp_sub_block = emu.regs.rdx as usize;
-    let lplp_buffer = emu.regs.rcx as usize;
-    let pu_len = emu.regs.r8 as usize;
+    let p_block = emu.regs().rcx as usize;
+    let lp_sub_block = emu.regs().rdx as usize;
+    let lplp_buffer = emu.regs().rcx as usize;
+    let pu_len = emu.regs().r8 as usize;
     log_red!(emu, "** {} kernelbase!VerQueryValueA p_block: 0x{:x} lp_sub_block: {} lplp_buffer: 0x{:x} pu_len: 0x{:x}", 
         emu.pos,
         p_block,
@@ -207,7 +207,7 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
     let base = emu.maps.alloc(0x100).expect("out of memory");
     emu.maps.write_qword(lplp_buffer as u64, base);
     emu.maps.write_qword(pu_len as u64, 0x100);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn _initterm_e(emu: &mut emu::Emu) {
@@ -217,7 +217,7 @@ fn _initterm_e(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn _initterm(emu: &mut emu::Emu) {
@@ -227,7 +227,7 @@ fn _initterm(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn exit(emu: &mut emu::Emu) {
@@ -251,7 +251,7 @@ fn _exit(emu: &mut emu::Emu) {
 }
 
 fn atexit(emu: &mut emu::Emu) {
-    let fptr = emu.regs.rcx;
+    let fptr = emu.regs().rcx;
     log::info!(
         "{}** {} kernelbase!atexit fptr: 0x{:x} {}",
         emu.colors.light_red,
@@ -259,5 +259,5 @@ fn atexit(emu: &mut emu::Emu) {
         fptr,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }

@@ -14,12 +14,12 @@ pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
     match syscall {
         0xdc => {
             log::info!("/!\\ direct syscall: NtAlpcSendWaitReceivePort");
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         0x10f => {
             log::info!("/!\\ direct syscall: NtOpenFile {:x}", argv);
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
 
         _ => {
@@ -29,7 +29,7 @@ pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
                 "{}{} 0x{:x}: {}{}",
                 emu.colors.red,
                 emu.pos,
-                emu.regs.rip,
+                emu.regs().rip,
                 output,
                 emu.colors.nc
             );

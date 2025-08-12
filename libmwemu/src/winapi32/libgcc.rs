@@ -25,7 +25,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -37,11 +37,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn __register_frame_info(emu: &mut emu::Emu) {
     let p1 = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!__register_frame_info error reading param");
     let p2 = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!__register_frame_info error reading param");
 
     log::info!(
@@ -66,13 +66,13 @@ fn __register_frame_info(emu: &mut emu::Emu) {
     for _ in 0..2 {
         emu.stack_pop32(false);
     }
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn __deregister_frame_info(emu: &mut emu::Emu) {
     let p1 = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("advapi32!__deregister_frame_info error reading param");
 
     log::info!(
@@ -84,5 +84,5 @@ fn __deregister_frame_info(emu: &mut emu::Emu) {
     );
 
     emu.stack_pop32(false);
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }

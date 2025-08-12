@@ -23,7 +23,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -38,7 +38,7 @@ void __set_app_type (
 )
 */
 fn __set_app_type(emu: &mut emu::Emu) {
-    let app_type = emu.regs.rcx;
+    let app_type = emu.regs().rcx;
     log_red!(
         emu,
         "** {} msvcrt!__set_app_type  app_type: 0x{:x}",
@@ -48,7 +48,7 @@ fn __set_app_type(emu: &mut emu::Emu) {
 }
 
 fn malloc(emu: &mut emu::Emu) {
-    let size = emu.regs.rcx;
+    let size = emu.regs().rcx;
 
     if size > 0 {
         let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
@@ -66,8 +66,8 @@ fn malloc(emu: &mut emu::Emu) {
             emu.colors.nc
         );
 
-        emu.regs.rax = base;
+        emu.regs_mut().rax = base;
     } else {
-        emu.regs.rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
+        emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
     }
 }

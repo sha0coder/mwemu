@@ -36,7 +36,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        let regs = &mut emu.regs;
+        let regs = emu.regs_mut();
 
         // ====== 1. Direct 64 bits registers ======
         regs.rax = 0x123456789ABCDEF0;
@@ -288,7 +288,7 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x3c0116));
 
-        let ptr = emu.regs.get_ebx();
+        let ptr = emu.regs().get_ebx();
         assert_eq!(ptr, 0x3c01b8);
         let s: String = emu.maps.read_string(ptr);
         assert!(s.starts_with("Host: msn.com"));
@@ -307,12 +307,12 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x3cfaa5));
 
-        let ptr_ntdll_str = emu.regs.get_edi();
+        let ptr_ntdll_str = emu.regs().get_edi();
         let ntdll_str = emu.maps.read_string(ptr_ntdll_str);
 
         assert!(ntdll_str.starts_with("ntdll"));
 
-        let eax = emu.regs.get_eax(); // ptr to ntdll.text
+        let eax = emu.regs().get_eax(); // ptr to ntdll.text
 
         let name = match emu.maps.get_addr_name(eax) {
             Some(n) => n,
@@ -345,7 +345,7 @@ mod tests {
         emu.run(Some(0x3c00c8));
         //emu.spawn_console();
 
-        let stack = emu.regs.rsp;
+        let stack = emu.regs().rsp;
         let sockaddr_ptr = emu.maps.read_qword(stack + 8).unwrap();
         let sockaddr = emu.maps.read_qword(sockaddr_ptr).unwrap();
 
@@ -365,13 +365,13 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x14000123f));
 
-        let message = emu.maps.read_string(emu.regs.rdx);
-        let title = emu.maps.read_string(emu.regs.rdi);
+        let message = emu.maps.read_string(emu.regs().rdx);
+        let title = emu.maps.read_string(emu.regs().rdi);
 
         assert_eq!(message, "message");
         assert_eq!(title, "title");
 
-        emu.maps.write_string(emu.regs.rdx, "inject");
+        emu.maps.write_string(emu.regs().rdx, "inject");
 
         // launch the msgbox
         emu.step();
@@ -389,7 +389,7 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x403740));
 
-        assert_eq!(emu.regs.get_ebx(), 2);
+        assert_eq!(emu.regs().get_ebx(), 2);
     }
 
 
@@ -420,7 +420,7 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x44ab87));
 
-        assert_eq!(emu.regs.rcx, 0x4cc2d0);
+        assert_eq!(emu.regs().rcx, 0x4cc2d0);
         assert_eq!(emu.pos, 11111); 
     }
 
@@ -437,7 +437,7 @@ mod tests {
         emu.load_code(sample);
         emu.run(Some(0x3c0040));
 
-        assert_eq!(emu.regs.rax, 0x4d9364d94bc0001e);
+        assert_eq!(emu.regs().rax, 0x4d9364d94bc0001e);
     }
 
     #[test]
@@ -452,11 +452,11 @@ mod tests {
         let sample = "../test/sc32lin_rshell.bin";
         emu.load_code(sample);
         emu.run_to(31);
-        let sockaddr = emu.maps.read_bytes(emu.regs.get_ecx(), 9);
+        let sockaddr = emu.maps.read_bytes(emu.regs().get_ecx(), 9);
         assert_eq!(sockaddr, [0x02,0x00,0x05,0x39,0x01,0x03,0x03,0x07,0x01]);
 
         emu.run_to(42);
-        assert_eq!(emu.maps.read_string(emu.regs.get_ebx()), "//bin/sh");
+        assert_eq!(emu.maps.read_string(emu.regs().get_ebx()), "//bin/sh");
     }
 
 
@@ -508,107 +508,107 @@ mod tests {
 
         let sample = "../test/elf64lin_fpu.bin";
         emu.load_code(sample);
-        emu.fpu.clear();
-        emu.fpu.trace = true;
-        assert_eq!(emu.fpu.peek_st_u80(7), 0);
+        emu.fpu_mut().clear();
+        emu.fpu_mut().trace = true;
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0);
         emu.step(); // 1 fninit
-        assert_eq!(emu.fpu.peek_st_u80(7), 0);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0);
         emu.step(); // 2 fld1
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), 1.0);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), 1.0);
         emu.step(); // 3 fldpi
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000c90fdaa22168c234); // should end in 235
-        assert_eq!(emu.fpu.peek_st_f64(6), 3.141592653589793);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x4000c90fdaa22168c234); // should end in 235
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 3.141592653589793);
         emu.step(); // 4 fadd   st,st(1)
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x40018487ed5110b4611a);
-        assert_eq!(emu.fpu.peek_st_f64(6), 4.141592653589793);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x40018487ed5110b4611a);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 4.141592653589793);
         emu.step(); // 5 fsub   st,st(1)
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000c90fdaa22168c234);
-        assert_eq!(emu.fpu.peek_st_f64(6), 3.141592653589793);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x4000c90fdaa22168c234);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 3.141592653589793);
         emu.step(); // 6 fsubr  st,st(1)
-        assert_eq!(emu.fpu.peek_st_u80(6), 0xc000890fdaa22168c234);
-        assert_eq!(emu.fpu.peek_st_f64(6), -2.141592653589793238);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0xc000890fdaa22168c234);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), -2.141592653589793238);
         emu.step(); // 7 fchs
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x4000890fdaa22168c234);
-        assert_eq!(emu.fpu.peek_st_f64(6), 2.141592653589793);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x4000890fdaa22168c234);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 2.141592653589793);
         emu.step(); // 8 fsqrt
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffbb51491ea66b7000); // should end in 6ea4,
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffbb51491ea66b7000); // should end in 6ea4,
                                                                     // its comupted as f64
-        assert_eq!(emu.fpu.peek_st_f64(6), 1.4634181403788165);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.4634181403788165);
 
         emu.step(); //  9 fxch   st(1) 
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), 1.4634181403788165);
         emu.step(); //  10 fptan
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
-        if emu.fpu.peek_st_u80(6) != 0x3fffc75922e5f71d3000 {
-            log::info!("f64:tan() -> 0x{:x}", emu.fpu.peek_st_u80(6));
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        if emu.fpu_mut().peek_st_u80(6) != 0x3fffc75922e5f71d3000 {
+            log::info!("f64:tan() -> 0x{:x}", emu.fpu_mut().peek_st_u80(6));
             return; // in mac  f64::tan() returns different value
         }
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000);
-        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
-        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023);
-        assert_eq!(emu.fpu.peek_st_f64(5), 1.0);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffc75922e5f71d3000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), 1.4634181403788165);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.5574077246549023);
+        assert_eq!(emu.fpu_mut().peek_st_f64(5), 1.0);
         emu.step(); //  11 fmulp  st(1),st
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
-        assert_eq!(emu.fpu.peek_st_f64(7), 1.4634181403788165);
-        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), 1.4634181403788165);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.5574077246549023);
         emu.step(); // 12 fdivp  st(1),st
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3ffef08ce6b636464000); // should end in 375
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
-        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), 0.9396499819615878);
-        assert_eq!(emu.fpu.peek_st_f64(6), 1.5574077246549023); 
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3ffef08ce6b636464000); // should end in 375
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), 0.9396499819615878);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.5574077246549023); 
         emu.step(); // 13 fsubp  st(1),st
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // 14 f2xm1
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // 15 fld1
-        assert_eq!(emu.fpu.peek_st_u80(7), 0x3fff8000000000000000); // should end in 375
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
-        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fff8000000000000000); // should end in 375
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
+        assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // 16 fldlg2
-        assert_eq!(emu.fpu.st.get_top(), 6);
-        assert_eq!(emu.fpu.st.get_depth(), 2);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3ffd9a209a84fbcff800); // 799);
-        assert_eq!(emu.fpu.peek_st_f64(6), 0.3010299956639812); 
+        assert_eq!(emu.fpu_mut().st.get_top(), 6);
+        assert_eq!(emu.fpu_mut().st.get_depth(), 2);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3ffd9a209a84fbcff800); // 799);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), 0.3010299956639812); 
         emu.step(); // 17 fyl2x
-        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), -1.7320208456446193);
         emu.step(); // 18 fld1
         emu.step(); // 19 fld1
-        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), -1.7320208456446193);
         emu.step(); // 20 fyl2xp1
-        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(5), 0x3fff8000000000000000);
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
-        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), -1.7320208456446193);
         emu.step(); // 21 fucom  st(1)
         emu.step(); // 22 fcmovnbe st(0), st(1)
-        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_f64(7), -1.7320208456446193);
-        assert_eq!(emu.fpu.peek_st_f64(6), -1.7320208456446193);
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_f64(7), -1.7320208456446193);
+        assert_eq!(emu.fpu_mut().peek_st_f64(6), -1.7320208456446193);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // 23 fcmovnu st(0), st(1)
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
         emu.step(); // fstp   st(0)
         emu.step(); // fstp   st(0)
         emu.step(); // fstp   st(0)
-        assert_eq!(emu.fpu.peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
-        assert_eq!(emu.fpu.peek_st_u80(0), 0xffffc000000000000000);
+        assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_u80(6), 0xbfffddb2dbec0456f800); //46);
+        assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
     }
 
 
@@ -626,69 +626,69 @@ mod tests {
 
         // test instruction add
         emu.run(Some(0x401014));
-        assert_eq!(emu.flags.f_cf, true);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, true);
-        assert_eq!(emu.flags.f_sf, false);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, true);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, true);
+        assert_eq!(emu.flags().f_sf, false);
+        assert_eq!(emu.flags().f_pf, true);
 
         // test instruction sub
         emu.run(Some(0x40102a));
-        assert_eq!(emu.flags.f_cf, false);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, true);
-        assert_eq!(emu.flags.f_sf, false);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, false);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, true);
+        assert_eq!(emu.flags().f_sf, false);
+        assert_eq!(emu.flags().f_pf, true);
 
         // test instruction cmp
         emu.run(Some(0x401040));
-        assert_eq!(emu.flags.f_cf, true);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, false);
-        assert_eq!(emu.flags.f_sf, true);
-        assert_eq!(emu.flags.f_pf, false);
+        assert_eq!(emu.flags().f_cf, true);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, false);
+        assert_eq!(emu.flags().f_sf, true);
+        assert_eq!(emu.flags().f_pf, false);
 
 
         // test instruction test
         emu.run(Some(0x401056));
-        assert_eq!(emu.flags.f_cf, false);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, true);
-        assert_eq!(emu.flags.f_sf, false);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, false);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, true);
+        assert_eq!(emu.flags().f_sf, false);
+        assert_eq!(emu.flags().f_pf, true);
 
         // test and
         emu.run(Some(0x40106c));
-        assert_eq!(emu.flags.f_cf, false);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, true);
-        assert_eq!(emu.flags.f_sf, false);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, false);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, true);
+        assert_eq!(emu.flags().f_sf, false);
+        assert_eq!(emu.flags().f_pf, true);
 
 
         // test or with 0x0
         emu.run(Some(0x401087));
-        assert_eq!(emu.flags.f_cf, false);
-        assert_eq!(emu.flags.f_of, false);
-        assert_eq!(emu.flags.f_zf, false);
-        assert_eq!(emu.flags.f_sf, true);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, false);
+        assert_eq!(emu.flags().f_of, false);
+        assert_eq!(emu.flags().f_zf, false);
+        assert_eq!(emu.flags().f_sf, true);
+        assert_eq!(emu.flags().f_pf, true);
 
         // test shl
         emu.run(Some(0x40109d));
-        assert_eq!(emu.flags.f_cf, true);
-        assert_eq!(emu.flags.f_of, true);
-        assert_eq!(emu.flags.f_zf, true);
-        assert_eq!(emu.flags.f_sf, false);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, true);
+        assert_eq!(emu.flags().f_of, true);
+        assert_eq!(emu.flags().f_zf, true);
+        assert_eq!(emu.flags().f_sf, false);
+        assert_eq!(emu.flags().f_pf, true);
 
         // test add
         emu.run(Some(0x4010b8));
-        assert_eq!(emu.flags.f_cf, false);
-        assert_eq!(emu.flags.f_of, true);
-        assert_eq!(emu.flags.f_zf, false);
-        assert_eq!(emu.flags.f_sf, true);
-        assert_eq!(emu.flags.f_pf, true);
+        assert_eq!(emu.flags().f_cf, false);
+        assert_eq!(emu.flags().f_of, true);
+        assert_eq!(emu.flags().f_zf, false);
+        assert_eq!(emu.flags().f_sf, true);
+        assert_eq!(emu.flags().f_pf, true);
     }
 
     
@@ -719,9 +719,9 @@ mod tests {
 
                 // deserialize
                 let emu: Emu = Serialization::deserialize(&serialized);
-
                 // assert
                 assert_eq!(emu.regs.rdx, 0x1);
+              
         }).unwrap();
 
         handle.join().unwrap();
@@ -742,8 +742,8 @@ mod tests {
         emu.load_code(sample);
         emu.run_to(30_862_819);
 
-        assert_eq!(emu.regs.get_eax(), 0x7f937230);
-        assert_eq!(emu.regs.get_ebx(), 0xc);
+        assert_eq!(emu.regs().get_eax(), 0x7f937230);
+        assert_eq!(emu.regs().get_ebx(), 0xc);
     }
 
     #[test]
@@ -1047,17 +1047,17 @@ mod tests {
         // Don't call init to avoid DLL loading issues
         
         // Test emulator state after initialization
-        assert_eq!(emu64.regs.rip, 0);
-        assert_eq!(emu32.regs.rip, 0);
+        assert_eq!(emu64.regs().rip, 0);
+        assert_eq!(emu32.regs().rip, 0);
         
         // Test register clearing
-        emu64.regs.rax = 0x123456789ABCDEF0;
-        emu64.regs.clear::<64>();
-        assert_eq!(emu64.regs.rax, 0);
+        emu64.regs_mut().rax = 0x123456789ABCDEF0;
+        emu64.regs_mut().clear::<64>();
+        assert_eq!(emu64.regs().rax, 0);
         
-        emu32.regs.rax = 0x123456789ABCDEF0;
-        emu32.regs.sanitize32();
-        assert_eq!(emu32.regs.rax & 0xFFFFFFFF00000000, 0);
+        emu32.regs_mut().rax = 0x123456789ABCDEF0;
+        emu32.regs_mut().sanitize32();
+        assert_eq!(emu32.regs().rax & 0xFFFFFFFF00000000, 0);
     }
 
     #[test]
@@ -1251,25 +1251,25 @@ mod tests {
         emu.maps.clear();
 
 
-        emu.regs.rcx = 0; // addr
-        emu.regs.rdx = 1024; // sz
-        emu.regs.r8 = constants::MEM_RESERVE as u64;
-        emu.regs.r9 = 0x40; // rwx
+        emu.regs_mut().rcx = 0; // addr
+        emu.regs_mut().rdx = 1024; // sz
+        emu.regs_mut().r8 = constants::MEM_RESERVE as u64;
+        emu.regs_mut().r9 = 0x40; // rwx
         winapi64::kernel32::VirtualAlloc(&mut emu);
-        assert_eq!(emu.maps.is_allocated(emu.regs.rax), true);
+        assert_eq!(emu.maps.is_allocated(emu.regs().rax), true);
 
-        emu.regs.rcx = 0x30000000; // addr
-        emu.regs.rdx = 1024; // sz
-        emu.regs.r8 = (constants::MEM_RESERVE | constants::MEM_COMMIT) as u64;
-        emu.regs.r9 = 0x40; // rwx
+        emu.regs_mut().rcx = 0x30000000; // addr
+        emu.regs_mut().rdx = 1024; // sz
+        emu.regs_mut().r8 = (constants::MEM_RESERVE | constants::MEM_COMMIT) as u64;
+        emu.regs_mut().r9 = 0x40; // rwx
         winapi64::kernel32::VirtualAlloc(&mut emu);
 
-        emu.regs.rcx = 0x30000000; // addr
-        emu.regs.rdx = 1024; // sz
-        emu.regs.r8 = constants::MEM_COMMIT as u64;
-        emu.regs.r9 = 0x40; // rwx
+        emu.regs_mut().rcx = 0x30000000; // addr
+        emu.regs_mut().rdx = 1024; // sz
+        emu.regs_mut().r8 = constants::MEM_COMMIT as u64;
+        emu.regs_mut().r9 = 0x40; // rwx
         winapi64::kernel32::VirtualAlloc(&mut emu);
-        assert_eq!(emu.regs.rax, 0x30000000);
+        assert_eq!(emu.regs().rax, 0x30000000);
 
         assert_eq!(emu.maps.is_allocated(0x30000000), true);
         assert_eq!(emu.maps.mem_test(), true);
@@ -1302,7 +1302,7 @@ mod tests {
         emu.stack_push32(1024); // sz
         emu.stack_push32(0); // addr
         winapi32::kernel32::VirtualAlloc(&mut emu);
-        assert_eq!(emu.maps.is_allocated(emu.regs.rax), true);
+        assert_eq!(emu.maps.is_allocated(emu.regs().rax), true);
 
         emu.stack_push32(0x40); // rwx
         emu.stack_push32(constants::MEM_RESERVE | constants::MEM_COMMIT);
@@ -1315,7 +1315,7 @@ mod tests {
         emu.stack_push32(1024); // sz
         emu.stack_push32(0x30000000); // addr
         winapi32::kernel32::VirtualAlloc(&mut emu);
-        assert_eq!(emu.regs.rax, 0x30000000);
+        assert_eq!(emu.regs().rax, 0x30000000);
 
         assert!(emu.maps.is_allocated(0x30000000));
         assert!(emu.maps.mem_test());
@@ -1335,20 +1335,20 @@ mod tests {
         let stack = stack_check.unwrap();
         let base = stack.get_base();
 
-        assert!(emu.regs.get_esp() < emu.regs.get_ebp());
-        assert!(emu.regs.get_esp() > stack.get_base());
-        assert!(emu.regs.get_esp() < stack.get_bottom());
-        assert!(emu.regs.get_ebp() > stack.get_base());
-        assert!(emu.regs.get_ebp() < stack.get_bottom());
-        assert!(stack.inside(emu.regs.get_esp()));
-        assert!(stack.inside(emu.regs.get_ebp()));
+        assert!(emu.regs().get_esp() < emu.regs().get_ebp());
+        assert!(emu.regs().get_esp() > stack.get_base());
+        assert!(emu.regs().get_esp() < stack.get_bottom());
+        assert!(emu.regs().get_ebp() > stack.get_base());
+        assert!(emu.regs().get_ebp() < stack.get_bottom());
+        assert!(stack.inside(emu.regs().get_esp()));
+        assert!(stack.inside(emu.regs().get_ebp()));
 
         for i in 0..5000 {
             emu.stack_push32(i as u32);
         }
         emu.stack_pop32(false);
 
-        assert!(emu.regs.get_esp() > base);
+        assert!(emu.regs().get_esp() > base);
     }
 
     #[test]
@@ -1365,20 +1365,20 @@ mod tests {
         let stack = stack_check.unwrap();
         let base = stack.get_base();
 
-        assert!(emu.regs.rsp < emu.regs.rbp);
-        assert!(emu.regs.rsp > stack.get_base());
-        assert!(emu.regs.rsp < stack.get_bottom());
-        assert!(emu.regs.rbp > stack.get_base());
-        assert!(emu.regs.rbp < stack.get_bottom());
-        assert!(stack.inside(emu.regs.rsp));
-        assert!(stack.inside(emu.regs.rbp));
+        assert!(emu.regs().rsp < emu.regs().rbp);
+        assert!(emu.regs().rsp > stack.get_base());
+        assert!(emu.regs().rsp < stack.get_bottom());
+        assert!(emu.regs().rbp > stack.get_base());
+        assert!(emu.regs().rbp < stack.get_bottom());
+        assert!(stack.inside(emu.regs().rsp));
+        assert!(stack.inside(emu.regs().rbp));
 
         for i in 0..5000 {
             emu.stack_push64(i as u64);
         }
         emu.stack_pop64(false);
 
-        assert!(emu.regs.rsp > base);
+        assert!(emu.regs().rsp > base);
     }
 
     #[test]
@@ -1439,84 +1439,84 @@ mod tests {
         let mut emu = emu64();
         emu.load_code("../test/elf64lin_cpu_arithmetics.bin");
 
-        assert_eq!(emu.flags.dump(), 0x202); // initial flags (match with gdb linux)
+        assert_eq!(emu.flags().dump(), 0x202); // initial flags (match with gdb linux)
 
         emu.run_to(5); // position 5 is emulated
-        assert_eq!(emu.regs.rax, 3);
-        assert_eq!(emu.flags.dump(), 0x206);
+        assert_eq!(emu.regs().rax, 3);
+        assert_eq!(emu.flags().dump(), 0x206);
 
         emu.run_to(6);  // dec ax
-        assert_eq!(emu.regs.rax, 2);
-        assert_eq!(emu.flags.dump(), 0x202);
+        assert_eq!(emu.regs().rax, 2);
+        assert_eq!(emu.flags().dump(), 0x202);
 
         emu.run_to(8); // last dec rax zero reached
-        assert_eq!(emu.regs.rax, 0);
-        assert_eq!(emu.flags.dump(), 0x246);
+        assert_eq!(emu.regs().rax, 0);
+        assert_eq!(emu.flags().dump(), 0x246);
 
         emu.run_to(11); // neg ax 
-        assert_eq!(emu.regs.rax, 0x1122334455668888);
-        assert_eq!(emu.flags.dump(), 0x297); // [ CF PF AF SF IF ]
+        assert_eq!(emu.regs().rax, 0x1122334455668888);
+        assert_eq!(emu.flags().dump(), 0x297); // [ CF PF AF SF IF ]
 
         emu.run_to(14); // sar al, 1
-        assert_eq!(emu.regs.rax, 0xffffffff556688c4);
-        assert_eq!(emu.flags.dump(), 0x292);
+        assert_eq!(emu.regs().rax, 0xffffffff556688c4);
+        assert_eq!(emu.flags().dump(), 0x292);
 
         emu.run_to(23); // shl ax, 1
-        assert_eq!(emu.regs.rax, 0x15596260);
-        assert_eq!(emu.flags.dump(), 0xa17);
+        assert_eq!(emu.regs().rax, 0x15596260);
+        assert_eq!(emu.flags().dump(), 0xa17);
 
         emu.run_to(29); // shl rax, cl
-        assert_eq!(emu.regs.rax, 0x55658980);
-        assert_eq!(emu.flags.dump(), 0x212);
+        assert_eq!(emu.regs().rax, 0x55658980);
+        assert_eq!(emu.flags().dump(), 0x212);
         
         emu.run_to(30); // shr al, 1
-        assert_eq!(emu.regs.rax, 0x55658940);                
-        assert_eq!(emu.flags.dump(), 0xa12);
+        assert_eq!(emu.regs().rax, 0x55658940);                
+        assert_eq!(emu.flags().dump(), 0xa12);
                        
         emu.run_to(31); // shr ax, 1
-        assert_eq!(emu.regs.rax, 0x556544a0);                
-        assert_eq!(emu.flags.dump(), 0xa16);
+        assert_eq!(emu.regs().rax, 0x556544a0);                
+        assert_eq!(emu.flags().dump(), 0xa16);
 
         emu.run_to(40); // imul eax
-        assert_eq!(emu.regs.rax, 0x21000000);
-        assert_eq!(emu.flags.dump(), 0xa17); // [ CF PF AF IF OF ]
+        assert_eq!(emu.regs().rax, 0x21000000);
+        assert_eq!(emu.flags().dump(), 0xa17); // [ CF PF AF IF OF ]
 
         emu.run_to(41); // imul rax
-        assert_eq!(emu.regs.rax, 0x441000000000000);
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x441000000000000);
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
                                              
         emu.run_to(43); // imul eax, eax
-        assert_eq!(emu.regs.rax, 0);
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
+        assert_eq!(emu.regs().rax, 0);
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
 
         emu.run_to(45); // imul rax, rax
-        assert_eq!(emu.regs.rax, 0x1eace4a3c82fb840);
-        assert_eq!(emu.flags.dump(), 0xa17); // [ CF PF AF IF OF ]
+        assert_eq!(emu.regs().rax, 0x1eace4a3c82fb840);
+        assert_eq!(emu.flags().dump(), 0xa17); // [ CF PF AF IF OF ]
 
         emu.run_to(48); // imul  rax,2
-        assert_eq!(emu.regs.rax, 0x120bdc200);
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]  
+        assert_eq!(emu.regs().rax, 0x120bdc200);
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]  
 
         emu.run_to(49); // rcl al, 1
-        assert_eq!(emu.regs.rax, 0x120bdc200); 
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x120bdc200); 
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
 
         emu.run_to(50); // rcl ax, 1
-        assert_eq!(emu.regs.rax, 0x120bd8400);
-        assert_eq!(emu.flags.dump(), 0x217); // [ CF PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x120bd8400);
+        assert_eq!(emu.flags().dump(), 0x217); // [ CF PF AF IF ]
     
         emu.run_to(52); // rcl   rax,1
-        assert_eq!(emu.regs.rax, 0x82f61002); // ERROR
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x82f61002); // ERROR
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
 
 
         emu.run_to(58); // rcr   ax,1
-        assert_eq!(emu.regs.rax, 0x82f60800);
-        assert_eq!(emu.flags.dump(), 0x217); // [ CF PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x82f60800);
+        assert_eq!(emu.flags().dump(), 0x217); // [ CF PF AF IF ]
 
         emu.run_to(65);
-        assert_eq!(emu.regs.rax, 0x60bd8200);
-        assert_eq!(emu.flags.dump(), 0x216); // [ PF AF IF ]
+        assert_eq!(emu.regs().rax, 0x60bd8200);
+        assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
     }
 
     #[test]
@@ -1527,7 +1527,7 @@ mod tests {
         let mut emu = emu64();
         emu.load_code("../test/elf64lin_syscall64.bin");
         emu.run_to(80000);
-        assert_eq!(emu.regs.r12, 549);
+        assert_eq!(emu.regs().r12, 549);
     }
 
 
@@ -1729,11 +1729,11 @@ mod tests {
 
         emu.load_code_bytes(&shellcode32);
         emu.run_to(2);
-        assert_eq!(emu.regs.get_edx(), 0x9abcdef0);
+        assert_eq!(emu.regs().get_edx(), 0x9abcdef0);
         emu.step(); // shld edx, eax, 4
-        assert_eq!(emu.regs.get_edx(), 0xabcdef01);
+        assert_eq!(emu.regs().get_edx(), 0xabcdef01);
         emu.step(); // shrd edx, eax, 4
-        assert_eq!(emu.regs.get_edx(), 0x8abcdef0);
+        assert_eq!(emu.regs().get_edx(), 0x8abcdef0);
 
         let shellcode64: [u8; 31] = [
             0x48, 0xb8, 0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,  // mov rax, 0x123456789abcdef0
@@ -1746,14 +1746,14 @@ mod tests {
         let mut emu = emu64();
         emu.load_code_bytes(&shellcode64);
         emu.run_to(2);
-        assert_eq!(emu.regs.rax, 0x123456789abcdef0);
-        assert_eq!(emu.regs.rdx, 0xfedcba9876543210);
+        assert_eq!(emu.regs().rax, 0x123456789abcdef0);
+        assert_eq!(emu.regs().rdx, 0xfedcba9876543210);
 
         emu.step(); // shld rdx, rax, 4
-        assert_eq!(emu.regs.rdx, 0xedcba98765432101);
+        assert_eq!(emu.regs().rdx, 0xedcba98765432101);
 
         emu.step(); // shrd rdx, rax, 4
-        assert_eq!(emu.regs.rdx, 0x0edcba9876543210);
+        assert_eq!(emu.regs().rdx, 0x0edcba9876543210);
     }
 
     fn critical_values(bits: u32) -> Vec<u64> {
@@ -1791,25 +1791,25 @@ mod tests {
 
         for value in critical_values(8) {
             for shift in shift_counts(8) {
-                emu.flags.sar2p8(value, shift);
+                emu.flags_mut().sar2p8(value, shift);
             }
         }
 
         for value in critical_values(16) {
             for shift in shift_counts(16) {
-                emu.flags.sar2p16(value, shift);
+                emu.flags_mut().sar2p16(value, shift);
             }
         }
 
         for value in critical_values(32) {
             for shift in shift_counts(32) {
-                emu.flags.sar2p32(value, shift);
+                emu.flags_mut().sar2p32(value, shift);
             }
         }
 
         for value in critical_values(64) {
             for shift in shift_counts(64) {
-                emu.flags.sar2p64(value, shift);
+                emu.flags_mut().sar2p64(value, shift);
             }
         }
     }
@@ -1821,25 +1821,25 @@ mod tests {
 
         for value in critical_values(8) {
             for shift in shift_counts(8) {
-                emu.flags.shr2p8(value, shift);
+                emu.flags_mut().shr2p8(value, shift);
             }
         }
 
         for value in critical_values(16) {
             for shift in shift_counts(16) {
-                emu.flags.shr2p16(value, shift);
+                emu.flags_mut().shr2p16(value, shift);
             }
         }
 
         for value in critical_values(32) {
             for shift in shift_counts(32) {
-                emu.flags.shr2p32(value, shift);
+                emu.flags_mut().shr2p32(value, shift);
             }
         }
 
         for value in critical_values(64) {
             for shift in shift_counts(64) {
-                emu.flags.shr2p64(value, shift);
+                emu.flags_mut().shr2p64(value, shift);
             }
         }
     }
@@ -1851,19 +1851,19 @@ mod tests {
 
         for value in critical_values(16) {
             for shift in shift_counts(16) {
-                emu.flags.shl2p16(value, shift);
+                emu.flags_mut().shl2p16(value, shift);
             }
         }
 
         for value in critical_values(32) {
             for shift in shift_counts(32) {
-                emu.flags.shl2p32(value, shift);
+                emu.flags_mut().shl2p32(value, shift);
             }
         }
 
         for value in critical_values(64) {
             for shift in shift_counts(64) {
-                emu.flags.shl2p64(value, shift);
+                emu.flags_mut().shl2p64(value, shift);
             }
         }
     }
@@ -1874,19 +1874,19 @@ mod tests {
         let mut emu = emu64();
 
         for value in critical_values(8) {
-            emu.flags.shl1p8(value);
+            emu.flags_mut().shl1p8(value);
         }
 
         for value in critical_values(16) {
-            emu.flags.shl1p16(value);
+            emu.flags_mut().shl1p16(value);
         }
 
         for value in critical_values(32) {
-            emu.flags.shl1p32(value);
+            emu.flags_mut().shl1p32(value);
         }
 
         for value in critical_values(64) {
-            emu.flags.shl1p64(value);
+            emu.flags_mut().shl1p64(value);
         }
     }
 
@@ -1896,7 +1896,7 @@ mod tests {
 
         let value0 = 0x44;
         let value1 = 0x0c;
-        let result = emu.flags.shl2p8(value0, value1);
+        let result = emu.flags_mut().shl2p8(value0, value1);
         assert_eq!(result, 0);
     }
 
@@ -1912,7 +1912,7 @@ mod tests {
 
         for &v0 in &test_values {
             for &v1 in &shift_counts {
-                emu.flags.shl2p8(v0, v1);
+                emu.flags_mut().shl2p8(v0, v1);
             }
         }
         assert!(true);
@@ -1933,11 +1933,11 @@ mod tests {
         ];
 
         for &(value, count) in test_cases {
-            let _ = emu.flags.shl2p8(value, count); // no panic expected
+            let _ = emu.flags_mut().shl2p8(value, count); // no panic expected
         }
 
-        emu.flags.shl2p8(0xf6, 1);
-        emu.flags.shl2p8(0x44, 0xc);
+        emu.flags_mut().shl2p8(0xf6, 1);
+        emu.flags_mut().shl2p8(0x44, 0xc);
     }
 }
 

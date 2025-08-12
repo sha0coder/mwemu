@@ -19,7 +19,7 @@ mod ws2_32;
 use crate::emu;
 
 pub fn gateway(addr: u32, name: &str, emu: &mut emu::Emu) {
-    emu.regs.sanitize32();
+    emu.regs_mut().sanitize32();
     match name {
         "kernel32.text" => kernel32::gateway(addr, emu),
         "kernel32.rdata" => kernel32::gateway(addr, emu),
@@ -44,5 +44,5 @@ pub fn gateway(addr: u32, name: &str, emu: &mut emu::Emu) {
         }
         _ => panic!("/!\\ trying to execute on {} at 0x{:x}", name, addr),
     };
-    emu.call_stack.pop();
+    emu.call_stack_mut().pop();
 }

@@ -51,7 +51,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -73,7 +73,7 @@ fn WsaStartup(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn WsaSocketA(emu: &mut emu::Emu) {
@@ -84,7 +84,7 @@ fn WsaSocketA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::socket_create();
+    emu.regs_mut().rax = helper::socket_create();
 }
 
 fn socket(emu: &mut emu::Emu) {
@@ -95,12 +95,12 @@ fn socket(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::socket_create();
+    emu.regs_mut().rax = helper::socket_create();
 }
 
 fn WsaHtons(emu: &mut emu::Emu) {
-    let host_port = emu.regs.rdx;
-    let out_port = emu.regs.r8;
+    let host_port = emu.regs().rdx;
+    let out_port = emu.regs().r8;
 
     log::info!(
         "{}** {} ws2_32!WsaHtons {} {}",
@@ -111,11 +111,11 @@ fn WsaHtons(emu: &mut emu::Emu) {
     );
 
     //TODO: implement this
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn htons(emu: &mut emu::Emu) {
-    let port: u16 = emu.regs.rcx as u16;
+    let port: u16 = emu.regs().rcx as u16;
 
     log::info!(
         "{}** {} ws2_32!htons port: {} {}",
@@ -125,11 +125,11 @@ fn htons(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = port.to_be() as u64;
+    emu.regs_mut().rax = port.to_be() as u64;
 }
 
 fn inet_addr(emu: &mut emu::Emu) {
-    let addr = emu.regs.rcx;
+    let addr = emu.regs().rcx;
 
     //TODO: derreferece addr
 
@@ -140,12 +140,12 @@ fn inet_addr(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn connect(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let sockaddr_ptr = emu.regs.rdx;
+    let sock = emu.regs().rcx;
+    let sockaddr_ptr = emu.regs().rdx;
     //let sockaddr = emu.maps.read_bytes(sockaddr_ptr, 8);
     let family: u16 = emu
         .maps
@@ -185,24 +185,24 @@ fn connect(emu: &mut emu::Emu) {
         } else {
             log::info!("\tcannot connect. dont use -e");
         }*/
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
         // offline mode
 
         if !helper::socket_exist(sock) {
             log::info!("\tinvalid socket.");
-            emu.regs.rax = 1;
+            emu.regs_mut().rax = 1;
         } else {
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
         }
     }
 }
 
 fn recv(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let buff = emu.regs.rdx;
-    let mut len = emu.regs.r8;
-    let flags = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let buff = emu.regs().rdx;
+    let mut len = emu.regs().r8;
+    let flags = emu.regs().r9;
 
     log::info!(
         "{}** {} ws2_32!recv   buff: 0x{:x} sz: {} {}",
@@ -215,7 +215,7 @@ fn recv(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
         return;
     }
 
@@ -227,7 +227,7 @@ fn recv(emu: &mut emu::Emu) {
         emu.maps.write_buffer(buff, &rbuff);
 
         log::info!("\nreceived {} bytes from the endpoint.", n);
-        emu.regs.rax = n as u64;
+        emu.regs_mut().rax = n as u64;
         */
     } else {
         let mut count_recv = COUNT_RECV.lock().unwrap();
@@ -250,16 +250,16 @@ fn recv(emu: &mut emu::Emu) {
                 }
             }
 
-            emu.regs.rax = len;
+            emu.regs_mut().rax = len;
         }
     }
 }
 
 fn send(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let buff = emu.regs.rdx;
-    let mut len = emu.regs.r8;
-    let flags = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let buff = emu.regs().rdx;
+    let mut len = emu.regs().r8;
+    let flags = emu.regs().r9;
 
     let bytes = emu.maps.read_string_of_bytes(buff, len as usize);
 
@@ -273,7 +273,7 @@ fn send(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -282,7 +282,7 @@ fn send(emu: &mut emu::Emu) {
         let buffer = emu.maps.read_buffer(buff, len as usize);
         let n = endpoint::sock_send(&buffer);
         log::info!("\tsent {} bytes.", n);
-        emu.regs.rax = n as u64;
+        emu.regs_mut().rax = n as u64;
         */
     } else {
         let mut count_send = COUNT_SEND.lock().unwrap();
@@ -291,14 +291,14 @@ fn send(emu: &mut emu::Emu) {
             len = 0; // finish the send loop
         }
 
-        emu.regs.rax = len;
+        emu.regs_mut().rax = len;
     }
 }
 
 fn bind(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let saddr = emu.regs.rdx;
-    let len = emu.regs.r8;
+    let sock = emu.regs().rcx;
+    let saddr = emu.regs().rdx;
+    let len = emu.regs().r8;
 
     let family: u16 = emu
         .maps
@@ -333,15 +333,15 @@ fn bind(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tbad socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn listen(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let connections = emu.regs.rdx;
+    let sock = emu.regs().rcx;
+    let connections = emu.regs().rdx;
 
     log::info!(
         "{}** {} ws2_32!listen  connections: {}  {}",
@@ -353,17 +353,17 @@ fn listen(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn accept(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let saddr = emu.regs.rdx;
-    let len = emu.regs.r8;
-    let flags = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let saddr = emu.regs().rdx;
+    let len = emu.regs().r8;
+    let flags = emu.regs().r9;
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
@@ -377,14 +377,14 @@ fn accept(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn closesocket(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
+    let sock = emu.regs().rcx;
 
     log::info!(
         "{}** {} ws2_32!closesocket {}",
@@ -400,17 +400,17 @@ fn closesocket(emu: &mut emu::Emu) {
         endpoint::sock_close();
     }*/
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn setsockopt(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let level = emu.regs.rdx;
-    let optname = emu.regs.r8;
-    let optval = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let level = emu.regs().rdx;
+    let optname = emu.regs().r8;
+    let optval = emu.regs().r9;
     let optlen = emu
         .maps
-        .read_qword(emu.regs.get_esp())
+        .read_qword(emu.regs().get_esp())
         .expect("ws2_32!setsockopt: error reading optlen");
 
     let val = emu.maps.read_dword(optval).unwrap_or_default();
@@ -427,20 +427,20 @@ fn setsockopt(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn getsockopt(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let level = emu.regs.rdx;
-    let optname = emu.regs.r8;
-    let optval = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let level = emu.regs().rdx;
+    let optname = emu.regs().r8;
+    let optval = emu.regs().r9;
     let optlen = emu
         .maps
-        .read_qword(emu.regs.get_esp())
+        .read_qword(emu.regs().get_esp())
         .expect("ws2_32!getsockopt: error reading optlen");
 
     emu.maps.write_dword(optval, 1);
@@ -456,20 +456,20 @@ fn getsockopt(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn WsaAccept(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let saddr = emu.regs.rdx;
-    let len = emu.regs.r8;
-    let cond = emu.regs.r9;
+    let sock = emu.regs().rcx;
+    let saddr = emu.regs().rdx;
+    let len = emu.regs().r8;
+    let cond = emu.regs().r9;
     let callback = emu
         .maps
-        .read_qword(emu.regs.get_esp())
+        .read_qword(emu.regs().get_esp())
         .expect("ws2_32!WsaAccept: error reading callback");
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
@@ -485,16 +485,16 @@ fn WsaAccept(emu: &mut emu::Emu) {
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
-        emu.regs.rax = 1;
+        emu.regs_mut().rax = 1;
     } else {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     }
 }
 
 fn GetSockName(emu: &mut emu::Emu) {
-    let sock = emu.regs.rcx;
-    let sockaddr_ptr = emu.regs.rdx;
-    let namelen_ptr = emu.regs.r8;
+    let sock = emu.regs().rcx;
+    let sockaddr_ptr = emu.regs().rdx;
+    let namelen_ptr = emu.regs().r8;
 
     emu.maps.write_dword(sockaddr_ptr, 0);
     emu.maps.write_dword(namelen_ptr, 4);
@@ -507,11 +507,11 @@ fn GetSockName(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn gethostbyname(emu: &mut emu::Emu) {
-    let domain_name_ptr = emu.regs.rcx;
+    let domain_name_ptr = emu.regs().rcx;
     let domain_name = emu.maps.read_string(domain_name_ptr);
 
     log::info!(
@@ -540,5 +540,5 @@ fn gethostbyname(emu: &mut emu::Emu) {
     hostent.addr_list = addr + 8;
     hostent.save(addr + 30, &mut emu.maps);
 
-    emu.regs.rax = addr + 30;
+    emu.regs_mut().rax = addr + 30;
 }

@@ -41,7 +41,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
                 addr,
                 api,
-                emu.regs.rip
+                emu.regs().rip
             );
             return api;
         }
@@ -53,11 +53,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 fn _initterm_e(emu: &mut emu::Emu) {
     let start_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_initterm_e: error reading start pointer") as u64;
     let end_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!_initterm_e: error reading en pointer") as u64;
 
     log::info!(
@@ -69,17 +69,17 @@ fn _initterm_e(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn _initterm(emu: &mut emu::Emu) {
     let start_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_initterm_e: error reading start pointer") as u64;
     let end_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!_initterm_e: error reading end pointer") as u64;
 
     log::info!(
@@ -91,21 +91,21 @@ fn _initterm(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn StrCmpCA(emu: &mut emu::Emu) {
     let str1_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!StrCmpA: error reading str1 pointer") as u64;
     let str2_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!StrCmpA: error reading str2 pointer") as u64;
 
     if str1_ptr == 0 || str2_ptr == 0 {
-        emu.regs.rax = 0xffffffff;
+        emu.regs_mut().rax = 0xffffffff;
         log::info!(
             "{}** {} msvcrt!StrCmpA null ptrs {}",
             emu.colors.light_red,
@@ -128,24 +128,24 @@ fn StrCmpCA(emu: &mut emu::Emu) {
     );
 
     if str1 == str2 {
-        emu.regs.rax = 0;
+        emu.regs_mut().rax = 0;
     } else {
-        emu.regs.rax = 0xffffffff;
+        emu.regs_mut().rax = 0xffffffff;
     }
 }
 
 fn fopen(emu: &mut emu::Emu) {
     let filepath_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!fopen error reading filepath pointer") as u64;
     let mode_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!fopen error reading mode pointer") as u64;
 
     if filepath_ptr == 0 || mode_ptr == 0 {
-        emu.regs.rax = 0xffffffff;
+        emu.regs_mut().rax = 0xffffffff;
         log::info!(
             "{}** {} msvcrt!fopen null ptrs {}",
             emu.colors.light_red,
@@ -167,25 +167,25 @@ fn fopen(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = helper::handler_create(&filepath);
+    emu.regs_mut().rax = helper::handler_create(&filepath);
 }
 
 fn fwrite(emu: &mut emu::Emu) {
     let buff_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!fwrite error reading buff_ptr") as u64;
     let size = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!fwrite error reading size");
     let nemb = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 8)
+        .read_dword(emu.regs().get_esp() + 8)
         .expect("msvcrt!fwrite error reading nemb");
     let file = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 12)
+        .read_dword(emu.regs().get_esp() + 12)
         .expect("msvcrt!fwrite error reading FILE *");
 
     let filename = helper::handler_get_uri(file as u64);
@@ -200,13 +200,13 @@ fn fwrite(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = size as u64;
+    emu.regs_mut().rax = size as u64;
 }
 
 fn fflush(emu: &mut emu::Emu) {
     let file = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!fflush error getting FILE *");
 
     let filename = helper::handler_get_uri(file as u64);
@@ -221,13 +221,13 @@ fn fflush(emu: &mut emu::Emu) {
 
     //emu.stack_pop32(false);
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn fclose(emu: &mut emu::Emu) {
     let file = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!fclose error getting FILE *");
 
     let filename = helper::handler_get_uri(file as u64);
@@ -240,7 +240,7 @@ fn fclose(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn __p___argv(emu: &mut emu::Emu) {
@@ -250,7 +250,7 @@ fn __p___argv(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn __p___argc(emu: &mut emu::Emu) {
@@ -272,13 +272,13 @@ fn __p___argc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = args.get_base();
+    emu.regs_mut().rax = args.get_base();
 }
 
 fn malloc(emu: &mut emu::Emu) {
     let size = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!malloc error reading size") as u64;
 
     if size > 0 {
@@ -297,9 +297,9 @@ fn malloc(emu: &mut emu::Emu) {
             emu.colors.nc
         );
 
-        emu.regs.rax = base;
+        emu.regs_mut().rax = base;
     } else {
-        emu.regs.rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
+        emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
     }
 }
 
@@ -310,13 +310,13 @@ fn __p__acmdln(emu: &mut emu::Emu) {
         emu.pos,
         emu.colors.nc
     );
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn _onexit(emu: &mut emu::Emu) {
     let fptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_onexit") as u64;
 
     log::info!(
@@ -327,13 +327,13 @@ fn _onexit(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = fptr;
+    emu.regs_mut().rax = fptr;
 }
 
 fn _lock(emu: &mut emu::Emu) {
     let lock_num = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_lock");
 
     log::info!(
@@ -344,13 +344,13 @@ fn _lock(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 1;
+    emu.regs_mut().rax = 1;
 }
 
 fn free(emu: &mut emu::Emu) {
     let addr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!free error reading addr");
 
     log::info!(
@@ -365,16 +365,16 @@ fn free(emu: &mut emu::Emu) {
 fn realloc(emu: &mut emu::Emu) {
     let addr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!realloc error reading addr") as u64;
     let size = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!realloc error reading size") as u64;
 
     if addr == 0 {
         if size == 0 {
-            emu.regs.rax = 0;
+            emu.regs_mut().rax = 0;
             return;
         } else {
             let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
@@ -393,7 +393,7 @@ fn realloc(emu: &mut emu::Emu) {
                 emu.colors.nc
             );
 
-            emu.regs.rax = base;
+            emu.regs_mut().rax = base;
             return;
         }
     }
@@ -408,7 +408,7 @@ fn realloc(emu: &mut emu::Emu) {
             emu.colors.nc
         );
 
-        emu.regs.rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
+        emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
         return;
     }
 
@@ -437,18 +437,18 @@ fn realloc(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = new_addr;
+    emu.regs_mut().rax = new_addr;
 }
 
 fn strtok(emu: &mut emu::Emu) {
     let str_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!strtok error reading str_ptr");
 
     let delim_ptr = emu
         .maps
-        .read_dword(emu.regs.get_esp() + 4)
+        .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!strtok error reading delim");
 
     let str = emu.maps.read_string(str_ptr as u64);
@@ -463,13 +463,13 @@ fn strtok(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.regs.rax = 0;
+    emu.regs_mut().rax = 0;
 }
 
 fn __set_app_type(emu: &mut emu::Emu) {
     let app_type = emu
         .maps
-        .read_dword(emu.regs.get_esp())
+        .read_dword(emu.regs().get_esp())
         .expect("msvcrt!__set_app_type error reading app_type");
 
     log::info!(

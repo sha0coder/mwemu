@@ -11,6 +11,7 @@ mod pe32;
 mod pe64;
 mod maps;
 mod minidump_converter;
+mod thread_context;
 
 pub struct Serialization {}
 
