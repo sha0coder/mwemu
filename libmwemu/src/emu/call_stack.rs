@@ -1,6 +1,6 @@
-impl Emu {
+use crate::emu::Emu;
 
-    
+impl Emu {
     pub fn call_stack(&self) -> &Vec<String> {
         &self.threads[self.current_thread_id].call_stack
     }

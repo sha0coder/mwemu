@@ -1,3 +1,9 @@
+use std::io::Write as _;
+
+use iced_x86::Formatter as _;
+
+use crate::{constants, emu::Emu, flags::Flags, regs64::Regs64};
+
 impl Emu {
     pub fn open_trace_file(&mut self) {
         if let Some(filename) = self.cfg.trace_filename.clone() {
@@ -161,7 +167,7 @@ impl Emu {
     }
 
     /// display specific register.
-    fn trace_specific_register(&self, reg: &str) {
+    pub(crate) fn trace_specific_register(&self, reg: &str) {
         //TODO: I think this is already implemented in regs64
         match reg {
             "rax" => self.regs().show_rax(&self.maps, self.pos),
@@ -197,7 +203,7 @@ impl Emu {
         }
     }
 
-    fn trace_string(&mut self) {
+    pub(crate) fn trace_string(&mut self) {
         let s = self.maps.read_string(self.cfg.string_addr);
 
         if s.len() >= 2 && s.len() < 80 {
@@ -217,7 +223,7 @@ impl Emu {
     }
 
     /// trace that inspects memory
-    fn trace_memory_inspection(&mut self) {
+    pub(crate) fn trace_memory_inspection(&mut self) {
         let addr: u64 = self.memory_operand_to_address(self.cfg.inspect_seq.clone().as_str());
         let bits = self.get_size(self.cfg.inspect_seq.clone().as_str());
         let value = self

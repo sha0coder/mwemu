@@ -1,3 +1,5 @@
+use crate::{emu::Emu, fpu::FPU};
+
 impl Emu {
      // Helper method to sync FPU instruction pointer with RIP
     pub fn sync_fpu_ip(&mut self) {

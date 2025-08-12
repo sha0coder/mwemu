@@ -1,6 +1,6 @@
+use crate::{console::Console, emu::Emu};
+
 impl Emu {
-
-
     /// Do enable the Control + C handling, for spawning console.
     pub fn enable_ctrlc(&mut self) {
         self.enabled_ctrlc = true;

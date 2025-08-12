@@ -1,5 +1,7 @@
+use crate::{emu::Emu, exception_type::ExceptionType, peb32, peb64, winapi32, winapi64};
+
 impl Emu {
-     //TODO: check this, this is used only on pyscemu
+    //TODO: check this, this is used only on pyscemu
     /// Call a winapi by addess.
     pub fn handle_winapi(&mut self, addr: u64) {
         if self.cfg.is_64bits {
@@ -9,7 +11,7 @@ impl Emu {
                 Some(n) => n,
                 None => {
                     log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    self.exception(ExceptionType::SettingRipToNonMappedAddr);
                     return;
                 }
             };
@@ -21,7 +23,7 @@ impl Emu {
                 Some(n) => n,
                 None => {
                     log::error!("/!\\ setting rip to non mapped addr 0x{:x}", addr);
-                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    self.exception(ExceptionType::SettingRipToNonMappedAddr);
                     return;
                 }
             };

@@ -1,3 +1,7 @@
+use iced_x86::{Decoder, DecoderOptions, Formatter as _, Instruction};
+
+use crate::emu::Emu;
+
 impl Emu {
     /// Disassemble an amount of instruccions on an specified address.
     /// This not used on the emulation engine, just from console, 

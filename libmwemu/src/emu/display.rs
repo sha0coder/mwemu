@@ -1,3 +1,7 @@
+use iced_x86::{Formatter as _, Instruction};
+
+use crate::emu::Emu;
+
 impl Emu {
     /// display 32bits main registers
     pub fn featured_regs32(&self) {
@@ -128,6 +132,5 @@ impl Emu {
                 self.colors.nc
             );
         }
-    } {
-    
+    }
 }

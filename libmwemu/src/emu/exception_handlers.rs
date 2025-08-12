@@ -1,3 +1,5 @@
+use crate::{console::Console, emu::Emu, exception, exception_type::ExceptionType};
+
 impl Emu {
     pub fn veh(&self) -> u64 {
         self.threads[self.current_thread_id].veh
@@ -35,7 +37,7 @@ impl Emu {
     /// Trigger an exception.
     /// If it has to be handled initiate contex tand jump to the programmed error routine.
     /// Support SEH, VEH and UEF
-    pub fn exception(&mut self, ex_type: exception_type::ExceptionType) {
+    pub fn exception(&mut self, ex_type: ExceptionType) {
         let addr: u64;
         let next: u64;
 

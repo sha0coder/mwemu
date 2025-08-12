@@ -1,3 +1,5 @@
+use crate::emu::Emu;
+
 impl Emu {
     /// Enable banzai mode, in this mode on the windows api of 32bits, if the called api is not
     /// implemented will try to fix the stack (because knows the number of params of every api) and

@@ -1,5 +1,8 @@
-impl Emu {
+use iced_x86::Register;
 
+use crate::{constants, elf32::Elf32, elf64::Elf64, emu::Emu, pe32::PE32, pe64::PE64, peb32, peb64};
+
+impl Emu {
     /// Complex funtion called from many places and with multiple purposes.
     /// This is called from load_code() if sample is PE32, but also from load_library etc.
     /// Powered by pe32.rs implementation.
@@ -437,7 +440,6 @@ impl Emu {
         //self.cfg.filename = map_name;
 
         if Elf32::is_elf32(filename) {
-
             self.linux = true;
             self.cfg.is_64bits = false;
 

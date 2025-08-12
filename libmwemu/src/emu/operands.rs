@@ -1,3 +1,7 @@
+use iced_x86::{Instruction, MemorySize, OpKind, Register};
+
+use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, regs64, structures::{self, MemoryOperation}, to32};
+
 impl Emu {
     /// Decode the jump parameter
     pub fn get_jump_value(&mut self, ins: &Instruction, noperand: u32) -> Option<u64> {
@@ -256,7 +260,7 @@ impl Emu {
                     Some(v) => v,
                     None => {
                         log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
-                        self.exception(exception_type::ExceptionType::QWordDereferencing);
+                        self.exception(ExceptionType::QWordDereferencing);
                         return None;
                     }
                 },
@@ -265,7 +269,7 @@ impl Emu {
                     Some(v) => v.into(),
                     None => {
                         log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
-                        self.exception(exception_type::ExceptionType::DWordDereferencing);
+                        self.exception(ExceptionType::DWordDereferencing);
                         return None;
                     }
                 },
@@ -274,7 +278,7 @@ impl Emu {
                     Some(v) => v.into(),
                     None => {
                         log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
-                        self.exception(exception_type::ExceptionType::WordDereferencing);
+                        self.exception(ExceptionType::WordDereferencing);
                         return None;
                     }
                 },
@@ -283,7 +287,7 @@ impl Emu {
                     Some(v) => v.into(),
                     None => {
                         log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
-                        self.exception(exception_type::ExceptionType::ByteDereferencing);
+                        self.exception(ExceptionType::ByteDereferencing);
                         return None;
                     }
                 },
@@ -470,7 +474,7 @@ impl Emu {
                                     mem_addr
                                 );
                                 self.exception(
-                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                    ExceptionType::BadAddressDereferencing,
                                 );
                                 return false;
                             }
@@ -492,7 +496,7 @@ impl Emu {
                                     mem_addr
                                 );
                                 self.exception(
-                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                    ExceptionType::BadAddressDereferencing,
                                 );
                                 return false;
                             }
@@ -514,7 +518,7 @@ impl Emu {
                                     mem_addr
                                 );
                                 self.exception(
-                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                    ExceptionType::BadAddressDereferencing,
                                 );
                                 return false;
                             }
@@ -536,7 +540,7 @@ impl Emu {
                                     mem_addr
                                 );
                                 self.exception(
-                                    exception_type::ExceptionType::BadAddressDereferencing,
+                                    ExceptionType::BadAddressDereferencing,
                                 );
                                 return false;
                             }
@@ -617,7 +621,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ xmm exception reading operand");
-                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
+                        self.exception(ExceptionType::SettingXmmOperand);
                         return None;
                     }
                 };
@@ -631,7 +635,7 @@ impl Emu {
                         Some(v) => v,
                         None => {
                             log::info!("/!\\ exception reading xmm operand at 0x{:x} ", mem_addr);
-                            self.exception(exception_type::ExceptionType::ReadingXmmOperand);
+                            self.exception(ExceptionType::ReadingXmmOperand);
                             return None;
                         }
                     };
@@ -658,7 +662,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ exception setting xmm operand.");
-                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
+                        self.exception(ExceptionType::SettingXmmOperand);
                         return;
                     }
                 };
@@ -703,7 +707,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ xmm exception reading operand");
-                        self.exception(exception_type::ExceptionType::ReadingXmmOperand);
+                        self.exception(ExceptionType::ReadingXmmOperand);
                         return None;
                     }
                 };
@@ -744,7 +748,7 @@ impl Emu {
                     Some(addr) => addr,
                     None => {
                         log::info!("/!\\ exception setting xmm operand.");
-                        self.exception(exception_type::ExceptionType::SettingXmmOperand);
+                        self.exception(ExceptionType::SettingXmmOperand);
                         return;
                     }
                 };

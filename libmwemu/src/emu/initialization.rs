@@ -3,10 +3,14 @@ use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use std::time::Instant;
 
+use atty::Stream;
+use csv::ReaderBuilder;
 use iced_x86::{Formatter as _, IntelFormatter};
 
+use crate::console::Console;
 use crate::emu::Emu;
-use crate::{banzai::Banzai, breakpoint::Breakpoint, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe32::PE32, pe64::PE64, structures::MemoryOperation, thread_context::ThreadContext};
+use crate::{get_bit, kuser_shared, peb32, peb64, set_bit, structures, winapi32, winapi64};
+use crate::{banzai::Banzai, breakpoint::Breakpoint, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
 
 impl Emu {
     pub fn new() -> Emu {

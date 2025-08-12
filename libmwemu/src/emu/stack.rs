@@ -1,3 +1,5 @@
+use crate::{emu::Emu, structures::MemoryOperation};
+
 impl Emu {
      /// Push a dword to the stack and dec the esp
     /// This will return false if stack pointer is pointing to non allocated place.

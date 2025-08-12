@@ -1,3 +1,5 @@
+use crate::emu::Emu;
+
 impl Emu { 
     pub fn tls32(&self) -> &Vec<u32> {
         &self.threads[self.current_thread_id].tls32
@@ -14,5 +16,4 @@ impl Emu {
     pub fn tls64_mut(&mut self) -> &mut Vec<u64> {
         &mut self.threads[self.current_thread_id].tls64
     }
-    
 }

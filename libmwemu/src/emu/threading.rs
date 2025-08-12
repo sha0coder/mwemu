@@ -1,5 +1,6 @@
-impl Emu {
+use crate::emu::Emu;
 
+impl Emu {
     /// Enable multi-threading support for the emulator.
     /// When enabled, the emulator will use thread scheduling for multiple threads.
     /// When disabled (default), it runs in single-threaded mode for backward compatibility.

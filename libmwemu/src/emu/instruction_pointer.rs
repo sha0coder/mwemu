@@ -1,5 +1,6 @@
-impl Emu {
+use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi32, winapi64};
 
+impl Emu {
     /// Redirect execution flow on 64bits.
     /// If the target address is a winapi, triggers it's implementation.
     pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
@@ -28,7 +29,7 @@ impl Emu {
                     return true;
                 } else {
                     log::error!("/!\\ set_rip setting rip to non mapped addr 0x{:x} {}", addr, self.filename);
-                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    self.exception(ExceptionType::SettingRipToNonMappedAddr);
                     return false;
                 }
             }
@@ -99,7 +100,7 @@ impl Emu {
                     return true;
                 } else {
                     log::error!("/!\\ setting eip to non mapped addr 0x{:x}", addr);
-                    self.exception(exception_type::ExceptionType::SettingRipToNonMappedAddr);
+                    self.exception(ExceptionType::SettingRipToNonMappedAddr);
                     return false;
                 }
             }

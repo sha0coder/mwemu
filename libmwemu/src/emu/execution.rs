@@ -1,3 +1,13 @@
+use std::io::Write as _;
+use std::sync::{atomic, Arc};
+
+use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemonic};
+
+use crate::console::Console;
+use crate::emu::Emu;
+use crate::err::MwemuError;
+use crate::{constants, engine, serialization};
+
 impl Emu {
     #[inline]
     pub fn stop(&mut self) {
@@ -403,8 +413,8 @@ impl Emu {
         let mut ins: Instruction = Instruction::default();
         // we using a single block to store all the instruction to optimize for without
         // the need of Reallocate everytime
-        let mut block: Vec<u8> = Vec::with_capacity(BLOCK_LEN + 1);
-        block.resize(BLOCK_LEN, 0x0);
+        let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
+        block.resize(constants::BLOCK_LEN, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 // turn on verbosity after a lot of pos
@@ -438,7 +448,7 @@ impl Emu {
 
                 // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
-                let block_sz = BLOCK_LEN;
+                let block_sz = constants::BLOCK_LEN;
                 let block_temp = code.read_bytes(rip, block_sz);
                 let block_temp_len = block_temp.len();
                 if block_temp_len != block.len() {
@@ -806,8 +816,8 @@ impl Emu {
         let mut ins: Instruction = Instruction::default();
         // we using a single block to store all the instruction to optimize for without
         // the need of Reallocate everytime
-        let mut block: Vec<u8> = Vec::with_capacity(BLOCK_LEN + 1);
-        block.resize(BLOCK_LEN, 0x0);
+        let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
+        block.resize(constants::BLOCK_LEN, 0x0);
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs().rip);
@@ -827,7 +837,7 @@ impl Emu {
 
                 // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
                 // reading anymore would be a waste of time
-                let block_sz = BLOCK_LEN;
+                let block_sz = constants::BLOCK_LEN;
                 let block_temp = code.read_bytes(rip, block_sz);
                 let block_temp_len = block_temp.len();
                 if block_temp_len != block.len() {

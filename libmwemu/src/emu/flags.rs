@@ -1,4 +1,4 @@
-use crate::{emu::Emu, flags::Flags};
+use crate::{eflags::Eflags, emu::Emu, flags::Flags};
 
 impl Emu {
     pub fn pre_op_flags(&self) -> &Flags {

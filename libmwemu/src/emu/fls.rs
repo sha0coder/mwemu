@@ -1,5 +1,6 @@
-impl Emu {
+use crate::emu::Emu;
 
+impl Emu {
     pub fn fls(&self) -> &Vec<u32> {
         &self.threads[self.current_thread_id].fls
     }

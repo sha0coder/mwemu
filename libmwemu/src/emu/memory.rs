@@ -1,3 +1,5 @@
+use crate::{constants, emu::Emu, structures::MemoryOperation};
+
 impl Emu {
         /// This is not used on the emulation.
     /// It's part of a feature like  reading or wirtting like it was asm "dword ptr [rax + 0x123]"
