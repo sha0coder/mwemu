@@ -689,6 +689,7 @@ fn NtCreateFile(emu: &mut emu::Emu) {
            PVOID           SecurityDescriptor;
            PVOID           SecurityQualityOfService;
          } OBJECT_ATTRIBUTES;
+
     */
 
     let obj_name_ptr = emu
