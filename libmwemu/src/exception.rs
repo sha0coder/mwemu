@@ -1,5 +1,5 @@
 /*
-        SEH, VEH and UEF
+    SEH, VEH and UEF
 
     - SEH: structured exception handler (try/catch, stack items)
     - VEH: vectorized exception handler (API)
