@@ -48,36 +48,46 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         char_count
     );
     
-    // Handle special case
-    let actual_char_count = if char_count == 0xffffffff { 
-        1024  // or calculate actual length from str_ptr
-    } else { 
-        char_count 
-    };
+    // Calculate sizes like the Python version
+    let ws_len = (char_count + 1) * 2;  // Wide chars + null terminator
+    let total_alloc_size = 4 + ws_len;  // 4-byte length prefix + string data
     
-    let byte_length = actual_char_count * 2;  // Wide chars are 2 bytes
-    let total_size = 4 + byte_length + 2;     // length prefix + data + null terminator
-    
-    let base = emu.maps.alloc(total_size + 100)
+    // Allocate memory
+    let bstr = emu.maps.alloc(total_alloc_size + 100)
         .expect("oleaut32!SysAllocStringLen out of memory");
 
-    let name = format!("alloc_{:x}", base);
-    emu.maps.create_map(&name, base, total_size + 100);
+    let name = format!("alloc_{:x}", bstr);
+    emu.maps.create_map(&name, bstr, total_alloc_size + 100);
     
-    // Write the byte length (not character count) at the beginning
-    emu.maps.write_dword(base, byte_length as u32);
-    
-    let bstr_ptr = base + 4;
-    
-    // watch out for null?
-    if str_ptr != 0 {
-        emu.maps.memcpy(bstr_ptr, str_ptr, byte_length as usize);
+    if str_ptr == 0 {
+        // Handle null input - just write the length prefix
+        let length_bytes = (char_count * 2) as u32;
+        emu.maps.write_dword(bstr, length_bytes);
+    } else {
+        // Read the input string
+        let input_string = emu.maps.read_wide_string_n(str_ptr, char_count as usize);
+        
+        // Truncate to requested length and add null terminator
+        let mut truncated = input_string;
+        if truncated.len() > char_count as usize {
+            truncated.truncate(char_count as usize);
+        }
+        truncated.push('\0');
+        
+        // Write length prefix (byte count, not char count)
+        let byte_count = (char_count * 2) as u32;
+        emu.maps.write_dword(bstr, byte_count);
+        
+        // Write the wide string data
+        emu.maps.write_wide_string(bstr + 4, &truncated);
     }
     
-    // Write null terminator
-    emu.maps.write_word(bstr_ptr + byte_length, 0);
+    let return_ptr = bstr + 4;  // Return pointer to string data (after length prefix)
     
-    emu.regs_mut().rax = bstr_ptr;  // Return pointer to string data, not base
+    log::info!("{}** {} SysAllocStringLen returning: 0x{:x} (base: 0x{:x})", 
+        emu.colors.light_red, emu.pos, return_ptr, bstr);
+    
+    emu.regs_mut().rax = return_ptr;
 }
 
 fn SysFreeString(emu: &mut emu::Emu) {

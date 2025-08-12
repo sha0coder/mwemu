@@ -703,6 +703,14 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let filename = if oattrib != 0 {
         log_red!(emu, "** {} Reading OBJECT_ATTRIBUTES at 0x{:x}", emu.pos, oattrib);
         
+        // Dump the OBJECT_ATTRIBUTES structure first
+        log_red!(emu, "** {} OBJECT_ATTRIBUTES structure dump:", emu.pos);
+        for i in (0..0x30).step_by(8) {
+            if let Some(qword_val) = emu.maps.read_qword(oattrib + i) {
+                log_red!(emu, "** {}   +0x{:02x}: 0x{:016x}", emu.pos, i, qword_val);
+            }
+        }
+        
         // Read ObjectName field (PUNICODE_STRING at offset +0x10 in 64-bit)
         let obj_name_ptr = emu
             .maps
@@ -712,23 +720,8 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         log_red!(emu, "** {} ObjectName pointer: 0x{:x}", emu.pos, obj_name_ptr);
         
         if obj_name_ptr != 0 {
-            // Read UNICODE_STRING manually due to alignment issues
-            // The actual Windows UNICODE_STRING layout:
-            // typedef struct _UNICODE_STRING {
-            //     USHORT Length;        // +0x00 (2 bytes)
-            //     USHORT MaximumLength; // +0x02 (2 bytes) 
-            //     PWSTR  Buffer;        // +0x08 (8 bytes on x64, 4-byte padding after MaximumLength)
-            // } UNICODE_STRING;
-            
-            let length = emu.maps.read_word(obj_name_ptr).unwrap_or(0);
-            let max_length = emu.maps.read_word(obj_name_ptr + 2).unwrap_or(0);
-            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
-            
-            log_red!(emu, "** {} UNICODE_STRING - Length: {}, MaxLength: {}, Buffer: 0x{:x}", 
-                emu.pos, length, max_length, buffer_ptr);
-            
-            // Also dump the raw bytes to see what we're actually reading
-            log_red!(emu, "** {} Raw UNICODE_STRING bytes at 0x{:x}:", emu.pos, obj_name_ptr);
+            log_red!(emu, "** {} Dumping UNICODE_STRING at 0x{:x}:", emu.pos, obj_name_ptr);
+            // Dump the first 16 bytes of the UNICODE_STRING
             for i in 0..16 {
                 if let Some(byte) = emu.maps.read_byte(obj_name_ptr + i) {
                     log_red!(emu, "** {}   +0x{:02x}: 0x{:02x}", emu.pos, i, byte);
@@ -736,18 +729,20 @@ fn NtCreateFile(emu: &mut emu::Emu) {
                     log_red!(emu, "** {}   +0x{:02x}: <unmapped>", emu.pos, i);
                 }
             }
-            
-            if buffer_ptr != 0 && length > 0 && length <= 1024 { // Sanity check
+
+            // Simple approach: just read the buffer pointer and try to get the string
+            /*let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
+            if buffer_ptr != 0 {
                 let filename = emu.maps.read_wide_string(buffer_ptr);
-                log_red!(emu, "** {} Successfully read filename: '{}'", emu.pos, filename);
+                log_red!(emu, "** {} Filename: '{}'", emu.pos, filename);
                 filename
             } else {
-                log_red!(emu, "** {} Invalid UNICODE_STRING - buffer: 0x{:x}, length: {}", emu.pos, buffer_ptr, length);
-                String::from("<invalid_unicode_string>")
-            }
+                String::from("<no_buffer>")
+            }*/
+            // TODO: it does not work well....
+            String::from("<todo_filename_reading>")
         } else {
-            log_red!(emu, "** {} ObjectName pointer is null", emu.pos);
-            String::from("<null_objname>")
+            String::from("<no_objname>")
         }
     } else {
         log_red!(emu, "** {} OBJECT_ATTRIBUTES pointer is null", emu.pos);
