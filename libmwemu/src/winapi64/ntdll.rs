@@ -609,38 +609,67 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
     }
 }
 
+/*
+__kernel_entry NTSTATUS NtCreateFile(
+  [out]          PHANDLE            FileHandle,
+  [in]           ACCESS_MASK        DesiredAccess,
+  [in]           POBJECT_ATTRIBUTES ObjectAttributes,
+  [out]          PIO_STATUS_BLOCK   IoStatusBlock,
+  [in, optional] PLARGE_INTEGER     AllocationSize,
+  [in]           ULONG              FileAttributes,
+  [in]           ULONG              ShareAccess,
+  [in]           ULONG              CreateDisposition,
+  [in]           ULONG              CreateOptions,
+  [in]           PVOID              EaBuffer,
+  [in]           ULONG              EaLength
+);
+*/
 fn NtCreateFile(emu: &mut emu::Emu) {
     let out_hndl_ptr = emu.regs().rcx;
     let access_mask = emu.regs().rdx;
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
+    
+    // AllocationSize is PLARGE_INTEGER (pointer to 64-bit value)
     let alloc_sz = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x20)
+        .read_qword(emu.regs().rsp + 0x28)  // 5th parameter
         .expect("ntdll!NtCreateFile error reading alloc_sz param");
+    
+    // FileAttributes is ULONG (32-bit)  
     let fattrib = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x28)
+        .read_dword(emu.regs().rsp + 0x30)  // 6th parameter
         .expect("ntdll!NtCreateFile error reading fattrib param");
+    
+    // ShareAccess is ULONG (32-bit)
     let share_access = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x30)
+        .read_dword(emu.regs().rsp + 0x38)  // 7th parameter
         .expect("ntdll!NtCreateFile error reading share_access param");
+    
+    // CreateDisposition is ULONG (32-bit)
     let create_disp = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x38)
+        .read_dword(emu.regs().rsp + 0x40)  // 8th parameter
         .expect("ntdll!NtCreateFile error reading create_disp param");
+    
+    // CreateOptions is ULONG (32-bit)
     let create_opt = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x40)
+        .read_dword(emu.regs().rsp + 0x48)  // 9th parameter
         .expect("ntdll!NtCreateFile error reading create_opt param");
+    
+    // EaBuffer is PVOID (pointer)
     let ea_buff = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x48)
+        .read_qword(emu.regs().rsp + 0x50)  // 10th parameter
         .expect("ntdll!NtCreateFile error reading ea_buff param");
+    
+    // EaLength is ULONG (32-bit)
     let ea_len = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x50)
+        .read_dword(emu.regs().rsp + 0x58)  // 11th parameter
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
     // Handle OBJECT_ATTRIBUTES structure properly
