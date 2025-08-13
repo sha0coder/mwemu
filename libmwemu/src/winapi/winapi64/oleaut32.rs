@@ -112,9 +112,9 @@ INT SysReAllocStringLen(
 );
 */
 fn SysReAllocStringLen(emu: &mut emu::Emu) {
-    let pbstr_ptr = emu.regs().rcx;
-    let psz = emu.regs().rdx;
-    let len = emu.regs().r8;
+    let pbstr_ptr = emu.regs().rcx;  // Pointer to BSTR*
+    let psz = emu.regs().rdx;        // Source string (can be NULL)
+    let len = emu.regs().r8;  // Length in characters
 
     log::info!(
         "{}** {} oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {}",
@@ -131,42 +131,105 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         return;
     }
 
-    let size = (len + 1) * 2; // Size in bytes (UTF-16 characters + null terminator)
-    let total_size = size + 8; // Add metadata size
-
-    // Allocate new memory
-    let new_base = emu
-        .maps
-        .alloc(total_size + 100)
-        .expect("oleaut32!SysReAllocStringLen out of memory");
-
-    // Create new memory map
-    let name = format!("alloc_{:x}", new_base);
-    emu.maps.create_map(&name, new_base, total_size + 100);
-
-    // Copy data from psz if it's not NULL
-    if psz != 0 {
-        emu.maps.memcpy(new_base + 8, psz, len as usize * 2);
-    }
-
-    // Free old string (reading old BSTR pointer from pbstr_ptr)
+    // Read the current BSTR pointer
     let old_bstr = emu.maps.read_qword(pbstr_ptr).unwrap_or(0);
+    
+    // Calculate sizes
+    let byte_len = len * 2;  // Length in bytes (UTF-16)
+    let total_alloc_size = 4 + byte_len + 2;  // 4-byte prefix + string + null terminator
+    
     if old_bstr != 0 {
-        // Optional: Free the old allocation if needed
-        // emu.maps.free(&format!("alloc_{:x}", old_bstr - 8));
+        // Case 1: Reallocating existing BSTR
+        log::info!("{}** {} Reallocating existing BSTR at 0x{:x}", 
+                   emu.colors.light_red, emu.pos, old_bstr);
+        
+        // Free the old BSTR (old_bstr points to string data, so allocation starts at old_bstr - 4)
+        let old_alloc_base = old_bstr - 4;
+        // Note: In a real implementation, you'd use HeapReAlloc here
+        
+        // Allocate new memory
+        let new_base = emu.maps.alloc(total_alloc_size + 100)
+            .expect("oleaut32!SysReAllocStringLen out of memory");
+        
+        let name = format!("bstr_{:x}", new_base);
+        emu.maps.create_map(&name, new_base, total_alloc_size + 100);
+        
+        // Write length prefix (in bytes, not including null terminator)
+        emu.maps.write_dword(new_base, byte_len as u32);
+        
+        // Copy data from psz if provided, otherwise preserve old data
+        if psz != 0 {
+            // Copy from the provided source string
+            if len > 0 {
+                emu.maps.memcpy(new_base + 4, psz, len as usize * 2);
+            }
+        } else {
+            // Copy from old BSTR (preserve existing data, but truncated to new length)
+            let old_len_bytes = emu.maps.read_dword(old_alloc_base).unwrap_or(0);
+            let old_len_chars = old_len_bytes / 2;
+            let copy_len = std::cmp::min(len, old_len_chars as u64);
+            if copy_len > 0 {
+                emu.maps.memcpy(new_base + 4, old_bstr, copy_len as usize * 2);
+            }
+        }
+        
+        // Write null terminator
+        emu.maps.write_word(new_base + 4 + byte_len, 0);
+        
+        // Update the BSTR pointer to point to the string data (skip the 4-byte length prefix)
+        let new_bstr = new_base + 4;
+        emu.maps.write_qword(pbstr_ptr, new_bstr);
+        
+        log::info!(
+            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
+            emu.colors.light_red,
+            emu.pos,
+            new_bstr,
+            byte_len,
+            new_base
+        );
+        
+    } else {
+        // Case 2: First allocation (*pbstr is NULL) - delegate to SysAllocStringLen
+        log::info!("{}** {} First allocation (old BSTR is NULL), calling SysAllocStringLen", 
+                   emu.colors.light_red, emu.pos);
+        
+        // Allocate new memory
+        let new_base = emu.maps.alloc(total_alloc_size + 100)
+            .expect("oleaut32!SysReAllocStringLen out of memory");
+        
+        let name = format!("bstr_{:x}", new_base);
+        emu.maps.create_map(&name, new_base, total_alloc_size + 100);
+        
+        // Write length prefix (in bytes)
+        emu.maps.write_dword(new_base, byte_len as u32);
+        
+        // Copy data from psz if provided
+        if psz != 0 && len > 0 {
+            emu.maps.memcpy(new_base + 4, psz, len as usize * 2);
+        } else {
+            // Initialize to zeros
+            for i in 0..len {
+                emu.maps.write_word(new_base + 4 + (i * 2), 0);
+            }
+        }
+        
+        // Write null terminator
+        emu.maps.write_word(new_base + 4 + byte_len, 0);
+        
+        // Set the BSTR pointer to point to the string data
+        let new_bstr = new_base + 4;
+        emu.maps.write_qword(pbstr_ptr, new_bstr);
+        
+        log::info!(
+            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
+            emu.colors.light_red,
+            emu.pos,
+            new_bstr,
+            byte_len,
+            new_base
+        );
     }
-
-    // Update the BSTR pointer
-    emu.maps.write_qword(pbstr_ptr, new_base + 8);
-
-    log::info!(
-        "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        new_base + 8,
-        size,
-        emu.colors.nc
-    );
 
     emu.regs_mut().rax = 1; // Return TRUE for success
 }

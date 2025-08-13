@@ -629,51 +629,13 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let access_mask = emu.regs().rdx;
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
-    
-    // Windows x64 calling convention: parameters 5+ go on stack starting at RSP+0x20
-    // (0x20 bytes of shadow space for first 4 register parameters)
-    
-    // AllocationSize is PLARGE_INTEGER (pointer to 64-bit value)
-    let alloc_sz = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)  // 5th parameter - FIXED: was 0x28
-        .expect("ntdll!NtCreateFile error reading alloc_sz param");
-    
-    // FileAttributes is ULONG (32-bit even on x64 Windows due to LLP64 model)
-    let fattrib = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x28)  // 6th parameter - FIXED: was 0x30
-        .expect("ntdll!NtCreateFile error reading fattrib param");
-    
-    // ShareAccess is ULONG (32-bit)
-    let share_access = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x30)  // 7th parameter - FIXED: was 0x38
-        .expect("ntdll!NtCreateFile error reading share_access param");
-    
-    // CreateDisposition is ULONG (32-bit)
-    let create_disp = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x38)  // 8th parameter - FIXED: was 0x40
-        .expect("ntdll!NtCreateFile error reading create_disp param");
-    
-    // CreateOptions is ULONG (32-bit)
-    let create_opt = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x40)  // 9th parameter - FIXED: was 0x48
-        .expect("ntdll!NtCreateFile error reading create_opt param");
-    
-    // EaBuffer is PVOID (pointer - 64-bit on x64)
-    let ea_buff = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x48)  // 10th parameter - FIXED: was 0x50
-        .expect("ntdll!NtCreateFile error reading ea_buff param");
-    
-    // EaLength is ULONG (32-bit)
-    let ea_len = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x50)  // 11th parameter - FIXED: was 0x58
-        .expect("ntdll!NtCreateFile error reading ea_len param");
+    let alloc_sz = emu.maps.read_qword(emu.regs().rsp + 0x20).expect("ntdll!NtCreateFile error reading alloc_sz param");
+    let fattrib = emu.maps.read_dword(emu.regs().rsp + 0x28).expect("ntdll!NtCreateFile error reading fattrib param");
+    let share_access = emu.maps.read_dword(emu.regs().rsp + 0x30).expect("ntdll!NtCreateFile error reading share_access param");
+    let create_disp = emu.maps.read_dword(emu.regs().rsp + 0x38).expect("ntdll!NtCreateFile error reading create_disp param");
+    let create_opt = emu.maps.read_dword(emu.regs().rsp + 0x40).expect("ntdll!NtCreateFile error reading create_opt param");
+    let ea_buff = emu.maps.read_qword(emu.regs().rsp + 0x48).expect("ntdll!NtCreateFile error reading ea_buff param");
+    let ea_len = emu.maps.read_dword(emu.regs().rsp + 0x50).expect("ntdll!NtCreateFile error reading ea_len param");
 
     log_red!(emu, "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
         emu.pos,
@@ -711,50 +673,98 @@ fn NtCreateFile(emu: &mut emu::Emu) {
             }
         }
         
-        // Read ObjectName field (PUNICODE_STRING at offset +0x10 in 64-bit)
-        let obj_name_ptr = emu
-            .maps
-            .read_qword(oattrib + 0x10)
-            .unwrap_or(0);
+        // Read RootDirectory and ObjectName fields
+        let root_directory = emu.maps.read_qword(oattrib + 0x08).unwrap_or(0);
+        let obj_name_ptr = emu.maps.read_qword(oattrib + 0x10).unwrap_or(0);
         
-        log_red!(emu, "** {} ObjectName pointer: 0x{:x}", emu.pos, obj_name_ptr);
+        log_red!(emu, "** {} RootDirectory: 0x{:x}, ObjectName pointer: 0x{:x}", 
+                 emu.pos, root_directory, obj_name_ptr);
         
-        if obj_name_ptr != 0 {
-            log_red!(emu, "** {} Dumping UNICODE_STRING at 0x{:x}:", emu.pos, obj_name_ptr);
-            // Dump the first 16 bytes of the UNICODE_STRING
-            for i in 0..16 {
-                if let Some(byte) = emu.maps.read_byte(obj_name_ptr + i) {
-                    log_red!(emu, "** {}   +0x{:02x}: 0x{:02x}", emu.pos, i, byte);
-                } else {
-                    log_red!(emu, "** {}   +0x{:02x}: <unmapped>", emu.pos, i);
+        // Handle different scenarios
+        if obj_name_ptr == 0 {
+            // Case 1: ObjectName is NULL - unnamed object
+            log_red!(emu, "** {} ObjectName is NULL - creating unnamed object", emu.pos);
+            
+            if root_directory != 0 {
+                // Creating unnamed object relative to root directory
+                String::from("<unnamed_object_with_root>")
+            } else {
+                // Creating completely unnamed object
+                String::from("<unnamed_object>")
+            }
+        } else if !emu.maps.is_mapped(obj_name_ptr) {
+            // Case 2: ObjectName pointer is invalid
+            log_red!(emu, "** {} ObjectName pointer 0x{:x} is not mapped", emu.pos, obj_name_ptr);
+            String::from("<invalid_objname_ptr>")
+        } else {
+            // Case 3: ObjectName pointer is valid - read UNICODE_STRING
+            log_red!(emu, "** {} Reading UNICODE_STRING at 0x{:x}", emu.pos, obj_name_ptr);
+            
+            // Debug: dump UNICODE_STRING structure
+            for i in (0..16).step_by(8) {
+                if let Some(qword_val) = emu.maps.read_qword(obj_name_ptr + i) {
+                    log_red!(emu, "** {} UNICODE_STRING +0x{:02x}: 0x{:016x}", emu.pos, i, qword_val);
                 }
             }
-
-            // Simple approach: just read the buffer pointer and try to get the string
-            /*let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
-            if buffer_ptr != 0 {
-                let filename = emu.maps.read_wide_string(buffer_ptr);
-                log_red!(emu, "** {} Filename: '{}'", emu.pos, filename);
-                filename
+            
+            let length = emu.maps.read_word(obj_name_ptr).unwrap_or(0);
+            let max_length = emu.maps.read_word(obj_name_ptr + 2).unwrap_or(0);
+            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
+            
+            log_red!(emu, "** {} UNICODE_STRING: Length={} MaxLength={} Buffer=0x{:x}", 
+                     emu.pos, length, max_length, buffer_ptr);
+            
+            if buffer_ptr == 0 {
+                // Case 4: UNICODE_STRING.Buffer is NULL
+                log_red!(emu, "** {} UNICODE_STRING Buffer is NULL", emu.pos);
+                
+                if root_directory != 0 {
+                    String::from("<null_buffer_with_root>")
+                } else {
+                    String::from("<null_buffer>")
+                }
+            } else if length == 0 {
+                // Case 5: UNICODE_STRING.Length is 0 (empty string)
+                log_red!(emu, "** {} UNICODE_STRING Length is 0 (empty string)", emu.pos);
+                
+                if root_directory != 0 {
+                    String::from("<empty_string_with_root>")
+                } else {
+                    String::from("<empty_string>")
+                }
+            } else if !emu.maps.is_mapped(buffer_ptr) {
+                // Case 6: UNICODE_STRING.Buffer pointer is invalid
+                log_red!(emu, "** {} UNICODE_STRING Buffer 0x{:x} is not mapped", emu.pos, buffer_ptr);
+                String::from("<invalid_buffer_ptr>")
             } else {
-                String::from("<no_buffer>")
-            }*/
-            // TODO: it does not work well....
-            String::from("<todo_filename_reading>")
-        } else {
-            String::from("<no_objname>")
+                // Case 7: Valid UNICODE_STRING with valid buffer - read the string
+                let char_count = (length / 2) as usize;
+                let filename_str = emu.maps.read_wide_string_n(buffer_ptr, char_count);
+                
+                log_red!(emu, "** {} Filename: '{}'", emu.pos, filename_str);
+                
+                if root_directory != 0 {
+                    // Relative path to root directory
+                    format!("<root_0x{:x}>\\{}", root_directory, filename_str)
+                } else {
+                    // Absolute path
+                    filename_str
+                }
+            }
         }
     } else {
         log_red!(emu, "** {} OBJECT_ATTRIBUTES pointer is null", emu.pos);
         String::from("<null_oattrib>")
     };
 
-    log_red!(emu, "** {} ntdll!NtCreateFile filename: '{}'", emu.pos, filename);
+    log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
 
     if out_hndl_ptr > 0 {
         emu.maps
             .write_qword(out_hndl_ptr, helper::handler_create(&filename) as u64);
     }
+
+    panic!("OUT");
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
