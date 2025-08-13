@@ -48,7 +48,6 @@ use emu::Emu;
 
 pub fn emu64() -> Emu {
     let mut emu = Emu::new();
-    emu_context::set_current_emu(&emu);
     let mut cfg = Config::new();
     cfg.is_64bits = true;
     emu.set_config(cfg);
@@ -58,7 +57,6 @@ pub fn emu64() -> Emu {
 
 pub fn emu32() -> Emu {
     let mut emu = Emu::new();
-    emu_context::set_current_emu(&emu);
     let mut cfg = Config::new();
     cfg.is_64bits = false;
     emu.set_config(cfg);

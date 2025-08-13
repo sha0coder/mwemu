@@ -148,6 +148,8 @@ fn main() {
         emu.cfg.is_64bits = false;
     }
 
+    libmwemu::emu_context::set_current_emu(&emu);
+
     emu.running_script = false;
 
 
