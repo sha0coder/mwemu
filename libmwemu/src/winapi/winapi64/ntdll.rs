@@ -1,3 +1,8 @@
+use std::fs::File;
+use std::io::Read as _;
+use std::io::Seek as _;
+use std::io::SeekFrom;
+
 use crate::console::Console;
 use crate::constants;
 use crate::context::context64::Context64;
@@ -745,6 +750,10 @@ fn NtCreateFile(emu: &mut emu::Emu) {
 
     log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
 
+    if filename != "\\??\\c:\\c:\\version.dll" {
+        panic!("TODO: NtCreateFile {}", filename);
+    }
+
     if out_hndl_ptr > 0 {
         emu.maps
             .write_qword(out_hndl_ptr, helper::handler_create(&filename) as u64);
@@ -850,6 +859,19 @@ fn NtSetInformationFile(emu: &mut emu::Emu) {
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
+/*
+NTSTATUS NtReadFile(
+  _In_     HANDLE           FileHandle,
+  _In_opt_ HANDLE           Event,
+  _In_opt_ PIO_APC_ROUTINE  ApcRoutine,
+  _In_opt_ PVOID            ApcContext,
+  _Out_    PIO_STATUS_BLOCK IoStatusBlock,
+  _Out_    PVOID            Buffer,
+  _In_     ULONG            Length,
+  _In_opt_ PLARGE_INTEGER   ByteOffset,
+  _In_opt_ PULONG           Key
+);
+*/
 fn NtReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu.regs().rcx;
     let ev_hndl = emu.regs().rdx;
@@ -876,13 +898,55 @@ fn NtReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x40)
         .expect("ntdll!NtReadFile error reading key param");
 
-    let file = helper::handler_get_uri(file_hndl);
+    // file offset
+    let file_offset = if off != 0 {
+        // If off is not null, read the LARGE_INTEGER from that address
+        match emu.maps.read_qword(off) {
+            Some(offset_value) => offset_value,
+            None => {
+                log_red!(emu, "Failed to read file offset from 0x{:x}", off);
+                emu.regs_mut().rax = constants::STATUS_INVALID_PARAMETER;
+                return;
+            }
+        }
+    } else {
+        // If off is null, use current file position (start from 0 for simplicity)
+        0
+    };
 
-    // TODO: read from filesystem based off of handle?
+    // filename from handle
+    let filename = helper::handler_get_uri(file_hndl);
 
-    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", file, buff, len, off);
+    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", filename, buff, len, off);
 
     emu.maps.memset(buff, 0x90, len);
+
+    if filename == "\\??\\c:\\c:\\version.dll" {
+        let local_path = "/tmp/version.dll";
+        let mut file = File::open(local_path).unwrap();
+        file.seek(SeekFrom::Start(file_offset));
+        let mut file_buffer = vec![0u8; len];
+        let bytes_read = file.read(&mut file_buffer).unwrap();
+        for i in 0..bytes_read {
+            if let Some(byte_val) = file_buffer.get(i) {
+                emu.maps.write_byte(buff + i as u64, *byte_val);
+            }
+        }
+        // TODO: Update the IO_STATUS_BLOCK if provided
+
+        // Set return value
+        if bytes_read == len {
+            emu.regs_mut().rax = constants::STATUS_SUCCESS;
+        } else if bytes_read == 0 {
+            emu.regs_mut().rax = constants::STATUS_END_OF_FILE;
+        } else {
+            // Partial read
+            emu.regs_mut().rax = constants::STATUS_SUCCESS;
+        }
+    } else {
+        panic!("TODO: read {}", filename);
+    }
+    
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
