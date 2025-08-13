@@ -148,10 +148,7 @@ fn main() {
         emu.cfg.is_64bits = false;
     }
 
-    libmwemu::emu_context::set_current_emu(&emu);
-
     emu.running_script = false;
-
 
     // filename
     let filename = matches
@@ -383,10 +380,12 @@ fn main() {
         emu.fpu_mut().trace = true;
     }
 
+    // trace flags
     if matches.is_present("flags") {
         emu.cfg.trace_flags = true;
     }
 
+    // args
     if matches.is_present("args") {
         log::info!("espeicificando argumentos: {}", matches.value_of("args").expect("specify the argument string").to_string());
         emu.cfg.arguments = matches.value_of("args").expect("specify the argument string").to_string();
@@ -432,6 +431,8 @@ fn main() {
         process::exit(1);
     }));
 
+    // set current
+    libmwemu::emu_context::set_current_emu(&emu);
 
     // load code
     emu.load_code(&filename);

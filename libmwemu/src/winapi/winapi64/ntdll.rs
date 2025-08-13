@@ -505,6 +505,11 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
     let dos_path_name = emu.maps.read_wide_string(dos_path_name_ptr);
 
+    log_red!(
+        emu,
+        "ntdll!RtlDosPathNameToNtPathName_U dos_path_name_ptr: {dos_path_name_ptr:x} nt_path_name_ptr: {nt_path_name_ptr:x} nt_file_name_part_ptr: {nt_file_name_part_ptr:x} curdir_ptr: {curdir_ptr:x}",
+    );
+
     //TODO: si la variable destino apunta a pila no hacer memcpy, solo si es un alloc_
 
     if curdir_ptr > 0 {
@@ -571,7 +576,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             if let Some(base_addr) = existing_base_addr {
                 // TODO: Check if existing map is large enough for required_size
                 // Reuse existing allocation
-                emu.maps.write_dword(nt_path_name_ptr, base_addr as u32);
+                emu.maps.write_qword(nt_path_name_ptr, base_addr);
                 let result = emu.maps.memcpy(
                     base_addr,
                     dos_path_name_ptr,
@@ -588,7 +593,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                             .maps
                             .create_map("nt_alloc", a, 255)
                             .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
-                        emu.maps.write_dword(nt_path_name_ptr, a as u32);
+                        emu.maps.write_qword(nt_path_name_ptr, a);
                         let result = emu.maps.memcpy(
                             a,
                             dos_path_name_ptr,
