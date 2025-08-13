@@ -143,8 +143,26 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         log::info!("{}** {} Reallocating existing BSTR at 0x{:x}", 
                    emu.colors.light_red, emu.pos, old_bstr);
         
-        // Free the old BSTR (old_bstr points to string data, so allocation starts at old_bstr - 4)
+        // Log the old string content
         let old_alloc_base = old_bstr - 4;
+        let old_len_bytes = emu.maps.read_dword(old_alloc_base).unwrap_or(0);
+        let old_len_chars = old_len_bytes / 2;
+        if old_len_chars > 0 {
+            let old_string = emu.maps.read_wide_string_n(old_bstr, old_len_chars as usize);
+            log::info!("{}** {} Old BSTR content: \"{}\" (length: {} chars)", 
+                       emu.colors.light_red, emu.pos, old_string, old_len_chars);
+        } else {
+            log::info!("{}** {} Old BSTR was empty", emu.colors.light_red, emu.pos);
+        }
+        
+        // Log the new source string if provided
+        if psz != 0 && len > 0 {
+            let new_string = emu.maps.read_wide_string_n(psz, len as usize);
+            log::info!("{}** {} New source string: \"{}\" (length: {} chars)", 
+                       emu.colors.light_red, emu.pos, new_string, len);
+        }
+        
+        // Free the old BSTR (old_bstr points to string data, so allocation starts at old_bstr - 4)
         // Note: In a real implementation, you'd use HeapReAlloc here
         
         // Allocate new memory
@@ -165,8 +183,6 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
             }
         } else {
             // Copy from old BSTR (preserve existing data, but truncated to new length)
-            let old_len_bytes = emu.maps.read_dword(old_alloc_base).unwrap_or(0);
-            let old_len_chars = old_len_bytes / 2;
             let copy_len = std::cmp::min(len, old_len_chars as u64);
             if copy_len > 0 {
                 emu.maps.memcpy(new_base + 4, old_bstr, copy_len as usize * 2);
@@ -179,6 +195,13 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         // Update the BSTR pointer to point to the string data (skip the 4-byte length prefix)
         let new_bstr = new_base + 4;
         emu.maps.write_qword(pbstr_ptr, new_bstr);
+        
+        // Log the final string content
+        if len > 0 {
+            let final_string = emu.maps.read_wide_string_n(new_bstr, len as usize);
+            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars)", 
+                       emu.colors.light_red, emu.pos, final_string, len);
+        }
         
         log::info!(
             "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
@@ -193,6 +216,13 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         // Case 2: First allocation (*pbstr is NULL) - delegate to SysAllocStringLen
         log::info!("{}** {} First allocation (old BSTR is NULL), calling SysAllocStringLen", 
                    emu.colors.light_red, emu.pos);
+        
+        // Log the source string if provided
+        if psz != 0 && len > 0 {
+            let source_string = emu.maps.read_wide_string_n(psz, len as usize);
+            log::info!("{}** {} Source string: \"{}\" (length: {} chars)", 
+                       emu.colors.light_red, emu.pos, source_string, len);
+        }
         
         // Allocate new memory
         let new_base = emu.maps.alloc(total_alloc_size + 100)
@@ -220,6 +250,15 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         // Set the BSTR pointer to point to the string data
         let new_bstr = new_base + 4;
         emu.maps.write_qword(pbstr_ptr, new_bstr);
+        
+        // Log the final string content
+        if len > 0 {
+            let final_string = emu.maps.read_wide_string_n(new_bstr, len as usize);
+            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars)", 
+                       emu.colors.light_red, emu.pos, final_string, len);
+        } else {
+            log::info!("{}** {} Created empty BSTR", emu.colors.light_red, emu.pos);
+        }
         
         log::info!(
             "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
