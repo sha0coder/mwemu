@@ -14,6 +14,7 @@ pub mod context;
 pub mod eflags;
 pub mod elf;
 pub mod emu;
+pub mod emu_context;
 pub mod engine;
 pub mod err;
 pub mod exception;
@@ -47,20 +48,20 @@ use emu::Emu;
 
 pub fn emu64() -> Emu {
     let mut emu = Emu::new();
+    emu_context::set_current_emu(&emu);
     let mut cfg = Config::new();
     cfg.is_64bits = true;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-
     emu
 }
 
 pub fn emu32() -> Emu {
     let mut emu = Emu::new();
+    emu_context::set_current_emu(&emu);
     let mut cfg = Config::new();
     cfg.is_64bits = false;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-
     emu
 }

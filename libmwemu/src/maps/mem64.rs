@@ -11,6 +11,7 @@ use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Write;
 use bytemuck::cast_slice;
+use crate::emu_context;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
@@ -276,11 +277,14 @@ impl Mem64 {
         self.mem[idx] = value;
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_byte: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 1),
-                value
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_byte: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 1),
+                    value
+                );
+            }).unwrap();
         }
     }
 
@@ -289,11 +293,14 @@ impl Mem64 {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_bytes: 0x{:x?} = {:?}",
-                self.build_addresses(addr, bs.len()),
-                bs
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_bytes: 0x{:x?} = {:?}",
+                    self.build_addresses(addr, bs.len()),
+                    bs
+                );
+            }).unwrap();
         }
     }
 
@@ -303,11 +310,14 @@ impl Mem64 {
         self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_word: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 2),
-                value
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_word: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 2),
+                    value
+                );
+            });
         }
     }
 
@@ -317,11 +327,14 @@ impl Mem64 {
         self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_dword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 4),
-                value
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_dword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 4),
+                    value
+                );
+            });
         }
     }
 
@@ -331,11 +344,14 @@ impl Mem64 {
         self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_qword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 8),
-                value
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_qword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 8),
+                    value
+                );
+            });
         }
     }
 
@@ -345,11 +361,14 @@ impl Mem64 {
         self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_qword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 8),
-                value
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_qword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 8),
+                    value
+                );
+            });
         }
     }
 
@@ -360,11 +379,14 @@ impl Mem64 {
         self.write_bytes(addr, &v);
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_string: 0x{:x?} = {:?}",
-                self.build_addresses(addr, s.len() + 1),
-                s
-            );
+            emu_context::with_current_emu(|emu| {
+                log_red!(
+                    emu,
+                    "mem: write_string: 0x{:x?} = {:?}",
+                    self.build_addresses(addr, s.len() + 1),
+                    s
+                );
+            });
         }
     }
 
