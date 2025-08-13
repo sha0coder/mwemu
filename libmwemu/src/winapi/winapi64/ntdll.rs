@@ -548,8 +548,9 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
         // Allocate buffer for the NT path string
         match emu.maps.alloc((string_length_bytes + 2) as u64) { // +2 for null terminator
             Some(string_buffer_addr) => {
+                // TODO: only create if it does not already exist
                 // Create the string buffer map
-                emu.maps.create_map("nt_path_string", string_buffer_addr, (string_length_bytes + 2) as u64)
+                emu.maps.create_map(&format!("nt_path_string_{:x}", string_buffer_addr), string_buffer_addr, (string_length_bytes + 2) as u64)
                     .expect("Failed to create nt_path_string map");
                 
                 // Write the NT path string to the allocated buffer

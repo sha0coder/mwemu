@@ -418,10 +418,10 @@ impl Emu {
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 // turn on verbosity after a lot of pos
-                if self.cfg.verbose != 3 && self.pos >= 189900000 {
+                /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
                     self.cfg.verbose = 3;
                     self.set_verbose(self.cfg.verbose);
-                }
+                }*/
 
                 // Debug: Track which thread we're executing
                 if self.threads.len() > 1 && self.cfg.verbose >= 3 {
@@ -875,10 +875,10 @@ impl Emu {
                     self.pos += 1;
 
                     // turn on verbosity after a lot of pos
-                    if self.cfg.verbose != 3 && self.pos >= 189_900_000 {
+                    /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
                         self.cfg.verbose = 3;
                         self.set_verbose(self.cfg.verbose);
-                    }
+                    }*/
 
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
