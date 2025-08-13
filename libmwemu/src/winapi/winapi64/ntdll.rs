@@ -497,9 +497,18 @@ struct CurDir {
     Handle: u64,
 }
 
+/*
+BOOLEAN
+NTAPI
+RtlDosPathNameToNtPathName_U(IN PCWSTR DosName,
+                             OUT PUNICODE_STRING NtName,
+                             OUT PCWSTR *PartName,
+                             OUT PRTL_RELATIVE_NAME_U RelativeName)
+*/
+
 fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
     let dos_path_name_ptr = emu.regs().rcx;
-    let nt_path_name_ptr = emu.regs().rdx;
+    let nt_path_name_ptr = emu.regs().rdx;  // This should point to a UNICODE_STRING structure
     let nt_file_name_part_ptr = emu.regs().r8;
     let curdir_ptr = emu.regs().r9;
 
@@ -507,111 +516,83 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
     log_red!(
         emu,
-        "ntdll!RtlDosPathNameToNtPathName_U dos_path_name_ptr: {dos_path_name_ptr:x} nt_path_name_ptr: {nt_path_name_ptr:x} nt_file_name_part_ptr: {nt_file_name_part_ptr:x} curdir_ptr: {curdir_ptr:x}",
+        "ntdll!RtlDosPathNameToNtPathName_U dos_path='{}' dos_path_name_ptr: {dos_path_name_ptr:x} nt_path_name_ptr: {nt_path_name_ptr:x} nt_file_name_part_ptr: {nt_file_name_part_ptr:x} curdir_ptr: {curdir_ptr:x}",
+        dos_path_name
     );
 
-    //TODO: si la variable destino apunta a pila no hacer memcpy, solo si es un alloc_
+    // Convert DOS path to NT path (simple conversion for now)
+    let nt_path = if dos_path_name.starts_with("\\\\?\\") {
+        // Already in \\?\ format, convert to \??\
+        format!("\\??\\{}", &dos_path_name[4..])
+    } else if dos_path_name.len() >= 2 && dos_path_name.chars().nth(1) == Some(':') {
+        // Drive letter format like C:\path -> \??\C:\path
+        format!("\\??\\{}", dos_path_name)
+    } else {
+        // Other formats, just prepend \??\
+        format!("\\??\\{}", dos_path_name)
+    };
 
-    if curdir_ptr > 0 {
-        let dos_path_unicode_ptr = emu
-            .maps
-            .read_dword(curdir_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U error reading dos_path_unicode_ptr")
-            as u64;
-
-        let dst_map_name = emu
-            .maps
-            .get_addr_name(dos_path_unicode_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address");
-
-        if dst_map_name.starts_with("alloc_") {
-            let result = emu.maps.memcpy(
-                dos_path_unicode_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-            );
-            if result == false {
-                panic!("RtlDosPathNameToNtPathName_U failed to copy");
-            }
-        } else if emu.cfg.verbose >= 1 {
-            log::info!(
-                "/!\\ ntdll!RtlDosPathNameToNtPathName_U denied dest buffer on {} map",
-                dst_map_name
-            );
-            log::info!(
-                "memcpy1 0x{:x} <- 0x{:x}  sz: {}",
-                dos_path_unicode_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2
-            );
-        }
-    }
+    log_red!(emu, "Converted DOS path '{}' to NT path '{}'", dos_path_name, nt_path);
 
     if nt_path_name_ptr > 0 {
-        // its a stack dword where to write the address of a new buffer
-
-        let dst_map_name = emu
-            .maps
-            .get_addr_name(nt_path_name_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address.");
-
-        if dst_map_name.starts_with("alloc_") {
-            // Existing allocated buffer - reuse it
-            let result = emu.maps.memcpy(
-                nt_path_name_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-            );
-            if result == false {
-                panic!("RtlDosPathNameToNtPathName_U failed to copy");
-            }
-        } else {
-            // Check if we already have an nt_alloc map we can reuse
-            let required_size = emu.maps.sizeof_wide(dos_path_name_ptr) * 2;        
-            let existing_base_addr = if let Some(existing_addr) = emu.maps.get_map_by_name("nt_alloc") {
-                Some(existing_addr.get_base())
-            } else {
-                None
-            };
-            if let Some(base_addr) = existing_base_addr {
-                // TODO: Check if existing map is large enough for required_size
-                // Reuse existing allocation
-                emu.maps.write_qword(nt_path_name_ptr, base_addr);
-                let result = emu.maps.memcpy(
-                    base_addr,
-                    dos_path_name_ptr,
-                    required_size,
-                );
-                if result == false {
-                    panic!("RtlDosPathNameToNtPathName_U failed to copy");
+        // nt_path_name_ptr points to a UNICODE_STRING structure that we need to populate
+        
+        // Calculate string length in bytes (UTF-16, so chars * 2)
+        let string_length_bytes = nt_path.encode_utf16().count() * 2;
+        
+        // Allocate buffer for the NT path string
+        match emu.maps.alloc((string_length_bytes + 2) as u64) { // +2 for null terminator
+            Some(string_buffer_addr) => {
+                // Create the string buffer map
+                emu.maps.create_map("nt_path_string", string_buffer_addr, (string_length_bytes + 2) as u64)
+                    .expect("Failed to create nt_path_string map");
+                
+                // Write the NT path string to the allocated buffer
+                emu.maps.write_wide_string(string_buffer_addr, &nt_path);
+                
+                // Now populate the UNICODE_STRING structure at nt_path_name_ptr
+                // typedef struct _UNICODE_STRING {
+                //     USHORT Length;        // +0x00
+                //     USHORT MaximumLength; // +0x02  
+                //     PWSTR  Buffer;        // +0x08
+                // } UNICODE_STRING;
+                
+                emu.maps.write_word(nt_path_name_ptr, string_length_bytes as u16);           // Length
+                emu.maps.write_word(nt_path_name_ptr + 2, (string_length_bytes + 2) as u16); // MaximumLength
+                emu.maps.write_qword(nt_path_name_ptr + 8, string_buffer_addr);              // Buffer
+                
+                log_red!(emu, "Created UNICODE_STRING: Length={}, MaxLength={}, Buffer=0x{:x}", 
+                         string_length_bytes, string_length_bytes + 2, string_buffer_addr);
+                
+                // Set nt_file_name_part_ptr if requested
+                if nt_file_name_part_ptr > 0 {
+                    // Find the last backslash to get filename part
+                    if let Some(last_backslash_pos) = nt_path.rfind('\\') {
+                        let filename_offset = (last_backslash_pos + 1) * 2; // Convert to byte offset
+                        let filename_part_addr = string_buffer_addr + filename_offset as u64;
+                        emu.maps.write_qword(nt_file_name_part_ptr, filename_part_addr);
+                        log_red!(emu, "Set filename part pointer to 0x{:x}", filename_part_addr);
+                    } else {
+                        // No backslash found, filename part is the whole string
+                        emu.maps.write_qword(nt_file_name_part_ptr, string_buffer_addr);
+                    }
                 }
-            } else {
-                // Create new allocation only if needed
-                match emu.maps.alloc(255) {
-                    Some(a) => {
-                        let mem = emu
-                            .maps
-                            .create_map("nt_alloc", a, 255)
-                            .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
-                        emu.maps.write_qword(nt_path_name_ptr, a);
-                        let result = emu.maps.memcpy(
-                            a,
-                            dos_path_name_ptr,
-                            emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-                        );
-                        if result == false {
-                            panic!("RtlDosPathNameToNtPathName_U failed to copy");
-                        }
-                    }
-                    None => {
-                        if emu.cfg.verbose >= 1 {
-                            log::info!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
-                        }
-                    }
-                };
+            }
+            None => {
+                log_red!(emu, "Failed to allocate memory for NT path string");
+                emu.regs_mut().rax = 0; // Return failure
+                return;
             }
         }
     }
+
+    // Handle curdir_ptr if needed (simplified for now)
+    if curdir_ptr > 0 {
+        // This would typically populate a CurDir structure
+        log_red!(emu, "CurDir handling not fully implemented");
+    }
+
+    emu.regs_mut().rax = 1; // Return success (TRUE)
 }
 
 /*
@@ -768,8 +749,6 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         emu.maps
             .write_qword(out_hndl_ptr, helper::handler_create(&filename) as u64);
     }
-
-    panic!("OUT");
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
