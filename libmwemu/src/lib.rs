@@ -14,6 +14,7 @@ pub mod context;
 pub mod eflags;
 pub mod elf;
 pub mod emu;
+pub mod emu_context;
 pub mod engine;
 pub mod err;
 pub mod exception;
@@ -51,7 +52,6 @@ pub fn emu64() -> Emu {
     cfg.is_64bits = true;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-
     emu
 }
 
@@ -61,6 +61,5 @@ pub fn emu32() -> Emu {
     cfg.is_64bits = false;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-
     emu
 }

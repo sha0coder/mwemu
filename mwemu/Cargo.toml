@@ -9,18 +9,12 @@ description = "x86 32/64bits and system internals emulator, for securely emulati
 documentation = "https://docs.rs/libmwemu"
 repository = "https://github.com/sha0coder/mwemu"
 
-
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 clap = "2.33.3"
 log = "0.4.22"
 env_logger = "0.11.6"
 libmwemu = { path = "../libmwemu" }
 fast_log = { version = "1.7" }
-iced-x86 = { version = "1.21.0", features = ["serde"] } # for the formatter on panic hook
-#libmwemu = "0.21.0"
 
 [features]
 # log_file = []

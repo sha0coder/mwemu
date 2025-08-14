@@ -3,12 +3,10 @@
 extern crate clap;
 
 use std::{panic, process};
-use std::cell::RefCell;
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use iced_x86::Formatter;
 use fast_log::{Config};
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
@@ -80,81 +78,7 @@ impl CustomLogFormat {
 
 }
 
-// Thread-local storage for current emulator reference
-thread_local! {
-    static CURRENT_EMU: RefCell<Option<*const libmwemu::emu::Emu>> = RefCell::new(None);
-}
-
-fn set_current_emu(emu: &libmwemu::emu::Emu) {
-    CURRENT_EMU.with(|current| {
-        *current.borrow_mut() = Some(emu as *const _);
-    });
-}
-
-fn clear_current_emu() {
-    CURRENT_EMU.with(|current| {
-        *current.borrow_mut() = None;
-    });
-}
-
-fn log_emu_state(emu: &mut libmwemu::emu::Emu) {
-    log::error!("=== EMULATOR STATE AT PANIC ===");
-    log::error!("Current position: {}", emu.pos);
-
-    let mut out: String = String::new();
-    let color = "\x1b[0;31m";
-    let ins = emu.instruction.unwrap().clone();
-    emu.formatter.format(&ins, &mut out);
-    log::info!(
-        "{}{} 0x{:x}: {}{}",
-        color,
-        emu.pos,
-        ins.ip(),
-        out,
-        emu.colors.nc
-    );
-
-
-    
-    // Log general purpose registers
-    log::error!("Registers:");
-    log::error!("  RAX: 0x{:016x}  RBX: 0x{:016x}", emu.regs().rax, emu.regs().rbx);
-    log::error!("  RCX: 0x{:016x}  RDX: 0x{:016x}", emu.regs().rcx, emu.regs().rdx);
-    log::error!("  RSI: 0x{:016x}  RDI: 0x{:016x}", emu.regs().rsi, emu.regs().rdi);
-    log::error!("  RBP: 0x{:016x}  RSP: 0x{:016x}", emu.regs().rbp, emu.regs().rsp);
-    log::error!("  R8:  0x{:016x}  R9:  0x{:016x}", emu.regs().r8, emu.regs().r9);
-    log::error!("  R10: 0x{:016x}  R11: 0x{:016x}", emu.regs().r10, emu.regs().r11);
-    log::error!("  R12: 0x{:016x}  R13: 0x{:016x}", emu.regs().r12, emu.regs().r13);
-    log::error!("  R14: 0x{:016x}  R15: 0x{:016x}", emu.regs().r14, emu.regs().r15);
-    log::error!("  RIP: 0x{:016x}", emu.regs().rip);
-    
-    // Log flags
-    log::error!("EFLAGS: 0x{:08x}", emu.flags().dump());
-    
-    // Log last instruction if available
-    if let Some(ref _instruction) = emu.instruction {
-        log::error!("Last instruction: {}", emu.mnemonic);
-        log::error!("Instruction size: {}", emu.last_instruction_size);
-    }
-    
-    // Log call stack
-    if !emu.call_stack().is_empty() {
-        log::error!("Call stack (last {} entries):", emu.call_stack().len().min(10));
-        for (i, entry) in emu.call_stack().iter().rev().take(10).enumerate() {
-            log::error!("  {}: {}", i, entry);
-        }
-    }
-    
-    // Log execution info
-    log::error!("Tick count: {}", emu.tick);
-    log::error!("Base address: 0x{:x}", emu.base);
-    log::error!("Filename: {}", emu.filename);
-    
-    log::error!("==============================");
-}
-
 fn main() {
-
     let matches = App::new("MWEMU emulator for malware")
         .version(env!("CARGO_PKG_VERSION"))
         .author("@sha0coder")
@@ -225,7 +149,6 @@ fn main() {
     }
 
     emu.running_script = false;
-
 
     // filename
     let filename = matches
@@ -457,10 +380,12 @@ fn main() {
         emu.fpu_mut().trace = true;
     }
 
+    // trace flags
     if matches.is_present("flags") {
         emu.cfg.trace_flags = true;
     }
 
+    // args
     if matches.is_present("args") {
         log::info!("espeicificando argumentos: {}", matches.value_of("args").expect("specify the argument string").to_string());
         emu.cfg.arguments = matches.value_of("args").expect("specify the argument string").to_string();
@@ -486,24 +411,16 @@ fn main() {
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
         // Try to log emulator state if available
-        CURRENT_EMU.with(|current| {
-            if let Some(emu_ptr) = *current.borrow() {
-                unsafe {
-                    // Safety: We ensure the pointer is valid during the lifetime of run()
-                    let emu = &mut *(emu_ptr as *mut _);
-                    //let emu = &*emu_ptr;
+        libmwemu::emu_context::with_current_emu_mut(|emu| {
+            // log state
+            libmwemu::emu_context::log_emu_state(emu);
 
-                    // log state
-                    log_emu_state(emu);
-
-                    // dump on exit
-                    if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                        serialization::Serialization::dump_to_file(
-                            &emu,
-                            emu.cfg.dump_filename.as_ref().unwrap(),
-                        );
-                    }
-                }
+            // dump on exit
+            if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
+                serialization::Serialization::dump_to_file(
+                    &emu,
+                    emu.cfg.dump_filename.as_ref().unwrap(),
+                );
             }
         });
         
@@ -514,6 +431,8 @@ fn main() {
         process::exit(1);
     }));
 
+    // set current
+    libmwemu::emu_context::set_current_emu(&emu);
 
     // load code
     emu.load_code(&filename);
@@ -528,7 +447,6 @@ fn main() {
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
 
-
     // script 
     if matches.is_present("script") {
         emu.disable_ctrlc();
@@ -538,28 +456,22 @@ fn main() {
                 .value_of("script")
                 .expect("select a script filename"),
         );
-        // Set the current emu for panic handler
-        set_current_emu(&emu);
         
         // Run script
         script.run(&mut emu);
         
         // Clear the current emu
-        clear_current_emu();
+        libmwemu::emu_context::clear_current_emu();
     } else {
-
         if matches.is_present("handle") {
             emu.cfg.console_enabled = true; 
             emu.enable_ctrlc();
         }
-
-        // Set the current emu for panic handler
-        set_current_emu(&emu);
         
         let result = emu.run(None);
         
         // Clear the current emu
-        clear_current_emu();
+        libmwemu::emu_context::clear_current_emu();
         
         log::logger().flush();
         result.unwrap();

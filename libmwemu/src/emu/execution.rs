@@ -418,7 +418,7 @@ impl Emu {
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 // turn on verbosity after a lot of pos
-                /*if self.cfg.verbose != 3 && self.pos > 500653754 {
+                /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
                     self.cfg.verbose = 3;
                     self.set_verbose(self.cfg.verbose);
                 }*/
@@ -874,6 +874,12 @@ impl Emu {
                     self.memory_operations.clear();
                     self.pos += 1;
 
+                    // turn on verbosity after a lot of pos
+                    /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
+                        self.cfg.verbose = 3;
+                        self.set_verbose(self.cfg.verbose);
+                    }*/
+
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
 
@@ -968,7 +974,6 @@ impl Emu {
                         self.flags().print_trace(self.pos);
                     }
 
-
                     if self.cfg.trace_string {
                         self.trace_string();
                     }
@@ -1008,7 +1013,6 @@ impl Emu {
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
                     /*************************************/
-
 
                     if let Some(rep_count) = self.rep {
                         if self.cfg.verbose >= 3 {

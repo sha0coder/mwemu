@@ -1,3 +1,8 @@
+use std::fs::File;
+use std::io::Read as _;
+use std::io::Seek as _;
+use std::io::SeekFrom;
+
 use crate::console::Console;
 use crate::constants;
 use crate::context::context64::Context64;
@@ -497,116 +502,103 @@ struct CurDir {
     Handle: u64,
 }
 
+/*
+BOOLEAN
+NTAPI
+RtlDosPathNameToNtPathName_U(IN PCWSTR DosName,
+                             OUT PUNICODE_STRING NtName,
+                             OUT PCWSTR *PartName,
+                             OUT PRTL_RELATIVE_NAME_U RelativeName)
+*/
+
 fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
     let dos_path_name_ptr = emu.regs().rcx;
-    let nt_path_name_ptr = emu.regs().rdx;
+    let nt_path_name_ptr = emu.regs().rdx;  // This should point to a UNICODE_STRING structure
     let nt_file_name_part_ptr = emu.regs().r8;
     let curdir_ptr = emu.regs().r9;
 
     let dos_path_name = emu.maps.read_wide_string(dos_path_name_ptr);
 
-    //TODO: si la variable destino apunta a pila no hacer memcpy, solo si es un alloc_
+    log_red!(
+        emu,
+        "ntdll!RtlDosPathNameToNtPathName_U dos_path='{}' dos_path_name_ptr: {dos_path_name_ptr:x} nt_path_name_ptr: {nt_path_name_ptr:x} nt_file_name_part_ptr: {nt_file_name_part_ptr:x} curdir_ptr: {curdir_ptr:x}",
+        dos_path_name
+    );
 
-    if curdir_ptr > 0 {
-        let dos_path_unicode_ptr = emu
-            .maps
-            .read_dword(curdir_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U error reading dos_path_unicode_ptr")
-            as u64;
+    // Convert DOS path to NT path (simple conversion for now)
+    let nt_path = if dos_path_name.starts_with("\\\\?\\") {
+        // Already in \\?\ format, convert to \??\
+        format!("\\??\\{}", &dos_path_name[4..])
+    } else if dos_path_name.len() >= 2 && dos_path_name.chars().nth(1) == Some(':') {
+        // Drive letter format like C:\path -> \??\C:\path
+        format!("\\??\\{}", dos_path_name)
+    } else {
+        // Other formats, just prepend \??\
+        format!("\\??\\{}", dos_path_name)
+    };
 
-        let dst_map_name = emu
-            .maps
-            .get_addr_name(dos_path_unicode_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address");
-
-        if dst_map_name.starts_with("alloc_") {
-            let result = emu.maps.memcpy(
-                dos_path_unicode_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-            );
-            if result == false {
-                panic!("RtlDosPathNameToNtPathName_U failed to copy");
-            }
-        } else if emu.cfg.verbose >= 1 {
-            log::info!(
-                "/!\\ ntdll!RtlDosPathNameToNtPathName_U denied dest buffer on {} map",
-                dst_map_name
-            );
-            log::info!(
-                "memcpy1 0x{:x} <- 0x{:x}  sz: {}",
-                dos_path_unicode_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2
-            );
-        }
-    }
+    log_red!(emu, "Converted DOS path '{}' to NT path '{}'", dos_path_name, nt_path);
 
     if nt_path_name_ptr > 0 {
-        // its a stack dword where to write the address of a new buffer
-
-        let dst_map_name = emu
-            .maps
-            .get_addr_name(nt_path_name_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address.");
-
-        if dst_map_name.starts_with("alloc_") {
-            // Existing allocated buffer - reuse it
-            let result = emu.maps.memcpy(
-                nt_path_name_ptr,
-                dos_path_name_ptr,
-                emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-            );
-            if result == false {
-                panic!("RtlDosPathNameToNtPathName_U failed to copy");
-            }
-        } else {
-            // Check if we already have an nt_alloc map we can reuse
-            let required_size = emu.maps.sizeof_wide(dos_path_name_ptr) * 2;        
-            let existing_base_addr = if let Some(existing_addr) = emu.maps.get_map_by_name("nt_alloc") {
-                Some(existing_addr.get_base())
-            } else {
-                None
-            };
-            if let Some(base_addr) = existing_base_addr {
-                // TODO: Check if existing map is large enough for required_size
-                // Reuse existing allocation
-                emu.maps.write_dword(nt_path_name_ptr, base_addr as u32);
-                let result = emu.maps.memcpy(
-                    base_addr,
-                    dos_path_name_ptr,
-                    required_size,
-                );
-                if result == false {
-                    panic!("RtlDosPathNameToNtPathName_U failed to copy");
+        // nt_path_name_ptr points to a UNICODE_STRING structure that we need to populate
+        
+        // Calculate string length in bytes (UTF-16, so chars * 2)
+        let string_length_bytes = nt_path.encode_utf16().count() * 2;
+        
+        // Allocate buffer for the NT path string
+        match emu.maps.alloc((string_length_bytes + 2) as u64) { // +2 for null terminator
+            Some(string_buffer_addr) => {
+                // TODO: only create if it does not already exist
+                // Create the string buffer map
+                emu.maps.create_map(&format!("nt_path_string_{:x}", string_buffer_addr), string_buffer_addr, (string_length_bytes + 2) as u64)
+                    .expect("Failed to create nt_path_string map");
+                
+                // Write the NT path string to the allocated buffer
+                emu.maps.write_wide_string(string_buffer_addr, &nt_path);
+                
+                // Now populate the UNICODE_STRING structure at nt_path_name_ptr
+                // typedef struct _UNICODE_STRING {
+                //     USHORT Length;        // +0x00
+                //     USHORT MaximumLength; // +0x02  
+                //     PWSTR  Buffer;        // +0x08
+                // } UNICODE_STRING;
+                
+                emu.maps.write_word(nt_path_name_ptr, string_length_bytes as u16);           // Length
+                emu.maps.write_word(nt_path_name_ptr + 2, (string_length_bytes + 2) as u16); // MaximumLength
+                emu.maps.write_qword(nt_path_name_ptr + 8, string_buffer_addr);              // Buffer
+                
+                log_red!(emu, "Created UNICODE_STRING: Length={}, MaxLength={}, Buffer=0x{:x}", 
+                         string_length_bytes, string_length_bytes + 2, string_buffer_addr);
+                
+                // Set nt_file_name_part_ptr if requested
+                if nt_file_name_part_ptr > 0 {
+                    // Find the last backslash to get filename part
+                    if let Some(last_backslash_pos) = nt_path.rfind('\\') {
+                        let filename_offset = (last_backslash_pos + 1) * 2; // Convert to byte offset
+                        let filename_part_addr = string_buffer_addr + filename_offset as u64;
+                        emu.maps.write_qword(nt_file_name_part_ptr, filename_part_addr);
+                        log_red!(emu, "Set filename part pointer to 0x{:x}", filename_part_addr);
+                    } else {
+                        // No backslash found, filename part is the whole string
+                        emu.maps.write_qword(nt_file_name_part_ptr, string_buffer_addr);
+                    }
                 }
-            } else {
-                // Create new allocation only if needed
-                match emu.maps.alloc(255) {
-                    Some(a) => {
-                        let mem = emu
-                            .maps
-                            .create_map("nt_alloc", a, 255)
-                            .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
-                        emu.maps.write_dword(nt_path_name_ptr, a as u32);
-                        let result = emu.maps.memcpy(
-                            a,
-                            dos_path_name_ptr,
-                            emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
-                        );
-                        if result == false {
-                            panic!("RtlDosPathNameToNtPathName_U failed to copy");
-                        }
-                    }
-                    None => {
-                        if emu.cfg.verbose >= 1 {
-                            log::info!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
-                        }
-                    }
-                };
+            }
+            None => {
+                log_red!(emu, "Failed to allocate memory for NT path string");
+                emu.regs_mut().rax = 0; // Return failure
+                return;
             }
         }
     }
+
+    // Handle curdir_ptr if needed (simplified for now)
+    if curdir_ptr > 0 {
+        // This would typically populate a CurDir structure
+        log_red!(emu, "CurDir handling not fully implemented");
+    }
+
+    emu.regs_mut().rax = 1; // Return success (TRUE)
 }
 
 /*
@@ -629,51 +621,13 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let access_mask = emu.regs().rdx;
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
-    
-    // Windows x64 calling convention: parameters 5+ go on stack starting at RSP+0x20
-    // (0x20 bytes of shadow space for first 4 register parameters)
-    
-    // AllocationSize is PLARGE_INTEGER (pointer to 64-bit value)
-    let alloc_sz = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)  // 5th parameter - FIXED: was 0x28
-        .expect("ntdll!NtCreateFile error reading alloc_sz param");
-    
-    // FileAttributes is ULONG (32-bit even on x64 Windows due to LLP64 model)
-    let fattrib = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x28)  // 6th parameter - FIXED: was 0x30
-        .expect("ntdll!NtCreateFile error reading fattrib param");
-    
-    // ShareAccess is ULONG (32-bit)
-    let share_access = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x30)  // 7th parameter - FIXED: was 0x38
-        .expect("ntdll!NtCreateFile error reading share_access param");
-    
-    // CreateDisposition is ULONG (32-bit)
-    let create_disp = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x38)  // 8th parameter - FIXED: was 0x40
-        .expect("ntdll!NtCreateFile error reading create_disp param");
-    
-    // CreateOptions is ULONG (32-bit)
-    let create_opt = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x40)  // 9th parameter - FIXED: was 0x48
-        .expect("ntdll!NtCreateFile error reading create_opt param");
-    
-    // EaBuffer is PVOID (pointer - 64-bit on x64)
-    let ea_buff = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x48)  // 10th parameter - FIXED: was 0x50
-        .expect("ntdll!NtCreateFile error reading ea_buff param");
-    
-    // EaLength is ULONG (32-bit)
-    let ea_len = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x50)  // 11th parameter - FIXED: was 0x58
-        .expect("ntdll!NtCreateFile error reading ea_len param");
+    let alloc_sz = emu.maps.read_qword(emu.regs().rsp + 0x20).expect("ntdll!NtCreateFile error reading alloc_sz param");
+    let fattrib = emu.maps.read_dword(emu.regs().rsp + 0x28).expect("ntdll!NtCreateFile error reading fattrib param");
+    let share_access = emu.maps.read_dword(emu.regs().rsp + 0x30).expect("ntdll!NtCreateFile error reading share_access param");
+    let create_disp = emu.maps.read_dword(emu.regs().rsp + 0x38).expect("ntdll!NtCreateFile error reading create_disp param");
+    let create_opt = emu.maps.read_dword(emu.regs().rsp + 0x40).expect("ntdll!NtCreateFile error reading create_opt param");
+    let ea_buff = emu.maps.read_qword(emu.regs().rsp + 0x48).expect("ntdll!NtCreateFile error reading ea_buff param");
+    let ea_len = emu.maps.read_dword(emu.regs().rsp + 0x50).expect("ntdll!NtCreateFile error reading ea_len param");
 
     log_red!(emu, "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
         emu.pos,
@@ -711,45 +665,95 @@ fn NtCreateFile(emu: &mut emu::Emu) {
             }
         }
         
-        // Read ObjectName field (PUNICODE_STRING at offset +0x10 in 64-bit)
-        let obj_name_ptr = emu
-            .maps
-            .read_qword(oattrib + 0x10)
-            .unwrap_or(0);
+        // Read RootDirectory and ObjectName fields
+        let root_directory = emu.maps.read_qword(oattrib + 0x08).unwrap_or(0);
+        let obj_name_ptr = emu.maps.read_qword(oattrib + 0x10).unwrap_or(0);
         
-        log_red!(emu, "** {} ObjectName pointer: 0x{:x}", emu.pos, obj_name_ptr);
+        log_red!(emu, "** {} RootDirectory: 0x{:x}, ObjectName pointer: 0x{:x}", 
+                 emu.pos, root_directory, obj_name_ptr);
         
-        if obj_name_ptr != 0 {
-            log_red!(emu, "** {} Dumping UNICODE_STRING at 0x{:x}:", emu.pos, obj_name_ptr);
-            // Dump the first 16 bytes of the UNICODE_STRING
-            for i in 0..16 {
-                if let Some(byte) = emu.maps.read_byte(obj_name_ptr + i) {
-                    log_red!(emu, "** {}   +0x{:02x}: 0x{:02x}", emu.pos, i, byte);
-                } else {
-                    log_red!(emu, "** {}   +0x{:02x}: <unmapped>", emu.pos, i);
+        // Handle different scenarios
+        if obj_name_ptr == 0 {
+            // Case 1: ObjectName is NULL - unnamed object
+            log_red!(emu, "** {} ObjectName is NULL - creating unnamed object", emu.pos);
+            
+            if root_directory != 0 {
+                // Creating unnamed object relative to root directory
+                String::from("<unnamed_object_with_root>")
+            } else {
+                // Creating completely unnamed object
+                String::from("<unnamed_object>")
+            }
+        } else if !emu.maps.is_mapped(obj_name_ptr) {
+            // Case 2: ObjectName pointer is invalid
+            log_red!(emu, "** {} ObjectName pointer 0x{:x} is not mapped", emu.pos, obj_name_ptr);
+            String::from("<invalid_objname_ptr>")
+        } else {
+            // Case 3: ObjectName pointer is valid - read UNICODE_STRING
+            log_red!(emu, "** {} Reading UNICODE_STRING at 0x{:x}", emu.pos, obj_name_ptr);
+            
+            // Debug: dump UNICODE_STRING structure
+            for i in (0..16).step_by(8) {
+                if let Some(qword_val) = emu.maps.read_qword(obj_name_ptr + i) {
+                    log_red!(emu, "** {} UNICODE_STRING +0x{:02x}: 0x{:016x}", emu.pos, i, qword_val);
                 }
             }
-
-            // Simple approach: just read the buffer pointer and try to get the string
-            /*let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
-            if buffer_ptr != 0 {
-                let filename = emu.maps.read_wide_string(buffer_ptr);
-                log_red!(emu, "** {} Filename: '{}'", emu.pos, filename);
-                filename
+            
+            let length = emu.maps.read_word(obj_name_ptr).unwrap_or(0);
+            let max_length = emu.maps.read_word(obj_name_ptr + 2).unwrap_or(0);
+            let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
+            
+            log_red!(emu, "** {} UNICODE_STRING: Length={} MaxLength={} Buffer=0x{:x}", 
+                     emu.pos, length, max_length, buffer_ptr);
+            
+            if buffer_ptr == 0 {
+                // Case 4: UNICODE_STRING.Buffer is NULL
+                log_red!(emu, "** {} UNICODE_STRING Buffer is NULL", emu.pos);
+                
+                if root_directory != 0 {
+                    String::from("<null_buffer_with_root>")
+                } else {
+                    String::from("<null_buffer>")
+                }
+            } else if length == 0 {
+                // Case 5: UNICODE_STRING.Length is 0 (empty string)
+                log_red!(emu, "** {} UNICODE_STRING Length is 0 (empty string)", emu.pos);
+                
+                if root_directory != 0 {
+                    String::from("<empty_string_with_root>")
+                } else {
+                    String::from("<empty_string>")
+                }
+            } else if !emu.maps.is_mapped(buffer_ptr) {
+                // Case 6: UNICODE_STRING.Buffer pointer is invalid
+                log_red!(emu, "** {} UNICODE_STRING Buffer 0x{:x} is not mapped", emu.pos, buffer_ptr);
+                String::from("<invalid_buffer_ptr>")
             } else {
-                String::from("<no_buffer>")
-            }*/
-            // TODO: it does not work well....
-            String::from("<todo_filename_reading>")
-        } else {
-            String::from("<no_objname>")
+                // Case 7: Valid UNICODE_STRING with valid buffer - read the string
+                let char_count = (length / 2) as usize;
+                let filename_str = emu.maps.read_wide_string_n(buffer_ptr, char_count);
+                
+                log_red!(emu, "** {} Filename: '{}'", emu.pos, filename_str);
+                
+                if root_directory != 0 {
+                    // Relative path to root directory
+                    format!("<root_0x{:x}>\\{}", root_directory, filename_str)
+                } else {
+                    // Absolute path
+                    filename_str
+                }
+            }
         }
     } else {
         log_red!(emu, "** {} OBJECT_ATTRIBUTES pointer is null", emu.pos);
         String::from("<null_oattrib>")
     };
 
-    log_red!(emu, "** {} ntdll!NtCreateFile filename: '{}'", emu.pos, filename);
+    log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
+
+    if filename != "\\??\\c:\\c:\\version.dll" {
+        panic!("TODO: NtCreateFile {}", filename);
+    }
 
     if out_hndl_ptr > 0 {
         emu.maps
@@ -856,6 +860,19 @@ fn NtSetInformationFile(emu: &mut emu::Emu) {
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
+/*
+NTSTATUS NtReadFile(
+  _In_     HANDLE           FileHandle,
+  _In_opt_ HANDLE           Event,
+  _In_opt_ PIO_APC_ROUTINE  ApcRoutine,
+  _In_opt_ PVOID            ApcContext,
+  _Out_    PIO_STATUS_BLOCK IoStatusBlock,
+  _Out_    PVOID            Buffer,
+  _In_     ULONG            Length,
+  _In_opt_ PLARGE_INTEGER   ByteOffset,
+  _In_opt_ PULONG           Key
+);
+*/
 fn NtReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu.regs().rcx;
     let ev_hndl = emu.regs().rdx;
@@ -882,13 +899,55 @@ fn NtReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x40)
         .expect("ntdll!NtReadFile error reading key param");
 
-    let file = helper::handler_get_uri(file_hndl);
+    // file offset
+    let file_offset = if off != 0 {
+        // If off is not null, read the LARGE_INTEGER from that address
+        match emu.maps.read_qword(off) {
+            Some(offset_value) => offset_value,
+            None => {
+                log_red!(emu, "Failed to read file offset from 0x{:x}", off);
+                emu.regs_mut().rax = constants::STATUS_INVALID_PARAMETER;
+                return;
+            }
+        }
+    } else {
+        // If off is null, use current file position (start from 0 for simplicity)
+        0
+    };
 
-    // TODO: read from filesystem based off of handle?
+    // filename from handle
+    let filename = helper::handler_get_uri(file_hndl);
 
-    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", file, buff, len, off);
+    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", filename, buff, len, off);
 
     emu.maps.memset(buff, 0x90, len);
+
+    if filename == "\\??\\c:\\c:\\version.dll" {
+        let local_path = "/tmp/version.dll";
+        let mut file = File::open(local_path).unwrap();
+        file.seek(SeekFrom::Start(file_offset));
+        let mut file_buffer = vec![0u8; len];
+        let bytes_read = file.read(&mut file_buffer).unwrap();
+        for i in 0..bytes_read {
+            if let Some(byte_val) = file_buffer.get(i) {
+                emu.maps.write_byte(buff + i as u64, *byte_val);
+            }
+        }
+        // TODO: Update the IO_STATUS_BLOCK if provided
+
+        // Set return value
+        if bytes_read == len {
+            emu.regs_mut().rax = constants::STATUS_SUCCESS;
+        } else if bytes_read == 0 {
+            emu.regs_mut().rax = constants::STATUS_END_OF_FILE;
+        } else {
+            // Partial read
+            emu.regs_mut().rax = constants::STATUS_SUCCESS;
+        }
+    } else {
+        panic!("TODO: read {}", filename);
+    }
+    
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
