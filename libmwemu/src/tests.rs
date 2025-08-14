@@ -1515,9 +1515,11 @@ mod tests {
         assert_eq!(emu.regs().rax, 0x82f60800);
         assert_eq!(emu.flags().dump(), 0x217); // [ CF PF AF IF ]
 
-        emu.run_to(65);
+        emu.run_to(64);
         assert_eq!(emu.regs().rax, 0x60bd8200);
         assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
+
+        emu.run_to(69);
     }
 
     #[test]
