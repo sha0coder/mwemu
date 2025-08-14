@@ -602,7 +602,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            let sz = emu.get_operand_sz(ins, 1);
+            let sz = emu.get_operand_sz(ins, 0);
             let res: u64 = match sz {
                 64 => emu.flags_mut().sub64(value0, value1.wrapping_add(cf)),
                 32 => emu
@@ -1384,7 +1384,7 @@ pub fn emulate_instruction(
                 None => return false,
             };
 
-            let sz = emu.get_operand_sz(ins, 1);
+            let sz = emu.get_operand_sz(ins, 0);
             if sz > 8 {
                 bit %= sz as u64;
             }
