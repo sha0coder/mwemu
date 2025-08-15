@@ -3804,13 +3804,18 @@ BOOL VirtualFree(
 );
 */
 fn VirtualFree(emu: &mut emu::Emu) {
+    let addr = emu.regs().rcx;
+    let sz = emu.regs().rdx;
+
     log::info!(
-        "{}** {} kernel32!VirtualFree {}",
+        "{}** {} kernel32!VirtualFree {} bytes at 0x{:x}  {}",
         emu.colors.light_red,
         emu.pos,
+        sz,
+        addr,
         emu.colors.nc
     );
-    // TODO: do something
+    // TODO: do something (dump+free or not free)
     emu.regs_mut().rax = 1;
 }
 
