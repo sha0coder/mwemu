@@ -452,14 +452,13 @@ pub fn emulate_instruction(
         }
 
         Mnemonic::Mov | Mnemonic::Movnti => {
-            emu.show_instruction(color!("LightCyan"), ins);
-
             assert!(ins.op_count() == 2);
 
             let value1 = match emu.get_operand_value(ins, 1, true) {
                 Some(v) => v,
                 None => return false,
             };
+            emu.show_instruction_comment(color!("LightCyan"), ins, &format!("0x{:x}", value1));
 
             if !emu.set_operand_value(ins, 0, value1) {
                 return false;

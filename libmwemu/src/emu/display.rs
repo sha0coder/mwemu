@@ -38,6 +38,26 @@ impl Emu {
     }
 
     #[inline]
+    pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
+        if self.cfg.verbose >= 2 {
+            log::info!(
+                "{}{} 0x{:x}: {} ; {}{}",
+                color,
+                self.pos,
+                ins.ip(),
+                out,
+                comment,
+                self.colors.nc
+            );
+        }
+    }
+
+    #[inline]
     pub fn show_instruction(&mut self, color: &str, ins: &Instruction) {
         if self.cfg.verbose < 2 {
             return;

@@ -4419,14 +4419,14 @@ fn CompareStringW(emu: &mut emu::Emu) {
     let locale = emu.regs().rcx;
     let dw_cmp_flags = emu.regs().rdx;
     let lp_string1 = emu.regs().r8;
-    let cch_count1 = emu.regs().r9 as i32;
+    let cch_count1 = emu.regs().r9 as i32 * 2;
     
     // Get stack parameters
     let lp_string2_addr = emu.regs().rsp + 0x20;
     let cch_count2_addr = emu.regs().rsp + 0x28;
     
     let lp_string2 = emu.maps.read_qword(lp_string2_addr).unwrap_or(0);
-    let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32;
+    let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32 * 2;
 
     log::info!(
         "{}** {} kernel32!CompareStringW locale: 0x{:x} flags: 0x{:x} str1: 0x{:x} len1: {} str2: 0x{:x} len2: {} {}",
@@ -4454,6 +4454,7 @@ fn CompareStringW(emu: &mut emu::Emu) {
         emu.maps.read_wide_string_n(lp_string2, cch_count2 as usize)
     };
 
+
     // Perform case-insensitive comparison if NORM_IGNORECASE flag is set
     // NORM_IGNORECASE = 0x00000001
     let result = if (dw_cmp_flags & 0x00000001) != 0 {
@@ -4473,6 +4474,9 @@ fn CompareStringW(emu: &mut emu::Emu) {
             std::cmp::Ordering::Greater => 3, // CSTR_GREATER_THAN
         }
     };
+
+
+    log::info!("{}\t\t'{}' == '{}'  ={}{}", emu.colors.light_red, s1, s2, result, emu.colors.nc);
     
     emu.regs_mut().rax = result as u64;
 }
