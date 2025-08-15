@@ -555,6 +555,7 @@ impl Maps {
     }
 
     pub fn print_maps(&self) {
+        println!("print_maps");
         log::info!("--- maps ---");
         for (mem_name, base) in self.name_map.iter() {
             let mem = self.get_map_by_name(mem_name).unwrap();

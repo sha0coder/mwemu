@@ -117,12 +117,13 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
     let len = emu.regs().r8;  // Length in characters
 
     log::info!(
-        "{}** {} oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {}",
+        "{}** {} oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {} {}",
         emu.colors.light_red,
         emu.pos,
         pbstr_ptr,
         psz,
-        len
+        len,
+        emu.colors.nc
     );
 
     // Check if pbstr_ptr is NULL
@@ -140,8 +141,8 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
     
     if old_bstr != 0 {
         // Case 1: Reallocating existing BSTR
-        log::info!("{}** {} Reallocating existing BSTR at 0x{:x}", 
-                   emu.colors.light_red, emu.pos, old_bstr);
+        log::info!("{}** {} Reallocating existing BSTR at 0x{:x} {}", 
+                   emu.colors.light_red, emu.pos, old_bstr, emu.colors.nc);
         
         // Log the old string content
         let old_alloc_base = old_bstr - 4;
@@ -149,17 +150,17 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         let old_len_chars = old_len_bytes / 2;
         if old_len_chars > 0 {
             let old_string = emu.maps.read_wide_string_n(old_bstr, old_len_chars as usize);
-            log::info!("{}** {} Old BSTR content: \"{}\" (length: {} chars)", 
-                       emu.colors.light_red, emu.pos, old_string, old_len_chars);
+            log::info!("{}** {} Old BSTR content: \"{}\" (length: {} chars) {}", 
+                       emu.colors.light_red, emu.pos, old_string, old_len_chars, emu.colors.nc);
         } else {
-            log::info!("{}** {} Old BSTR was empty", emu.colors.light_red, emu.pos);
+            log::info!("{}** {} Old BSTR was empty {}", emu.colors.light_red, emu.pos, emu.colors.nc);
         }
         
         // Log the new source string if provided
         if psz != 0 && len > 0 {
             let new_string = emu.maps.read_wide_string_n(psz, len as usize);
-            log::info!("{}** {} New source string: \"{}\" (length: {} chars)", 
-                       emu.colors.light_red, emu.pos, new_string, len);
+            log::info!("{}** {} New source string: \"{}\" (length: {} chars) {}", 
+                       emu.colors.light_red, emu.pos, new_string, len, emu.colors.nc);
         }
         
         // Free the old BSTR (old_bstr points to string data, so allocation starts at old_bstr - 4)
@@ -199,29 +200,30 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         // Log the final string content
         if len > 0 {
             let final_string = emu.maps.read_wide_string_n(new_bstr, len as usize);
-            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars)", 
-                       emu.colors.light_red, emu.pos, final_string, len);
+            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars) {}", 
+                       emu.colors.light_red, emu.pos, final_string, len, emu.colors.nc);
         }
         
         log::info!(
-            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
+            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x}) {}",
             emu.colors.light_red,
             emu.pos,
             new_bstr,
             byte_len,
-            new_base
+            new_base,
+            emu.colors.nc
         );
         
     } else {
         // Case 2: First allocation (*pbstr is NULL) - delegate to SysAllocStringLen
-        log::info!("{}** {} First allocation (old BSTR is NULL), calling SysAllocStringLen", 
-                   emu.colors.light_red, emu.pos);
+        log::info!("{}** {} First allocation (old BSTR is NULL), calling SysAllocStringLen {}", 
+                   emu.colors.light_red, emu.pos, emu.colors.nc);
         
         // Log the source string if provided
         if psz != 0 && len > 0 {
             let source_string = emu.maps.read_wide_string_n(psz, len as usize);
-            log::info!("{}** {} Source string: \"{}\" (length: {} chars)", 
-                       emu.colors.light_red, emu.pos, source_string, len);
+            log::info!("{}** {} Source string: \"{}\" (length: {} chars) {}", 
+                       emu.colors.light_red, emu.pos, source_string, len, emu.colors.nc);
         }
         
         // Allocate new memory
@@ -254,19 +256,20 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         // Log the final string content
         if len > 0 {
             let final_string = emu.maps.read_wide_string_n(new_bstr, len as usize);
-            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars)", 
-                       emu.colors.light_red, emu.pos, final_string, len);
+            log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars) {}", 
+                       emu.colors.light_red, emu.pos, final_string, len, emu.colors.nc);
         } else {
-            log::info!("{}** {} Created empty BSTR", emu.colors.light_red, emu.pos);
+            log::info!("{}** {} Created empty BSTR {}", emu.colors.light_red, emu.pos, emu.colors.nc);
         }
         
         log::info!(
-            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
+            "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x}) {}",
             emu.colors.light_red,
             emu.pos,
             new_bstr,
             byte_len,
-            new_base
+            new_base,
+            emu.colors.nc
         );
     }
 

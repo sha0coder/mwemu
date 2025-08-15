@@ -923,7 +923,7 @@ fn NtReadFile(emu: &mut emu::Emu) {
     emu.maps.memset(buff, 0x90, len);
 
     if filename == "\\??\\c:\\c:\\version.dll" {
-        let local_path = "/tmp/version.dll";
+        let local_path = "/tmp/version2.dll";
         let mut file = File::open(local_path).unwrap();
         file.seek(SeekFrom::Start(file_offset));
         let mut file_buffer = vec![0u8; len];
