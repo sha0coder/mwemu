@@ -843,7 +843,7 @@ mod tests {
         emu.load_code("../../test/exe64win_msgbox.bin");
         assert!(!emu.maps.is_allocated(0));
         emu.bp.clear_bp();
-        emu.bp.set_bp(0x1400011d6);
+        emu.bp.add_bp(0x1400011d6);
         emu.run(None);
         assert!(!emu.maps.is_allocated(0));
         assert_eq!(emu.pos, 4);
@@ -857,9 +857,9 @@ mod tests {
 	mem_trace: pos = 14 rip = 1400010df op = write bits = 64 address = 0x329f70 value = 0x1400011df name = 'stack'
 
         */
-
-        emu.bp.set_instruction(100);
-        assert_eq!(emu.bp.get_instruction(), 100);
+        emu.bp.clear_bp();
+        emu.bp.add_bp_instruction(100);
+        assert_eq!(emu.bp.instruction, [100]);
         emu.run(None);
         assert_eq!(emu.pos, 100);
 

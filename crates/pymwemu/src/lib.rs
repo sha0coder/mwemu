@@ -778,42 +778,42 @@ impl Emu {
 
     /// set breakpoint on an address
     pub fn bp_set_addr(&mut self, addr: u64) {
-        self.emu.bp.set_bp(addr);
+        self.emu.bp.add_bp(addr);
     }
 
     /// get the current address breakpoint
-    pub fn bp_get_addr(&self) -> PyResult<u64> {
-        Ok(self.emu.bp.get_bp())
+    pub fn bp_get_addr(&self) -> PyResult<Vec<u64>> {
+        Ok(self.emu.bp.addr.clone())
     }
 
     /// set breakpoint on a instruction counter
     pub fn bp_set_inst(&mut self, ins: u64) {
-        self.emu.bp.set_instruction(ins);
+        self.emu.bp.add_bp_instruction(ins);
     }
 
     /// get breakpoint on a instrunction counter
-    pub fn bp_get_inst(&self) -> PyResult<u64> {
-        Ok(self.emu.bp.get_instruction())
+    pub fn bp_get_inst(&self) -> PyResult<Vec<u64>> {
+        Ok(self.emu.bp.instruction.clone())
     }
 
     /// set a memory breakpoint on read
     pub fn bp_set_mem_read(&mut self, addr: u64) {
-        self.emu.bp.set_mem_read(addr);
+        self.emu.bp.add_bp_mem_read(addr);
     }
 
     /// get the memory breakpoint on read
-    pub fn bp_get_mem_read(&self) -> PyResult<u64> {
-        Ok(self.emu.bp.get_mem_read())
+    pub fn bp_get_mem_read(&self) -> PyResult<Vec<u64>> {
+        Ok(self.emu.bp.mem_read_addr.clone())
     }
 
     /// set a memory breakpoint on write
     pub fn bp_set_mem_write(&mut self, addr: u64) {
-        self.emu.bp.set_mem_write(addr);
+        self.emu.bp.add_bp_mem_write(addr);
     }
 
     /// get the memory breakpoint on write
-    pub fn bp_get_mem_write(&self) -> PyResult<u64> {
-        Ok(self.emu.bp.get_mem_write())
+    pub fn bp_get_mem_write(&self) -> PyResult<Vec<u64>> {
+        Ok(self.emu.bp.mem_write_addr.clone())
     }
 
     /// handle winapi address

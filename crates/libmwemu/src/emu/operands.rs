@@ -311,7 +311,7 @@ impl Emu {
                 log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value, name);
             }
 
-            if mem_addr == self.bp.get_mem_read() {
+            if self.bp.is_bp_mem_read(mem_addr) {
                 log::info!("Memory breakpoint on read 0x{:x}", mem_addr);
                 if self.running_script {
                     self.force_break = true;
@@ -578,7 +578,7 @@ impl Emu {
                         self.force_break = true;
                     }*/
 
-                    if mem_addr == self.bp.get_mem_write() {
+                    if self.bp.is_bp_mem_write_addr(mem_addr) {
                         log::info!("Memory breakpoint on write 0x{:x}", mem_addr);
                         if self.running_script {
                             self.force_break = true;

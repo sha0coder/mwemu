@@ -69,8 +69,7 @@ And here an anti-emulation with many iterations.
 for now we have to identify it and manually force to break the loops.
 
 
-
-       cmp: 0x0 == 0x0
+```
 606735301156 0x3cd372: mov   edx,[ebp+22Eh]
 606735301157 0x3cd378: jle   003CD288h taken 
 606735301158 0x3cd288: call  003CD555h
@@ -204,5 +203,5 @@ for now we have to identify it and manually force to break the loops.
 606735301277 0x3cd560: or    edx,eax
 Ctrl-C detected, spawning console
 606735301278 0x3cd562: ret
-
+```
 
