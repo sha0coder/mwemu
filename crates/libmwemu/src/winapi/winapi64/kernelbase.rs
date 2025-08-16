@@ -147,13 +147,20 @@ DWORD GetFileVersionInfoSizeA(
 );
 */
 fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
-    let lptstr_filename = emu.regs().rcx as usize;
+    let lptstr_filename = emu.regs().rcx;
     let lpdw_handle = emu.regs().rdx as usize;
+    
+    let filename = if lptstr_filename > 0 {
+        emu.maps.read_string(lptstr_filename)
+    } else {
+        "unknown".to_string()
+    };
+    
     log_red!(
         emu,
-        "** {} kernelbase!GetFileVersionInfoSizeA lptstr_filename: 0x{:x} lpdw_handle: 0x{:x}",
+        "** {} kernelbase!GetFileVersionInfoSizeA filename: {} lpdw_handle: 0x{:x}",
         emu.pos,
-        lptstr_filename,
+        filename,
         lpdw_handle
     );
     // TODO: just putting a rough number for now
@@ -169,13 +176,20 @@ BOOL GetFileVersionInfoA(
 );
 */
 fn GetFileVersionInfoA(emu: &mut emu::Emu) {
-    let lptstr_filename = emu.regs().rcx as usize;
+    let lptstr_filename = emu.regs().rcx;
     let dw_handle = emu.regs().rdx as usize;
-    let dw_len = emu.regs().rcx as usize;
-    let lp_data = emu.regs().r8 as usize;
-    log_red!(emu, "** {} kernelbase!GetFileVersionInfoA lptstr_filename: 0x{:x} dw_handle: 0x{:x} dw_len: 0x{:x} lp_data: 0x{:x}", 
+    let dw_len = emu.regs().r8 as usize;
+    let lp_data = emu.regs().r9 as usize;
+    
+    let filename = if lptstr_filename > 0 {
+        emu.maps.read_string(lptstr_filename)
+    } else {
+        "unknown".to_string()
+    };
+    
+    log_red!(emu, "** {} kernelbase!GetFileVersionInfoA filename: {} dw_handle: 0x{:x} dw_len: 0x{:x} lp_data: 0x{:x}", 
         emu.pos,
-        lptstr_filename,
+        filename,
         dw_handle,
         dw_len,
         lp_data

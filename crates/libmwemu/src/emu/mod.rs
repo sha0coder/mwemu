@@ -29,6 +29,8 @@ mod tls;
 mod threading;
 mod winapi;
 mod maps;
+#[macro_use]
+mod utils;
 
 pub struct Emu {
     // Global/shared state
