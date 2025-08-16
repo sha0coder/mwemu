@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn Sleep(emu: &mut emu::Emu) {
     let millis = emu

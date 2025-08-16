@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn HeapFree(emu: &mut emu::Emu) {
     let heap = emu

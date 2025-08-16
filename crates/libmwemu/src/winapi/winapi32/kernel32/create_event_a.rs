@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn CreateEventA(emu: &mut emu::Emu) {
     let ev_attr_ptr = emu

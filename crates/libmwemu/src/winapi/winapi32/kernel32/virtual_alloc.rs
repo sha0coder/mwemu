@@ -1,3 +1,6 @@
+use crate::emu;
+use crate::constants;
+
 pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu
         .maps

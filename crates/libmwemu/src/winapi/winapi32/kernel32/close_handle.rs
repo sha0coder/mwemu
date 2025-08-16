@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn CloseHandle(emu: &mut emu::Emu) {
     let hndl = emu

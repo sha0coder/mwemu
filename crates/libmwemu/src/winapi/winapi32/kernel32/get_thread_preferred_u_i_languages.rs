@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn GetThreadPreferredUILanguages(emu: &mut emu::Emu) {
     let flags = emu

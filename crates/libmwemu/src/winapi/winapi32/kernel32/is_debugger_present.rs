@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn IsDebuggerPresent(emu: &mut emu::Emu) {
     log::info!(

@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn GetTimeZoneInformation(emu: &mut emu::Emu) {
     let out_timeZoneInfo = emu

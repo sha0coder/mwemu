@@ -1,4 +1,8 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
+use crate::winapi::winapi32::kernel32::load_library;
 
 pub fn LoadLibraryW(emu: &mut emu::Emu) {
     let dllptr = match emu.maps.read_dword(emu.regs().get_esp()) {

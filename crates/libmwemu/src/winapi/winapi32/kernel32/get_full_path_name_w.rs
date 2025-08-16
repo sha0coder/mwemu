@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn GetFullPathNameW(emu: &mut emu::Emu) {
     let file_ptr = emu

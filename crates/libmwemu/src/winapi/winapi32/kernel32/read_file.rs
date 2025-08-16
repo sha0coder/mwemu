@@ -1,4 +1,8 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
+use crate::winapi::winapi32::kernel32::COUNT_READ;
 
 pub fn ReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu

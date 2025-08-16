@@ -1,4 +1,8 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
+use crate::winapi::winapi32::kernel32::LAST_ERROR;
 
 pub fn SetLastError(emu: &mut emu::Emu) {
     let err_code = emu

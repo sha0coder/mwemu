@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
     let buff_len = emu

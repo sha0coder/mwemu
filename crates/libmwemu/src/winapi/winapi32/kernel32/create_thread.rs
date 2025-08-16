@@ -1,4 +1,6 @@
-use crate::emu;
+use crate::{console, emu};
+use crate::winapi::helper;
+use crate::constants;
 
 pub fn CreateThread(emu: &mut emu::Emu) {
     let sec_attr = emu
@@ -45,6 +47,8 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     if flags == constants::CREATE_SUSPENDED {
         log::info!("\tcreated suspended!");
     }
+
+    // TODO: match winapi64 multi threading
 
     let con = console::Console::new();
     con.print("Continue emulating the created thread (y/n)? ");

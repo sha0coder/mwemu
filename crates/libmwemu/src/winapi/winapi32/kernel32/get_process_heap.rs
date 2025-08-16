@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn GetProcessHeap(emu: &mut emu::Emu) {
     emu.regs_mut().rax = helper::handler_create("process heap");

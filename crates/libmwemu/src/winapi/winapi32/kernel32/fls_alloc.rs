@@ -1,4 +1,7 @@
 use crate::emu;
+use crate::winapi::helper;
+use crate::constants;
+use crate::structures;
 
 pub fn FlsAlloc(emu: &mut emu::Emu) {
     let callback = emu

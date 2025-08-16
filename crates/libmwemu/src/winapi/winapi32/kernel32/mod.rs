@@ -1,14 +1,5 @@
-// Modules for extracted functions
-mod kernel32;
-
-use crate::console;
-use crate::constants;
-use crate::context::context32;
-use crate::emu;
 use crate::peb::peb32;
-use crate::serialization;
-use crate::structures;
-use crate::winapi::helper;
+use crate::{emu, serialization};
 
 use lazy_static::lazy_static;
 use std::sync::Mutex;
