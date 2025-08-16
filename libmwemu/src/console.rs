@@ -983,7 +983,7 @@ impl Console {
                                     bits = "32"
                                 }
                                 let r2args = vec!["-n","-a","x86","-b",&bits,"-m", &base, "-c", &seek, &tmpfile];
-                                log::info!("radare2 software embedded on mwemu");
+                                log::info!("spawning radare2 software.");
                                 
                                 match Command::new("radare2")
                                     .args(&r2args)
