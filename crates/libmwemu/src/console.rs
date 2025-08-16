@@ -9,7 +9,9 @@ use crate::structures;
 use crate::to32;
 use crate::winapi::winapi32;
 use crate::winapi::winapi64;
-use std::process::{Command, Stdio}; // if the user types "r2 0x123" will execute radare2
+
+// if the user types "r2 0x123" will execute radare2
+use std::process::{Command, Stdio}; 
 use std::fs;
 use std::io;
 
@@ -159,6 +161,57 @@ impl Console {
         log::info!("");
         log::info!("---");
     }
+
+    pub fn spawn_radare2(addr: u64, emu: &mut Emu) {
+
+        let mem = match emu.maps.get_mem_by_addr(addr) {
+            Some(m) => m,
+            None => {
+                log::info!("address not found on any map");
+                return
+            }
+        };
+
+        let tmpfile = format!("/tmp/{}.r2", mem.get_name());
+        mem.save_all(&tmpfile);
+
+        let base = format!("0x{:x}",mem.get_base());
+        let seek = format!("0x{:x}",addr);
+        let bits;
+        if emu.cfg.is_64bits { bits = "64" } else { bits = "32" }
+        let r2args = vec![
+            "-n",
+            "-a", "x86",
+            "-b", &bits,
+            "-m", &base, 
+            "-s", &seek, 
+            &tmpfile
+        ];
+
+        log::info!("spawning radare2 software.");
+        
+        match Command::new("radare2")
+            .args(&r2args)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn() {
+                Ok(mut child) => {
+                    let _ = child.wait();
+                }
+                Err(e) => {
+                    log::error!("Install radare first! {}", e);
+                    return
+                }
+        }
+
+        if let Err(e) = fs::remove_file(&tmpfile) {
+            if e.kind() != io::ErrorKind::NotFound {
+                log::error!("temporal file not found");
+            }
+        }
+    }
+
 
     pub fn spawn_console(emu: &mut Emu) {
         if !emu.cfg.console_enabled {
@@ -958,54 +1011,18 @@ impl Console {
                 } // end dt command
 
                 _ => {
-                    if cmd.starts_with("r2 ") {
+                    if cmd.starts_with("m ") {
+                        let parts: Vec<&str> = cmd.split_whitespace().collect();
+                        if parts.len() >= 2 {
+                            emu.maps.print_maps_keyword(&parts[1]);
+                        }
+
+                    } else if cmd.starts_with("r2 ") {
                          let parts: Vec<&str> = cmd.split_whitespace().collect();
                          if parts.len() >= 2 {
                             if let Ok(addr) = u64::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
 
-                                let mem = match emu.maps.get_mem_by_addr(addr) {
-                                    Some(m) => m,
-                                    None => {
-                                        log::info!("address not found on any map");
-                                        continue;
-                                    }
-                                };
-
-                                let tmpfile = format!("/tmp/{}.r2", mem.get_name());
-                                mem.save_all(&tmpfile);
-
-                                let base = format!("0x{:x}",mem.get_base());
-                                let seek = format!("s 0x{:x}",addr);
-                                let bits;
-                                if emu.cfg.is_64bits {
-                                    bits = "64"
-                                } else {
-                                    bits = "32"
-                                }
-                                let r2args = vec!["-n","-a","x86","-b",&bits,"-m", &base, "-c", &seek, &tmpfile];
-                                log::info!("spawning radare2 software.");
-                                
-                                match Command::new("radare2")
-                                    .args(&r2args)
-                                    .stdin(Stdio::inherit())
-                                    .stdout(Stdio::inherit())
-                                    .stderr(Stdio::inherit())
-                                    .spawn() {
-                                        Ok(mut child) => {
-                                            let _ = child.wait();
-                                        }
-                                        Err(e) => {
-                                            log::error!("Install radare first! {}", e);
-                                            continue
-                                        }
-                                }
-
-                                if let Err(e) = fs::remove_file(&tmpfile) {
-                                    if e.kind() != io::ErrorKind::NotFound {
-                                        log::error!("temporal file not found");
-                                    }
-                                }
-                                
+                                Console::spawn_radare2(addr, emu);
 
                             } else {
                                 println!("wrong hexa parameter");

@@ -189,7 +189,24 @@ impl Mem64 {
         r
     }
 
-
+    #[inline(always)]
+    pub fn get_bytes(&self) -> &[u8] {
+        let idx = 0;
+        let sz2 = self.size();
+        if sz2 > self.mem.len() {
+            let bytes =  self.mem.get(idx..self.mem.len()).unwrap();
+            return bytes;
+        }
+        let r = self.mem.get(idx..sz2).unwrap();
+        if cfg!(feature = "log_mem_read") {
+            log::trace!(
+                "mem: read_bytes: 0x{:x?} = {:?}",
+                self.build_addresses(self.get_base(), self.size()),
+                r
+            );
+        }
+        r
+    }
 
     #[inline(always)]
     pub fn read_byte(&self, addr: u64) -> u8 {
