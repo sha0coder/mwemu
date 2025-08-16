@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "pymwemu",
-    "libmwemu",
-    "mwemu",
+    "crates/pymwemu",
+    "crates/libmwemu",
+    "crates/mwemu",
 ]
 
 [profile.release]

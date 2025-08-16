@@ -283,9 +283,9 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
 
-        let sample = "../test/sc32win_peb_ldr_rot.bin";
+        let sample = "../../test/sc32win_peb_ldr_rot.bin";
         emu.load_code(sample);
         emu.run(Some(0x3c0116));
 
@@ -302,9 +302,9 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
 
-        let sample = "../test/sc32win_veryobfus.bin";
+        let sample = "../../test/sc32win_veryobfus.bin";
         emu.load_code(sample);
         emu.run(Some(0x3cfaa5));
 
@@ -332,9 +332,9 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
 
-        let sample = "../test/sc64win_metasploit.bin";
+        let sample = "../../test/sc64win_metasploit.bin";
         emu.load_code(sample);
         //emu.set_verbose(3);
         emu.run(Some(0x3c00c8));
@@ -360,9 +360,9 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
 
-        let sample = "../test/exe64win_msgbox.bin";
+        let sample = "../../test/exe64win_msgbox.bin";
         emu.load_code(sample);
         emu.run(Some(0x14000123f));
 
@@ -384,9 +384,9 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
 
-        let sample = "../test/exe32win_minecraft.bin";
+        let sample = "../../test/exe32win_minecraft.bin";
         emu.load_code(sample);
         emu.run(Some(0x403740));
 
@@ -401,9 +401,9 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
 
-        let sample = "../test/exe64win_enigma.bin";
+        let sample = "../../test/exe64win_enigma.bin";
         emu.load_code(sample);
         emu.run(Some(0x140578ad3));
 
@@ -417,7 +417,7 @@ mod tests {
 
         let mut emu = emu64();
 
-        let sample = "../test/elf64lin_static_helloworld.bin";
+        let sample = "../../test/elf64lin_static_helloworld.bin";
         emu.load_code(sample);
         emu.run(Some(0x44ab87));
 
@@ -431,10 +431,10 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         
 
-        let sample = "../test/sc64lin_arith_100iter.bin";
+        let sample = "../../test/sc64lin_arith_100iter.bin";
         emu.load_code(sample);
         emu.run(Some(0x3c0040));
 
@@ -447,10 +447,10 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
         
 
-        let sample = "../test/sc32lin_rshell.bin";
+        let sample = "../../test/sc32lin_rshell.bin";
         emu.load_code(sample);
         emu.run_to(31);
         let sockaddr = emu.maps.read_bytes(emu.regs().get_ecx(), 9);
@@ -504,10 +504,10 @@ mod tests {
 
         let mut emu = emu64();
 
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         
 
-        let sample = "../test/elf64lin_fpu.bin";
+        let sample = "../../test/elf64lin_fpu.bin";
         emu.load_code(sample);
         emu.fpu_mut().clear();
         emu.fpu_mut().trace = true;
@@ -619,10 +619,10 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         
 
-        let sample = "../test/elf64lin_flags.bin";
+        let sample = "../../test/elf64lin_flags.bin";
         emu.load_code(sample);
 
         // test instruction add
@@ -706,11 +706,11 @@ mod tests {
                 let mut emu = emu64();
 
                 // load maps
-                emu.cfg.maps_folder = "../maps64/".to_string();
+                emu.cfg.maps_folder = "../../maps/maps64/".to_string();
                 
 
                 // load binary
-                emu.load_code("../test/exe64win_msgbox.bin");
+                emu.load_code("../../test/exe64win_msgbox.bin");
 
                 // set registers
                 emu.regs_mut().rdx = 0x1;
@@ -736,10 +736,10 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
         
 
-        let sample = "../test/sc32win_donut.bin";
+        let sample = "../../test/sc32win_donut.bin";
         emu.load_code(sample);
         emu.run_to(30_862_819);
 
@@ -838,9 +838,9 @@ mod tests {
         assert_eq!(bp.get_bp(), 0);
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         
-        emu.load_code("../test/exe64win_msgbox.bin");
+        emu.load_code("../../test/exe64win_msgbox.bin");
         assert!(!emu.maps.is_allocated(0));
         emu.bp.clear_bp();
         emu.bp.set_bp(0x1400011d6);
@@ -1222,7 +1222,7 @@ mod tests {
         let mut mem2 = Mem64::default();
         mem2.set_base(0x400000);
         mem2.set_size(16);
-        mem2.load("../test/sc32win_donut.bin");
+        mem2.load("../../test/sc32win_donut.bin");
         let md5 = format!("{:x}", mem2.md5());
         assert!(md5 == "66d6376c2dd0b8d4d35461844e5b0e6c" || md5 == "4ae71336e44bf9bf79d2752e234818a5"); 
         // its weird but in windows CI the md5 changes to 4ae... prolly defender patches it
@@ -1234,7 +1234,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         emu.init(false, false);
 
         assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
@@ -1282,7 +1282,7 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
         emu.maps.clear();
         emu.init(false, false);
 
@@ -1328,7 +1328,7 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
         emu.init(false, false);
         
         let stack_check = emu.maps.get_map_by_name("stack");
@@ -1358,7 +1358,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         emu.init(false, false);
 
         let stack_check = emu.maps.get_map_by_name("stack");
@@ -1388,7 +1388,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
         
 
         let num: u64 = 0x1234_5678_9ABC_DEF0;
@@ -1438,7 +1438,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.load_code("../test/elf64lin_cpu_arithmetics.bin");
+        emu.load_code("../../test/elf64lin_cpu_arithmetics.bin");
 
         assert_eq!(emu.flags().dump(), 0x202); // initial flags (match with gdb linux)
 
@@ -1528,7 +1528,7 @@ mod tests {
         setup();
 
         let mut emu = emu64();
-        emu.load_code("../test/elf64lin_syscall64.bin");
+        emu.load_code("../../test/elf64lin_syscall64.bin");
         emu.run_to(80000);
         assert_eq!(emu.regs().r12, 549);
     }
@@ -1540,8 +1540,8 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
-        emu.load_code("../test/exe32win_minecraft.bin");
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
+        emu.load_code("../../test/exe32win_minecraft.bin");
 
         let peb = emu.maps.get_mem("peb");
         let peb_addr = peb.get_base();
@@ -1626,8 +1626,8 @@ mod tests {
         // 64BITS //
 
         let mut emu = emu64();
-        emu.cfg.maps_folder = "../maps64/".to_string();
-        emu.load_code("../test/exe64win_msgbox.bin");
+        emu.cfg.maps_folder = "../../maps/maps64/".to_string();
+        emu.load_code("../../test/exe64win_msgbox.bin");
 
         let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
 
@@ -1711,8 +1711,8 @@ mod tests {
         setup();
 
         let mut emu = emu32();
-        emu.cfg.maps_folder = "../maps32/".to_string();
-        emu.load_code("../test/exe32win_exception_handler.bin");
+        emu.cfg.maps_folder = "../../maps/maps32/".to_string();
+        emu.load_code("../../test/exe32win_exception_handler.bin");
     }
 
     #[test]
