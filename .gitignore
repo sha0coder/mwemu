@@ -17,5 +17,7 @@ test.zip*
 .gdb_history
 *.zip
 *.log
+*.pyc
 .idea
 .claude
+__pycache__
