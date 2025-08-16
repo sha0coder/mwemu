@@ -40,12 +40,13 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     let char_count = emu.regs().rdx;
 
     log::info!(
-        "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
+        "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {} {}",
         emu.colors.light_red,
         emu.pos,
         emu.regs().rip,
         str_ptr,
-        char_count
+        char_count,
+        emu.colors.nc,
     );
     
     // Calculate sizes like the Python version
@@ -84,8 +85,8 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     
     let return_ptr = bstr + 4;  // Return pointer to string data (after length prefix)
     
-    log::info!("{}** {} SysAllocStringLen returning: 0x{:x} (base: 0x{:x})", 
-        emu.colors.light_red, emu.pos, return_ptr, bstr);
+    log::info!("{}** {} SysAllocStringLen returning: 0x{:x} (base: 0x{:x}) {}", 
+        emu.colors.light_red, emu.pos, return_ptr, bstr, emu.colors.nc);
     
     emu.regs_mut().rax = return_ptr;
 }

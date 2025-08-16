@@ -554,4 +554,24 @@ impl Mem64 {
 
         f.sync_all().unwrap();
     }
+
+    pub fn save_all(&self, filename: &str) -> bool {
+        let mut f = match File::create(filename) {
+            Ok(f) => f,
+            Err(e) => {
+                return false;
+            }
+        };
+
+        let blob = self.mem.get(0..).unwrap();
+
+        let res = match f.write_all(blob) {
+            Ok(_) => true,
+            Err(_) => false,
+        };
+
+        f.sync_all().unwrap();
+
+        res
+    }
 }

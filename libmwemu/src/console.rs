@@ -9,6 +9,9 @@ use crate::structures;
 use crate::to32;
 use crate::winapi::winapi32;
 use crate::winapi::winapi64;
+use std::process::{Command, Stdio}; // if the user types "r2 0x123" will execute radare2
+use std::fs;
+use std::io;
 
 pub struct Console {}
 
@@ -134,6 +137,7 @@ impl Console {
         log::info!("mdd .................... memory dump to disk");
         log::info!("mdda ................... memory dump all allocations to disk");
         log::info!("mt ..................... memory test");
+        log::info!("r2 [addr] .............. spawn radare2 console if it's isntalled");
         log::info!("ss ..................... search string");
         log::info!("sb ..................... search bytes");
         log::info!("sba .................... search bytes in all the maps");
@@ -953,7 +957,69 @@ impl Console {
                     }
                 } // end dt command
 
-                _ => log::info!("command not found, type h"),
+                _ => {
+                    if cmd.starts_with("r2 ") {
+                         let parts: Vec<&str> = cmd.split_whitespace().collect();
+                         if parts.len() >= 2 {
+                            if let Ok(addr) = u64::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
+
+                                let mem = match emu.maps.get_mem_by_addr(addr) {
+                                    Some(m) => m,
+                                    None => {
+                                        log::info!("address not found on any map");
+                                        continue;
+                                    }
+                                };
+
+                                let tmpfile = format!("/tmp/{}.r2", mem.get_name());
+                                mem.save_all(&tmpfile);
+
+                                let base = format!("0x{:x}",mem.get_base());
+                                let seek = format!("s 0x{:x}",addr);
+                                let bits;
+                                if emu.cfg.is_64bits {
+                                    bits = "64"
+                                } else {
+                                    bits = "32"
+                                }
+                                let r2args = vec!["-n","-a","x86","-b",&bits,"-m", &base, "-c", &seek, &tmpfile];
+                                log::info!("radare2 software embedded on mwemu");
+                                
+                                match Command::new("radare2")
+                                    .args(&r2args)
+                                    .stdin(Stdio::inherit())
+                                    .stdout(Stdio::inherit())
+                                    .stderr(Stdio::inherit())
+                                    .spawn() {
+                                        Ok(mut child) => {
+                                            let _ = child.wait();
+                                        }
+                                        Err(e) => {
+                                            log::error!("Install radare first! {}", e);
+                                            continue
+                                        }
+                                }
+
+                                if let Err(e) = fs::remove_file(&tmpfile) {
+                                    if e.kind() != io::ErrorKind::NotFound {
+                                        log::error!("temporal file not found");
+                                    }
+                                }
+                                
+
+                            } else {
+                                println!("wrong hexa parameter");
+                            }
+                        } else {
+                            log::info!("r2 command needs 1 parameter, the an hex address");
+                        }
+                    } else {
+                        log::info!("command not found, type h");
+                    }
+                }
+
+
+
             } // match commands
         } // end loop
     } // end commands function

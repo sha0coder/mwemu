@@ -521,7 +521,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
     log_red!(
         emu,
-        "ntdll!RtlDosPathNameToNtPathName_U dos_path='{}' dos_path_name_ptr: {dos_path_name_ptr:x} nt_path_name_ptr: {nt_path_name_ptr:x} nt_file_name_part_ptr: {nt_file_name_part_ptr:x} curdir_ptr: {curdir_ptr:x}",
+        "ntdll!RtlDosPathNameToNtPathName_U dos_path='{}' dos_path_name_ptr: 0x{dos_path_name_ptr:x} nt_path_name_ptr: 0x{nt_path_name_ptr:x} nt_file_name_part_ptr: 0x{nt_file_name_part_ptr:x} curdir_ptr: 0x{curdir_ptr:x}",
         dos_path_name
     );
 
@@ -918,7 +918,7 @@ fn NtReadFile(emu: &mut emu::Emu) {
     // filename from handle
     let filename = helper::handler_get_uri(file_hndl);
 
-    log_red!(emu, "ntdll!NtReadFile {} buff: 0x{:x} sz: {} off_var: 0x{:x}", filename, buff, len, off);
+    log_red!(emu, "ntdll!NtReadFile {} hndl: 0x{:x} buff: 0x{:x} sz: {} off_var: 0x{:x}", filename, file_hndl, buff, len, off);
 
     emu.maps.memset(buff, 0x90, len);
 
