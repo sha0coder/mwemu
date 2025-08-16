@@ -2,7 +2,7 @@ use std::{cell::RefCell, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant
 
 use iced_x86::{Instruction, IntelFormatter};
 
-use crate::{banzai::Banzai, breakpoint::Breakpoint, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe::pe32::PE32, pe::pe64::PE64, structures::MemoryOperation, thread_context::ThreadContext};
+use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe::pe32::PE32, pe::pe64::PE64, structures::MemoryOperation, thread_context::ThreadContext};
 
 mod operands;
 mod display;
@@ -36,7 +36,7 @@ pub struct Emu {
     pub hooks: Hooks,
     pub exp: u64,
     pub break_on_alert: bool,
-    pub bp: Breakpoint,
+    pub bp: Breakpoints,
     pub cfg: Config,
     pub colors: Colors,
     pub pos: u64,

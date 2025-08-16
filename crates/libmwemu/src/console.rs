@@ -393,7 +393,7 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.bp.set_bp(addr);
+                    emu.bp.add_bp(addr);
                 }
                 "bmr" => {
                     con.print("address");
@@ -404,7 +404,7 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.bp.set_mem_read(addr);
+                    emu.bp.add_bp_mem_read(addr);
                 }
                 "bmw" => {
                     con.print("address");
@@ -415,7 +415,7 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.bp.set_mem_write(addr);
+                    emu.bp.add_bp_mem_write(addr);
                 }
                 "bi" => {
                     con.print("instruction number");
@@ -426,7 +426,7 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.bp.set_instruction(num);
+                    emu.bp.add_bp_instruction(num);
                     emu.exp = num;
                 }
                 "bc" => {

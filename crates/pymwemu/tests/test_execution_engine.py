@@ -108,7 +108,7 @@ class TestExecutionEngine(unittest.TestCase):
         self.emu32.set_reg('eip', code_base)
         
         # Verify breakpoint was set
-        self.assertEqual(self.emu32.bp_get_addr(), bp_addr)
+        self.assertEqual(self.emu32.bp_get_addr(), [bp_addr])
 
     def test_instruction_counting(self):
         """Test instruction counting functionality"""

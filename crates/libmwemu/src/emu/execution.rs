@@ -523,8 +523,8 @@ impl Emu {
                     }
 
                     if self.exp == self.pos
-                        || self.pos == self.bp.get_instruction()
-                        || self.bp.get_bp() == addr
+                        || self.bp.is_bp_instruction(self.pos)
+                        || self.bp.is_bp(addr)
                         || (self.cfg.console2 && self.cfg.console_addr == addr)
                     {
                         if self.running_script {
@@ -916,8 +916,8 @@ impl Emu {
                     }
 
                     if self.exp == self.pos
-                        || self.pos == self.bp.get_instruction()
-                        || self.bp.get_bp() == addr
+                        || self.bp.is_bp_instruction(self.pos)
+                        || self.bp.is_bp(addr)
                         || (self.cfg.console2 && self.cfg.console_addr == addr)
                     {
                         if self.running_script {

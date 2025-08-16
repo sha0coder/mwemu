@@ -294,7 +294,7 @@ impl Script {
                         return;
                     }
                     let addr = self.resolve(args[1], i, emu);
-                    emu.bp.set_bp(addr);
+                    emu.bp.add_bp(addr);
                 }
                 "bmr" => {
                     if args.len() < 2 {
@@ -303,7 +303,7 @@ impl Script {
                     }
                     let addr = self.resolve(args[1], i, emu);
 
-                    emu.bp.set_mem_read(addr);
+                    emu.bp.add_bp_mem_read(addr);
                 }
                 "bmw" => {
                     if args.len() < 2 {
@@ -311,7 +311,7 @@ impl Script {
                         return;
                     }
                     let addr = self.resolve(args[1], i, emu);
-                    emu.bp.set_mem_write(addr);
+                    emu.bp.add_bp_mem_write(addr);
                 }
                 "bi" => {
                     if args.len() < 2 {
@@ -325,7 +325,7 @@ impl Script {
                             return;
                         }
                     };
-                    emu.bp.set_instruction(num);
+                    emu.bp.add_bp_instruction(num);
                     emu.exp = num;
                 }
                 "bc" => {

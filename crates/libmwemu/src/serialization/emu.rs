@@ -8,7 +8,7 @@ use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
 use crate::banzai::Banzai;
-use crate::breakpoint::Breakpoint;
+use crate::breakpoint::{Breakpoints};
 use crate::colors::Colors;
 use crate::config::Config;
 use crate::eflags::Eflags;
@@ -39,7 +39,7 @@ pub struct SerializableEmu {
     //pub hooks: Hooks, // not possible
     pub exp: u64,
     pub break_on_alert: bool,
-    pub bp: Breakpoint,
+    pub bp: Breakpoints,
     pub seh: u64,
     pub veh: u64,
     pub feh: u64,

@@ -32,7 +32,7 @@
 29. [ ] on every set\_eip of a non branch dump stack to log file
 30. [x] other rep instruction preffix
 31. [x] check pf flag bug
-32. [ ] save state to disk and continue
+32. [x] save state to disk and continue
 33. [ ] command to exit the bucle or to see  next instruction
 34. [ ] optimize loop counter
 

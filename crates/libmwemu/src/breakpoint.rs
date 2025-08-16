@@ -8,6 +8,115 @@ pub struct Breakpoint {
     mem_write_addr: u64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Breakpoints {
+    pub addr: Vec<u64>,
+    pub instruction: Vec<u64>,
+    pub mem_read_addr: Vec<u64>,
+    pub mem_write_addr: Vec<u64>,
+}
+
+impl Default for Breakpoints {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
+impl Breakpoints {
+    // TODO: implementing clearing breakpoint for console
+    pub fn new() -> Self {
+        Breakpoints {
+            addr: Vec::with_capacity(8),
+            instruction: Vec::with_capacity(8),
+            mem_read_addr: Vec::with_capacity(8),
+            mem_write_addr: Vec::with_capacity(8),
+        }
+    }
+
+    #[inline]
+    pub fn is_bp(&self, addr: u64) -> bool {
+        // this can be optmize to avx2 by using -Ctarget-cpu=skylake
+        self.addr.contains(&addr)
+    }
+
+    #[inline]
+    pub fn is_bp_mem_read(&self, addr: u64) -> bool {
+        self.mem_read_addr.contains(&addr)
+    }
+
+    #[inline]
+    pub fn is_bp_mem_write_addr(&self, addr: u64) -> bool {
+        self.mem_write_addr.contains(&addr)
+    }
+
+    #[inline]
+    pub fn is_bp_instruction(&self, addr: u64) -> bool {
+        self.instruction.contains(&addr)
+    }
+
+    #[inline]
+    pub fn add_bp(&mut self, addr: u64) {
+        self.addr.push(addr)
+    }
+
+    #[inline]
+    pub fn add_bp_mem_read(&mut self, addr: u64) {
+        self.mem_read_addr.push(addr);
+    }
+
+    #[inline]
+    pub fn add_bp_mem_write(&mut self, addr: u64) {
+        self.mem_write_addr.push(addr);
+    }
+
+    #[inline]
+    pub fn add_bp_instruction(&mut self, ins: u64) {
+        self.instruction.push(ins);
+    }
+
+    pub fn clear_bp(&mut self) {
+        self.addr.clear();
+        self.mem_read_addr.clear();
+        self.mem_write_addr.clear();
+        self.mem_write_addr.clear();
+    }
+
+    #[inline]
+    pub fn delete_bp(&mut self, pos: usize) {
+        self.addr.remove(pos);
+    }
+
+    #[inline]
+    pub fn delete_bp_mem_read(&mut self, pos: usize) {
+        self.mem_read_addr.remove(pos);
+    }
+
+    #[inline]
+    pub fn delete_bp_mem_write(&mut self, pos: usize) {
+        self.mem_write_addr.remove(pos);
+    }
+
+    #[inline]
+    pub fn delete_bp_instruction(&mut self, ins: usize) {
+        self.instruction.remove(ins);
+    }
+
+    pub fn show(&self) {
+        let addr_str: Vec<String> = self.addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        log::info!("break on address: [{}]", addr_str.join(", "));
+
+        let instruction_str: Vec<String> = self.addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        log::info!("break on instruction: [{}]", instruction_str.join(", ")); // Uses Debug formatting for the whole vector
+
+        let mem_read_str: Vec<String> = self.mem_read_addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        log::info!("break on memory read: [{}]", mem_read_str.join(", "));
+
+        let mem_write_str: Vec<String> = self.mem_write_addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        log::info!("break on memory write: [{}]", mem_write_str.join(", "));
+    }
+}
+
 impl Default for Breakpoint {
     fn default() -> Self {
         Self::new()
