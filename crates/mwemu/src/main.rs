@@ -85,6 +85,7 @@ fn main() {
         .arg(clap_arg!("filename", "f", "filename", "set the shellcode binary file.", "FILE"))
         .arg(clap_arg!("dump", "d", "dump", "load from dump.", "FILE"))
         .arg(clap_arg!("verbose", "v", "verbose", "-vv for view the assembly, -v only messages, without verbose only see the api calls and goes faster", multiple: true))
+        .arg(clap_arg!("verbose_at", "V", "verbose_at", "start displaying assembly at specific position (is like -vv enabled in specific moment)", "NUMBER"))
         .arg(clap_arg!("64bits", "6", "64bits", "enable 64bits architecture emulation"))
         .arg(clap_arg!("memory", "m", "memory", "trace all the memory accesses read and write."))
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
@@ -203,6 +204,15 @@ fn main() {
             16,
         )
             .expect("invalid address");
+    }
+
+    // verbose_at
+    if matches.is_present("verbose_at") {
+        emu.cfg.verbose_at = Some(matches
+            .value_of("verbose_at")
+            .expect("select the number of moment to enable verbose")
+            .parse::<u64>()
+            .expect("select a valid number where to enable verbosity"));
     }
 
     // console

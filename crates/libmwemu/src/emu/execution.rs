@@ -495,6 +495,12 @@ impl Emu {
                     self.memory_operations.clear();
                     self.pos += 1;
 
+                    if let Some(vpos) = self.cfg.verbose_at {
+                        if vpos == self.pos {
+                            self.cfg.verbose = 2;
+                        }
+                    }
+
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
 
@@ -879,6 +885,12 @@ impl Emu {
                         self.cfg.verbose = 3;
                         self.set_verbose(self.cfg.verbose);
                     }*/
+
+                    if let Some(vpos) = self.cfg.verbose_at {
+                        if vpos == self.pos {
+                            self.cfg.verbose = 2;
+                        }
+                    }
 
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::info!("exit position reached");
