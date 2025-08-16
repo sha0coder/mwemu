@@ -2,7 +2,7 @@ use crate::emu;
 use crate::serialization;
 //use crate::endpoint;
 use crate::structures::*;
-use crate::winapi::winapi32::helper;
+use crate::winapi::helper;
 use crate::winapi::winapi64;
 
 use lazy_static::lazy_static;

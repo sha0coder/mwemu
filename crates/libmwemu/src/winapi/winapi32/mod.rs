@@ -1,7 +1,6 @@
 mod advapi32;
 mod crypt32;
 mod dnsapi;
-pub mod helper;
 mod iphlpapi;
 pub mod kernel32;
 mod kernelbase;

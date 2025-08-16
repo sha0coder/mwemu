@@ -16,6 +16,7 @@ pub struct TLBEntry {
     // Store the key (usize) to the Mem64 of the slab
     pub mem64: usize,
 }
+
 impl TLBEntry {
     fn new() -> Self {
         Self {

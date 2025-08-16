@@ -4,7 +4,7 @@ use crate::emu;
 //use crate::context32;
 //use crate::peb32;
 //use crate::structures;
-use crate::winapi::winapi32::helper;
+use crate::winapi::helper;
 use crate::serialization;
 use crate::winapi::winapi32::kernel32;
 

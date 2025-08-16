@@ -21,3 +21,4 @@ test.zip*
 .idea
 .claude
 __pycache__
+node_modules/

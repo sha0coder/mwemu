@@ -2,7 +2,7 @@ use crate::emu;
 use crate::serialization;
 use crate::winapi::winapi32::kernel32;
 /*
-use crate::winapi::winapi32::helper;
+use crate::winapi::helper;
 use crate::context32;
 use crate::constants;
 use crate::console;
