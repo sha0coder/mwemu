@@ -195,7 +195,7 @@ const CONFIG = {
     
     // Custom imports for each extracted file
     generateImports: function() {
-        return `use crate::*;
+        return `use crate::emu;
 
 `;
     },
@@ -235,31 +235,14 @@ function extractFunctions() {
     let functionsExtracted = [];
     let remainingContent = [];
     let skipMode = false;
-    let hasTestAttribute = false;
-    let attributeLines = [];
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const trimmed = line.trim();
         
-        // Check for test attribute or other attributes
-        if (CONFIG.functionPattern.test(trimmed)) {
-            hasTestAttribute = true;
-            attributeLines = [line];
-            continue;
-        }
-        
-        // Collect any additional attributes or comments after #[test]
-        if (hasTestAttribute && !trimmed.startsWith('fn ')) {
-            if (trimmed.startsWith('//') || trimmed.startsWith('#[')) {
-                attributeLines.push(line);
-                continue;
-            }
-        }
-        
-        // Check if this is a function definition
+        // Check if this is a function definition we want to extract
         const extractedName = extractFunctionName(trimmed);
-        if (extractedName && hasTestAttribute && !CONFIG.skipFunctions.includes(extractedName)) {
+        if (extractedName && CONFIG.functionNames.includes(extractedName) && !CONFIG.skipFunctions.includes(extractedName)) {
             
             if (inFunction && currentFunction.length > 0) {
                 // Save previous function
@@ -267,14 +250,12 @@ function extractFunctions() {
                 functionsExtracted.push(functionName);
             }
             
-            // Start new function with its attributes
+            // Start new function
             functionName = extractedName;
-            currentFunction = [...attributeLines, line];
+            currentFunction = [line];
             inFunction = true;
             braceCount = 0;
             skipMode = true;
-            hasTestAttribute = false;
-            attributeLines = [];
             
             // Count opening braces in the first line
             for (const char of line) {
@@ -283,10 +264,6 @@ function extractFunctions() {
             }
             
             continue;
-        } else if (extractedName) {
-            // Function without test attribute or in skip list
-            hasTestAttribute = false;
-            attributeLines = [];
         }
         
         if (inFunction) {
@@ -312,8 +289,6 @@ function extractFunctions() {
         } else if (!skipMode) {
             // Keep non-function lines for the main file
             remainingContent.push(line);
-            hasTestAttribute = false;
-            attributeLines = [];
         } else {
             skipMode = false;
         }
@@ -343,7 +318,7 @@ function extractFunctions() {
 function saveFunction(name, lines) {
     if (!name || lines.length === 0) return;
     
-    const filename = CONFIG.useSnakeCase ? camelToSnakeCase(name) : name;
+    const filename = CONFIG.useSnakeCase ? camelToSnakeCase(name) : camelToSnakeCase(name);
     const filepath = path.join(CONFIG.destDir, `${filename}.rs`);
     
     // Check if file already exists and has content
@@ -357,14 +332,30 @@ function saveFunction(name, lines) {
     
     let content = CONFIG.generateImports();
     
+    // Remove any leading indentation from the entire function
+    // Find the minimum indentation (excluding empty lines)
+    let minIndent = Infinity;
+    for (const line of lines) {
+        if (line.trim().length > 0) {
+            const leadingSpaces = line.match(/^(\s*)/)[1].length;
+            minIndent = Math.min(minIndent, leadingSpaces);
+        }
+    }
+    
+    // Remove the minimum indentation from all lines
+    const dedentedLines = lines.map(line => {
+        if (line.trim().length === 0) return '';
+        return line.substring(minIndent);
+    });
+    
     // Add function content
-    let functionContent = lines.join('\n');
+    let functionContent = dedentedLines.join('\n');
     
     // Make function public if configured
     if (CONFIG.makePublic) {
         functionContent = functionContent.replace(
             new RegExp(`^(\\s*)fn\\s+${name}`, 'm'), 
-            '$1pub fn ' + name
+            'pub fn ' + name
         );
     }
     
@@ -386,14 +377,14 @@ function generateModFile(functionNames) {
     let modContent = '// Auto-generated module declarations\n\n';
     
     functionNames.forEach(name => {
-        const moduleName = CONFIG.useSnakeCase ? camelToSnakeCase(name) : name;
+        const moduleName = camelToSnakeCase(name);
         modContent += `pub mod ${moduleName};\n`;
     });
     
     if (CONFIG.makePublic) {
-        modContent += '\n// Re-export all test functions\n';
+        modContent += '\n// Re-export all functions\n';
         functionNames.forEach(name => {
-            const moduleName = CONFIG.useSnakeCase ? camelToSnakeCase(name) : name;
+            const moduleName = camelToSnakeCase(name);
             modContent += `pub use ${moduleName}::${name};\n`;
         });
     }
