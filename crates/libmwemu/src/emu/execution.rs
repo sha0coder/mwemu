@@ -538,7 +538,9 @@ impl Emu {
                             log::info!("-------");
                             log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
                         }
+                        
                         Console::spawn_console(self);
+
                         if self.force_break {
                             self.force_break = false;
                             break;

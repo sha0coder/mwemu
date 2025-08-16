@@ -223,7 +223,14 @@ impl Console {
             emu.pos -= 1;
         }
         loop {
-            let cmd = con.cmd();
+            let cmd: String;
+
+            if let Some(pcmd) = &emu.cfg.command {
+                cmd = pcmd.to_string();
+            } else {
+                cmd = con.cmd();
+            }
+
             match cmd.as_str() {
                 "q" => std::process::exit(1),
                 "h" => con.help(),
@@ -1034,10 +1041,12 @@ impl Console {
                         log::info!("command not found, type h");
                     }
                 }
-
-
-
             } // match commands
+             
+            if emu.cfg.command.is_some() {
+                std::process::exit(1);
+            }
+
         } // end loop
     } // end commands function
 }

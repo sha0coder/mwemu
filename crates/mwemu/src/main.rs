@@ -131,6 +131,7 @@ fn main() {
         .arg(clap_arg!("r15", "", "r15", "set r15 register", "R15"))
         .arg(clap_arg!("rflags", "", "rflags", "set rflags register", "RFLAGS"))
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
+        .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -393,6 +394,11 @@ fn main() {
     // trace flags
     if matches.is_present("flags") {
         emu.cfg.trace_flags = true;
+    }
+
+    // cmd
+    if matches.is_present("cmd") {
+        emu.cfg.command = Some(matches.value_of("cmd").expect("specify the console command").to_string());
     }
 
     // args

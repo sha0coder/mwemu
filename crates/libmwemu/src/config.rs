@@ -38,6 +38,7 @@ pub struct Config {
     pub arguments: String,
     pub enable_threading: bool,  // Enable multi-threading support
     pub verbose_at: Option<u64>,
+    pub command: Option<String>,
 }
 
 impl Default for Config {
@@ -83,7 +84,8 @@ impl Config {
             stack_addr: 0,
             arguments: "".to_string(),
             enable_threading: false,  // Default to single-threaded for backward compatibility
-            verbose_at: None
+            verbose_at: None,
+            command: None
         }
     }
 }
