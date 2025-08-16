@@ -4,7 +4,7 @@ use crate::context::context32::Context32;
 use crate::emu;
 use crate::serialization;
 use crate::structures;
-use crate::winapi::winapi32::helper;
+use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
 use scan_fmt::scan_fmt_some;

@@ -3,7 +3,7 @@ use crate::constants;
 use crate::emu;
 use crate::structures;
 //use crate::endpoint;
-use crate::winapi::winapi32::helper; // TODO: why not winapi64 helper?
+use crate::winapi::helper; // TODO: why not winapi64 helper?
 
 use std::fs;
 use std::fs::File;

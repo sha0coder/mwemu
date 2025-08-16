@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
+use crate::emu;
+
 pub struct Handler {
     id: u64,
     uri: String,
@@ -112,4 +114,15 @@ pub fn socket_exist(sock: u64) -> bool {
         Some(_) => true,
         None => false,
     }
+}
+
+pub fn advance_tick(emu: &mut emu::Emu, millis: u64) {
+    let time_advance = if millis == 0 {
+        // Sleep(0) just yields CPU - advance by small amount (microseconds)
+        1 + (emu.tick % 3) // 1-3 ticks of variance
+    } else {
+        millis as usize
+    };
+
+    emu.tick += time_advance;
 }

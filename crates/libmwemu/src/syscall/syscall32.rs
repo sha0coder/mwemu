@@ -2,7 +2,7 @@
 use crate::constants;
 use crate::emu;
 //use crate::endpoint;
-use crate::winapi::winapi32::helper;
+use crate::winapi::helper;
 
 //  /usr/include/asm/unistd_32.h
 

@@ -1,0 +1,28 @@
+use crate::emu;
+use crate::winapi::helper;
+
+pub fn CreateEventA(emu: &mut emu::Emu) {
+    let attributes = emu.regs().rcx;
+    let bManualReset = emu.regs().rdx;
+    let bInitialState = emu.regs().r8;
+    let name_ptr = emu.regs().r9;
+
+    let mut name = String::new();
+    if name_ptr > 0 {
+        name = emu.maps.read_string(name_ptr);
+    }
+
+    log::info!(
+        "{}** {} kernel32!CreateEventA attr: 0x{:x} manual_reset: {} init_state: {} name: {} {}",
+        emu.colors.light_red,
+        emu.pos,
+        attributes,
+        bManualReset,
+        bInitialState,
+        name,
+        emu.colors.nc
+    );
+
+    let uri = format!("event://{}", name);
+    emu.regs_mut().rax = helper::handler_create(&uri);
+}
