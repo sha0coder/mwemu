@@ -8,8 +8,6 @@
 
 x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
 
-
-
 ![MWEMU Logo](./pics/mwemu_logo.png)
 
 ## Some Videos
@@ -25,6 +23,7 @@ Python apps https://pypi.org/search/?q=pymwemu
 Rust apps https://crates.io/crates/libmwemu
 
 ## Features
+
 - 📦 rust safety, good for malware. 
 	- All dependencies are in rust.
 - ⚡ very fast emulation (much faster than unicorn) 
@@ -66,6 +65,7 @@ Rust apps https://crates.io/crates/libmwemu
     - danabot
 
 ## pymwemu vs malware
+
 - raccoon, strings decryption
 - vidar, strings decryption
 - xloader, total decrypt, keygen, build url encryption.
@@ -81,6 +81,7 @@ Rust apps https://crates.io/crates/libmwemu
 
 
 ## Usage
+
 ```
 MWEMU emulator for malware.
 @sha0coder
@@ -153,7 +154,6 @@ cargo run --release -- -f /tmp/shellcode.bin -6 -vv -c 19291
 ## Testing
 
 make tests
-
 
 ## Some use cases
 
@@ -237,7 +237,6 @@ The cobalt strike api loader is the same that metasploit, emulating it:
 Cobalt Strike API called:
 ![cobalt strike](pics/cobalt_strike.png)
 
-
 Metasploit rshell API called:
 ![msf rshell](pics/metasploit_rshell.png)
 
@@ -246,8 +245,6 @@ Metasploit SGN encoder using few fpu to hide the polymorfism:
 
 Metasploit shikata-ga-nai encoder that also starts with fpu:
 ![msf encoded](pics/shikata.png)
-
-
 
 Displaying PEB structure:
 ```
@@ -398,8 +395,3 @@ CppEhRecord {
 ```
 
 And here we have the error routine 0x4f96f4 and the filter 0x51068c
-
-
-
-
-

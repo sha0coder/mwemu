@@ -2,12 +2,19 @@
 
 all:
 	cargo build --release
+
 tests:
-	wget -q https://github.com/sha0coder/mwemu/releases/download/maps/test.zip
-	unzip -o -P mwemuTestSystem test.zip
-	rm test.zip
+	if [ ! -d test ]; then \
+		if which wget; then \
+			wget -q https://github.com/sha0coder/mwemu/releases/download/maps/test.zip; \
+		else \
+			curl -L -O https://github.com/sha0coder/mwemu/releases/download/maps/test.zip; \
+		fi; \
+		unzip -o -P mwemuTestSystem test.zip; \
+		rm test.zip; \
+	fi
 	cargo test --package libmwemu --verbose
 	cargo test --release --package libmwemu --verbose
-pytests:
-	cd pymwemu && ./test_all.sh
 
+pytests:
+	cd crates/pymwemu && ./test_all.sh

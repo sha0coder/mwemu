@@ -240,9 +240,9 @@ fn main() {
     } else {
         // if maps is not selected, by default ...
         if emu.cfg.is_64bits {
-            emu.set_maps_folder("maps64/");
+            emu.set_maps_folder("maps/maps64/");
         } else {
-            emu.set_maps_folder("maps32/");
+            emu.set_maps_folder("maps/maps32/");
         }
     }
 
