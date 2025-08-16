@@ -2,7 +2,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::Mutex;
 use lazy_static::lazy_static;
 
-use crate::emu;
+use crate::{constants, emu};
+use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
 
 pub fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let locale = emu.regs().rcx as usize;

@@ -14,5 +14,7 @@ pub fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
+    // TODO: implement
+
     emu.regs_mut().rax = 1;
 }

@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn GetModuleHandleW(emu: &mut emu::Emu) {
     let module_name_ptr = emu.regs().rcx;

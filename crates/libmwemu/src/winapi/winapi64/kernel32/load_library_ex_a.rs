@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::winapi64::kernel32::load_library;
 
 pub fn LoadLibraryExA(emu: &mut emu::Emu) {
     let dllptr = emu.regs().rcx;

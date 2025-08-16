@@ -1,3 +1,5 @@
+use crate::{emu, structures};
+
 pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
     let actctx = emu.regs().rcx;
     let section_name_ptr = emu.regs().rdx;

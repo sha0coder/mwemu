@@ -1,3 +1,5 @@
+use crate::{constants, emu};
+
 pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu.regs().rcx;
     let size = emu.regs().rdx;

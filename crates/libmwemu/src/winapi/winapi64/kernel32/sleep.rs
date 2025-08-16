@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn Sleep(emu: &mut emu::Emu) {
     let millis = emu.regs().rcx;
@@ -14,7 +15,7 @@ pub fn Sleep(emu: &mut emu::Emu) {
     }
     
     // Advance global tick
-    advance_tick(emu, millis);
+    helper::advance_tick(emu, millis);
     
     log::info!(
         "{}** {} kernel32!Sleep thread: 0x{:x} millis: {} {}",

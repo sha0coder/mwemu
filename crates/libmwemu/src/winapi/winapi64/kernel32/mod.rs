@@ -45,6 +45,7 @@ pub mod find_next_file_a;
 pub mod find_next_file_w;
 pub mod find_resource_a;
 pub mod find_resource_w;
+pub mod find_act_ctx_section_string_w;
 pub mod fls_alloc;
 pub mod fls_get_value;
 pub mod fls_set_value;
@@ -218,6 +219,7 @@ pub use find_next_file_a::FindNextFileA;
 pub use find_next_file_w::FindNextFileW;
 pub use find_resource_a::FindResourceA;
 pub use find_resource_w::FindResourceW;
+pub use find_act_ctx_section_string_w::FindActCtxSectionStringW;
 pub use fls_alloc::FlsAlloc;
 pub use fls_get_value::FlsGetValue;
 pub use fls_set_value::FlsSetValue;
@@ -353,7 +355,7 @@ pub use write_process_memory::WriteProcessMemory;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
-fn clear_last_error(emu: &mut emu::Emu) {
+pub fn clear_last_error(emu: &mut emu::Emu) {
     let mut err = LAST_ERROR.lock().unwrap();
     *err = constants::ERROR_SUCCESS;
 }
@@ -551,9 +553,9 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 }
 
 lazy_static! {
-    static ref COUNT_READ: Mutex<u32> = Mutex::new(0);
-    static ref COUNT_WRITE: Mutex<u32> = Mutex::new(0);
-    static ref LAST_ERROR: Mutex<u64> = Mutex::new(0);
+    pub static ref COUNT_READ: Mutex<u32> = Mutex::new(0);
+    pub static ref COUNT_WRITE: Mutex<u32> = Mutex::new(0);
+    pub static ref LAST_ERROR: Mutex<u64> = Mutex::new(0);
 }
 
 pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {

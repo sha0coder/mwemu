@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::Mutex;
 use lazy_static::lazy_static;
 
-use crate::emu;
+use crate::{emu, structures};
 
 pub fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let ptr_sysinfo = emu.regs().rcx;

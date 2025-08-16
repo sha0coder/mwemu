@@ -3,6 +3,8 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
+use crate::winapi::winapi64::kernel32::COUNT_WRITE;
 
 pub fn WriteFile(emu: &mut emu::Emu) {
     let file_hndl = emu.regs().rcx;

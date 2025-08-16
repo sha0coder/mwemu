@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn GetFileSize(emu: &mut emu::Emu) {
     let h_file = emu.regs().rcx;

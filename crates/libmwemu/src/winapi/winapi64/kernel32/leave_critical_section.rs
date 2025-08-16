@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn LeaveCriticalSection(emu: &mut emu::Emu) {
     let cs_ptr = emu.regs().rcx;
@@ -31,7 +32,7 @@ pub fn LeaveCriticalSection(emu: &mut emu::Emu) {
     }
 
     // Small delay to simulate atomic operation overhead
-    advance_tick(emu, 1);
+    helper::advance_tick(emu, 1);
 
     emu.regs_mut().rax = cs_ptr;
 }

@@ -2,7 +2,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::Mutex;
 use lazy_static::lazy_static;
 
-use crate::emu;
+use crate::winapi::winapi64::kernel32::LAST_ERROR;
+use crate::{constants, emu};
 
 pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx;

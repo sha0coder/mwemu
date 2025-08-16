@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn HeapCreate(emu: &mut emu::Emu) {
     let opts = emu.regs().rcx;

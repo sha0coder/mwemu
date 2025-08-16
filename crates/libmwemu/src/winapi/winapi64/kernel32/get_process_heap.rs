@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 use crate::emu;
+use crate::winapi::helper;
 
 pub fn GetProcessHeap(emu: &mut emu::Emu) {
     emu.regs_mut().rax = helper::handler_create("heap");

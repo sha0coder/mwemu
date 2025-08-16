@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::Mutex;
 use lazy_static::lazy_static;
 
-use crate::emu;
+use crate::{emu, structures};
 
 pub fn GetVersionExA(emu: &mut emu::Emu) {
     let version_info_ptr = emu.regs().rcx;
