@@ -1,6 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
 use crate::structures;
 
 pub fn GetStartupInfoW(emu: &mut emu::Emu) {

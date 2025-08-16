@@ -1,7 +1,5 @@
 use crate::emu;
-use crate::winapi::helper;
 use crate::constants;
-use crate::structures;
 
 pub fn FindNextFileA(emu: &mut emu::Emu) {
     let hndl = emu

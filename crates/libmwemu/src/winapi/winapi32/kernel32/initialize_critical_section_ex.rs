@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn InitializeCriticalSectionEx(emu: &mut emu::Emu) {
     let ptr_crit_sect = emu

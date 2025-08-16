@@ -1,9 +1,6 @@
 use crate::console;
 use crate::context::context32;
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn SetThreadContext(emu: &mut emu::Emu) {
     let hndl = emu

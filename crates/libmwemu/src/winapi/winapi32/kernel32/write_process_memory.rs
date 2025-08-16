@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn WriteProcessMemory(emu: &mut emu::Emu) {
     let proc_hndl =

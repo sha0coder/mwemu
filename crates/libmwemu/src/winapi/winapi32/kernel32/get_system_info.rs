@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn GetSystemInfo(emu: &mut emu::Emu) {
     let out_sysinfo = emu

@@ -1,7 +1,6 @@
 use crate::emu;
 use crate::winapi::helper;
 use crate::constants;
-use crate::structures;
 
 pub fn CryptCreateHash(emu: &mut emu::Emu) {
     let hprov = emu

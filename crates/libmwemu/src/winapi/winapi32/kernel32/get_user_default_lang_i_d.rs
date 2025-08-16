@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn GetUserDefaultLangID(emu: &mut emu::Emu) {
     emu.regs_mut().rax = 0x000000000000ffff;

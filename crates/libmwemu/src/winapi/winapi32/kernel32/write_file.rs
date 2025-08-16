@@ -1,7 +1,5 @@
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 use crate::winapi::winapi32::kernel32::COUNT_WRITE;
 
 pub fn WriteFile(emu: &mut emu::Emu) {

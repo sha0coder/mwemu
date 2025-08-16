@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn GetSystemWindowsDirectoryA(emu: &mut emu::Emu) {
     let ptr = emu

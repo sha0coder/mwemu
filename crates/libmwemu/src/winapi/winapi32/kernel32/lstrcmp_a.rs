@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn lstrcmpA(emu: &mut emu::Emu) {
     let s1_ptr = emu

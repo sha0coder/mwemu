@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 use crate::winapi::winapi32::kernel32::load_library;
 
 pub fn LoadLibraryExA(emu: &mut emu::Emu) {

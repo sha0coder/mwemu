@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn LCMapStringW(emu: &mut emu::Emu) {
     let locale = emu

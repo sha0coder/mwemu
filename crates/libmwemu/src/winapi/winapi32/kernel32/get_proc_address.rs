@@ -1,8 +1,5 @@
 use crate::emu;
 use crate::peb::peb32;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn GetProcAddress(emu: &mut emu::Emu) {
     let hndl = emu

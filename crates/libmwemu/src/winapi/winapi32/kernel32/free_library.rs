@@ -1,7 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn FreeLibrary(emu: &mut emu::Emu) {
     let hmod = emu

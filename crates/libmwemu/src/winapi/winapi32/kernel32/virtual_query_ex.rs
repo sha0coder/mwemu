@@ -1,6 +1,4 @@
 use crate::emu;
-use crate::winapi::helper;
-use crate::constants;
 use crate::structures;
 
 pub fn VirtualQueryEx(emu: &mut emu::Emu) {

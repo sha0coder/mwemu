@@ -1,7 +1,6 @@
 use crate::emu;
 use crate::winapi::helper;
 use crate::constants;
-use crate::structures;
 
 pub fn CreateFileW(emu: &mut emu::Emu) {
     let fname_ptr = emu

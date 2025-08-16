@@ -1,7 +1,5 @@
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn SizeofResource(emu: &mut emu::Emu) {
     let hModule = emu.regs().rcx;

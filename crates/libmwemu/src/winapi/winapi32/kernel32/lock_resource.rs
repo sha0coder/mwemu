@@ -1,7 +1,5 @@
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
-use crate::structures;
 
 pub fn LockResource(emu: &mut emu::Emu) {
     let hResData = emu.regs().rcx;
