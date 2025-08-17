@@ -179,12 +179,22 @@ impl Console {
         let seek = format!("0x{:x}",addr);
         let bits;
         if emu.cfg.is_64bits { bits = "64" } else { bits = "32" }
+        let precmd = format!("dr rax={}?; dr rbx={}?; dr rcx={}?; dr rdx={}?; dr rsi={}?;
+                              dr rdi={}?; dr rbp={}?; dr rsp={}?; dr rip={}?; dr r8={}?
+                              dr r9={}?; dr r10={}?; dr r11={}?; dr r12={}?; dr r13={}?; 
+                              dr r14={}?; dr r15={}?; decai -e model=qwen3-coder:30?",
+                              emu.regs().rax, emu.regs().rbx, emu.regs().rcx, emu.regs().rdx,
+                              emu.regs().rsi, emu.regs().rdi, emu.regs().rbp, emu.regs().rsp,
+                              emu.regs().rip, emu.regs().r8, emu.regs().r9, emu.regs().r10,
+                              emu.regs().r11, emu.regs().r12, emu.regs().r13, emu.regs().r14,
+                              emu.regs().r15);
         let r2args = vec![
             "-n",
             "-a", "x86",
             "-b", &bits,
             "-m", &base, 
             "-s", &seek, 
+            "-c", &precmd,
             &tmpfile
         ];
 
