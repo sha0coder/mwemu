@@ -66,7 +66,7 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         emu.maps.write_dword(bstr, length_bytes);
 
         // Zero out the string data area
-        for i in 0..=char_count {  // Include space for null terminator
+        for i in 0..=char_count {  // <= to include null terminator
             emu.maps.write_word(bstr + 4 + (i * 2), 0);
         }
     } else {

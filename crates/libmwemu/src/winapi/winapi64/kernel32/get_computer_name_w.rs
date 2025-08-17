@@ -5,7 +5,7 @@ pub fn GetComputerNameW(emu: &mut emu::Emu) {
     let buff_ptr = emu.regs().rcx;
     let size_ptr = emu.regs().rdx;
 
-    emu.maps.write_dword(size_ptr, 12);
+    emu.maps.write_dword(size_ptr, constants::HOST_NAME.len() as u32);
     emu.maps.write_wide_string(buff_ptr, constants::HOST_NAME);
 
     log::info!(
