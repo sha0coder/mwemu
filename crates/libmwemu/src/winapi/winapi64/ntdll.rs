@@ -751,7 +751,8 @@ fn NtCreateFile(emu: &mut emu::Emu) {
 
     log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
 
-    if filename != "\\??\\c:\\c:\\version.dll" {
+    // TODO: fix path duplication!
+    if filename != "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
         panic!("TODO: NtCreateFile {}", filename);
     }
 
