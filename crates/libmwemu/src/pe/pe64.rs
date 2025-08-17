@@ -392,7 +392,7 @@ impl PE64 {
         self.sect_hdr.clear();
     }
 
-    pub fn vaddr_to_off(sections: &Vec<ImageSectionHeader>, vaddr: u32) -> u32 {
+    /*pub fn vaddr_to_off(sections: &Vec<ImageSectionHeader>, vaddr: u32) -> u32 {
         for sect in sections {
             if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
                 /*
@@ -404,6 +404,61 @@ impl PE64 {
         }
 
         0
+    }*/
+
+    pub fn vaddr_to_off(sections: &Vec<ImageSectionHeader>, vaddr: u32) -> u32 {
+        for sect in sections {
+            if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
+                let offset_within_section = vaddr - sect.virtual_address;
+                
+                // Check if the offset is within the raw data size (not just virtual size)
+                if offset_within_section >= sect.size_of_raw_data {
+                    log::warn!("Virtual address 0x{:x} maps to uninitialized data in section '{}' (offset {} >= raw_size {})", 
+                            vaddr, sect.get_name(), offset_within_section, sect.size_of_raw_data);
+                    return 0; // or handle this case differently
+                }
+                
+                let file_offset = sect.pointer_to_raw_data + offset_within_section;
+                
+                log::debug!("vaddr_to_off: 0x{:x} -> file_offset 0x{:x} (section: '{}', sect_vaddr: 0x{:x}, sect_raw_ptr: 0x{:x})",
+                        vaddr, file_offset, sect.get_name(), sect.virtual_address, sect.pointer_to_raw_data);
+                
+                return file_offset;
+            }
+        }
+
+        log::warn!("Virtual address 0x{:x} not found in any section", vaddr);
+        0
+    }
+
+    // Alternative version that returns an Option for better error handling
+    pub fn vaddr_to_off_safe(sections: &Vec<ImageSectionHeader>, vaddr: u32, file_size: usize) -> Option<u32> {
+        for sect in sections {
+            if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
+                let offset_within_section = vaddr - sect.virtual_address;
+                
+                // Check if the offset is within the raw data size
+                if offset_within_section >= sect.size_of_raw_data {
+                    log::warn!("Virtual address 0x{:x} maps to uninitialized data in section '{}'", 
+                            vaddr, sect.get_name());
+                    return None;
+                }
+                
+                let file_offset = sect.pointer_to_raw_data + offset_within_section;
+                
+                // Verify the file offset is within the actual file bounds
+                if file_offset as usize >= file_size {
+                    log::warn!("Calculated file offset 0x{:x} exceeds file size {} for vaddr 0x{:x}", 
+                            file_offset, file_size, vaddr);
+                    return None;
+                }
+                
+                return Some(file_offset);
+            }
+        }
+
+        log::warn!("Virtual address 0x{:x} not found in any section", vaddr);
+        None
     }
 
     // this approach sume that the string exist there and will find the \x00
@@ -727,6 +782,13 @@ impl PE64 {
         name: Option<&str>,
     ) -> Option<structures::ImageResourceDataEntry64> {
         if level >= 10 {
+            log::warn!("Resource directory recursion limit reached");
+            return None;
+        }
+
+        // Bounds check for reading the directory header
+        if off + 16 > rsrc.len() {
+            log::warn!("Resource directory at offset {} is out of bounds (rsrc size: {})", off, rsrc.len());
             return None;
         }
 
@@ -739,40 +801,67 @@ impl PE64 {
         dir.number_of_id_entries = read_u16_le!(rsrc, off + 14);
 
         let entries = dir.number_of_named_entries + dir.number_of_id_entries;
+        
+        log::debug!("Resource directory level {}: {} named entries, {} ID entries", 
+                level, dir.number_of_named_entries, dir.number_of_id_entries);
 
         for i in 0..entries {
+            let entry_off = off + (i as usize * 8) + 16; // 16 = sizeof(ImageResourceDirectory)
+            
+            // Bounds check for reading directory entry
+            if entry_off + 8 > rsrc.len() {
+                log::warn!("Resource directory entry {} at offset {} is out of bounds", i, entry_off);
+                continue;
+            }
+
             let mut entry = structures::ImageResourceDirectoryEntry::new();
-            let off2 = off + i as usize * 8 + structures::ImageResourceDirectory::size() as usize;
-            entry.name_or_id = read_u32_le!(rsrc, off2);
-            entry.data_or_directory = read_u32_le!(rsrc, off2 + 4);
+            entry.name_or_id = read_u32_le!(rsrc, entry_off);
+            entry.data_or_directory = read_u32_le!(rsrc, entry_off + 4);
+
+            log::debug!("Entry {}: name_or_id=0x{:x}, data_or_directory=0x{:x}, is_id={}, is_directory={}", 
+                    i, entry.name_or_id, entry.data_or_directory, entry.is_id(), entry.is_directory());
 
             let matched: bool;
 
             if entry.is_id() {
-                if level == 0 && type_id.is_some() && type_id.unwrap() == entry.get_name_or_id() {
-                    println!("type_id matched");
+                let entry_id = entry.get_name_or_id();
+                if level == 0 && type_id.is_some() && type_id.unwrap() == entry_id {
+                    log::debug!("type_id {} matched at level {}", entry_id, level);
                     matched = true;
-                } else if level == 1
-                    && name_id.is_some()
-                    && name_id.unwrap() == entry.get_name_or_id()
-                {
-                    println!("name_id matched");
+                } else if level == 1 && name_id.is_some() && name_id.unwrap() == entry_id {
+                    log::debug!("name_id {} matched at level {}", entry_id, level);
+                    matched = true;
+                } else if level == 2 {
+                    // Language ID level - typically we accept any language
+                    log::debug!("language_id {} at level {}", entry_id, level);
                     matched = true;
                 } else {
                     matched = false;
                 }
             } else {
-                if level == 0
-                    && type_name.is_some()
-                    && type_name.unwrap() == self.get_resource_name(&entry)
-                {
-                    println!("type_name matched");
+                // Named entry - need to read the name string
+                let name_offset = entry.get_name_or_id() & 0x7FFFFFFF; // Remove the high bit
+                
+                // The name_offset is relative to the start of the resource section
+                let rsrc_section = self.get_section_ptr_by_name(".rsrc");
+                if rsrc_section.is_none() {
+                    log::warn!("No .rsrc section found");
+                    continue;
+                }
+                
+                // Check if name_offset is within the resource section
+                if name_offset as usize >= rsrc.len() {
+                    log::warn!("Resource name offset 0x{:x} is out of bounds (rsrc size: {})", name_offset, rsrc.len());
+                    continue;
+                }
+                
+                let resource_name = self.read_resource_name_from_rsrc(rsrc, name_offset as usize);
+                
+                if level == 0 && type_name.is_some() && type_name.unwrap() == resource_name {
+                    log::debug!("type_name '{}' matched at level {}", resource_name, level);
                     matched = true;
-                } else if level == 1
-                    && name.is_some()
-                    && name.unwrap() == self.get_resource_name(&entry)
-                {
-                    println!("name matched");
+                } else if level == 1 && name.is_some() && name.unwrap() == resource_name {
+                    log::debug!("name '{}' matched at level {}", resource_name, level);
                     matched = true;
                 } else {
                     matched = false;
@@ -781,9 +870,12 @@ impl PE64 {
 
             if matched {
                 if entry.is_directory() {
+                    let next_dir_offset = entry.get_offset() & 0x7FFFFFFF; // Remove the high bit
+                    log::debug!("Following directory at offset 0x{:x}", next_dir_offset);
+                    
                     return self.locate_resource_data_entry(
                         rsrc,
-                        off2,
+                        next_dir_offset as usize,
                         level + 1,
                         type_id,
                         name_id,
@@ -791,12 +883,21 @@ impl PE64 {
                         name,
                     );
                 } else {
+                    // This is a data entry
+                    let data_entry_offset = entry.get_offset();
+                    
+                    if data_entry_offset as usize + 16 > rsrc.len() {
+                        log::warn!("Resource data entry at offset 0x{:x} is out of bounds", data_entry_offset);
+                        return None;
+                    }
+                    
+                    log::debug!("Found resource data entry at offset 0x{:x}", data_entry_offset);
+                    
                     let mut data_entry = structures::ImageResourceDataEntry64::new();
-                    let off = PE64::vaddr_to_off(&self.sect_hdr, entry.get_offset()) as usize;
-                    data_entry.offset_to_data = read_u64_le!(self.raw, off);
-                    data_entry.size = read_u64_le!(self.raw, off + 8);
-                    data_entry.code_page = read_u64_le!(self.raw, off + 16);
-                    data_entry.reserved = read_u64_le!(self.raw, off + 24);
+                    data_entry.offset_to_data = read_u32_le!(rsrc, data_entry_offset as usize) as u64;
+                    data_entry.size = read_u32_le!(rsrc, data_entry_offset as usize + 4) as u64;
+                    data_entry.code_page = read_u32_le!(rsrc, data_entry_offset as usize + 8) as u64;
+                    data_entry.reserved = read_u32_le!(rsrc, data_entry_offset as usize + 12) as u64;
 
                     return Some(data_entry);
                 }
@@ -804,6 +905,33 @@ impl PE64 {
         }
 
         None
+    }
+
+    // Helper function to safely read resource names from the .rsrc section
+    pub fn read_resource_name_from_rsrc(&self, rsrc: &[u8], offset: usize) -> String {
+        if offset + 1 >= rsrc.len() {
+            log::warn!("Cannot read resource name length at offset {}: out of bounds", offset);
+            return String::new();
+        }
+        
+        let length = u16::from_le_bytes([rsrc[offset], rsrc[offset + 1]]) as usize;
+        let string_start = offset + 2;
+        
+        let required_bytes = string_start + (length * 2);
+        if required_bytes > rsrc.len() {
+            log::warn!("Cannot read resource name: need {} bytes but only {} available in rsrc section", 
+                    required_bytes, rsrc.len());
+            return String::new();
+        }
+        
+        let utf16_data: Vec<u16> = (0..length)
+            .map(|i| {
+                let idx = string_start + i * 2;
+                u16::from_le_bytes([rsrc[idx], rsrc[idx + 1]])
+            })
+            .collect();
+
+        String::from_utf16_lossy(&utf16_data)
     }
 
     pub fn get_resource(
@@ -836,16 +964,14 @@ impl PE64 {
     }
 
     pub fn get_resource_name(&self, entry: &structures::ImageResourceDirectoryEntry) -> String {
-        let off = PE64::vaddr_to_off(&self.sect_hdr, entry.get_name_or_id() as u32) as usize;
-        let length = u16::from_le_bytes([self.raw[off], self.raw[off + 1]]) as usize;
-        let string_start = off + 2;
-        let utf16_data: Vec<u16> = (0..length)
-            .map(|i| {
-                let idx = string_start + i * 2;
-                u16::from_le_bytes([self.raw[idx], self.raw[idx + 1]])
-            })
-            .collect();
-
-        String::from_utf16_lossy(&utf16_data)
+        let rsrc = self.get_section_ptr_by_name(".rsrc");
+        if rsrc.is_none() {
+            return String::new();
+        }
+        
+        let rsrc = rsrc.unwrap();
+        let name_offset = (entry.get_name_or_id() & 0x7FFFFFFF) as usize; // Remove high bit
+        
+        self.read_resource_name_from_rsrc(rsrc, name_offset)
     }
 }
