@@ -165,7 +165,10 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
     );
 
     if filename == "comctl32.dll" {
-        let dll_path = "maps/maps64/comctl32.dll";
+        let dll_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("maps")
+            .join("maps64")
+            .join("comctl32.dll");
         let metadata = std::fs::metadata(dll_path).unwrap();
         let file_size = metadata.len() as u64;
         emu.regs_mut().rax = file_size;
