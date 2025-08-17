@@ -61,7 +61,7 @@ pub fn GetVersionExA(emu: &mut emu::Emu) {
     };
 
     if use_extended {
-        let os_version_info = structures::OsVersionInfo::new();
+        let os_version_info = structures::OsVersionInfoExA::new();
         os_version_info.save(version_info_ptr, &mut emu.maps);
     } else {
         panic!("TODO");
