@@ -1,6 +1,7 @@
 use crate::emu::Emu;
 use crate::exception_type;
 use crate::{get_bit, set_bit, to32};
+
 pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     let mut ret: u64 = val;
 
