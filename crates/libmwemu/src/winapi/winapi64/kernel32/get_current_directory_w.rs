@@ -24,12 +24,6 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
         return;
     }
 
-    if !emu.maps.is_mapped(buff_ptr) {
-        log::error!("GetCurrentDirectoryW: lpBuffer 0x{:x} is not mapped", buff_ptr);
-        emu.regs_mut().rax = 0;
-        return;
-    }
-
     // Check if buffer is large enough (need space for string + null terminator)
     if (buff_len as usize) < (dir_char_count + 1) {
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
@@ -51,5 +45,6 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     );
 
     // Return number of characters written (NOT including null terminator)
+    set_last_error(0);
     emu.regs_mut().rax = dir_char_count as u64;
 }
