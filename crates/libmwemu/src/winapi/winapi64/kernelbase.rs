@@ -163,8 +163,15 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
         filename,
         lpdw_handle
     );
-    // TODO: just putting a rough number for now
-    emu.regs_mut().rax = 0x100;
+
+    if filename == "comctl32.dll" {
+        let dll_path = "maps/maps64/comctl32.dll";
+        let metadata = std::fs::metadata(dll_path).unwrap();
+        let file_size = metadata.len() as u64;
+        emu.regs_mut().rax = file_size;
+    } else {
+        panic!("TODO: {}", filename);
+    }
 }
 
 /*
@@ -194,8 +201,35 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
         dw_len,
         lp_data
     );
-    // TODO: write to lp_data
-    emu.regs_mut().rax = 1;
+    
+    if filename == "comctl32.dll" {
+        use crate::structures::{VS_VERSIONINFO, VS_FIXEDFILEINFO};
+        
+        let mut version_info = VS_VERSIONINFO::new();
+        
+        // Set comctl32.dll specific values based on the actual file
+        version_info.value = VS_FIXEDFILEINFO {
+            dw_signature: 0xFEEF04BD,
+            dw_struc_version: 0x00010000,
+            dw_file_version_ms: 0x0006000A,     // 6.10
+            dw_file_version_ls: 0x585D11BD,     // 22621.4541
+            dw_product_version_ms: 0x000A0000,  // 10.0
+            dw_product_version_ls: 0x585D11BD,  // 22621.4541
+            dw_file_flags_mask: 0x0000003F,
+            dw_file_flags: 0x00000000,
+            dw_file_os: 0x00040004,             // VOS_NT_WINDOWS32
+            dw_file_type: 0x00000002,           // VFT_DLL
+            dw_file_subtype: 0x00000000,
+            dw_file_date_ms: 0x00000000,
+            dw_file_date_ls: 0x00000000,
+        };
+        
+        version_info.write(emu, lp_data as u64);
+        
+        emu.regs_mut().rax = 1; // Success
+    } else {
+        panic!("TODO: {}", filename);
+    }
 }
 
 /*

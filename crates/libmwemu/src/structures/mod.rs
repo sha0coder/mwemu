@@ -40,6 +40,8 @@ mod tls_directory32;
 mod tls_directory64;
 mod unicode_string;
 mod unicode_string64;
+mod vs_fixedfileinfo;
+mod vs_versioninfo;
 
 pub use act_ctx_section_keyed_data32::*;
 pub use act_ctx_section_keyed_data64::*;
@@ -83,3 +85,5 @@ pub use tls_directory32::*;
 pub use tls_directory64::*;
 pub use unicode_string::*;
 pub use unicode_string64::*;
+pub use vs_fixedfileinfo::*;
+pub use vs_versioninfo::*;
