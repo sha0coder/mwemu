@@ -330,7 +330,6 @@ fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
     
     let mut emu = emu64();
     emu.cfg.skip_unimplemented = true;  // Skip unimplemented functions
-    emu.linux = true;  // Set as Linux to avoid PE-specific code paths
     
     // Set up stack
     let stack_addr = 0x1000000;

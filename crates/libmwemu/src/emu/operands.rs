@@ -19,7 +19,6 @@ impl Emu {
         let fs = mem_seg == Register::FS;
         let gs = mem_seg == Register::GS;
         let derref = if mem_seg == Register::FS || mem_seg == Register::GS {false} else {do_derref};
-
         let mem_base = ins.memory_base();
         let mem_index = ins.memory_index();
         let mem_displace = if self.cfg.is_64bits {
@@ -345,10 +344,8 @@ impl Emu {
             OpKind::Immediate32to64 => ins.immediate32to64() as u64,
             OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
             OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
-
             OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
             OpKind::Memory => self.handle_memory_get_operand(ins, noperand, do_derref).unwrap(),
-
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         Some(value)
