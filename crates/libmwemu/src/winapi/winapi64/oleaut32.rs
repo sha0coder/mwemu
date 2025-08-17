@@ -344,7 +344,28 @@ fn VariantClear(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    // TODO: do something
+    // Basic validation
+    if pvarg == 0 || !emu.maps.is_mapped(pvarg) {
+        log::info!(
+            "{}** {} VariantClear: Invalid pvarg pointer {}",
+            emu.colors.light_red,
+            emu.pos, 
+            emu.colors.nc
+        );
+        emu.regs_mut().rax = 0x80070057; // E_INVALIDARG
+        return;
+    }
+
+    // Clear the variant by setting vt field to VT_EMPTY (0)
+    // The vt field is typically at offset 0 in the VARIANT structure
+    emu.maps.write_word(pvarg, 0); // VT_EMPTY = 0
+
+    log::info!(
+        "{}** {} VariantClear: Cleared variant (set vt to VT_EMPTY) {}",
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
+    );
 
     emu.regs_mut().rax = 0; // S_OK
 }

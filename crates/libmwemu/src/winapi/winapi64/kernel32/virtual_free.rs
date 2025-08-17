@@ -13,6 +13,12 @@ pub fn VirtualFree(emu: &mut emu::Emu) {
         addr,
         emu.colors.nc
     );
+
+    // zero out the memory?
+    for i in 0..sz {
+        emu.maps.write_byte(addr + i, 0);
+    }
+    
     // TODO: do something (dump+free or not free)
     emu.regs_mut().rax = 1;
 }
