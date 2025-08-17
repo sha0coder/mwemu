@@ -79,9 +79,9 @@ impl Emu {
                 0xc0 => {
                     if self.cfg.verbose >= 1 {
                         log::info!(
-                                    "{} Reading ISWOW64 is 32bits on a 64bits system?",
-                                    self.pos
-                                );
+                            "{} Reading ISWOW64 is 32bits on a 64bits system?",
+                            self.pos
+                        );
                     }
                     if self.cfg.is_64bits {
                         0

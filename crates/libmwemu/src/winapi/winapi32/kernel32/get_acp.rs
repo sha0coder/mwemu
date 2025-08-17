@@ -1,6 +1,6 @@
 use crate::emu;
 
-pub fn GetAcp(emu: &mut emu::Emu) {
+pub fn GetACP(emu: &mut emu::Emu) {
     log::info!(
         "{}** {} kernel32!GetAcp {}",
         emu.colors.light_red,
