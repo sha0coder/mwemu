@@ -38,5 +38,6 @@ minidump = "0.26.0"
 env_logger = "0.11.8"
 
 [features]
+default = []
 log_mem_read = []
 log_mem_write = []

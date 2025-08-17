@@ -163,8 +163,15 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
         filename,
         lpdw_handle
     );
-    // TODO: just putting a rough number for now
-    emu.regs_mut().rax = 0x100;
+
+    if filename == "comctl32.dll" {
+        let dll_path = "maps/maps64/comctl32.dll";
+        let metadata = std::fs::metadata(dll_path).unwrap();
+        let file_size = metadata.len() as u64;
+        emu.regs_mut().rax = file_size;
+    } else {
+        panic!("TODO: {}", filename);
+    }
 }
 
 /*
@@ -194,8 +201,35 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
         dw_len,
         lp_data
     );
-    // TODO: write to lp_data
-    emu.regs_mut().rax = 1;
+    
+    if filename == "comctl32.dll" {
+        use crate::structures::{VS_VERSIONINFO, VS_FIXEDFILEINFO};
+        
+        let mut version_info = VS_VERSIONINFO::new();
+        
+        // Set comctl32.dll specific values based on the actual file
+        version_info.value = VS_FIXEDFILEINFO {
+            dw_signature: 0xFEEF04BD,
+            dw_struc_version: 0x00010000,
+            dw_file_version_ms: 0x0006000A,     // 6.10
+            dw_file_version_ls: 0x585D11BD,     // 22621.4541
+            dw_product_version_ms: 0x000A0000,  // 10.0
+            dw_product_version_ls: 0x585D11BD,  // 22621.4541
+            dw_file_flags_mask: 0x0000003F,
+            dw_file_flags: 0x00000000,
+            dw_file_os: 0x00040004,             // VOS_NT_WINDOWS32
+            dw_file_type: 0x00000002,           // VFT_DLL
+            dw_file_subtype: 0x00000000,
+            dw_file_date_ms: 0x00000000,
+            dw_file_date_ls: 0x00000000,
+        };
+        
+        version_info.write(emu, lp_data as u64);
+        
+        emu.regs_mut().rax = 1; // Success
+    } else {
+        panic!("TODO: {}", filename);
+    }
 }
 
 /*
@@ -208,21 +242,61 @@ BOOL VerQueryValueA(
 */
 fn VerQueryValueA(emu: &mut emu::Emu) {
     let p_block = emu.regs().rcx as usize;
-    let lp_sub_block = emu.regs().rdx as usize;
-    let lplp_buffer = emu.regs().rcx as usize;
-    let pu_len = emu.regs().r8 as usize;
+    let lp_sub_block = emu.regs().rdx;
+    let lplp_buffer = emu.regs().r8 as usize;
+    let pu_len = emu.regs().r9 as usize;
+    
+    let sub_block = if lp_sub_block > 0 {
+        emu.maps.read_string(lp_sub_block)
+    } else {
+        "\\".to_string()
+    };
+    
     log_red!(emu, "** {} kernelbase!VerQueryValueA p_block: 0x{:x} lp_sub_block: {} lplp_buffer: 0x{:x} pu_len: 0x{:x}", 
         emu.pos,
         p_block,
-        lp_sub_block,
+        sub_block,
         lplp_buffer,
         pu_len
     );
-    // TODO: write more structured data
-    let base = emu.maps.alloc(0x100).expect("out of memory");
-    emu.maps.write_qword(lplp_buffer as u64, base);
-    emu.maps.write_qword(pu_len as u64, 0x100);
-    emu.regs_mut().rax = 1;
+    
+    if sub_block == "\\" {
+        // Root query returns pointer to VS_FIXEDFILEINFO
+        // The VS_FIXEDFILEINFO starts at offset 0x28 in the version block
+        let fixed_info_ptr = (p_block + 0x28) as u64;
+        emu.maps.write_qword(lplp_buffer as u64, fixed_info_ptr);
+        emu.maps.write_dword(pu_len as u64, 52); // Size of VS_FIXEDFILEINFO
+        emu.regs_mut().rax = 1;
+    } else if sub_block.starts_with("\\StringFileInfo\\") {
+        // String queries - allocate and return string data
+        let string_data = match sub_block.as_str() {
+            "\\StringFileInfo\\040904B0\\CompanyName" => "Microsoft Corporation\0",
+            "\\StringFileInfo\\040904B0\\FileDescription" => "User Experience Controls Library\0",
+            "\\StringFileInfo\\040904B0\\FileVersion" => "6.10 (WinBuild.160101.0800)\0",
+            "\\StringFileInfo\\040904B0\\InternalName" => "comctl32\0",
+            "\\StringFileInfo\\040904B0\\LegalCopyright" => "© Microsoft Corporation. All rights reserved.\0",
+            "\\StringFileInfo\\040904B0\\OriginalFilename" => "comctl32.DLL\0",
+            "\\StringFileInfo\\040904B0\\ProductName" => "Microsoft® Windows® Operating System\0",
+            "\\StringFileInfo\\040904B0\\ProductVersion" => "10.0.22621.4541\0",
+            _ => "\0",
+        };
+        
+        let string_addr = emu.maps.alloc(string_data.len() as u64).expect("out of memory");
+        emu.maps.write_string(string_addr, string_data);
+        emu.maps.write_qword(lplp_buffer as u64, string_addr);
+        emu.maps.write_dword(pu_len as u64, string_data.len() as u32);
+        emu.regs_mut().rax = 1;
+    } else if sub_block == "\\VarFileInfo\\Translation" {
+        // Translation array
+        let trans_addr = emu.maps.alloc(4).expect("out of memory");
+        emu.maps.write_dword(trans_addr, 0x04B00409); // Language and codepage
+        emu.maps.write_qword(lplp_buffer as u64, trans_addr);
+        emu.maps.write_dword(pu_len as u64, 4);
+        emu.regs_mut().rax = 1;
+    } else {
+        log::info!("VerQueryValueA: Unknown sub_block: {}", sub_block);
+        emu.regs_mut().rax = 0; // Failure
+    }
 }
 
 fn _initterm_e(emu: &mut emu::Emu) {

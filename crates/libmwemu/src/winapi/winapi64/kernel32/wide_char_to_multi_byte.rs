@@ -103,4 +103,16 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     };
 
     clear_last_error(emu);
+
+    // LOG THE INPUT WIDE STRING
+    if lp_wide_char_str > 0 && !s.is_empty() {
+        log::info!(
+            "{}** {} Input wide string: \"{}\" (length: {} characters) {}",
+            emu.colors.light_red,
+            emu.pos,
+            s.escape_debug(), // This will show escape sequences for non-printable chars
+            input_len,
+            emu.colors.nc
+        );
+    }
 }

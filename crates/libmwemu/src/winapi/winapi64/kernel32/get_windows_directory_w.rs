@@ -9,7 +9,7 @@ pub fn GetWindowsDirectoryW(emu: &mut emu::Emu) {
         lp_buffer,
         u_size
     );
-    let output = "C:\\Windows\\";
+    let output = "C:\\Windows";
     if emu.maps.is_mapped(lp_buffer) && u_size > output.len()*2+2 {
         emu.maps.write_wide_string(lp_buffer, output);
         emu.regs_mut().rax = output.len() as u64 * 2;

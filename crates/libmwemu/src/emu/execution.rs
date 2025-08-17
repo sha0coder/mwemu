@@ -418,10 +418,12 @@ impl Emu {
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 // turn on verbosity after a lot of pos
-                /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
-                    self.cfg.verbose = 3;
-                    self.set_verbose(self.cfg.verbose);
-                }*/
+                if let Some(vpos) = self.cfg.verbose_at {
+                    if vpos == self.pos {
+                        self.cfg.verbose = 2;
+                        self.cfg.trace_mem = true;
+                    }
+                }
 
                 // Debug: Track which thread we're executing
                 if self.threads.len() > 1 && self.cfg.verbose >= 3 {
@@ -498,6 +500,7 @@ impl Emu {
                     if let Some(vpos) = self.cfg.verbose_at {
                         if vpos == self.pos {
                             self.cfg.verbose = 2;
+                            self.cfg.trace_mem = true;
                         }
                     }
 
@@ -883,14 +886,10 @@ impl Emu {
                     self.pos += 1;
 
                     // turn on verbosity after a lot of pos
-                    /*if self.cfg.verbose != 3 && self.pos >= 189900000 {
-                        self.cfg.verbose = 3;
-                        self.set_verbose(self.cfg.verbose);
-                    }*/
-
                     if let Some(vpos) = self.cfg.verbose_at {
                         if vpos == self.pos {
                             self.cfg.verbose = 2;
+                            self.cfg.trace_mem = true;
                         }
                     }
 

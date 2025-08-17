@@ -1,6 +1,15 @@
 use crate::emu;
 use crate::winapi::helper;
 
+/*
+HANDLE CreateEventA(
+  [in, optional] LPSECURITY_ATTRIBUTES lpEventAttributes,
+  [in]           BOOL                  bManualReset,
+  [in]           BOOL                  bInitialState,
+  [in, optional] LPCSTR                lpName
+);
+
+*/
 pub fn CreateEventA(emu: &mut emu::Emu) {
     let attributes = emu.regs().rcx;
     let bManualReset = emu.regs().rdx;

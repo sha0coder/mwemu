@@ -7,10 +7,11 @@
 //pub const LIBS64_BARRIER: u64 = 0x7f0000000000;
 
 pub const MODULE_NAME: &str = "version.dll"; // randomize this
-pub const EXE_NAME: &str = "loader.exe"; // randomize this
+pub const EXE_NAME: &str = "version.dll"; // randomize this
 pub const USER_NAME: &str = "bartolo"; // randomize this
 pub const HOST_NAME: &str = "medusa"; // randomize this
 pub const TEMP_PATH: &str = "C:\\Temp\\"; // randomize this
+pub const CWD_PATH: &str = "C:\\cwd"; // randomize this
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
@@ -31,8 +32,9 @@ pub const STATUS_ACCESS_VIOLATION: u64 = 0xC0000005;
 pub const STATUS_INVALID_PARAMETER: u64 = 0xC000000D;
 
 pub const ERROR_SUCCESS: u64 = 0;
+pub const ERROR_BUFFER_OVERFLOW: u64 = 0x6f;
 pub const ERROR_INVALID_PARAMETER: u64 = 0x57;
-pub const ERROR_INSUFFICIENT_BUFFER: u64 = 122;
+pub const ERROR_INSUFFICIENT_BUFFER: u64 = 0x7a;
 
 pub const CP_UTF7: u64 = 65000;
 pub const CP_UTF8: u64 = 65001;
@@ -778,6 +780,15 @@ pub const LOCALE_SABBREVMONTHNAME9: u64 = 76;
 pub const LOCALE_SABBREVMONTHNAME10: u64 = 77;
 pub const LOCALE_SABBREVMONTHNAME11: u64 = 78;
 pub const LOCALE_SABBREVMONTHNAME12: u64 = 79;
+pub const LOCALE_SLANGUAGE: u64 = 0x00000002;
+pub const LOCALE_SCOUNTRY: u64 = 0x00000006;
+pub const LOCALE_SLIST: u64 = 0x0000000C;
+pub const LOCALE_SDECIMAL: u64 = 0x0000000E;
+pub const LOCALE_STHOUSAND: u64 = 0x0000000F;
+pub const LOCALE_SCURRENCY: u64 = 0x00000014;
+pub const LOCALE_SDATE: u64 = 0x0000001D;
+pub const LOCALE_STIME: u64 = 0x0000001E;
+pub const LOCALE_RETURN_NUMBER: u64 = 0x20000000;
 
 pub const HEAP_GENERATE_EXCEPTIONS: u64 = 0x00000004;
 pub const HEAP_NO_SERIALIZE: u64 = 0x00000001;
