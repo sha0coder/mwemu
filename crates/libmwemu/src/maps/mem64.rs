@@ -160,7 +160,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_from: 0x{:x?} = {:?}",
+                        "mem_trace: read_from: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, max_sz),
                         r
                     );
@@ -193,7 +193,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_bytes: 0x{:x?} = {:?}",
+                        "mem_trace: read_bytes: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, sz),
                         r
                     );
@@ -218,7 +218,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_bytes: 0x{:x?} = {:?}",
+                        "mem_trace: read_bytes: 0x{:x?} = {:x?}",
                         self.build_addresses(self.get_base(), self.size()),
                         r
                     );
@@ -354,7 +354,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_bytes: 0x{:x?} = {:?}",
+                        "mem_trace: write_bytes: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, bs.len()),
                         bs
                     );
@@ -452,7 +452,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_string: 0x{:x?} = {:?}",
+                        "mem_trace: write_string: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, s.len() + 1),
                         s
                     );
@@ -479,7 +479,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_string: 0x{:x?} = {:?}",
+                        "mem_trace: read_string: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, s.len() + 1),
                         s
                     );
@@ -503,7 +503,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_wide_string: 0x{:x?} = {:?}",
+                        "mem_trace: write_wide_string: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, s.len() + 1),
                         s
                     );
@@ -530,7 +530,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_wide_string: 0x{:x?} = {:?}",
+                        "mem_trace: read_wide_string: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, s.len() + 1),
                         s
                     );
@@ -556,7 +556,7 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: read_wide_string_n: 0x{:x?} = {:?}",
+                        "mem_trace: read_wide_string_n: 0x{:x?} = {:x?}",
                         self.build_addresses(addr, s.len() + 1),
                         s
                     );
