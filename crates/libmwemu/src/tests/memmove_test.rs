@@ -1,5 +1,8 @@
 use crate::{tests::helpers, *};
 
+// RUST_LOG=debug cargo test --target x86_64-apple-darwin --features log_mem_write memmove_non_overlapping_copy
+// RUST_LOG=debug cargo test --target x86_64-apple-darwin --features log_mem_write memmove_non_overlapping_copy
+
 /*
                              **************************************************************
                              *                          FUNCTION                          *
@@ -330,6 +333,12 @@ fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
     
     let mut emu = emu64();
     emu.cfg.skip_unimplemented = true;  // Skip unimplemented functions
+    emu.cfg.verbose = 3;  // Enable verbose logging
+    emu.cfg.trace_mem = true;  // Enable memory tracing
+    emu.cfg.trace_regs = true;  // Enable register tracing
+
+    // thread local storage
+    emu_context::set_current_emu(&emu);
     
     // Set up stack
     let stack_addr = 0x1000000;
@@ -341,7 +350,7 @@ fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
     let code_addr = 0x400000;
     emu.maps.create_map("code", code_addr, memmove_code_len as u64 + 0x100);
     emu.maps.write_bytes(code_addr, memmove_code);
-    
+
     (emu, code_addr, memmove_code_len)
 }
 
@@ -373,6 +382,18 @@ fn memmove_non_overlapping_copy() {
     emu.maps.write_qword(emu.regs().rsp, return_addr);
     
     // Execute memmove
+    println!("About to execute memmove:");
+    println!("  RDX (dest): 0x{:x}", emu.regs().rdx);
+    println!("  RCX (src): 0x{:x}", emu.regs().rcx);
+    println!("  R8 (len): 0x{:x}", emu.regs().r8);
+    println!("  RIP: 0x{:x}", emu.regs().rip);
+    println!("  Return addr: 0x{:x}", return_addr);
+    
+    // Check if destination is writable
+    if !emu.maps.write_byte(dest_addr, 0) {
+        panic!("Destination memory at 0x{:x} is not writable!", dest_addr);
+    }
+    
     emu.run(Some(return_addr));
     
     // Verify the copy
