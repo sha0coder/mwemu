@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::constants;
 use crate::serialization;
 use crate::winapi::winapi64::kernel32;
 //use crate::winapi::helper;
@@ -174,7 +175,7 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
 
     // Check if pbstr_ptr is NULL
     if pbstr_ptr == 0 {
-        emu.regs_mut().rax = 0; // Return FALSE
+        emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
@@ -267,8 +268,7 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
 
     // Note: In a real implementation, you'd free the old BSTR here
     // but in an emulator, we might want to keep it for debugging
-    
-    emu.regs_mut().rax = 1; // Return TRUE for success
+    emu.regs_mut().rax = constants::TRUE;
 }
 
 /*
