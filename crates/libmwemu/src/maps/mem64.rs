@@ -100,6 +100,7 @@ impl Mem64 {
             );
             panic!("memcpy: {} < {}", self.mem.len(), sz);
         }
+        // TODO: log trace read write?
         self.mem[..sz].copy_from_slice(&ptr[..sz]);
     }
 
@@ -172,14 +173,17 @@ impl Mem64 {
     #[inline(always)]
     pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
         if addr >= self.base_addr + self.mem.len() as u64 {
+            // TODO: log trace?
             return &[0; 0];
         }
         if addr < self.base_addr {
-            return&[0; 0];
+            // TODO: log trace?            
+            return &[0; 0];
         }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
+            // TODO: log trace?            
             let addr =  self.mem.get(idx..self.mem.len()).unwrap();
             return addr;
         }
@@ -204,6 +208,7 @@ impl Mem64 {
         let idx = 0;
         let sz2 = self.size();
         if sz2 > self.mem.len() {
+            // TODO: log trace?
             let bytes =  self.mem.get(idx..self.mem.len()).unwrap();
             return bytes;
         }
@@ -227,7 +232,6 @@ impl Mem64 {
     pub fn read_byte(&self, addr: u64) -> u8 {
         let idx = (addr - self.base_addr) as usize;
         let r = self.mem[idx];
-
         if cfg!(feature = "log_mem_read") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
@@ -279,7 +283,6 @@ impl Mem64 {
                 }
             }).unwrap();
         }
-
         r
     }
 
@@ -287,7 +290,6 @@ impl Mem64 {
     pub fn read_qword(&self, addr: u64) -> u64 {
         let idx = (addr - self.base_addr) as usize;
         let r = u64::from_le_bytes(self.mem[idx..idx + 8].try_into().expect("incorrect length"));
-
         if cfg!(feature = "log_mem_read") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
@@ -300,7 +302,6 @@ impl Mem64 {
                 }
             }).unwrap();
         }
-
         r
     }
 
@@ -311,7 +312,6 @@ impl Mem64 {
                 .try_into()
                 .expect("incorrect length"),
         );
-
         if cfg!(feature = "log_mem_read") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
@@ -324,7 +324,6 @@ impl Mem64 {
                 }
             }).unwrap();
         }
-
         r
     }
 
@@ -332,7 +331,6 @@ impl Mem64 {
     pub fn write_byte(&mut self, addr: u64, value: u8) {
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx] = value;
-
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
