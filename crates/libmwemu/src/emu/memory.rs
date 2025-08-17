@@ -1,7 +1,7 @@
 use crate::{constants, emu::Emu, structures::MemoryOperation};
 
 impl Emu {
-        /// This is not used on the emulation.
+    /// This is not used on the emulation.
     /// It's part of a feature like  reading or wirtting like it was asm "dword ptr [rax + 0x123]"
     pub fn memory_operand_to_address(&mut self, operand: &str) -> u64 {
         let spl: Vec<&str> = operand.split('[').collect::<Vec<&str>>()[1]

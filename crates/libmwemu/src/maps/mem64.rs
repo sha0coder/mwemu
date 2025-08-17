@@ -155,11 +155,16 @@ impl Mem64 {
         }*/
         let r = self.mem.get(idx..max_sz).unwrap();
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_from: 0x{:x?} = {:?}",
-                self.build_addresses(addr, max_sz),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_from: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, max_sz),
+                        r
+                    );
+                }
+            }).unwrap();
         }
         r
     }
@@ -180,11 +185,16 @@ impl Mem64 {
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_bytes: 0x{:x?} = {:?}",
-                self.build_addresses(addr, sz),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_bytes: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, sz),
+                        r
+                    );
+                }
+            }).unwrap();
         }
         r
     }
@@ -199,11 +209,16 @@ impl Mem64 {
         }
         let r = self.mem.get(idx..sz2).unwrap();
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_bytes: 0x{:x?} = {:?}",
-                self.build_addresses(self.get_base(), self.size()),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_bytes: 0x{:x?} = {:?}",
+                        self.build_addresses(self.get_base(), self.size()),
+                        r
+                    );
+                }
+            }).unwrap();
         }
         r
     }
@@ -214,11 +229,16 @@ impl Mem64 {
         let r = self.mem[idx];
 
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_byte: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 1),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_byte: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 1),
+                        r
+                    );
+                }
+            }).unwrap();
         }
         r
     }
@@ -229,11 +249,16 @@ impl Mem64 {
         let r = (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8);
         let r = u16::from_le_bytes(self.mem[idx..idx + 2].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_word: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 2),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_word: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 2),
+                        r
+                    );
+                }
+            }).unwrap();
         }
         r
     }
@@ -243,11 +268,16 @@ impl Mem64 {
         let idx = (addr - self.base_addr) as usize;
         let r = u32::from_le_bytes(self.mem[idx..idx + 4].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_dword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 4),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_dword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 4),
+                        r
+                    );
+                }
+            }).unwrap();
         }
 
         r
@@ -259,11 +289,16 @@ impl Mem64 {
         let r = u64::from_le_bytes(self.mem[idx..idx + 8].try_into().expect("incorrect length"));
 
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_qword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 8),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        r
+                    );
+                }
+            }).unwrap();
         }
 
         r
@@ -278,11 +313,16 @@ impl Mem64 {
         );
 
         if cfg!(feature = "log_mem_read") {
-            log::trace!(
-                "mem: read_qword: 0x{:x?} = 0x{:x}",
-                self.build_addresses(addr, 8),
-                r
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        r
+                    );
+                }
+            }).unwrap();
         }
 
         r
@@ -295,12 +335,14 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_byte: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 1),
-                    value
-                );
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_byte: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 1),
+                        value
+                    );
+                }
             }).unwrap();
         }
     }
@@ -311,12 +353,14 @@ impl Mem64 {
         self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_bytes: 0x{:x?} = {:?}",
-                    self.build_addresses(addr, bs.len()),
-                    bs
-                );
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_bytes: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, bs.len()),
+                        bs
+                    );
+                }
             }).unwrap();
         }
     }
@@ -328,13 +372,15 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_word: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 2),
-                    value
-                );
-            });
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_word: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 2),
+                        value
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -345,13 +391,15 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_dword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 4),
-                    value
-                );
-            });
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_dword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 4),
+                        value
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -362,13 +410,15 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_qword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 8),
-                    value
-                );
-            });
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        value
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -379,13 +429,15 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_qword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 8),
-                    value
-                );
-            });
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        value
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -397,13 +449,15 @@ impl Mem64 {
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
-                log_red!(
-                    emu,
-                    "mem: write_string: 0x{:x?} = {:?}",
-                    self.build_addresses(addr, s.len() + 1),
-                    s
-                );
-            });
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -420,6 +474,18 @@ impl Mem64 {
             s.push(b);
             idx += 1;
         }
+        if cfg!(feature = "log_mem_read") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            }).unwrap();
+        }
         String::from_utf8(s).expect("invalid utf-8")
     }
 
@@ -431,11 +497,16 @@ impl Mem64 {
         self.write_bytes(addr, &byte_slice);
 
         if cfg!(feature = "log_mem_write") {
-            log::trace!(
-                "mem: write_wide_string: 0x{:x?} = {:?}",
-                self.build_addresses(addr, s.len() * 2 + 2),
-                s
-            );
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: write_wide_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            }).unwrap();
         }
     }
 
@@ -452,6 +523,18 @@ impl Mem64 {
             s.push(b);
             idx += 2;
         }
+        if cfg!(feature = "log_mem_read") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_wide_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            }).unwrap();
+        }
         String::from_utf16(&s).expect("invalid utf-16")
     }
 
@@ -465,6 +548,18 @@ impl Mem64 {
             }
             s.push(b);
             idx += 2;
+        }
+        if cfg!(feature = "log_mem_read") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: read_wide_string_n: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            }).unwrap();
         }
         String::from_utf16_lossy(&s)
     }
