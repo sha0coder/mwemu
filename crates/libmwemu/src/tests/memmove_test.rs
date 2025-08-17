@@ -1,12 +1,336 @@
 use crate::{tests::helpers, *};
 
+/*
+                             **************************************************************
+                             *                          FUNCTION                          *
+                             **************************************************************
+                             undefined memmove()
+                               assume GS_OFFSET = 0xff00000000
+             undefined         <UNASSIGNED>   <RETURN>
+                             memmove                                         XREF[77]:    FUN_7ffd1042c210:7ffd1042c243(c), 
+                                                                                          FUN_7ffd1042c260:7ffd1042c2d8(c), 
+                                                                                          FUN_7ffd1042c260:7ffd1042c30a(c), 
+                                                                                          FUN_7ffd1042c260:7ffd1042c321(c), 
+                                                                                          FUN_7ffd1042c260:7ffd1042c33a(c), 
+                                                                                          FUN_7ffd1042c260:7ffd1042c35c(c), 
+                                                                                          FUN_7ffd1042fdc0:7ffd1042fddf(c), 
+                                                                                          FUN_7ffd104308a0:7ffd10430909(c), 
+                                                                                          FUN_7ffd10431b60:7ffd10431bad(c), 
+                                                                                          wipe_string?:7ffd10431e7d(c), 
+                                                                                          init_and_copy_string?:7ffd10431f
+                                                                                          string_concat?:7ffd1043200a(c), 
+                                                                                          string_concat?:7ffd10432027(c), 
+                                                                                          string_concat?:7ffd10432055(c), 
+                                                                                          string_concat?:7ffd10432066(c), 
+                                                                                          string_concat?:7ffd1043208f(c), 
+                                                                                          string_concat?:7ffd104320a7(c), 
+                                                                                          resize_string_buffer?:7ffd104324
+                                                                                          FUN_7ffd10432480:7ffd10432511(c), 
+                                                                                          FUN_7ffd1043c680:7ffd1043c6d5(c), 
+                                                                                          [more]
+    7ffd1042b3e0 4c 89 c0        MOV        RAX,R8
+    7ffd1042b3e3 48 29 d1        SUB        RCX,RDX
+    7ffd1042b3e6 0f 84 91        JZ         LAB_7ffd1042b47d
+                 00 00 00
+    7ffd1042b3ec 73 09           JNC        LAB_7ffd1042b3f7
+    7ffd1042b3ee 48 01 c8        ADD        RAX,RCX
+    7ffd1042b3f1 0f 82 6d        JC         LAB_7ffd1042b564
+                 01 00 00
+                             LAB_7ffd1042b3f7                                XREF[1]:     7ffd1042b3ec(j)  
+    7ffd1042b3f7 49 83 f8 08     CMP        R8,0x8
+    7ffd1042b3fb 0f 8c 63        JL         LAB_7ffd1042b464
+                 00 00 00
+    7ffd1042b401 f6 c2 07        TEST       DL,0x7
+    7ffd1042b404 74 37           JZ         LAB_7ffd1042b43d
+    7ffd1042b406 f6 c2 01        TEST       DL,0x1
+    7ffd1042b409 74 0c           JZ         LAB_7ffd1042b417
+    7ffd1042b40b 8a 04 11        MOV        AL,byte ptr [RCX + RDX*0x1]
+    7ffd1042b40e 49 ff c8        DEC        R8
+    7ffd1042b411 88 02           MOV        byte ptr [RDX],AL
+    7ffd1042b413 48 83 c2 01     ADD        RDX,0x1
+                             LAB_7ffd1042b417                                XREF[1]:     7ffd1042b409(j)  
+    7ffd1042b417 f6 c2 02        TEST       DL,0x2
+    7ffd1042b41a 74 0f           JZ         LAB_7ffd1042b42b
+    7ffd1042b41c 66 8b 04 11     MOV        AX,word ptr [RCX + RDX*0x1]
+    7ffd1042b420 49 83 e8 02     SUB        R8,0x2
+    7ffd1042b424 66 89 02        MOV        word ptr [RDX],AX
+    7ffd1042b427 48 83 c2 02     ADD        RDX,0x2
+                             LAB_7ffd1042b42b                                XREF[1]:     7ffd1042b41a(j)  
+    7ffd1042b42b f6 c2 04        TEST       DL,0x4
+    7ffd1042b42e 74 0d           JZ         LAB_7ffd1042b43d
+    7ffd1042b430 8b 04 11        MOV        EAX,dword ptr [RCX + RDX*0x1]
+    7ffd1042b433 49 83 e8 04     SUB        R8,0x4
+    7ffd1042b437 89 02           MOV        dword ptr [RDX],EAX
+    7ffd1042b439 48 83 c2 04     ADD        RDX,0x4
+                             LAB_7ffd1042b43d                                XREF[3]:     7ffd1042b404(j), 7ffd1042b42e(j), 
+                                                                                          7ffd1042b55f(j)  
+    7ffd1042b43d 4d 89 c1        MOV        R9,R8
+    7ffd1042b440 49 c1 e9 05     SHR        R9,0x5
+    7ffd1042b444 75 38           JNZ        LAB_7ffd1042b47e
+                             LAB_7ffd1042b446                                XREF[1]:     7ffd1042b4c1(j)  
+    7ffd1042b446 4d 89 c1        MOV        R9,R8
+    7ffd1042b449 49 c1 e9 03     SHR        R9,0x3
+    7ffd1042b44d 74 15           JZ         LAB_7ffd1042b464
+    7ffd1042b44f 90              NOP
+                             LAB_7ffd1042b450                                XREF[1]:     7ffd1042b45e(j)  
+    7ffd1042b450 48 8b 04 11     MOV        RAX,qword ptr [RCX + RDX*0x1]
+    7ffd1042b454 48 89 02        MOV        qword ptr [RDX],RAX
+    7ffd1042b457 48 83 c2 08     ADD        RDX,0x8
+    7ffd1042b45b 49 ff c9        DEC        R9
+    7ffd1042b45e 75 f0           JNZ        LAB_7ffd1042b450
+    7ffd1042b460 49 83 e0 07     AND        R8,0x7
+                             LAB_7ffd1042b464                                XREF[2]:     7ffd1042b3fb(j), 7ffd1042b44d(j)  
+    7ffd1042b464 4d 85 c0        TEST       R8,R8
+    7ffd1042b467 7e 14           JLE        LAB_7ffd1042b47d
+    7ffd1042b469 0f 1f 80        NOP        dword ptr [RAX]
+                 00 00 00 00
+                             LAB_7ffd1042b470                                XREF[1]:     7ffd1042b47b(j)  
+    7ffd1042b470 8a 04 11        MOV        AL,byte ptr [RCX + RDX*0x1]
+    7ffd1042b473 88 02           MOV        byte ptr [RDX],AL
+    7ffd1042b475 48 ff c2        INC        RDX
+    7ffd1042b478 49 ff c8        DEC        R8
+    7ffd1042b47b 75 f3           JNZ        LAB_7ffd1042b470
+                             LAB_7ffd1042b47d                                XREF[2]:     7ffd1042b3e6(j), 7ffd1042b467(j)  
+    7ffd1042b47d c3              RET
+                             LAB_7ffd1042b47e                                XREF[1]:     7ffd1042b444(j)  
+    7ffd1042b47e 49 81 f9        CMP        R9,0x2000
+                 00 20 00 00
+    7ffd1042b485 72 09           JC         LAB_7ffd1042b490
+    7ffd1042b487 48 81 f9        CMP        RCX,0x1000
+                 00 10 00 00
+    7ffd1042b48e 73 33           JNC        LAB_7ffd1042b4c3
+                             LAB_7ffd1042b490                                XREF[2]:     7ffd1042b485(j), 7ffd1042b4bb(j)  
+    7ffd1042b490 48 83 c2 20     ADD        RDX,0x20
+    7ffd1042b494 48 8b 44        MOV        RAX,qword ptr [RCX + RDX*0x1 + -0x20]
+                 11 e0
+    7ffd1042b499 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x18]
+                 11 e8
+    7ffd1042b49e 48 89 42 e0     MOV        qword ptr [RDX + -0x20],RAX
+    7ffd1042b4a2 4c 89 52 e8     MOV        qword ptr [RDX + -0x18],R10
+    7ffd1042b4a6 49 ff c9        DEC        R9
+    7ffd1042b4a9 48 8b 44        MOV        RAX,qword ptr [RCX + RDX*0x1 + -0x10]
+                 11 f0
+    7ffd1042b4ae 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x8]
+                 11 f8
+    7ffd1042b4b3 48 89 42 f0     MOV        qword ptr [RDX + -0x10],RAX
+    7ffd1042b4b7 4c 89 52 f8     MOV        qword ptr [RDX + -0x8],R10
+    7ffd1042b4bb 75 d3           JNZ        LAB_7ffd1042b490
+    7ffd1042b4bd 49 83 e0 1f     AND        R8,0x1f
+    7ffd1042b4c1 eb 83           JMP        LAB_7ffd1042b446
+                             LAB_7ffd1042b4c3                                XREF[2]:     7ffd1042b48e(j), 7ffd1042b556(j)  
+    7ffd1042b4c3 b8 20 00        MOV        EAX,0x20
+                 00 00
+    7ffd1042b4c8 0f 1f 84        NOP        dword ptr [RAX + RAX*0x1]
+                 00 00 00 
+                 00 00
+                             LAB_7ffd1042b4d0                                XREF[1]:     7ffd1042b4e2(j)  
+    7ffd1042b4d0 0f 18 04 11     NOP        dword ptr [RCX + RDX*0x1]
+    7ffd1042b4d4 0f 18 44        NOP        dword ptr [RCX + RDX*0x1 + 0x40]
+                 11 40
+    7ffd1042b4d9 48 81 c2        ADD        RDX,0x80
+                 80 00 00 00
+    7ffd1042b4e0 ff c8           DEC        EAX
+    7ffd1042b4e2 75 ec           JNZ        LAB_7ffd1042b4d0
+    7ffd1042b4e4 48 81 ea        SUB        RDX,0x1000
+                 00 10 00 00
+    7ffd1042b4eb b8 40 00        MOV        EAX,0x40
+                 00 00
+                             LAB_7ffd1042b4f0                                XREF[1]:     7ffd1042b546(j)  
+    7ffd1042b4f0 48 83 c2 40     ADD        RDX,0x40
+    7ffd1042b4f4 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + -0x40]
+                 11 c0
+    7ffd1042b4f9 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x38]
+                 11 c8
+    7ffd1042b4fe 4c 0f c3        MOVNTI     [RDX + -0x40],R9
+                 4a c0
+    7ffd1042b503 4c 0f c3        MOVNTI     [RDX + -0x38],R10
+                 52 c8
+    7ffd1042b508 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + -0x30]
+                 11 d0
+    7ffd1042b50d 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x28]
+                 11 d8
+    7ffd1042b512 4c 0f c3        MOVNTI     [RDX + -0x30],R9
+                 4a d0
+    7ffd1042b517 4c 0f c3        MOVNTI     [RDX + -0x28],R10
+                 52 d8
+    7ffd1042b51c ff c8           DEC        EAX
+    7ffd1042b51e 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + -0x20]
+                 11 e0
+    7ffd1042b523 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x18]
+                 11 e8
+    7ffd1042b528 4c 0f c3        MOVNTI     [RDX + -0x20],R9
+                 4a e0
+    7ffd1042b52d 4c 0f c3        MOVNTI     [RDX + -0x18],R10
+                 52 e8
+    7ffd1042b532 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + -0x10]
+                 11 f0
+    7ffd1042b537 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + -0x8]
+                 11 f8
+    7ffd1042b53c 4c 0f c3        MOVNTI     [RDX + -0x10],R9
+                 4a f0
+    7ffd1042b541 4c 0f c3        MOVNTI     [RDX + -0x8],R10
+                 52 f8
+    7ffd1042b546 75 a8           JNZ        LAB_7ffd1042b4f0
+    7ffd1042b548 49 81 e8        SUB        R8,0x1000
+                 00 10 00 00
+    7ffd1042b54f 49 81 f8        CMP        R8,0x1000
+                 00 10 00 00
+    7ffd1042b556 0f 83 67        JNC        LAB_7ffd1042b4c3
+                 ff ff ff
+    7ffd1042b55c 0f ae f0        MFENCE
+    7ffd1042b55f e9 d9 fe        JMP        LAB_7ffd1042b43d
+                 ff ff
+                             LAB_7ffd1042b564                                XREF[1]:     7ffd1042b3f1(j)  
+    7ffd1042b564 4c 01 c2        ADD        RDX,R8
+    7ffd1042b567 49 83 f8 08     CMP        R8,0x8
+    7ffd1042b56b 7c 61           JL         LAB_7ffd1042b5ce
+    7ffd1042b56d f6 c2 07        TEST       DL,0x7
+    7ffd1042b570 74 36           JZ         LAB_7ffd1042b5a8
+    7ffd1042b572 f6 c2 01        TEST       DL,0x1
+    7ffd1042b575 74 0b           JZ         LAB_7ffd1042b582
+    7ffd1042b577 48 ff ca        DEC        RDX
+    7ffd1042b57a 8a 04 11        MOV        AL,byte ptr [RCX + RDX*0x1]
+    7ffd1042b57d 49 ff c8        DEC        R8
+    7ffd1042b580 88 02           MOV        byte ptr [RDX],AL
+                             LAB_7ffd1042b582                                XREF[1]:     7ffd1042b575(j)  
+    7ffd1042b582 f6 c2 02        TEST       DL,0x2
+    7ffd1042b585 74 0f           JZ         LAB_7ffd1042b596
+    7ffd1042b587 48 83 ea 02     SUB        RDX,0x2
+    7ffd1042b58b 66 8b 04 11     MOV        AX,word ptr [RCX + RDX*0x1]
+    7ffd1042b58f 49 83 e8 02     SUB        R8,0x2
+    7ffd1042b593 66 89 02        MOV        word ptr [RDX],AX
+                             LAB_7ffd1042b596                                XREF[1]:     7ffd1042b585(j)  
+    7ffd1042b596 f6 c2 04        TEST       DL,0x4
+    7ffd1042b599 74 0d           JZ         LAB_7ffd1042b5a8
+    7ffd1042b59b 48 83 ea 04     SUB        RDX,0x4
+    7ffd1042b59f 8b 04 11        MOV        EAX,dword ptr [RCX + RDX*0x1]
+    7ffd1042b5a2 49 83 e8 04     SUB        R8,0x4
+    7ffd1042b5a6 89 02           MOV        dword ptr [RDX],EAX
+                             LAB_7ffd1042b5a8                                XREF[3]:     7ffd1042b570(j), 7ffd1042b599(j), 
+                                                                                          7ffd1042b6cd(j)  
+    7ffd1042b5a8 4d 89 c1        MOV        R9,R8
+    7ffd1042b5ab 49 c1 e9 05     SHR        R9,0x5
+    7ffd1042b5af 75 3d           JNZ        LAB_7ffd1042b5ee
+                             LAB_7ffd1042b5b1                                XREF[1]:     7ffd1042b62f(j)  
+    7ffd1042b5b1 4d 89 c1        MOV        R9,R8
+    7ffd1042b5b4 49 c1 e9 03     SHR        R9,0x3
+    7ffd1042b5b8 74 14           JZ         LAB_7ffd1042b5ce
+                             LAB_7ffd1042b5ba                                XREF[1]:     7ffd1042b5c8(j)  
+    7ffd1042b5ba 48 83 ea 08     SUB        RDX,0x8
+    7ffd1042b5be 48 8b 04 11     MOV        RAX,qword ptr [RCX + RDX*0x1]
+    7ffd1042b5c2 49 ff c9        DEC        R9
+    7ffd1042b5c5 48 89 02        MOV        qword ptr [RDX],RAX
+    7ffd1042b5c8 75 f0           JNZ        LAB_7ffd1042b5ba
+    7ffd1042b5ca 49 83 e0 07     AND        R8,0x7
+                             LAB_7ffd1042b5ce                                XREF[2]:     7ffd1042b56b(j), 7ffd1042b5b8(j)  
+    7ffd1042b5ce 4d 85 c0        TEST       R8,R8
+    7ffd1042b5d1 7e 1a           JLE        LAB_7ffd1042b5ed
+    7ffd1042b5d3 66 66 66        NOP        word ptr [RAX + RAX*0x1]
+                 0f 1f 84 
+                 00 00 00 
+    7ffd1042b5de 66 90           NOP
+                             LAB_7ffd1042b5e0                                XREF[1]:     7ffd1042b5eb(j)  
+    7ffd1042b5e0 48 ff ca        DEC        RDX
+    7ffd1042b5e3 8a 04 11        MOV        AL,byte ptr [RCX + RDX*0x1]
+    7ffd1042b5e6 49 ff c8        DEC        R8
+    7ffd1042b5e9 88 02           MOV        byte ptr [RDX],AL
+    7ffd1042b5eb 75 f3           JNZ        LAB_7ffd1042b5e0
+                             LAB_7ffd1042b5ed                                XREF[1]:     7ffd1042b5d1(j)  
+    7ffd1042b5ed c3              RET
+                             LAB_7ffd1042b5ee                                XREF[1]:     7ffd1042b5af(j)  
+    7ffd1042b5ee 49 81 f9        CMP        R9,0x2000
+                 00 20 00 00
+    7ffd1042b5f5 72 09           JC         LAB_7ffd1042b600
+    7ffd1042b5f7 48 81 f9        CMP        RCX,-0x1000
+                 00 f0 ff ff
+    7ffd1042b5fe 72 34           JC         LAB_7ffd1042b634
+                             LAB_7ffd1042b600                                XREF[2]:     7ffd1042b5f5(j), 7ffd1042b629(j)  
+    7ffd1042b600 48 83 ea 20     SUB        RDX,0x20
+    7ffd1042b604 48 8b 44        MOV        RAX,qword ptr [RCX + RDX*0x1 + 0x18]
+                 11 18
+    7ffd1042b609 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + 0x10]
+                 11 10
+    7ffd1042b60e 48 89 42 18     MOV        qword ptr [RDX + 0x18],RAX
+    7ffd1042b612 4c 89 52 10     MOV        qword ptr [RDX + 0x10],R10
+    7ffd1042b616 49 ff c9        DEC        R9
+    7ffd1042b619 48 8b 44        MOV        RAX,qword ptr [RCX + RDX*0x1 + 0x8]
+                 11 08
+    7ffd1042b61e 4c 8b 14 11     MOV        R10,qword ptr [RCX + RDX*0x1]
+    7ffd1042b622 48 89 42 08     MOV        qword ptr [RDX + 0x8],RAX
+    7ffd1042b626 4c 89 12        MOV        qword ptr [RDX],R10
+    7ffd1042b629 75 d5           JNZ        LAB_7ffd1042b600
+    7ffd1042b62b 49 83 e0 1f     AND        R8,0x1f
+    7ffd1042b62f e9 7d ff        JMP        LAB_7ffd1042b5b1
+                 ff ff
+                             LAB_7ffd1042b634                                XREF[2]:     7ffd1042b5fe(j), 7ffd1042b6c4(j)  
+    7ffd1042b634 b8 20 00        MOV        EAX,0x20
+                 00 00
+    7ffd1042b639 0f 1f 80        NOP        dword ptr [RAX]
+                 00 00 00 00
+                             LAB_7ffd1042b640                                XREF[1]:     7ffd1042b652(j)  
+    7ffd1042b640 48 81 ea        SUB        RDX,0x80
+                 80 00 00 00
+    7ffd1042b647 0f 18 04 11     NOP        dword ptr [RCX + RDX*0x1]
+    7ffd1042b64b 0f 18 44        NOP        dword ptr [RCX + RDX*0x1 + 0x40]
+                 11 40
+    7ffd1042b650 ff c8           DEC        EAX
+    7ffd1042b652 75 ec           JNZ        LAB_7ffd1042b640
+    7ffd1042b654 48 81 c2        ADD        RDX,0x1000
+                 00 10 00 00
+    7ffd1042b65b b8 40 00        MOV        EAX,0x40
+                 00 00
+                             LAB_7ffd1042b660                                XREF[1]:     7ffd1042b6b4(j)  
+    7ffd1042b660 48 83 ea 40     SUB        RDX,0x40
+    7ffd1042b664 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + 0x38]
+                 11 38
+    7ffd1042b669 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + 0x30]
+                 11 30
+    7ffd1042b66e 4c 0f c3        MOVNTI     [RDX + 0x38],R9
+                 4a 38
+    7ffd1042b673 4c 0f c3        MOVNTI     [RDX + 0x30],R10
+                 52 30
+    7ffd1042b678 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + 0x28]
+                 11 28
+    7ffd1042b67d 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + 0x20]
+                 11 20
+    7ffd1042b682 4c 0f c3        MOVNTI     [RDX + 0x28],R9
+                 4a 28
+    7ffd1042b687 4c 0f c3        MOVNTI     [RDX + 0x20],R10
+                 52 20
+    7ffd1042b68c ff c8           DEC        EAX
+    7ffd1042b68e 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + 0x18]
+                 11 18
+    7ffd1042b693 4c 8b 54        MOV        R10,qword ptr [RCX + RDX*0x1 + 0x10]
+                 11 10
+    7ffd1042b698 4c 0f c3        MOVNTI     [RDX + 0x18],R9
+                 4a 18
+    7ffd1042b69d 4c 0f c3        MOVNTI     [RDX + 0x10],R10
+                 52 10
+    7ffd1042b6a2 4c 8b 4c        MOV        R9,qword ptr [RCX + RDX*0x1 + 0x8]
+                 11 08
+    7ffd1042b6a7 4c 8b 14 11     MOV        R10,qword ptr [RCX + RDX*0x1]
+    7ffd1042b6ab 4c 0f c3        MOVNTI     [RDX + 0x8],R9
+                 4a 08
+    7ffd1042b6b0 4c 0f c3 12     MOVNTI     [RDX],R10
+    7ffd1042b6b4 75 aa           JNZ        LAB_7ffd1042b660
+    7ffd1042b6b6 49 81 e8        SUB        R8,0x1000
+                 00 10 00 00
+    7ffd1042b6bd 49 81 f8        CMP        R8,0x1000
+                 00 10 00 00
+    7ffd1042b6c4 0f 83 6a        JNC        LAB_7ffd1042b634
+                 ff ff ff
+    7ffd1042b6ca 0f ae f0        MFENCE
+    7ffd1042b6cd e9 d6 fe        JMP        LAB_7ffd1042b5a8
+                 ff ff
+*/
+
 #[test]
 pub fn memmove_test() {
     helpers::setup();
 
     // memmove implementation in x86-64 assembly
     // Function signature: memmove(dest: RDX, src: RCX+RDX, len: R8) -> RAX (returns dest)
-    let memmove_code = hex::decode("4C89C04829D10F849100000073094801C80F826D0100004983F8080F8C63000000F6C2077437F6C201740C8A041149FFC888024883C201F6C202740F668B04114983E8026689024883C202F6C204740D8B04114983E80489024883C2044D89C149C1E90575384D89C149C1E903741590488B04114889024883C20849FFC975F04983E0074D85C07E140F1F80000000008A0411880248FFC249FFC875F3C34981F90020000072094881F90010000073334883C220488B4411E04C8B5411E8488942E04C8952E849FFC9488B4411F04C8B5411F8488942F04C8952F875D34983E01FEB83B8200000000F1F8400000000000F1804110F184411404881C280000000FFC875EC4881EA00100000B8400000004883C2404C8B4C11C04C8B5411C84C0FC34AC04C0FC352C84C8B4C11D04C8B5411D84C0FC34AD04C0FC352D8FFC84C8B4C11E04C8B5411E84C0FC34AE04C0FC352E84C8B4C11F04C8B5411F84C0FC34AF04C0FC352F875A84981E8001000004981F8001000000F8367FFFFFF0FAEF0E9D9FEFFFF4C01C24983F8087C61F6C2077436F6C201740B48FFCA8A041149FFC88802F6C202740F4883EA02668B04114983E802668902F6C204740D4883EA048B04114983E80489024D89C149C1E905753D4D89C149C1E90374144883EA08488B041149FFC948890275F04983E0074D85C07E1A6666660F1F840000000000669048FFCA8A041149FFC8880275F3C34981F90020000072094881F900F0FFFF72344883EA20488B4411184C8B541110488942184C89521049FFC9488B4411084C8B1411488942084C891275D54983E01FE97DFFFFFFB8200000000F1F80000000004881EA800000000F1804110F18441140FFC875EC4881C200100000B8400000004883EA404C8B4C11384C8B5411304C0FC34A384C0FC352304C8B4C11284C8B5411204C0FC34A284C0FC35220FFC84C8B4C11184C8B5411104C0FC34A184C0FC352104C8B4C11084C8B14114C0FC34A084C0FC31275AA4981E8001000004981F8001000000F836AFFFFFF0FAEF0E9D6FEFFFF").unwrap();
+    let memmove_code = hex::decode("4c89c04829d10f849100000073094801c80f826d0100004983f8080f8c63000000f6c2077437f6c201740c8a041149ffc888024883c201f6c202740f668b04114983e8026689024883c202f6c204740d8b04114983e80489024883c2044d89c149c1e90575384d89c149c1e903741590488b04114889024883c20849ffc975f04983e0074d85c07e140f1f80000000008a0411880248ffc249ffc875f3c34981f90020000072094881f90010000073334883c220488b4411e04c8b5411e8488942e04c8952e849ffc9488b4411f04c8b5411f8488942f04c8952f875d34983e01feb83b8200000000f1f8400000000000f1804110f184411404881c280000000ffc875ec4881ea00100000b8400000004883c2404c8b4c11c04c8b5411c84c0fc34ac04c0fc352c84c8b4c11d04c8b5411d84c0fc34ad04c0fc352d8ffc84c8b4c11e04c8b5411e84c0fc34ae04c0fc352e84c8b4c11f04c8b5411f84c0fc34af04c0fc352f875a84981e8001000004981f8001000000f8367ffffff0faef0e9d9feffff4c01c24983f8087c61f6c2077436f6c201740b48ffca8a041149ffc88802f6c202740f4883ea02668b04114983e802668902f6c204740d4883ea048b04114983e80489024d89c149c1e905753d4d89c149c1e90374144883ea08488b041149ffc948890275f04983e0074d85c07e1a6666660f1f840000000000669048ffca8a041149ffc8880275f3c34981f90020000072094881f900f0ffff72344883ea20488b4411184c8b541110488942184c89521049ffc9488b4411084c8b1411488942084c891275d54983e01fe97dffffffb8200000000f1f80000000004881ea800000000f1804110f18441140ffc875ec4881c200100000b8400000004883ea404c8b4c11384c8b5411304c0fc34a384c0fc352304c8b4c11284c8b5411204c0fc34a284c0fc35220ffc84c8b4c11184c8b5411104c0fc34a184c0fc352104c8b4c11084c8b14114c0fc34a084c0fc31275aa4981e8001000004981f8001000000f836affffff0faef0e9d6feffff").unwrap();
     let memmove_code_len = memmove_code.len();
     
     let mut emu = emu64();
@@ -32,7 +356,7 @@ pub fn memmove_test() {
         
         // Set up registers for memmove(dest, src, len)
         emu.regs_mut().rdx = dest_addr;
-        emu.regs_mut().rcx = src_addr - dest_addr; // RCX = src - dest (offset)
+        emu.regs_mut().rcx = (src_addr as i64 - dest_addr as i64) as u64; // RCX = src - dest (offset)
         emu.regs_mut().r8 = test_pattern.len() as u64;
         emu.regs_mut().rip = code_addr;
         
@@ -59,7 +383,7 @@ pub fn memmove_test() {
         
         // Set up for overlapping copy
         emu.regs_mut().rdx = overlap_dest;
-        emu.regs_mut().rcx = overlap_src - overlap_dest;
+        emu.regs_mut().rcx = (overlap_src as i64 - overlap_dest as i64) as u64;
         emu.regs_mut().r8 = 32; // Copy 32 bytes with 16-byte overlap
         emu.regs_mut().rip = code_addr;
         
@@ -83,7 +407,7 @@ pub fn memmove_test() {
         
         // Set up for backward overlapping copy
         emu.regs_mut().rdx = overlap_dest;
-        emu.regs_mut().rcx = overlap_src - overlap_dest;
+        emu.regs_mut().rcx = (overlap_src as i64 - overlap_dest as i64) as u64;
         emu.regs_mut().r8 = 32;
         emu.regs_mut().rip = code_addr;
         
@@ -114,7 +438,7 @@ pub fn memmove_test() {
         
         // Set up for large copy
         emu.regs_mut().rdx = large_dest;
-        emu.regs_mut().rcx = large_src - large_dest;
+        emu.regs_mut().rcx = (large_src as i64 - large_dest as i64) as u64;
         emu.regs_mut().r8 = large_size;
         emu.regs_mut().rip = code_addr;
         
@@ -129,7 +453,7 @@ pub fn memmove_test() {
     // Test 5: Zero-length copy
     {
         emu.regs_mut().rdx = dest_addr;
-        emu.regs_mut().rcx = src_addr - dest_addr;
+        emu.regs_mut().rcx = (src_addr as i64 - dest_addr as i64) as u64;
         emu.regs_mut().r8 = 0;
         emu.regs_mut().rip = code_addr;
         
@@ -151,7 +475,7 @@ pub fn memmove_test() {
         emu.maps.write_bytes(unaligned_src, test_data.to_vec());
         
         emu.regs_mut().rdx = unaligned_dest;
-        emu.regs_mut().rcx = unaligned_src - unaligned_dest;
+        emu.regs_mut().rcx = (unaligned_src as i64 - unaligned_dest as i64) as u64;
         emu.regs_mut().r8 = test_data.len() as u64;
         emu.regs_mut().rip = code_addr;
         
