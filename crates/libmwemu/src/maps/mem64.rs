@@ -442,7 +442,9 @@ impl Mem64 {
     #[inline(always)]
     pub fn write_string(&mut self, addr: u64, s: &str) {
         let mut v = s.as_bytes().to_vec();
-        v.push(0);
+        if v.last() != Some(&0) {
+            v.push(0);
+        }
         self.write_bytes(addr, &v);
 
         if cfg!(feature = "log_mem_write") {
@@ -490,7 +492,9 @@ impl Mem64 {
     #[inline(always)]
     pub fn write_wide_string(&mut self, addr: u64, s: &str) {
         let mut wide_string: Vec<u16> = s.encode_utf16().collect();
-        wide_string.push(0);
+        if wide_string.last() != Some(&0) {
+            wide_string.push(0);
+        }
         let byte_slice: &[u8] = cast_slice(&wide_string);
         self.write_bytes(addr, &byte_slice);
 
