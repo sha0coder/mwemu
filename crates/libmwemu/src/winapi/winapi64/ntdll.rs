@@ -751,7 +751,8 @@ fn NtCreateFile(emu: &mut emu::Emu) {
 
     log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
 
-    if filename != "\\??\\c:\\c:\\version.dll" {
+    // TODO: fix path duplication!
+    if filename != "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
         panic!("TODO: NtCreateFile {}", filename);
     }
 
@@ -922,7 +923,8 @@ fn NtReadFile(emu: &mut emu::Emu) {
 
     emu.maps.memset(buff, 0x90, len);
 
-    if filename == "\\??\\c:\\c:\\version.dll" {
+    // TODO: fix path duplication!!!!
+    if filename == "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
         let local_path = "/tmp/version2.dll";
         let mut file = File::open(local_path).unwrap();
         file.seek(SeekFrom::Start(file_offset));
@@ -1031,7 +1033,7 @@ fn RtlGetVersion(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let versioninfo = structures::OsVersionInfo::new();
+    let versioninfo = structures::OsVersionInfoExA::new(); // TODO: should this be Ex?
     versioninfo.save(versioninfo_ptr, &mut emu.maps);
 
     emu.regs_mut().rax = 1;

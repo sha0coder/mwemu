@@ -1,9 +1,9 @@
 
-use crate::emu;
+use crate::{constants, emu, winapi::winapi64::kernel32::set_last_error};
 
 pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
-    let buff_len = emu.regs().rcx as u32;  // nBufferLength (DWORD) - FIRST parameter
-    let buff_ptr = emu.regs().rdx;         // lpBuffer (LPWSTR) - SECOND parameter
+    let buff_len = emu.regs().rcx as u32;
+    let buff_ptr = emu.regs().rdx;
 
     log::info!(
         "{}** {} kernel32!GetCurrentDirectoryW nBufferLength: {} lpBuffer: 0x{:x} {}",
@@ -14,31 +14,27 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    // Current directory as a proper wide string
-    let current_dir = "C:\\";  // Simple current directory
-    let required_length = current_dir.len() + 1; // +1 for null terminator
-
-    if buff_ptr == 0 {
-        // If buffer is NULL, return required size
-        emu.regs_mut().rax = required_length as u64;
+    let current_dir = constants::CWD_PATH;
+    let dir_char_count = current_dir.chars().count(); // Use chars().count() for proper Unicode handling
+    
+    // When buffer length is 0 or buffer is null, return required size INCLUDING null terminator
+    if buff_len == 0 || buff_ptr == 0 {
+        set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
+        emu.regs_mut().rax = (dir_char_count + 1) as u64; // +1 for null terminator
         return;
     }
 
     if !emu.maps.is_mapped(buff_ptr) {
         log::error!("GetCurrentDirectoryW: lpBuffer 0x{:x} is not mapped", buff_ptr);
-        emu.regs_mut().rax = 0; // Failure
+        emu.regs_mut().rax = 0;
         return;
     }
 
-    if buff_len == 0 {
-        // If buffer length is 0, return required size
-        emu.regs_mut().rax = required_length as u64;
-        return;
-    }
-
-    if (buff_len as usize) < required_length {
-        // Buffer too small, return required size (including null terminator)
-        emu.regs_mut().rax = required_length as u64;
+    // Check if buffer is large enough (need space for string + null terminator)
+    if (buff_len as usize) < (dir_char_count + 1) {
+        set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
+        // Return required size INCLUDING null terminator
+        emu.regs_mut().rax = (dir_char_count + 1) as u64;
         return;
     }
 
@@ -50,10 +46,10 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
         emu.colors.light_red,
         emu.pos,
         current_dir,
-        current_dir.len(),
+        dir_char_count,
         emu.colors.nc
     );
 
     // Return number of characters written (NOT including null terminator)
-    emu.regs_mut().rax = current_dir.len() as u64;
+    emu.regs_mut().rax = dir_char_count as u64;
 }

@@ -1074,7 +1074,7 @@ fn RtlGetVersion(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let versioninfo = structures::OsVersionInfo::new();
+    let versioninfo = structures::OsVersionInfoExA::new(); // TODO: should this be Ex?
     versioninfo.save(versioninfo_ptr, &mut emu.maps);
 
     emu.stack_pop32(false);

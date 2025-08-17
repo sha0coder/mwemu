@@ -69,8 +69,17 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-
-
+    // LOG THE INPUT STRING
+    if utf8_ptr > 0 && !utf8.is_empty() {
+        log::info!(
+            "{}** {} Input UTF-8 string: \"{}\" (length: {} bytes) {}",
+            emu.colors.light_red,
+            emu.pos,
+            utf8.escape_debug(), // This will show escape sequences for non-printable chars
+            cb_multi_byte,
+            emu.colors.nc
+        );
+    }
 
     // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)
     let wide: Vec<u16> = utf8.encode_utf16().collect();

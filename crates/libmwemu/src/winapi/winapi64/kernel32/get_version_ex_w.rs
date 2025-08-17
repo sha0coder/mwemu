@@ -12,7 +12,7 @@ pub fn GetVersionExW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let os_version_info = structures::OsVersionInfo::new();
+    let os_version_info = structures::OsVersionInfoExW::new();
     os_version_info.save(version_info_ptr, &mut emu.maps);
 
     emu.regs_mut().rax = 1;

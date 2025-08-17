@@ -81,6 +81,11 @@ pub fn handler_get_uri(hndl: u64) -> String {
     }
 }
 
+pub fn handler_find_by_uri(uri: &str) -> Option<u64> {
+    let handles = HANDLERS.lock().unwrap();
+    handles.iter().find(|h| h.uri == uri).map(|h| h.id)
+}
+
 pub fn socket_create() -> u64 {
     let mut sockets = SOCKETS.lock().unwrap();
 
