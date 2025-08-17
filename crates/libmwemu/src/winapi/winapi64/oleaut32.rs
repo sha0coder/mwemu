@@ -64,6 +64,11 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         // Handle null input - just write the length prefix
         let length_bytes = (char_count * 2) as u32;
         emu.maps.write_dword(bstr, length_bytes);
+
+        // Zero out the string data area
+        for i in 0..=char_count {  // Include space for null terminator
+            emu.maps.write_word(bstr + 4 + (i * 2), 0);
+        }
     } else {
         // Read the input string
         let input_string = emu.maps.read_wide_string_n(str_ptr, char_count as usize);
@@ -102,7 +107,46 @@ fn SysFreeString(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    //emu.maps.free(&format!("alloc_{:x}", str_ptr));
+    if str_ptr == 0 {
+        // NULL pointer - nothing to free (this is valid behavior)
+        return;
+    }
+
+    // BSTR pointer points to string data, but allocation starts 4 bytes earlier (length prefix)
+    let alloc_base = str_ptr - 4;
+    
+    // Read the length from the prefix to know how much to zero out
+    if let Some(length_bytes) = emu.maps.read_dword(alloc_base) {
+        let total_size = 4 + length_bytes as u64 + 2; // prefix + string + null terminator
+        
+        log::info!(
+            "{}** {} SysFreeString zeroing {} bytes starting at 0x{:x} (string was {} bytes) {}",
+            emu.colors.light_red,
+            emu.pos,
+            total_size,
+            alloc_base,
+            length_bytes,
+            emu.colors.nc
+        );
+        
+        // Zero out the entire BSTR allocation
+        for i in 0..total_size {
+            emu.maps.write_byte(alloc_base + i, 0);
+        }
+    } else {
+        panic!(
+            "{}** {} SysFreeString: Could not read length prefix at 0x{:x} {}",
+            emu.colors.light_red,
+            emu.pos,
+            alloc_base,
+            emu.colors.nc
+        );
+    }
+
+    // Optionally, you could also try to free the map by name:
+    // emu.maps.free(&format!("alloc_{:x}", alloc_base));
+    // or
+    // emu.maps.free(&format!("bstr_{:x}", alloc_base));
 }
 
 /*
@@ -183,11 +227,18 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
             if len > 0 {
                 emu.maps.memcpy(new_base + 4, psz, len as usize * 2);
             }
+            // If len == 0, the string area is already zeroed by the null terminator write below
         } else {
             // Copy from old BSTR (preserve existing data, but truncated to new length)
             let copy_len = std::cmp::min(len, old_len_chars as u64);
             if copy_len > 0 {
                 emu.maps.memcpy(new_base + 4, old_bstr, copy_len as usize * 2);
+            }
+            // Zero out any remaining space if new length is longer than old length
+            if len > old_len_chars as u64 {
+                for i in old_len_chars as u64..len {
+                    emu.maps.write_word(new_base + 4 + (i * 2), 0);
+                }
             }
         }
         
