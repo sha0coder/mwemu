@@ -452,7 +452,7 @@ impl Mem64 {
             s.push(b);
             idx += 2;
         }
-        String::from_utf16(&s).expect("invalid utf-16")
+        String::from_utf16(&s).unwrap_or_else(|_| String::new())
     }
 
     pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {

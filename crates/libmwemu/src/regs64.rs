@@ -2160,9 +2160,7 @@ impl Regs64 {
 
             maps.filter_string(&mut s);
 
-            if s.len() > 50 {
-                s = s[..50].to_string();
-            }
+            s = s.chars().take(50).collect();
 
             let name = match maps.get_addr_name(value) {
                 Some(v) => format!("({})", v),
@@ -2205,6 +2203,8 @@ impl Regs64 {
             maps.filter_string(&mut s);
 
             // cut big strings in a safe way.
+            s = s.chars().take(50).collect();
+            /*
             if s.len() > 50 {
                 let truncated = s.char_indices()
                     .take_while(|(i, _)| *i <= 50)
@@ -2212,7 +2212,7 @@ impl Regs64 {
                     .map(|(i, _)| &s[..i])
                     .unwrap_or(&s[..50]);
                 s = truncated.to_string();
-            }
+            }*/
 
             let name = match maps.get_addr_name(value) {
                 Some(v) => format!("({})", v),
