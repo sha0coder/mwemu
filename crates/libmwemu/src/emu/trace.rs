@@ -207,17 +207,22 @@ impl Emu {
         let s = self.maps.read_string(self.cfg.string_addr);
 
         if s.len() >= 2 && s.len() < 80 {
-            log::info!("\ttrace string -> 0x{:x}: '{}'", self.cfg.string_addr, s);
+            log::info!("\t{} trace string -> 0x{:x}: '{}'", self.pos, self.cfg.string_addr, s);
         } else {
-            let w = self.maps.read_wide_string(self.cfg.string_addr);
+            let w = self.maps.read_wide_string_nocrash(self.cfg.string_addr);
+            if w.len() == 0 {
+                return;
+            }
             if w.len() < 80 {
                 log::info!(
-                    "\ttrace wide string -> 0x{:x}: '{}'",
+                    "\t{} trace wide string -> 0x{:x}: '{}'",
+                    self.pos,
                     self.cfg.string_addr,
                     w
                 );
             } else {
-                log::info!("\ttrace wide string -> 0x{:x}: ''", self.cfg.string_addr);
+
+                //log::info!("\t{} trace wide string -> 0x{:x}: ''", self.pos, self.cfg.string_addr);
             }
         }
     }

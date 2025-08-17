@@ -806,6 +806,20 @@ impl Maps {
         s
     }
 
+    pub fn read_wide_string_nocrash(&self, addr: u64) -> String {
+        if addr == 0 {
+            return "".to_string();
+        }
+        let mem = match self
+            .get_mem_by_addr(addr) {
+                Some(m) => m,
+                None => {
+                    return "".to_string();
+                }
+        };
+        mem.read_wide_string(addr)
+    }
+
     pub fn read_wide_string(&self, addr: u64) -> String {
         if addr == 0 {
             return "".to_string();
