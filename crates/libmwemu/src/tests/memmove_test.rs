@@ -1,5 +1,27 @@
 use crate::{tests::helpers, *};
 
+fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
+    let memmove_code = hex::decode("4c89c04829d10f849100000073094801c80f826d0100004983f8080f8c63000000f6c2077437f6c201740c8a041149ffc888024883c201f6c202740f668b04114983e8026689024883c202f6c204740d8b04114983e80489024883c2044d89c149c1e90575384d89c149c1e903741590488b04114889024883c20849ffc975f04983e0074d85c07e140f1f80000000008a0411880248ffc249ffc875f3c34981f90020000072094881f90010000073334883c220488b4411e04c8b5411e8488942e04c8952e849ffc9488b4411f04c8b5411f8488942f04c8952f875d34983e01feb83b8200000000f1f8400000000000f1804110f184411404881c280000000ffc875ec4881ea00100000b8400000004883c2404c8b4c11c04c8b5411c84c0fc34ac04c0fc352c84c8b4c11d04c8b5411d84c0fc34ad04c0fc352d8ffc84c8b4c11e04c8b5411e84c0fc34ae04c0fc352e84c8b4c11f04c8b5411f84c0fc34af04c0fc352f875a84981e8001000004981f8001000000f8367ffffff0faef0e9d9feffff4c01c24983f8087c61f6c2077436f6c201740b48ffca8a041149ffc88802f6c202740f4883ea02668b04114983e802668902f6c204740d4883ea048b04114983e80489024d89c149c1e905753d4d89c149c1e90374144883ea08488b041149ffc948890275f04983e0074d85c07e1a6666660f1f840000000000669048ffca8a041149ffc8880275f3c34981f90020000072094881f900f0ffff72344883ea20488b4411184c8b541110488942184c89521049ffc9488b4411084c8b1411488942084c891275d54983e01fe97dffffffb8200000000f1f80000000004881ea800000000f1804110f18441140ffc875ec4881c200100000b8400000004883ea404c8b4c11384c8b5411304c0fc34a384c0fc352304c8b4c11284c8b5411204c0fc34a284c0fc35220ffc84c8b4c11184c8b5411104c0fc34a184c0fc352104c8b4c11084c8b14114c0fc34a084c0fc31275aa4981e8001000004981f8001000000f836affffff0faef0e9d6feffff").unwrap();
+    let memmove_code_len = memmove_code.len();
+    
+    let mut emu = emu64();
+    emu.cfg.skip_unimplemented = true;  // Skip unimplemented functions
+    emu.linux = true;  // Set as Linux to avoid PE-specific code paths
+    
+    // Set up stack
+    let stack_addr = 0x1000000;
+    let stack_size = 0x10000;
+    emu.maps.create_map("stack", stack_addr, stack_size);
+    emu.regs_mut().rsp = stack_addr + stack_size / 2;
+    
+    // Load memmove code at address 0x400000
+    let code_addr = 0x400000;
+    emu.maps.create_map("code", code_addr, memmove_code_len as u64 + 0x100);
+    emu.maps.write_bytes(code_addr, memmove_code);
+    
+    (emu, code_addr, memmove_code_len)
+}
+
 /*
                              **************************************************************
                              *                          FUNCTION                          *
@@ -325,165 +347,201 @@ use crate::{tests::helpers, *};
 */
 
 #[test]
-pub fn memmove_test() {
+fn memmove_non_overlapping_copy() {
     helpers::setup();
-
-    // memmove implementation in x86-64 assembly
-    // Function signature: memmove(dest: RDX, src: RCX+RDX, len: R8) -> RAX (returns dest)
-    let memmove_code = hex::decode("4c89c04829d10f849100000073094801c80f826d0100004983f8080f8c63000000f6c2077437f6c201740c8a041149ffc888024883c201f6c202740f668b04114983e8026689024883c202f6c204740d8b04114983e80489024883c2044d89c149c1e90575384d89c149c1e903741590488b04114889024883c20849ffc975f04983e0074d85c07e140f1f80000000008a0411880248ffc249ffc875f3c34981f90020000072094881f90010000073334883c220488b4411e04c8b5411e8488942e04c8952e849ffc9488b4411f04c8b5411f8488942f04c8952f875d34983e01feb83b8200000000f1f8400000000000f1804110f184411404881c280000000ffc875ec4881ea00100000b8400000004883c2404c8b4c11c04c8b5411c84c0fc34ac04c0fc352c84c8b4c11d04c8b5411d84c0fc34ad04c0fc352d8ffc84c8b4c11e04c8b5411e84c0fc34ae04c0fc352e84c8b4c11f04c8b5411f84c0fc34af04c0fc352f875a84981e8001000004981f8001000000f8367ffffff0faef0e9d9feffff4c01c24983f8087c61f6c2077436f6c201740b48ffca8a041149ffc88802f6c202740f4883ea02668b04114983e802668902f6c204740d4883ea048b04114983e80489024d89c149c1e905753d4d89c149c1e90374144883ea08488b041149ffc948890275f04983e0074d85c07e1a6666660f1f840000000000669048ffca8a041149ffc8880275f3c34981f90020000072094881f900f0ffff72344883ea20488b4411184c8b541110488942184c89521049ffc9488b4411084c8b1411488942084c891275d54983e01fe97dffffffb8200000000f1f80000000004881ea800000000f1804110f18441140ffc875ec4881c200100000b8400000004883ea404c8b4c11384c8b5411304c0fc34a384c0fc352304c8b4c11284c8b5411204c0fc34a284c0fc35220ffc84c8b4c11184c8b5411104c0fc34a184c0fc352104c8b4c11084c8b14114c0fc34a084c0fc31275aa4981e8001000004981f8001000000f836affffff0faef0e9d6feffff").unwrap();
-    let memmove_code_len = memmove_code.len();
-    
-    let mut emu = emu64();
-    
-    // Load memmove code at address 0x400000
-    let code_addr = 0x400000;
-    emu.maps.create_map("code", code_addr, memmove_code_len as u64);
-    emu.maps.write_bytes(code_addr, memmove_code);
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
     
     // Allocate test buffers
-    let buffer_size = 0x1000;
     let src_addr = 0x500000;
     let dest_addr = 0x600000;
     
-    emu.maps.create_map("src", src_addr, buffer_size);
-    emu.maps.create_map("dest", dest_addr, buffer_size);
+    emu.maps.create_map("src", src_addr, 0x1000);
+    emu.maps.create_map("dest", dest_addr, 0x1000);
     
-    // Test 1: Non-overlapping forward copy (simple case)
-    {
-        // Initialize source with pattern
-        let test_pattern = b"Hello, World! This is a test pattern.";
-        emu.maps.write_bytes(src_addr, test_pattern.to_vec());
-        
-        // Set up registers for memmove(dest, src, len)
-        emu.regs_mut().rdx = dest_addr;
-        emu.regs_mut().rcx = (src_addr as i64 - dest_addr as i64) as u64; // RCX = src - dest (offset)
-        emu.regs_mut().r8 = test_pattern.len() as u64;
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Verify the copy
-        let copied_data = emu.maps.read_bytes(dest_addr, test_pattern.len());
-        assert_eq!(copied_data, test_pattern);
-        
-        // Verify return value (should be dest)
-        assert_eq!(emu.regs().rax, dest_addr);
-    }
+    // Initialize source with pattern
+    let test_pattern = b"Hello, World! This is a test pattern.";
+    emu.maps.write_bytes(src_addr, test_pattern.to_vec());
     
-    // Test 2: Overlapping copy - forward direction (dest > src)
-    {
-        // Create overlapping scenario where dest overlaps with end of src
-        let overlap_src = 0x700000;
-        let overlap_dest = 0x700010; // 16 bytes overlap
-        let test_data: Vec<u8> = (0..64).collect();
-        
-        emu.maps.create_map("overlap", overlap_src, 0x100);
-        emu.maps.write_bytes(overlap_src, test_data.clone());
-        
-        // Set up for overlapping copy
-        emu.regs_mut().rdx = overlap_dest;
-        emu.regs_mut().rcx = (overlap_src as i64 - overlap_dest as i64) as u64;
-        emu.regs_mut().r8 = 32; // Copy 32 bytes with 16-byte overlap
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Verify correct backward copy (to avoid corruption)
-        let result = emu.maps.read_bytes(overlap_dest, 32);
-        let expected: Vec<u8> = (0..32).collect();
-        assert_eq!(result, expected);
-    }
+    // Set up registers for memmove(dest, src, len)
+    emu.regs_mut().rdx = dest_addr;
+    emu.regs_mut().rcx = src_addr;
+    emu.regs_mut().r8 = test_pattern.len() as u64;
+    emu.regs_mut().rip = code_addr;
     
-    // Test 3: Overlapping copy - backward direction (dest < src)  
-    {
-        let overlap_src = 0x800010;
-        let overlap_dest = 0x800000;
-        let test_data: Vec<u8> = (0..64).collect();
-        
-        emu.maps.create_map("overlap2", 0x800000, 0x100);
-        emu.maps.write_bytes(overlap_src, test_data.clone());
-        
-        // Set up for backward overlapping copy
-        emu.regs_mut().rdx = overlap_dest;
-        emu.regs_mut().rcx = (overlap_src as i64 - overlap_dest as i64) as u64;
-        emu.regs_mut().r8 = 32;
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Verify correct forward copy
-        let result = emu.maps.read_bytes(overlap_dest, 32);
-        let expected: Vec<u8> = (0..32).collect();
-        assert_eq!(result, expected);
-    }
+    // Push a return address on the stack  
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
     
-    // Test 4: Large buffer copy (test MOVNTI optimization path)
-    {
-        let large_src = 0x900000;
-        let large_dest = 0xA00000;
-        let large_size = 0x2000; // 8KB
-        
-        emu.maps.create_map("large_src", large_src, large_size);
-        emu.maps.create_map("large_dest", large_dest, large_size);
-        
-        // Fill with pattern
-        let mut pattern = Vec::new();
-        for i in 0..large_size {
-            pattern.push((i % 256) as u8);
-        }
-        emu.maps.write_bytes(large_src, pattern.clone());
-        
-        // Set up for large copy
-        emu.regs_mut().rdx = large_dest;
-        emu.regs_mut().rcx = (large_src as i64 - large_dest as i64) as u64;
-        emu.regs_mut().r8 = large_size;
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Verify large copy
-        let result = emu.maps.read_bytes(large_dest, large_size as usize);
-        assert_eq!(result, pattern);
-    }
+    // Execute memmove
+    emu.run(Some(return_addr));
     
-    // Test 5: Zero-length copy
-    {
-        emu.regs_mut().rdx = dest_addr;
-        emu.regs_mut().rcx = (src_addr as i64 - dest_addr as i64) as u64;
-        emu.regs_mut().r8 = 0;
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove with zero length
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Should return dest address without doing anything
-        assert_eq!(emu.regs().rax, dest_addr);
-    }
+    // Verify the copy
+    let copied_data = emu.maps.read_bytes(dest_addr, test_pattern.len());
+    assert_eq!(copied_data, test_pattern);
     
-    // Test 6: Unaligned addresses
-    {
-        let unaligned_src = 0xB00003;
-        let unaligned_dest = 0xC00007;
-        let test_data = b"Unaligned test data";
-        
-        emu.maps.create_map("unaligned_src", 0xB00000, 0x100);
-        emu.maps.create_map("unaligned_dest", 0xC00000, 0x100);
-        emu.maps.write_bytes(unaligned_src, test_data.to_vec());
-        
-        emu.regs_mut().rdx = unaligned_dest;
-        emu.regs_mut().rcx = (unaligned_src as i64 - unaligned_dest as i64) as u64;
-        emu.regs_mut().r8 = test_data.len() as u64;
-        emu.regs_mut().rip = code_addr;
-        
-        // Execute memmove with unaligned addresses
-        emu.run(Some(code_addr + memmove_code_len as u64));
-        
-        // Verify unaligned copy
-        let result = emu.maps.read_bytes(unaligned_dest, test_data.len());
-        assert_eq!(result, test_data);
+    // Verify return value (should be dest)
+    assert_eq!(emu.regs().rax, dest_addr);
+}
+
+#[test]
+fn memmove_overlapping_forward() {
+    helpers::setup();
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
+    
+    // Create overlapping scenario where dest overlaps with end of src
+    let overlap_src = 0x700000;
+    let overlap_dest = 0x700010; // 16 bytes overlap
+    let test_data: Vec<u8> = (0..64).collect();
+    
+    emu.maps.create_map("overlap", overlap_src, 0x100);
+    emu.maps.write_bytes(overlap_src, test_data.clone());
+    
+    // Set up for overlapping copy
+    emu.regs_mut().rdx = overlap_dest;
+    emu.regs_mut().rcx = overlap_src;
+    emu.regs_mut().r8 = 32; // Copy 32 bytes with 16-byte overlap
+    emu.regs_mut().rip = code_addr;
+    
+    // Push return address
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
+    
+    // Execute memmove
+    emu.run(Some(return_addr));
+    
+    // Verify correct backward copy (to avoid corruption)
+    let result = emu.maps.read_bytes(overlap_dest, 32);
+    let expected: Vec<u8> = (0..32).collect();
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn memmove_overlapping_backward() {
+    helpers::setup();
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
+    
+    let overlap_src = 0x800010;
+    let overlap_dest = 0x800000;
+    let test_data: Vec<u8> = (0..64).collect();
+    
+    emu.maps.create_map("overlap2", 0x800000, 0x100);
+    emu.maps.write_bytes(overlap_src, test_data.clone());
+    
+    // Set up for backward overlapping copy
+    emu.regs_mut().rdx = overlap_dest;
+    emu.regs_mut().rcx = overlap_src;
+    emu.regs_mut().r8 = 32;
+    emu.regs_mut().rip = code_addr;
+    
+    // Push return address
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
+    
+    // Execute memmove
+    emu.run(Some(return_addr));
+    
+    // Verify correct forward copy
+    let result = emu.maps.read_bytes(overlap_dest, 32);
+    let expected: Vec<u8> = (0..32).collect();
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn memmove_large_buffer() {
+    helpers::setup();
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
+    
+    let large_src = 0x900000;
+    let large_dest = 0xA00000;
+    let large_size = 0x2000; // 8KB
+    
+    emu.maps.create_map("large_src", large_src, large_size);
+    emu.maps.create_map("large_dest", large_dest, large_size);
+    
+    // Fill with pattern
+    let mut pattern = Vec::new();
+    for i in 0..large_size {
+        pattern.push((i % 256) as u8);
     }
+    emu.maps.write_bytes(large_src, pattern.clone());
+    
+    // Set up for large copy
+    emu.regs_mut().rdx = large_dest;
+    emu.regs_mut().rcx = large_src;
+    emu.regs_mut().r8 = large_size;
+    emu.regs_mut().rip = code_addr;
+    
+    // Push return address
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
+    
+    // Execute memmove
+    emu.run(Some(return_addr));
+    
+    // Verify large copy
+    let result = emu.maps.read_bytes(large_dest, large_size as usize);
+    assert_eq!(result, pattern);
+}
+
+#[test]
+fn memmove_zero_length() {
+    helpers::setup();
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
+    
+    let src_addr = 0x500000;
+    let dest_addr = 0x600000;
+    
+    emu.maps.create_map("src", src_addr, 0x100);
+    emu.maps.create_map("dest", dest_addr, 0x100);
+    
+    emu.regs_mut().rdx = dest_addr;
+    emu.regs_mut().rcx = src_addr;
+    emu.regs_mut().r8 = 0;
+    emu.regs_mut().rip = code_addr;
+    
+    // Push return address
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
+    
+    // Execute memmove with zero length
+    emu.run(Some(return_addr));
+    
+    // Should return dest address without doing anything
+    assert_eq!(emu.regs().rax, dest_addr);
+}
+
+#[test]
+fn memmove_unaligned_addresses() {
+    helpers::setup();
+    let (mut emu, code_addr, memmove_code_len) = setup_memmove_emulator();
+    
+    let unaligned_src = 0xB00003;
+    let unaligned_dest = 0xC00007;
+    let test_data = b"Unaligned test data";
+    
+    emu.maps.create_map("unaligned_src", 0xB00000, 0x100);
+    emu.maps.create_map("unaligned_dest", 0xC00000, 0x100);
+    emu.maps.write_bytes(unaligned_src, test_data.to_vec());
+    
+    emu.regs_mut().rdx = unaligned_dest;
+    emu.regs_mut().rcx = unaligned_src;
+    emu.regs_mut().r8 = test_data.len() as u64;
+    emu.regs_mut().rip = code_addr;
+    
+    // Push return address
+    let return_addr = code_addr + memmove_code_len as u64;
+    emu.regs_mut().rsp -= 8;
+    emu.maps.write_qword(emu.regs().rsp, return_addr);
+    
+    // Execute memmove with unaligned addresses
+    emu.run(Some(return_addr));
+    
+    // Verify unaligned copy
+    let result = emu.maps.read_bytes(unaligned_dest, test_data.len());
+    assert_eq!(result, test_data);
 }
