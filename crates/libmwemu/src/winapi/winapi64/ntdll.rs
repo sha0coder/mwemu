@@ -922,7 +922,8 @@ fn NtReadFile(emu: &mut emu::Emu) {
 
     emu.maps.memset(buff, 0x90, len);
 
-    if filename == "\\??\\c:\\c:\\version.dll" {
+    // TODO: fix path duplication!!!!
+    if filename == "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
         let local_path = "/tmp/version2.dll";
         let mut file = File::open(local_path).unwrap();
         file.seek(SeekFrom::Start(file_offset));
