@@ -153,9 +153,9 @@ impl Emu {
 
         let mut trace_file = self.trace_file.as_ref().unwrap();
 
-        writeln!(
+        /*writeln!(
             trace_file,
-            r#""{index:02X}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
+            r#""{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
             index = index,
             address = pre_op_regs.rip,
             bytes = instruction_bytes,
@@ -163,7 +163,18 @@ impl Emu {
             registers = format!("{} {}", registers, flags),
             memory = memory,
             comments = comments
-        ).expect("failed to write to trace file");
+        ).expect("failed to write to trace file");*/
+
+        log::info!(
+            r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
+            index = index,
+            address = pre_op_regs.rip,
+            bytes = instruction_bytes,
+            disassembly = output,
+            registers = format!("{} {}", registers, flags),
+            memory = memory,
+            comments = comments
+        );
     }
 
     /// display specific register.
