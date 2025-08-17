@@ -17,7 +17,7 @@ pub fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.maps.write_string(ptr, "C:\\Windows\\");
+    emu.maps.write_string(ptr, "C:\\Windows");
     emu.regs_mut().rax = size;
 
     emu.stack_pop32(false);
