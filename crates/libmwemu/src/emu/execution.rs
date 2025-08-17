@@ -123,7 +123,7 @@ impl Emu {
                 );
             }
 
-            if self.cfg.trace_filename.is_some() {
+            if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                 self.trace_file
                     .as_ref()
                     .unwrap()
@@ -230,7 +230,7 @@ impl Emu {
                 );
             }
 
-            if self.cfg.trace_filename.is_some() {
+            if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                 self.trace_file
                     .as_ref()
                     .unwrap()
@@ -516,7 +516,7 @@ impl Emu {
                             );
                         }
 
-                        if self.cfg.trace_filename.is_some() {
+                        if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                             self.trace_file
                                 .as_ref()
                                 .unwrap()
@@ -593,7 +593,7 @@ impl Emu {
                         prev_addr = addr;
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_pre_op();
                     }
 
@@ -712,7 +712,7 @@ impl Emu {
                         self.trace_memory_inspection();
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_post_op();
                         self.write_to_trace_file();
                     }
@@ -906,7 +906,7 @@ impl Emu {
                             );
                         }
 
-                        if self.cfg.trace_filename.is_some() {
+                        if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                             self.trace_file
                                 .as_ref()
                                 .unwrap()
@@ -976,7 +976,7 @@ impl Emu {
                         }
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_pre_op();
                     }
 
@@ -1093,7 +1093,7 @@ impl Emu {
                         self.trace_memory_inspection();
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_post_op();
                         self.write_to_trace_file();
                     }

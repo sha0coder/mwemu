@@ -18,7 +18,7 @@ impl Emu {
         }
     }
 
-        #[inline]
+    #[inline]
     pub fn capture_pre_op(&mut self) {
         self.set_pre_op_regs(*self.regs());
         self.set_pre_op_flags(*self.flags());

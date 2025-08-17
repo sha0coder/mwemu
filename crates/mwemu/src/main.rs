@@ -87,11 +87,11 @@ fn main() {
         .arg(clap_arg!("verbose", "v", "verbose", "-vv for view the assembly, -v only messages, without verbose only see the api calls and goes faster", multiple: true))
         .arg(clap_arg!("verbose_at", "V", "verbose_at", "start displaying assembly at specific position (is like -vv enabled in specific moment)", "NUMBER"))
         .arg(clap_arg!("64bits", "6", "64bits", "enable 64bits architecture emulation"))
-        .arg(clap_arg!("memory", "m", "memory", "trace all the memory accesses read and write."))
+        .arg(clap_arg!("trace_memory", "m", "trace_memory", "trace all the memory accesses read and write."))
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
-        .arg(clap_arg!("registers", "r", "regs", "print the register values in every step."))
-        .arg(clap_arg!("register", "R", "reg", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
+        .arg(clap_arg!("trace_registers", "r", "trace_registers", "print the register values in every step."))
+        .arg(clap_arg!("trace_register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
         .arg(clap_arg!("console", "c", "console", "select in which moment will spawn the console to inspect.", "NUMBER"))
         .arg(clap_arg!("loops", "l", "loops", "show loop interations, it is slow."))
         .arg(clap_arg!("nocolors", "n", "nocolors", "print without colors for redirectin to a file >out"))
@@ -109,7 +109,7 @@ fn main() {
         .arg(clap_arg!("banzai", "", "banzai", "skip unimplemented instructions, and keep up emulating what can be emulated"))
         .arg(clap_arg!("script", "x", "script", "launch an emulation script, see scripts_examples folder", "SCRIPT"))
         .arg(clap_arg!("args", "A", "args", "provide arguments to the EXE like: --args '\"aa\" \"bb\"'", "ARGS"))
-        .arg(clap_arg!("trace", "T", "trace", "output trace to specified file", "TRACE_FILENAME"))
+        .arg(clap_arg!("trace_filename", "T", "trace_filename", "output trace to specified file", "TRACE_FILENAME"))
         .arg(clap_arg!("trace_start", "S", "trace_start", "start trace at specified position", "TRACE_START"))
         .arg(clap_arg!("log","L", "log", "log output to file", "LOG_FILENAME")) 
         .arg(clap_arg!("fpu","F", "fpu", "trace the fpu states."))
@@ -167,8 +167,8 @@ fn main() {
     }
 
     // tracing
-    emu.cfg.trace_mem = matches.is_present("memory");
-    emu.cfg.trace_regs = matches.is_present("registers");
+    emu.cfg.trace_mem = matches.is_present("trace_memory");
+    emu.cfg.trace_regs = matches.is_present("trace_registers");
     if matches.is_present("register") {
         emu.cfg.trace_reg = true;
         let regs: String = matches
@@ -188,9 +188,9 @@ fn main() {
         )
             .expect("invalid address");
     }
-    if matches.is_present("trace") {
+    if matches.is_present("trace_filename") {
         let trace_filename = matches
-            .value_of("trace")
+            .value_of("trace_filename")
             .expect("specify the trace output file")
             .to_string();
         emu.cfg.trace_filename = Some(trace_filename);
