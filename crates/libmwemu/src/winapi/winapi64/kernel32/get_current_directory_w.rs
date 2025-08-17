@@ -34,7 +34,7 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     if (buff_len as usize) < (dir_char_count + 1) {
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
         // Return required size INCLUDING null terminator
-        emu.regs_mut().rax = (dir_char_count + 1) as u64;
+        emu.regs_mut().rax = dir_char_count as u64;
         return;
     }
 

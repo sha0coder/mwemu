@@ -131,6 +131,7 @@ fn main() {
         .arg(clap_arg!("r15", "", "r15", "set r15 register", "R15"))
         .arg(clap_arg!("rflags", "", "rflags", "set rflags register", "RFLAGS"))
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
+        .arg(clap_arg!("call", "", "call", "enable call tracer"))
         .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
         .get_matches();
 
@@ -168,6 +169,7 @@ fn main() {
 
     // tracing
     emu.cfg.trace_mem = matches.is_present("memory");
+    emu.cfg.trace_calls = matches.is_present("call");
     emu.cfg.trace_regs = matches.is_present("registers");
     if matches.is_present("register") {
         emu.cfg.trace_reg = true;
