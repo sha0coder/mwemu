@@ -184,45 +184,69 @@ fn GetUserNameA(emu: &mut emu::Emu) {
 
 
 fn GetUserNameW(emu: &mut emu::Emu) {
-    let out_username = emu.regs().rcx;
-    let in_out_sz = emu.regs().rdx;
+    let out_username = emu.regs().rcx;     // LPWSTR lpBuffer
+    let in_out_sz = emu.regs().rdx;        // LPDWORD pcbBuffer
 
-    let mut sz = 0;
+    log::info!(
+        "{}** {} advapi32!GetUserNameW lpBuffer: 0x{:x} pcbBuffer: 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        out_username,
+        in_out_sz,
+        emu.colors.nc
+    );
 
-    if out_username > 0 && in_out_sz > 0 {
-        if emu.maps.is_mapped(in_out_sz) && emu.maps.is_mapped(out_username) {
-            sz = emu.maps.read_qword(in_out_sz).expect("advapi32!GetUserNameW cannot read the in_out_sz");
-            let len = constants::USER_NAME.len() as u64 * 2 + 2;
-            if sz >= len {
-                emu.maps.write_wide_string(out_username, constants::USER_NAME);
-                sz = len;
-                emu.maps.write_qword(in_out_sz, sz);
-            } else {
-                sz = 0;
-            }
-        }
+    // Check if size pointer is valid
+    if in_out_sz == 0 || !emu.maps.is_mapped(in_out_sz) {
+        log::info!("{}** {} GetUserNameW: Invalid pcbBuffer pointer {}", 
+                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        emu.regs_mut().rax = constants::FALSE;
+        return;
     }
 
-    if sz == 0 {
+    // Read current buffer size (in characters)
+    let buffer_size = emu.maps.read_dword(in_out_sz).expect("Cannot read buffer size") as usize;
+    
+    // Calculate required size in characters (including null terminator)
+    let username_chars = constants::USER_NAME.chars().count();
+    let required_size = username_chars + 1; // +1 for null terminator
+
+    // Always update the size to show required characters
+    emu.maps.write_dword(in_out_sz, required_size as u32);
+
+    // Check if output buffer is valid
+    if out_username == 0 || !emu.maps.is_mapped(out_username) {
+        log::info!("{}** {} GetUserNameW: Invalid lpBuffer pointer {}", 
+                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        emu.regs_mut().rax = constants::FALSE;
+        return;
+    }
+
+    // Check if buffer is large enough
+    if buffer_size < required_size {
         log::info!(
-            "{}** {} advapi32!GetUserNameW  bad buffer or sizeptr or size!  buf: 0x{:x} szptr: 0x{:x} {}",
+            "{}** {} GetUserNameW: Buffer too small. Required: {}, Provided: {} {}",
             emu.colors.light_red,
             emu.pos,
-            out_username,
-            in_out_sz,
+            required_size,
+            buffer_size,
             emu.colors.nc
         );
         emu.regs_mut().rax = constants::FALSE;
-    } else {
-        log::info!(
-            "{}** {} advapi32!GetUserNameW buf: 0x{:x} `{}` {}",
-            emu.colors.light_red,
-            emu.pos,
-            out_username,
-            constants::USER_NAME,
-            emu.colors.nc
-        );
-        emu.regs_mut().rax = constants::TRUE;
+        return;
     }
 
+    // Buffer is large enough, write the username
+    emu.maps.write_wide_string(out_username, constants::USER_NAME);
+
+    log::info!(
+        "{}** {} GetUserNameW returning: '{}' (size: {}) {}",
+        emu.colors.light_red,
+        emu.pos,
+        constants::USER_NAME,
+        required_size,
+        emu.colors.nc
+    );
+
+    emu.regs_mut().rax = constants::TRUE;
 }

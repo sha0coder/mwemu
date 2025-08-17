@@ -558,6 +558,11 @@ lazy_static! {
     pub static ref LAST_ERROR: Mutex<u64> = Mutex::new(0);
 }
 
+pub fn set_last_error(err_code: u64) {
+    let mut guard = LAST_ERROR.lock().unwrap();
+    *guard = err_code;
+}
+
 pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
     let mut flink = peb64::Flink::new(emu);
     flink.load(emu);
