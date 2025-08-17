@@ -1,5 +1,5 @@
 
-use crate::emu;
+use crate::{constants, emu};
 
 pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     let buff_len = emu.regs().rcx as u32;
@@ -14,7 +14,7 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let current_dir = "C:\\";
+    let current_dir = constants::CWD_PATH;
     let dir_char_count = current_dir.chars().count(); // Use chars().count() for proper Unicode handling
     
     // When buffer length is 0 or buffer is null, return required size INCLUDING null terminator
