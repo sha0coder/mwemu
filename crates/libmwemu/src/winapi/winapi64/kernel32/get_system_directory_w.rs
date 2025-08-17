@@ -1,5 +1,5 @@
 
-use crate::emu;
+use crate::{constants, emu};
 
 pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs().rcx;
@@ -14,7 +14,7 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    let system_dir = "C:\\Windows\\System32";
+    let system_dir = constants::SYSTEM_DIRECTORY;
     let required_length = system_dir.len() + 1; // +1 for null terminator
 
     // If buffer is NULL, return required size

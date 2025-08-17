@@ -1,11 +1,11 @@
 
-use crate::emu;
+use crate::{constants, emu};
 
 pub fn GetSystemDirectoryA(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs().rcx;
     let size = emu.regs().rdx;
 
-    let output = "C:\\Windows\\System32";
+    let output = constants::SYSTEM_DIRECTORY;
     emu.maps.write_string(out_buff_ptr, &output);
 
     log::info!(
