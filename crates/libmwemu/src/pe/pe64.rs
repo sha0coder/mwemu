@@ -420,8 +420,8 @@ impl PE64 {
                 
                 let file_offset = sect.pointer_to_raw_data + offset_within_section;
                 
-                log::debug!("vaddr_to_off: 0x{:x} -> file_offset 0x{:x} (section: '{}', sect_vaddr: 0x{:x}, sect_raw_ptr: 0x{:x})",
-                        vaddr, file_offset, sect.get_name(), sect.virtual_address, sect.pointer_to_raw_data);
+                /*log::debug!("vaddr_to_off: 0x{:x} -> file_offset 0x{:x} (section: '{}', sect_vaddr: 0x{:x}, sect_raw_ptr: 0x{:x})",
+                        vaddr, file_offset, sect.get_name(), sect.virtual_address, sect.pointer_to_raw_data);*/
                 
                 return file_offset;
             }

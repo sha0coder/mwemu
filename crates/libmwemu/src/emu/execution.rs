@@ -420,7 +420,9 @@ impl Emu {
                 // turn on verbosity after a lot of pos
                 if let Some(vpos) = self.cfg.verbose_at {
                     if vpos == self.pos {
-                        self.cfg.verbose = 2;
+                        if self.cfg.verbose < 2 {
+                            self.cfg.verbose = 2;
+                        }
                         //self.cfg.trace_mem = true;
                     }
                 }
