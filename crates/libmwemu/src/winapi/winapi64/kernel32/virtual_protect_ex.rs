@@ -11,15 +11,13 @@ pub fn VirtualProtectEx(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!VirtualProtectEx cannot read old_prot");
 
-    log::info!(
-        "{}** {} kernel32!VirtualProtectEx hproc: {} addr: 0x{:x} sz: {} prot: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualProtectEx hproc: {} addr: 0x{:x} sz: {} prot: {}",
         hproc,
         addr,
         size,
-        new_prot,
-        emu.colors.nc
+        new_prot
     );
 
     emu.regs_mut().rax = 1;

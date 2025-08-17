@@ -13,13 +13,11 @@ pub fn lstrcmpA(emu: &mut emu::Emu) {
     let s1 = emu.maps.read_string(s1_ptr);
     let s2 = emu.maps.read_string(s2_ptr);
 
-    log::info!(
-        "{}** {} kernel32!lstrcmpA '{}' == '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!lstrcmpA '{}' == '{}'",
         s1,
-        s2,
-        emu.colors.nc
+        s2
     );
 
     emu.stack_pop32(false);

@@ -11,13 +11,11 @@ pub fn GetTempPathW(emu: &mut emu::Emu) {
     let n_buffer_length = emu.regs().rcx as u32;
     let lp_buffer = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!GetTempPathW buffer_len: {} buffer: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetTempPathW buffer_len: {} buffer: 0x{:x}",
         n_buffer_length,
-        lp_buffer,
-        emu.colors.nc
+        lp_buffer
     );
 
     let temp_path = constants::TEMP_PATH;

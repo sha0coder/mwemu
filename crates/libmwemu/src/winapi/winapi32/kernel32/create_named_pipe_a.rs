@@ -37,14 +37,12 @@ pub fn CreateNamedPipeA(emu: &mut emu::Emu) {
 
     let name = emu.maps.read_string(name_ptr);
 
-    log::info!(
-        "{}** {} kernel32!CreateNamedPipeA  name:{} in: 0x{:x} out: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateNamedPipeA  name:{} in: 0x{:x} out: 0x{:x}",
         name,
         in_buff_sz,
-        out_buff_sz,
-        emu.colors.nc
+        out_buff_sz
     );
 
     for _ in 0..8 {

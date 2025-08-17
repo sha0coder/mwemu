@@ -64,11 +64,9 @@ lazy_static! {
 }
 
 fn WsaStartup(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!WsaStartup {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaStartup"
     );
 
     for _ in 0..2 {
@@ -78,11 +76,9 @@ fn WsaStartup(emu: &mut emu::Emu) {
 }
 
 fn WsaSocketA(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!WsaSocketA {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaSocketA"
     );
 
     for _ in 0..6 {
@@ -93,11 +89,9 @@ fn WsaSocketA(emu: &mut emu::Emu) {
 }
 
 fn socket(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!socket {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!socket"
     );
 
     for _ in 0..3 {
@@ -117,12 +111,10 @@ fn WsaHtons(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("ws2_32!WsaHtons cannot read out_port");
 
-    log::info!(
-        "{}** {} ws2_32!WsaHtons {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        host_port,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaHtons {}",
+        host_port
     );
 
     for _ in 0..3 {
@@ -137,12 +129,10 @@ fn WsaHtons(emu: &mut emu::Emu) {
 fn htons(emu: &mut emu::Emu) {
     let port: u16 = emu.maps.read_word(emu.regs().get_esp()).unwrap_or_default();
 
-    log::info!(
-        "{}** {} ws2_32!htons port: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        port,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!htons port: {}",
+        port
     );
 
     emu.stack_pop32(false);
@@ -155,11 +145,9 @@ fn inet_addr(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("ws2_32!inet_addr: error reading addr");
 
-    log::info!(
-        "{}** {} ws2_32!inet_addr {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!inet_addr"
     );
 
     emu.stack_pop32(false);
@@ -197,14 +185,12 @@ fn connect(emu: &mut emu::Emu) {
         (ip & 0xff0000) >> 16,
         (ip & 0xff000000) >> 24
     );
-    log::info!(
-        "{}** {} ws2_32!connect  family: {} {}:{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!connect  family: {} {}:{}",
         family,
         sip,
-        port,
-        emu.colors.nc
+        port
     );
 
     for _ in 0..3 {
@@ -249,13 +235,11 @@ fn recv(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 12)
         .expect("ws2_32!recv: error reading flags") as u64;
 
-    log::info!(
-        "{}** {} ws2_32!recv   buff: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!recv   buff: 0x{:x} sz: {}",
         buff,
-        len,
-        emu.colors.nc
+        len
     );
 
     for _ in 0..4 {
@@ -329,12 +313,10 @@ fn send(emu: &mut emu::Emu) {
         emu.stack_pop32(false);
     }
 
-    log::info!(
-        "{}** {} ws2_32!send {{{}}}   {}",
-        emu.colors.light_red,
-        emu.pos,
-        bytes,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!send {{{}}}",
+        bytes
     );
 
     if !helper::socket_exist(sock) {
@@ -396,14 +378,12 @@ fn bind(emu: &mut emu::Emu) {
         (ip & 0xff000000) >> 24
     );
 
-    log::info!(
-        "{}** {} ws2_32!bind  family: {} {}:{}  {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!bind  family: {} {}:{}",
         family,
         sip,
-        port.to_be(),
-        emu.colors.nc
+        port.to_be()
     );
 
     for _ in 0..3 {
@@ -428,12 +408,10 @@ fn listen(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("ws2_32!send: error reading num of connections") as u64;
 
-    log::info!(
-        "{}** {} ws2_32!listen  connections: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        connections,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!listen  connections: {}",
+        connections
     );
 
     for _ in 0..2 {
@@ -468,12 +446,10 @@ fn accept(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
-    log::info!(
-        "{}** {} ws2_32!accept  connections: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        bytes,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!accept  connections: {}",
+        bytes
     );
 
     for _ in 0..4 {
@@ -494,11 +470,9 @@ fn closesocket(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("ws2_32!send: error reading sock") as u64;
 
-    log::info!(
-        "{}** {} ws2_32!closesocket {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!closesocket"
     );
 
     helper::socket_close(sock);
@@ -536,14 +510,12 @@ fn setsockopt(emu: &mut emu::Emu) {
 
     let val = emu.maps.read_dword(optval).unwrap_or_default();
 
-    log::info!(
-        "{}** {} ws2_32!setsockopt  lvl: {} opt: {} val: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!setsockopt  lvl: {} opt: {} val: {}",
         level,
         optname,
-        val,
-        emu.colors.nc
+        val
     );
 
     for _ in 0..5 {
@@ -582,13 +554,11 @@ fn getsockopt(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(optval, 1);
 
-    log::info!(
-        "{}** {} ws2_32!getsockopt  lvl: {} opt: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!getsockopt  lvl: {} opt: {}",
         level,
-        optname,
-        emu.colors.nc
+        optname
     );
 
     for _ in 0..5 {
@@ -627,13 +597,11 @@ fn WsaAccept(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
-    log::info!(
-        "{}** {} ws2_32!WsaAccept  connections: {} callback: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!WsaAccept  connections: {} callback: {}",
         bytes,
-        callback,
-        emu.colors.nc
+        callback
     );
 
     for _ in 0..5 {

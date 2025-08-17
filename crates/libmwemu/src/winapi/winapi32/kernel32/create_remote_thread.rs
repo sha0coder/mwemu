@@ -32,13 +32,11 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 24)
         .expect("kernel32!CreateRemoteThread cannot read the tid") as u64;
 
-    log::info!(
-        "{}** {} kernel32!CreateRemoteThread hproc: 0x{:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateRemoteThread hproc: 0x{:x} addr: 0x{:x}",
         proc_hndl,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     emu.maps.write_dword(out_tid, 0x123);

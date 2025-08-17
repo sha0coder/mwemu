@@ -10,13 +10,11 @@ pub fn GetCPInfo(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 4)
         .expect("kernel32!GetCPInfo error reading inmfo_ptr param");
 
-    log::info!(
-        "{}** {} kernel32!GetCPInfo {} 0x{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetCPInfo {} 0x{}",
         codepage,
-        info_ptr,
-        emu.colors.nc
+        info_ptr
     );
 
     // TODO: put something in lp_cp_info?

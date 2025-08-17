@@ -15,13 +15,11 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
 
-    log::info!(
-        "{}** {} kernel32!VirtualAllocExNuma hproc: 0x{:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualAllocExNuma hproc: 0x{:x} addr: 0x{:x}",
         proc_hndl,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     let base = emu

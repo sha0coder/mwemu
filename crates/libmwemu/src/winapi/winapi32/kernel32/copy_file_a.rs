@@ -17,13 +17,11 @@ pub fn CopyFileA(emu: &mut emu::Emu) {
     let src = emu.maps.read_string(src_ptr);
     let dst = emu.maps.read_string(dst_ptr);
 
-    log::info!(
-        "{}** {} kernel32!CopyFileA `{}` to `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CopyFileA `{}` to `{}`",
         src,
-        dst,
-        emu.colors.nc
+        dst
     );
 
     emu.stack_pop32(false);

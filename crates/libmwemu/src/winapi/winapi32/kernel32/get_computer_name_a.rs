@@ -23,12 +23,10 @@ pub fn GetComputerNameA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 1;
     }
 
-    log::info!(
-        "{}** {} kernel32!GetComputerName '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        constants::HOST_NAME,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetComputerName '{}'",
+        constants::HOST_NAME
     );
 
     emu.stack_pop32(false);

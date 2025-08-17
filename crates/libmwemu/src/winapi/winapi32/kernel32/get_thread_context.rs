@@ -14,11 +14,9 @@ pub fn GetThreadContext(emu: &mut emu::Emu) {
     let ctx = context32::Context32::new(&emu.regs());
     ctx.save(ctx_ptr, &mut emu.maps);
 
-    log::info!(
-        "{}** {} kernel32!GetThreadContext  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetThreadContext"
     );
 
     emu.stack_pop32(false);

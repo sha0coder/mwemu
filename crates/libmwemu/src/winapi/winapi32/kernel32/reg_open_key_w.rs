@@ -22,12 +22,10 @@ pub fn RegOpenKeyW(emu: &mut emu::Emu) {
         helper::handler_create(&format!("key://{}", subkey)) as u32,
     );
 
-    log::info!(
-        "{}** {} kernel32!RegOpenKeyW `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        subkey,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!RegOpenKeyW `{}`",
+        subkey
     );
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

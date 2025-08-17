@@ -29,11 +29,9 @@ pub fn GetModuleHandleA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = mod_mem.get_base();
     }
 
-    log::info!(
-        "{}** {} kernel32!GetModuleHandleA `{}`  {}",
-        emu.colors.light_red,
-        emu.pos,
-        module_name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetModuleHandleA `{}`",
+        module_name
     );
 }

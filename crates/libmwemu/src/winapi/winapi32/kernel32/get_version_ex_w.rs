@@ -7,12 +7,10 @@ pub fn GetVersionExW(emu: &mut emu::Emu) {
             .read_dword(emu.regs().get_esp())
             .expect("kernel32!GetVersionExW cannot read version_info_ptr param") as u64;
 
-    log::info!(
-        "{}** {} kernel32!GetVersionExW 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        version_info_ptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetVersionExW 0x{:x}",
+        version_info_ptr
     );
 
     let os_version_info = structures::OsVersionInfoExW::new();

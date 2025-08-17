@@ -44,24 +44,20 @@ fn MessageBoxA(emu: &mut emu::Emu) {
     let msg = emu.maps.read_string(msgptr);
     let title = emu.maps.read_string(titleptr);
 
-    log::info!(
-        "{}** {} user32!MessageBoxA {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "user32!MessageBoxA {} {}",
         title,
-        msg,
-        emu.colors.nc
+        msg
     );
 
     emu.regs_mut().rax = 0;
 }
 
 fn GetDesktopWindow(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} user32!GetDesktopWindow {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!GetDesktopWindow"
     );
     //emu.regs_mut().rax = 0x11223344; // current window handle
     emu.regs_mut().rax = 0; // no windows handler is more stealthy
@@ -74,12 +70,10 @@ int GetSystemMetrics(
 */
 fn GetSystemMetrics(emu: &mut emu::Emu) {
     let nindex = emu.regs().rcx as usize;
-    log::info!(
-        "{}** {} user32!GetSystemMetrics nindex: {}{}",
-        emu.colors.light_red,
-        emu.pos,
-        nindex,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!GetSystemMetrics nindex: {}",
+        nindex
     );
     // TODO: do something
     emu.regs_mut().rax = 0;

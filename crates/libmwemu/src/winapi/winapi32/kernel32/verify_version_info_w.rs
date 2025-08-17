@@ -1,11 +1,9 @@
 use crate::emu;
 
 pub fn VerifyVersionInfoW(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!VerifyVersionInfoW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!VerifyVersionInfoW"
     );
 
     emu.stack_pop32(false);

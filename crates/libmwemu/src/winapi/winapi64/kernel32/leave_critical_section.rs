@@ -6,13 +6,11 @@ pub fn LeaveCriticalSection(emu: &mut emu::Emu) {
     let cs_ptr = emu.regs().rcx;
     let tid = emu.current_thread().id;
 
-    log::info!(
-        "{}** {} kernel32!LeaveCriticalSection thread: 0x{:x} cs: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!LeaveCriticalSection thread: 0x{:x} cs: 0x{:x}",
         tid,
-        cs_ptr,
-        emu.colors.nc
+        cs_ptr
     );
 
     // Release the lock and get any thread that should be woken up

@@ -15,13 +15,11 @@ pub fn HeapCreate(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!HeapCreate cannot read max_sz");
 
-    log::info!(
-        "{}** {} kernel32!HeapCreate initSz: {} maxSz: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!HeapCreate initSz: {} maxSz: {}",
         init_sz,
-        max_sz,
-        emu.colors.nc
+        max_sz
     );
 
     emu.stack_pop32(false);

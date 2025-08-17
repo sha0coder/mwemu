@@ -47,13 +47,11 @@ fn RealShellExecuteA(emu: &mut emu::Emu) {
     let file = emu.maps.read_string(file_ptr);
     let params = emu.maps.read_string(params_ptr);
 
-    log::info!(
-        "{}** {} shell32!RealShellExecuteA {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "shell32!RealShellExecuteA {} {}",
         file,
-        params,
-        emu.colors.nc
+        params
     );
 
     emu.regs_mut().rax = 34;
@@ -78,16 +76,14 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("shell32!SHGetFolderPathW error reading pszPath");
 
-    log::info!(
-        "{}** {} shell32!SHGetFolderPathW hwnd: 0x{:x} csidl: 0x{:x} token: 0x{:x} flags: 0x{:x} path: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "shell32!SHGetFolderPathW hwnd: 0x{:x} csidl: 0x{:x} token: 0x{:x} flags: 0x{:x} path: 0x{:x}",
         hwnd,
         csidl,
         h_token,
         dw_flags,
-        psz_path,
-        emu.colors.nc
+        psz_path
     );
 
     // Simple folder path mapping

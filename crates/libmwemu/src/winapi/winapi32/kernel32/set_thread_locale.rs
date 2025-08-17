@@ -6,12 +6,10 @@ pub fn SetThreadLocale(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!SetThreadLocale cannot read locale param");
 
-    log::info!(
-        "{}** {} kernel32!SetThreadLocale {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        locale,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!SetThreadLocale {}",
+        locale
     );
 
     emu.stack_pop32(false);

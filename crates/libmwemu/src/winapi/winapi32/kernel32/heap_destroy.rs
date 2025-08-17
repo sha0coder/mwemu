@@ -7,12 +7,10 @@ pub fn HeapDestroy(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!HeapDestroy cannot read handle") as u64;
 
-    log::info!(
-        "{}** {} kernel32!HeapDestroy {:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        hndl,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!HeapDestroy {:x}",
+        hndl
     );
 
     helper::handler_close(hndl);

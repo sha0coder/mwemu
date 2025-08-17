@@ -49,13 +49,11 @@ fn MessageBoxA(emu: &mut emu::Emu) {
     let msg = emu.maps.read_string(msgptr);
     let title = emu.maps.read_string(titleptr);
 
-    log::info!(
-        "{}** {} user32!MessageBoxA {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "user32!MessageBoxA {} {}",
         title,
-        msg,
-        emu.colors.nc
+        msg
     );
 
     emu.regs_mut().rax = 0;
@@ -76,13 +74,11 @@ fn MessageBoxW(emu: &mut emu::Emu) {
     let msg = emu.maps.read_wide_string(msgptr);
     let title = emu.maps.read_wide_string(titleptr);
 
-    log::info!(
-        "{}** {} user32!MessageBoxW {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "user32!MessageBoxW {} {}",
         title,
-        msg,
-        emu.colors.nc
+        msg
     );
 
     emu.regs_mut().rax = 0;
@@ -92,11 +88,9 @@ fn MessageBoxW(emu: &mut emu::Emu) {
 }
 
 fn GetDesktopWindow(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} user32!GetDesktopWindow {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!GetDesktopWindow"
     );
     //emu.regs_mut().rax = 0x11223344; // current window handle
     emu.regs_mut().rax = 0; // no windows handler is more stealthy
@@ -105,11 +99,9 @@ fn GetDesktopWindow(emu: &mut emu::Emu) {
 fn wsprintfW(emu: &mut emu::Emu) {}
 
 fn GetProcessWindowStation(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} user32!GetProcessWindowStation {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!GetProcessWindowStation"
     );
 
     emu.regs_mut().rax = 0x1337; // get handler
@@ -137,11 +129,9 @@ fn GetUserObjectInformationW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("user32!GetUserObjectInformationW: error reading title") as u64;
 
-    log::info!(
-        "{}** {} user32!GetUserObjectInformationW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!GetUserObjectInformationW"
     );
 
     for _ in 0..5 {
@@ -159,12 +149,10 @@ fn CharLowerW(emu: &mut emu::Emu) {
 
     let s = emu.maps.read_wide_string(ptr_str);
 
-    log::info!(
-        "{}** {} user32!CharLowerW(`{}`) {}",
-        emu.colors.light_red,
-        emu.pos,
-        s,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "user32!CharLowerW(`{}`)",
+        s
     );
 
     emu.maps.write_wide_string(ptr_str, &s.to_lowercase());
@@ -233,13 +221,11 @@ fn wsprintfA(emu: &mut emu::Emu) {
 
     emu.maps.write_string(out, &result);
 
-    log::info!(
-        "{}** {} user32!wsprintfA fmt:`{}` out:`{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "user32!wsprintfA fmt:`{}` out:`{}`",
         fmt,
-        &result,
-        emu.colors.nc
+        &result
     );
 
     emu.stack_pop32(false);

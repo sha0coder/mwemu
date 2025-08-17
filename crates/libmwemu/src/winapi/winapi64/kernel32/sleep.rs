@@ -14,12 +14,10 @@ pub fn Sleep(emu: &mut emu::Emu) {
     // Advance global tick
     helper::advance_tick(emu, millis);
     
-    log::info!(
-        "{}** {} kernel32!Sleep thread: 0x{:x} millis: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!Sleep thread: 0x{:x} millis: {}",
         emu.current_thread().id,
-        millis,
-        emu.colors.nc
+        millis
     );
 }

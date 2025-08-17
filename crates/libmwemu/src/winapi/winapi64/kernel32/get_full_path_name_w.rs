@@ -8,12 +8,10 @@ pub fn GetFullPathNameW(emu: &mut emu::Emu) {
     let path = emu.regs().r9;
 
     let filename = emu.maps.read_wide_string(file_ptr);
-    log::info!(
-        "{}** {} kernel32!GetFullPathNameW file: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        filename,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetFullPathNameW file: {}",
+        filename
     );
     // TODO: save the path to buff.
     emu.regs_mut().rax = 10;

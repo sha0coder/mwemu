@@ -7,18 +7,15 @@ pub fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let mut sysinfo = structures::SystemInfo64::new();
     sysinfo.save(ptr_sysinfo, &mut emu.maps);
 
-    log::info!("{}** {} kernel32!GetNativeSysteminfo {:?}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        sysinfo,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetNativeSysteminfo {:?}",
+        sysinfo
     );
 
-    log::info!(
-        "{}** {} kernel32!GetNativeSysteminfo 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        ptr_sysinfo,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetNativeSysteminfo 0x{:x}",
+        ptr_sysinfo
     );
 }

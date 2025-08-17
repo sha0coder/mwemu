@@ -24,13 +24,11 @@ pub fn FileTimeToLocalFileTime(emu: &mut emu::Emu) {
     emu.maps
         .write_dword(out_lpLocalFileTime + 4, dwHighDateTime);
 
-    log::info!(
-        "{}** {} kernel32!FileTimeToLocalFileTime {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!FileTimeToLocalFileTime {} {}",
         dwLowDateTime,
-        dwHighDateTime,
-        emu.colors.nc
+        dwHighDateTime
     );
 
     emu.stack_pop32(false);

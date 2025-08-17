@@ -32,12 +32,10 @@ pub fn CreateThread(emu: &mut emu::Emu) {
         emu.maps.write_dword(tid_ptr, 0x123);
     }
 
-    log::info!(
-        "{}** {} kernel32!CreateThread code: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        code,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!CreateThread code: 0x{:x}",
+        code
     );
 
     for _ in 0..6 {

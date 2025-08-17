@@ -28,15 +28,13 @@ pub fn LCMapStringW(emu: &mut emu::Emu) {
 
     let s = emu.maps.read_wide_string(src_ptr);
 
-    log::info!(
-        "{}** {} kernel32!LCMapStringW `{}` dst:0x{:x} sz:{}->{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!LCMapStringW `{}` dst:0x{:x} sz:{}->{}",
         s,
         dest_ptr,
         src_sz,
-        dest_sz,
-        emu.colors.nc
+        dest_sz
     );
 
     if dest_ptr > 0 {

@@ -48,13 +48,11 @@ fn PkiInitializeCriticalSection(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("crypt32!PkiInitializeCriticalSection error getting addr param");
 
-    log::info!(
-        "{}** {} crypt32!Pki_InitializeCriticalSection flags: {:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "crypt32!Pki_InitializeCriticalSection flags: {:x} addr: 0x{:x}",
         flags,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     for _ in 0..2 {
@@ -111,16 +109,14 @@ fn CryptStringToBinaryA(emu: &mut emu::Emu) {
         _ => "incorrect flag",
     };
 
-    log::info!(
-        "{}** {} crypt32!CryptStringToBinaryA str: 0x{:x} len: {} ptr: {} len: {} {}{}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "crypt32!CryptStringToBinaryA str: 0x{:x} len: {} ptr: {} len: {} {}",
         string,
         num_chars,
         ptr,
         inout_sz,
-        dflags,
-        emu.colors.nc
+        dflags
     );
 
     for _ in 0..7 {

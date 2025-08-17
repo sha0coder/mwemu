@@ -74,12 +74,10 @@ fn RegOpenKeyExA(emu: &mut emu::Emu) {
 
     let subkey = emu.maps.read_string(subkey_ptr);
 
-    log::info!(
-        "{}** {} advapi32!RegOpenKeyExA {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        subkey,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "advapi32!RegOpenKeyExA {}",
+        subkey
     );
 
     emu.maps
@@ -90,11 +88,9 @@ fn RegOpenKeyExA(emu: &mut emu::Emu) {
 fn RegCloseKey(emu: &mut emu::Emu) {
     let hkey = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} advapi32!RegCloseKey {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "advapi32!RegCloseKey"
     );
 
     helper::handler_close(hkey);
@@ -121,12 +117,10 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
         value = emu.maps.read_string(value_ptr);
     }
 
-    log::info!(
-        "{}** {} advapi32!RegQueryValueExA {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        value,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "advapi32!RegQueryValueExA {}",
+        value
     );
 
     if data_out > 0 {
@@ -142,19 +136,19 @@ fn GetUserNameA(emu: &mut emu::Emu) {
     let out_username = emu.regs().rcx;     // LPSTR lpBuffer
     let in_out_sz = emu.regs().rdx;        // LP64WORD pcbBuffer (your 64-bit variant)
 
-    log::info!(
-        "{}** {} advapi32!GetUserNameA lpBuffer: 0x{:x} pcbBuffer: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "advapi32!GetUserNameA lpBuffer: 0x{:x} pcbBuffer: 0x{:x}",
         out_username,
-        in_out_sz,
-        emu.colors.nc
+        in_out_sz
     );
 
     // Check if size pointer is valid
     if in_out_sz == 0 || !emu.maps.is_mapped(in_out_sz) {
-        log::info!("{}** {} GetUserNameA: Invalid pcbBuffer pointer {}", 
-                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "GetUserNameA: Invalid pcbBuffer pointer"
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -170,22 +164,22 @@ fn GetUserNameA(emu: &mut emu::Emu) {
 
     // Check if output buffer is valid
     if out_username == 0 || !emu.maps.is_mapped(out_username) {
-        log::info!("{}** {} GetUserNameA: Invalid lpBuffer pointer {}", 
-                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "GetUserNameA: Invalid lpBuffer pointer"
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
     // Check if buffer is large enough
     if buffer_size < required_size {
-        log::info!(
-            "{}** {} GetUserNameA: Buffer too small. Required: {}, Provided: {} {}",
-            emu.colors.light_red,
-            emu.pos,
-            required_size,
-            buffer_size,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetUserNameA: Buffer too small. Required: {}, Provided: {}",
+        required_size,
+        buffer_size
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -193,13 +187,11 @@ fn GetUserNameA(emu: &mut emu::Emu) {
     // Buffer is large enough, write the username
     emu.maps.write_string(out_username, constants::USER_NAME);
 
-    log::info!(
-        "{}** {} GetUserNameA returning: '{}' (size: {}) {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "GetUserNameA returning: '{}' (size: {})",
         constants::USER_NAME,
-        required_size,
-        emu.colors.nc
+        required_size
     );
 
     emu.regs_mut().rax = constants::TRUE;
@@ -209,19 +201,19 @@ fn GetUserNameW(emu: &mut emu::Emu) {
     let out_username = emu.regs().rcx;     // LPWSTR lpBuffer
     let in_out_sz = emu.regs().rdx;        // LPDWORD pcbBuffer
 
-    log::info!(
-        "{}** {} advapi32!GetUserNameW lpBuffer: 0x{:x} pcbBuffer: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "advapi32!GetUserNameW lpBuffer: 0x{:x} pcbBuffer: 0x{:x}",
         out_username,
-        in_out_sz,
-        emu.colors.nc
+        in_out_sz
     );
 
     // Check if size pointer is valid
     if in_out_sz == 0 || !emu.maps.is_mapped(in_out_sz) {
-        log::info!("{}** {} GetUserNameW: Invalid pcbBuffer pointer {}", 
-                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "GetUserNameW: Invalid pcbBuffer pointer"
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -238,22 +230,22 @@ fn GetUserNameW(emu: &mut emu::Emu) {
 
     // Check if output buffer is valid
     if out_username == 0 || !emu.maps.is_mapped(out_username) {
-        log::info!("{}** {} GetUserNameW: Invalid lpBuffer pointer {}", 
-                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "GetUserNameW: Invalid lpBuffer pointer"
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
     // Check if buffer is large enough
     if buffer_size < required_size {
-        log::info!(
-            "{}** {} GetUserNameW: Buffer too small. Required: {}, Provided: {} {}",
-            emu.colors.light_red,
-            emu.pos,
-            required_size,
-            buffer_size,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetUserNameW: Buffer too small. Required: {}, Provided: {}",
+        required_size,
+        buffer_size
+    );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -261,13 +253,11 @@ fn GetUserNameW(emu: &mut emu::Emu) {
     // Buffer is large enough, write the username
     emu.maps.write_wide_string(out_username, constants::USER_NAME);
 
-    log::info!(
-        "{}** {} GetUserNameW returning: '{}' (size: {}) {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "GetUserNameW returning: '{}' (size: {})",
         constants::USER_NAME,
-        required_size,
-        emu.colors.nc
+        required_size
     );
 
     emu.regs_mut().rax = constants::TRUE;

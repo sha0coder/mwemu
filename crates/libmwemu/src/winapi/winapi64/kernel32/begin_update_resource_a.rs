@@ -7,13 +7,11 @@ pub fn BeginUpdateResourceA(emu: &mut emu::Emu) {
 
     let filename = emu.maps.read_string(pFileName);
 
-    log::info!(
-        "{}** {} kernel32!BeginUpdateResourceA `{}` {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!BeginUpdateResourceA `{}` {}",
         filename,
-        bDeleteExistingResources,
-        emu.colors.nc
+        bDeleteExistingResources
     );
 
     emu.regs_mut().rax = helper::handler_create(&filename);

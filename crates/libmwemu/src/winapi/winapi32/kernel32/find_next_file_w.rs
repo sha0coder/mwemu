@@ -11,11 +11,9 @@ pub fn FindNextFileW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!FindNextFileW cannot read the find_data");
 
-    log::info!(
-        "{}** {} kernel32!FindNextFileW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!FindNextFileW"
     );
 
     emu.stack_pop32(false);

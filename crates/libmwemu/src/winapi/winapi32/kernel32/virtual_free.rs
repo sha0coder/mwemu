@@ -14,13 +14,11 @@ pub fn VirtualFree(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!VirtualFree cannot read size") as u64;
 
-    log::info!(
-        "{}** {} kernel32!VirtualFree 0x{:x} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualFree 0x{:x} {}",
         addr,
-        size,
-        emu.colors.nc
+        size
     );
 
     match emu.maps.get_mem_by_addr(addr) {

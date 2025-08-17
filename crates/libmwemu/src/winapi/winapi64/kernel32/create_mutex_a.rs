@@ -8,12 +8,10 @@ pub fn CreateMutexA(emu: &mut emu::Emu) {
 
     let name = emu.maps.read_string(name_ptr);
 
-    log::info!(
-        "{}** {} kernel32!CreateMutexA '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!CreateMutexA '{}'",
+        name
     );
 
     let uri = format!("mutex://{}", name);

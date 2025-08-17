@@ -5,13 +5,11 @@ pub fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {
     let p1 = emu.regs().rcx as usize;
     let fptr = emu.regs().rdx as usize;
 
-    log::info!(
-        "{}** {} kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x}",
         p1,
-        fptr,
-        emu.colors.nc
+        fptr
     );
 
     emu.set_veh(fptr as u64);

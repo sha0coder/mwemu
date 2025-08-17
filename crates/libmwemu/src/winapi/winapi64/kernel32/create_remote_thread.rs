@@ -20,13 +20,11 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x30)
         .expect("kernel32!CreateRemoteThread cannot read the tid");
 
-    log::info!(
-        "{}** {} kernel32!CreateRemoteThread hproc: 0x{:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateRemoteThread hproc: 0x{:x} addr: 0x{:x}",
         proc_hndl,
-        addr,
-        emu.colors.nc
+        addr
     );
     let new_thread_id = 0x1000 + emu.threads.len();
     let mut new_thread = ThreadContext::new(new_thread_id as u64);

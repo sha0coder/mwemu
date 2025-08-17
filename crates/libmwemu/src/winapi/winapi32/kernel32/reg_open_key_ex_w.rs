@@ -23,12 +23,10 @@ pub fn RegOpenKeyExW(emu: &mut emu::Emu) {
         .expect("kernel32!RegOpenKeyExW cannot read result");
 
     let subkey = emu.maps.read_wide_string(subkey_ptr);
-    log::info!(
-        "{}** {} kernel32!RegOpenKeyExW {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        subkey,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!RegOpenKeyExW {}",
+        subkey
     );
 
     for _ in 0..5 {

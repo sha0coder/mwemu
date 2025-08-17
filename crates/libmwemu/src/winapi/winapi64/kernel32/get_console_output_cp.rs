@@ -2,11 +2,9 @@
 use crate::emu;
 
 pub fn GetConsoleOutputCP(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!GetConsoleOutputCP {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetConsoleOutputCP"
     );
     emu.regs_mut().rax = 0x00000409;
 }

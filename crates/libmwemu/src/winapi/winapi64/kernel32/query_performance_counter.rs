@@ -9,12 +9,10 @@ pub fn QueryPerformanceCounter(emu: &mut emu::Emu) {
     
     emu.maps.write_qword(counter_ptr, counter_value);
 
-    log::info!(
-        "{}** {} kernel32!QueryPerformanceCounter counter: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        counter_value,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!QueryPerformanceCounter counter: {}",
+        counter_value
     );
 
     emu.regs_mut().rax = 1; // Return TRUE

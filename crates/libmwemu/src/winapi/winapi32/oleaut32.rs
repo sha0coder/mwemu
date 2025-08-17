@@ -57,13 +57,11 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     emu.maps.create_map(&name, base, size);
     emu.maps.memcpy(base + 8, str_ptr, size as usize - 1);
 
-    log::info!(
-        "{}** {} oleaut32!SysAllocStringLen  ={} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "oleaut32!SysAllocStringLen  ={} {}",
         name,
-        size - 8,
-        emu.colors.nc
+        size - 8
     );
 
     for _ in 0..2 {
@@ -79,12 +77,10 @@ fn SysFreeString(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("oleaut32!SysFreeString cannot read host_port") as u64;
 
-    log::info!(
-        "{}** {} oleaut32!SysFreeString  0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        str_ptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "oleaut32!SysFreeString  0x{:x}",
+        str_ptr
     );
 
     //emu.maps.free(&format!("alloc_{:x}", str_ptr));

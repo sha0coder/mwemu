@@ -5,13 +5,11 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs().rcx;
     let size = emu.regs().rdx as u32;
 
-    log::info!(
-        "{}** {} kernel32!GetSystemDirectoryW lpBuffer: 0x{:x} uSize: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetSystemDirectoryW lpBuffer: 0x{:x} uSize: {}",
         out_buff_ptr,
-        size,
-        emu.colors.nc
+        size
     );
 
     let system_dir = constants::SYSTEM_DIRECTORY;
@@ -44,13 +42,11 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     // Buffer is large enough, write the directory
     emu.maps.write_wide_string(out_buff_ptr, system_dir);
 
-    log::info!(
-        "{}** {} GetSystemDirectoryW returning: '{}' (length: {}) {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "GetSystemDirectoryW returning: '{}' (length: {})",
         system_dir,
-        system_dir.len(),
-        emu.colors.nc
+        system_dir.len()
     );
 
     // Return number of characters written (NOT including null terminator)

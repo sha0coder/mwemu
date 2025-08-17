@@ -83,7 +83,7 @@ Rust apps https://crates.io/crates/libmwemu
 ## Usage
 
 ```
-MWEMU emulator for malware.
+MWEMU emulator for malware 0.7.11
 @sha0coder
 
 USAGE:
@@ -102,11 +102,13 @@ FLAGS:
     -r, --regs           print the register values in every step.
     -p, --stack_trace    trace stack on push/pop
     -t, --test           test mode
-    -V, --version        Prints version information
+        --version        Prints version information
     -v, --verbose        -vv for view the assembly, -v only messages, without verbose only see the api calls and goes
                          faster
 
 OPTIONS:
+    -A, --args <ARGS>                  provide arguments to the EXE like: --args '"aa" "bb"'
+        --cmd <COMMAND>                launch a console command
     -b, --base <ADDRESS>               set base address for code
     -c, --console <NUMBER>             select in which moment will spawn the console to inspect.
     -C, --console_addr <ADDRESS>       spawn console on first eip = address
@@ -141,6 +143,8 @@ OPTIONS:
     -s, --string <ADDRESS>             monitor string on a specific address
     -T, --trace <TRACE_FILENAME>       output trace to specified file
     -S, --trace_start <TRACE_START>    start trace at specified position
+    -V, --verbose_at <NUMBER>          start displaying assembly at specific position (is like -vv enabled in specific
+                                       moment)
 ```
 
 ## Command line examples

@@ -37,11 +37,9 @@ HRESULT OleInitialize(
 );
 */
 fn OleInitialize(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ole32!OleInitialize {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ole32!OleInitialize"
     );
     // TODO: do something
     emu.regs_mut().rax = 0; // S_OK

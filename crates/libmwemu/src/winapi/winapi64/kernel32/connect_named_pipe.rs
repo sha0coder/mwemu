@@ -5,12 +5,10 @@ pub fn ConnectNamedPipe(emu: &mut emu::Emu) {
     let handle = emu.regs().rcx;
     let overlapped = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!ConnectNamedPipe hndl: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        handle,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!ConnectNamedPipe hndl: 0x{:x}",
+        handle
     );
 
     if !helper::handler_exist(handle) {

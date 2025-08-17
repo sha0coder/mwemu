@@ -60,13 +60,11 @@ pub fn PathCombineA(emu: &mut emu::Emu) {
         path2 = emu.maps.read_string(file);
     }
 
-    log::info!(
-        "{}** {} kernelbase!PathCombineA path1: {} path2: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!PathCombineA path1: {} path2: {}",
         path1,
-        path2,
-        emu.colors.nc
+        path2
     );
 
     if dst != 0 && !path1.is_empty() && !path2.is_empty() {
@@ -91,13 +89,11 @@ pub fn PathCombineW(emu: &mut emu::Emu) {
         path2 = emu.maps.read_wide_string(file);
     }
 
-    log::info!(
-        "{}** {} kernelbase!PathCombineW path1: {} path2: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!PathCombineW path1: {} path2: {}",
         path1,
-        path2,
-        emu.colors.nc
+        path2
     );
 
     if dst != 0 && !path1.is_empty() && !path2.is_empty() {
@@ -111,12 +107,10 @@ pub fn PathCombineW(emu: &mut emu::Emu) {
 pub fn IsCharAlphaNumericA(emu: &mut emu::Emu) {
     let c = emu.regs().rcx as u8 as char;
 
-    log::info!(
-        "{}** {} kernelbase!IsCharAlphaNumericA char: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        c,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!IsCharAlphaNumericA char: {}",
+        c
     );
 
     emu.regs_mut().rax = if c.is_ascii_alphanumeric() { 1 } else { 0 };
@@ -129,12 +123,10 @@ pub fn GetTokenInformation(emu: &mut emu::Emu) {
     let token_information_length = emu.regs().r9;
     let return_length = emu.maps.read_qword(emu.regs().rsp + 0x20);
 
-    log::info!(
-        "{}** {} kernelbase!GetTokenInformation token_information_class: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        token_information_class,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!GetTokenInformation token_information_class: 0x{:x}",
+        token_information_class
     );
 
     emu.regs_mut().rax = 1;
@@ -300,53 +292,43 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
 }
 
 fn _initterm_e(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernelbase!_initterm_e  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!_initterm_e"
     );
     emu.regs_mut().rax = 0;
 }
 
 fn _initterm(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernelbase!_initterm  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!_initterm"
     );
     emu.regs_mut().rax = 0;
 }
 
 fn exit(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernelbase!exit  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!exit"
     );
     panic!("exit called");
 }
 
 fn _exit(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernelbase!_exit  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!_exit"
     );
     panic!("_exit called");
 }
 
 fn atexit(emu: &mut emu::Emu) {
     let fptr = emu.regs().rcx;
-    log::info!(
-        "{}** {} kernelbase!atexit fptr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        fptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!atexit fptr: 0x{:x}",
+        fptr
     );
     emu.regs_mut().rax = 0;
 }
@@ -361,13 +343,11 @@ pub fn CharLowerBuffW(emu: &mut emu::Emu) {
     let lpsz = emu.regs().rcx;        // Buffer pointer (LPWSTR)
     let cch_length = emu.regs().rdx;  // Length in characters (DWORD)
 
-    log::info!(
-        "{}** {} kernelbase!CharLowerBuffW lpsz: 0x{:x} cchLength: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!CharLowerBuffW lpsz: 0x{:x} cchLength: {}",
         lpsz,
-        cch_length,
-        emu.colors.nc
+        cch_length
     );
 
     if lpsz == 0 || cch_length == 0 {
@@ -406,12 +386,10 @@ pub fn CharLowerBuffW(emu: &mut emu::Emu) {
         }
     }
 
-    log::info!(
-        "{}** {} CharLowerBuffW processed {} characters {}",
-        emu.colors.light_red,
-        emu.pos,
-        processed_count,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "CharLowerBuffW processed {} characters",
+        processed_count
     );
 
     // Return the number of characters processed

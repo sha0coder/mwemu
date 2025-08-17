@@ -6,12 +6,10 @@ pub fn IsValidCodePage(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp)
         .expect("kernel32!IsValidCodePage error geting codepage param");
 
-    log::info!(
-        "{}** {} kernel32!IsValidCodePage {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        codepage,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!IsValidCodePage {}",
+        codepage
     );
 
     emu.stack_pop32(false);

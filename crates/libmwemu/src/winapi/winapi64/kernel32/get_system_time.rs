@@ -4,12 +4,10 @@ use crate::{emu, structures};
 pub fn GetSystemTime(emu: &mut emu::Emu) {
     let out_time = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} kernel32!GetSystemTime ptr: 0x{:x}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        out_time,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemTime ptr: 0x{:x}'",
+        out_time
     );
 
     let systime = structures::SystemTime::now();

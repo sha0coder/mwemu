@@ -8,12 +8,10 @@ pub fn InitializeCriticalSection(emu: &mut emu::Emu) {
 
     emu.stack_pop32(false);
 
-    log::info!(
-        "{}** {} kernel32!InitializeCriticalSection ptr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        ptr_crit_sect,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!InitializeCriticalSection ptr: 0x{:x}",
+        ptr_crit_sect
     );
 
     emu.regs_mut().rax = 1;

@@ -22,15 +22,13 @@ pub fn WriteProcessMemory(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("kernel32!WriteProcessMemory cannot read the ptr of num of written bytes");
 
-    log::info!(
-        "{}** {} kernel32!WriteProcessMemory hproc: 0x{:x} from: 0x{:x } to: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!WriteProcessMemory hproc: 0x{:x} from: 0x{:x } to: 0x{:x} sz: {}",
         proc_hndl,
         buff,
         addr,
-        size,
-        emu.colors.nc
+        size
     );
 
     if emu.maps.memcpy(buff, addr, size as usize) {

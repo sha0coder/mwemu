@@ -26,12 +26,10 @@ pub fn CryptCreateHash(emu: &mut emu::Emu) {
 
     let alg_name = constants::get_cryptoalgorithm_name(algid);
 
-    log::info!(
-        "{}** {} kernel32!CryptCreateHash alg:{} {}",
-        emu.colors.light_red,
-        emu.pos,
-        alg_name,
-        emu.colors.nc,
+    log_red!(
+        emu,
+        "kernel32!CryptCreateHash alg:{}",
+        alg_name
     );
 
     for _ in 0..5 {

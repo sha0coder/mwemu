@@ -29,14 +29,12 @@ pub fn WriteFile(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(bytes_written, size);
 
-    log::info!(
-        "{}** {} kernel32!WriteFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!WriteFile hndl: 0x{:x} buff: 0x{:x} sz: {}",
         file_hndl,
         buff,
-        size,
-        emu.colors.nc
+        size
     );
 
     if !helper::handler_exist(file_hndl) {

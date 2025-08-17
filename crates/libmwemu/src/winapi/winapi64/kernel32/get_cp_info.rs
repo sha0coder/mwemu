@@ -4,13 +4,11 @@ pub fn GetCPInfo(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx as usize;
     let lp_cp_info = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!GetCPInfo code_page: {} lp_cp_info: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetCPInfo code_page: {} lp_cp_info: 0x{:x}",
         code_page,
-        lp_cp_info,
-        emu.colors.nc
+        lp_cp_info
     );
 
     // Create and initialize a CpInfo structure

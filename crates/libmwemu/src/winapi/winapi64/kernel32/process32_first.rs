@@ -6,13 +6,11 @@ pub fn Process32First(emu: &mut emu::Emu) {
     let handle = emu.regs().rcx;
     let lppe = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!Process32First hndl: {:x} lppe: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!Process32First hndl: {:x} lppe: 0x{:x}",
         handle,
-        lppe,
-        emu.colors.nc
+        lppe
     );
 
     if !helper::handler_exist(handle) {

@@ -19,14 +19,12 @@ pub fn VirtualQueryEx(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 12)
         .expect("kernel32!VirtualQueryEx cannot read size");
 
-    log::info!(
-        "{}** {} kernel32!VirtualQueryEx 0x{:x} 0x{:x} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualQueryEx 0x{:x} 0x{:x} {}",
         addr,
         out_buff,
-        size,
-        emu.colors.nc
+        size
     );
 
     if size < 30 {

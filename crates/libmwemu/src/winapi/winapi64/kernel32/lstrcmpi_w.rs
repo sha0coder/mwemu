@@ -13,36 +13,30 @@ pub fn LStrCmpIW(emu: &mut emu::Emu) {
     
     let result = match s1_lower.cmp(&s2_lower) {
         std::cmp::Ordering::Less => {
-            log::info!(
-                "{}** {} kernel32!lstrcmpiW `{}` < `{}` {}",
-                emu.colors.light_red,
-                emu.pos,
-                s1,
-                s2,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "kernel32!lstrcmpiW `{}` < `{}`",
+        s1,
+        s2
+    );
             -1i64 as u64
         }
         std::cmp::Ordering::Equal => {
-            log::info!(
-                "{}** {} kernel32!lstrcmpiW `{}` == `{}` {}",
-                emu.colors.light_red,
-                emu.pos,
-                s1,
-                s2,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "kernel32!lstrcmpiW `{}` == `{}`",
+        s1,
+        s2
+    );
             0
         }
         std::cmp::Ordering::Greater => {
-            log::info!(
-                "{}** {} kernel32!lstrcmpiW `{}` > `{}` {}",
-                emu.colors.light_red,
-                emu.pos,
-                s1,
-                s2,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "kernel32!lstrcmpiW `{}` > `{}`",
+        s1,
+        s2
+    );
             1
         }
     };

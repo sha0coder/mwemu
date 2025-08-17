@@ -14,11 +14,9 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!GetModuleFileNameW cannot read out_filename_ptr");
 
-    log::info!(
-        "{}** {} kernel32!GetModuleFileNameW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetModuleFileNameW"
     );
 
     emu.stack_pop32(false);

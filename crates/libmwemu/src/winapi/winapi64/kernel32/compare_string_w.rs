@@ -25,17 +25,15 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
     let lp_string2 = emu.maps.read_qword(lp_string2_addr).unwrap_or(0);
     let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32;  // ✅ Fixed: no multiplication
 
-    log::info!(
-        "{}** {} kernel32!CompareStringW locale: 0x{:x} flags: 0x{:x} str1: 0x{:x} len1: {} str2: 0x{:x} len2: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CompareStringW locale: 0x{:x} flags: 0x{:x} str1: 0x{:x} len1: {} str2: 0x{:x} len2: {}",
         locale,
         dw_cmp_flags,
         lp_string1,
         cch_count1,
         lp_string2,
-        cch_count2,
-        emu.colors.nc
+        cch_count2
     );
     
     // Read the strings - handle null/empty cases
@@ -78,7 +76,7 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
         }
     };
 
-    log::info!("{}\t\t'{}' == '{}'  ={}{}", emu.colors.light_red, s1, s2, result, emu.colors.nc);
+    log::info!("\t\t'{}' == '{}'  ={}", s1, s2, result);
     
     emu.regs_mut().rax = result as u64;
 }

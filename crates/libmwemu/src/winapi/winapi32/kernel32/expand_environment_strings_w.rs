@@ -16,12 +16,10 @@ pub fn ExpandEnvironmentStringsW(emu: &mut emu::Emu) {
 
     let src = emu.maps.read_wide_string(src_ptr);
 
-    log::info!(
-        "{}** {} kernel32!ExpandEnvironmentStringsW `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        src,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!ExpandEnvironmentStringsW `{}`",
+        src
     );
 
     //TODO: implement expand

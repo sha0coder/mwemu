@@ -40,14 +40,12 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     let str_ptr = emu.regs().rcx;
     let char_count = emu.regs().rdx;
 
-    log::info!(
-        "{}** {}:{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        ":{:x} oleaut32!SysAllocStringLen str_ptr: 0x{:x} size: {}",
         emu.regs().rip,
         str_ptr,
-        char_count,
-        emu.colors.nc,
+        char_count
     );
     
     // Calculate sizes like the Python version
@@ -91,8 +89,12 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     
     let return_ptr = bstr + 4;  // Return pointer to string data (after length prefix)
     
-    log::info!("{}** {} SysAllocStringLen returning: 0x{:x} (base: 0x{:x}) {}", 
-        emu.colors.light_red, emu.pos, return_ptr, bstr, emu.colors.nc);
+    log_red!(
+        emu,
+        "SysAllocStringLen returning: 0x{:x} (base: 0x{:x})",
+        return_ptr,
+        bstr
+    );
     
     emu.regs_mut().rax = return_ptr;
 }
@@ -100,12 +102,10 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
 fn SysFreeString(emu: &mut emu::Emu) {
     let str_ptr = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} oleaut32!SysFreeString  0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        str_ptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "oleaut32!SysFreeString  0x{:x}",
+        str_ptr
     );
 
     if str_ptr == 0 {
@@ -121,15 +121,17 @@ fn SysFreeString(emu: &mut emu::Emu) {
         let total_size = 4 + length_bytes as u64 + 2; // prefix + string + null terminator
         let string_length = length_bytes / 2; // Convert bytes to characters
         
-        log::info!("{}** {} SysFreeString zeroing {} bytes starting at 0x{:x} (string data was {} bytes, {} chars) {}", 
-            emu.colors.light_red, 
-            emu.pos, 
-            total_size,      // Total allocation size
-            alloc_base,      // Base address
-            length_bytes,    // String data in bytes
-            string_length,   // String length in characters
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "SysFreeString zeroing {} bytes starting at 0x{:x} (string data was {} bytes, {} chars)",
+        total_size,
+        // Total allocation size
+            alloc_base,
+        // Base address
+            length_bytes,
+        // String data in bytes
+            string_length
+    );
         
         // Zero out the entire BSTR allocation
         for i in 0..total_size {
@@ -137,11 +139,9 @@ fn SysFreeString(emu: &mut emu::Emu) {
         }
     } else {
         panic!(
-            "{}** {} SysFreeString: Could not read length prefix at 0x{:x} {}",
-            emu.colors.light_red,
+            "** {} SysFreeString: Could not read length prefix at 0x{:x}",
             emu.pos,
             alloc_base,
-            emu.colors.nc
         );
     }
 
@@ -163,14 +163,12 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
     let psz = emu.regs().rdx;        // Source string (can be NULL)
     let len = emu.regs().r8;         // Length in characters
 
-    log::info!(
-        "{}** {} oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "oleaut32!SysReAllocStringLen pbstr_ptr: 0x{:x} psz: 0x{:x} len: {}",
         pbstr_ptr,
         psz,
-        len,
-        emu.colors.nc
+        len
     );
 
     // Check if pbstr_ptr is NULL
@@ -189,16 +187,24 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         let old_len_chars = old_len_bytes / 2;
         if old_len_chars > 0 {
             let old_string = emu.maps.read_wide_string_n(old_bstr, old_len_chars as usize);
-            log::info!("{}** {} Old BSTR content: \"{}\" (length: {} chars) {}", 
-                       emu.colors.light_red, emu.pos, old_string, old_len_chars, emu.colors.nc);
+            log_red!(
+        emu,
+        "Old BSTR content: \"{}\" (length: {} chars)",
+        old_string,
+        old_len_chars
+    );
         }
     }
 
     // Log new source string if provided
     if psz != 0 && len > 0 {
         let new_string = emu.maps.read_wide_string_n(psz, len as usize);
-        log::info!("{}** {} New source string: \"{}\" (length: {} chars) {}", 
-                   emu.colors.light_red, emu.pos, new_string, len, emu.colors.nc);
+        log_red!(
+        emu,
+        "New source string: \"{}\" (length: {} chars)",
+        new_string,
+        len
+    );
     }
 
     // Calculate allocation size
@@ -250,20 +256,25 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
     // Log the final result
     if len > 0 {
         let final_string = emu.maps.read_wide_string_n(new_bstr, len as usize);
-        log::info!("{}** {} Final BSTR content: \"{}\" (length: {} chars) {}", 
-                   emu.colors.light_red, emu.pos, final_string, len, emu.colors.nc);
+        log_red!(
+        emu,
+        "Final BSTR content: \"{}\" (length: {} chars)",
+        final_string,
+        len
+    );
     } else {
-        log::info!("{}** {} Created empty BSTR {}", emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "Created empty BSTR"
+    );
     }
     
-    log::info!(
-        "{}** {} oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x}) {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "oleaut32!SysReAllocStringLen allocated new string at 0x{:x} size: {} (base: 0x{:x})",
         new_bstr,
         byte_len,
-        new_base,
-        emu.colors.nc
+        new_base
     );
 
     // Note: In a real implementation, you'd free the old BSTR here
@@ -280,22 +291,18 @@ HRESULT VariantClear(
 fn VariantClear(emu: &mut emu::Emu) {
     let pvarg = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} oleaut32!VariantClear pvarg: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        pvarg,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "oleaut32!VariantClear pvarg: 0x{:x}",
+        pvarg
     );
 
     // Basic validation
     if pvarg == 0 || !emu.maps.is_mapped(pvarg) {
-        log::info!(
-            "{}** {} VariantClear: Invalid pvarg pointer {}",
-            emu.colors.light_red,
-            emu.pos, 
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "VariantClear: Invalid pvarg pointer"
+    );
         emu.regs_mut().rax = 0x80070057; // E_INVALIDARG
         return;
     }
@@ -304,11 +311,9 @@ fn VariantClear(emu: &mut emu::Emu) {
     // The vt field is typically at offset 0 in the VARIANT structure
     emu.maps.write_word(pvarg, 0); // VT_EMPTY = 0
 
-    log::info!(
-        "{}** {} VariantClear: Cleared variant (set vt to VT_EMPTY) {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "VariantClear: Cleared variant (set vt to VT_EMPTY)"
     );
 
     emu.regs_mut().rax = 0; // S_OK

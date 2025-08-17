@@ -9,15 +9,13 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
     let func = emu.maps.read_string(func_ptr).to_lowercase();
     if func == "zwcopyfilechunk" {
         emu.regs_mut().rax = 0x7ff7e0001337;
-        log::info!(
-            "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
-            emu.colors.light_red,
-            emu.pos,
-            "kernel32",
-            "zwcopyfilechunk",
-            emu.regs().rax,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "kernel32!GetProcAddress  `{}!{}` =0x{:x}",
+        "kernel32",
+        "zwcopyfilechunk",
+        emu.regs().rax
+    );
         return;
     }
 
@@ -37,15 +35,13 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
 
                 if ordinal.func_name.to_lowercase() == func {
                     emu.regs_mut().rax = ordinal.func_va;
-                    log::info!(
-                        "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
-                        emu.colors.light_red,
-                        emu.pos,
-                        flink.mod_name,
-                        ordinal.func_name,
-                        emu.regs().rax,
-                        emu.colors.nc
-                    );
+                    log_red!(
+        emu,
+        "kernel32!GetProcAddress  `{}!{}` =0x{:x}",
+        flink.mod_name,
+        ordinal.func_name,
+        emu.regs().rax
+    );
                     return;
                 }
             }

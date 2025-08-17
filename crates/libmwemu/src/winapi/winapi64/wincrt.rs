@@ -54,11 +54,9 @@ fn _initialize_onexit_table(emu: &mut emu::Emu) {
     139
      */
 
-    log::info!(
-        "{}** {} wincrt!_initialize_onexit_table  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!_initialize_onexit_table"
     );
 
     emu.regs_mut().rax = 0;
@@ -79,12 +77,10 @@ fn _register_onexit_function(emu: &mut emu::Emu) {
     139
      */
 
-    log::info!(
-        "{}** {} wincrt!_initialize_onexit_function callback: 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        callback,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!_initialize_onexit_function callback: 0x{:x}",
+        callback
     );
 
     emu.regs_mut().rax = 0;
@@ -99,12 +95,10 @@ extern "C" char** __cdecl _get_initial_narrow_environment()
 fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
     let env = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} wincrt!_get_initial_narrow_environment env: 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        env,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!_get_initial_narrow_environment env: 0x{:x}",
+        env
     );
 
     // TODO: Implement this
@@ -113,11 +107,9 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
 
 // char*** CDECL __p___argv(void) { return &MSVCRT___argv; }
 fn __p___argv(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} wincrt!__p___argv {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!__p___argv"
     );
 
     // First, allocate space for argv array (pointer array)
@@ -166,12 +158,10 @@ fn __p___argv(emu: &mut emu::Emu) {
 fn __p___argc(emu: &mut emu::Emu) {
     let argc = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} wincrt!__p___argc argc: 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        argc,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!__p___argc argc: 0x{:x}",
+        argc
     );
 
     let argc_addr = emu
@@ -194,12 +184,10 @@ FILE * CDECL __acrt_iob_func(int index)
 fn __acrt_iob_func(emu: &mut emu::Emu) {
     let index = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} wincrt!__acrt_iob_func index: 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        index,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!__acrt_iob_func index: 0x{:x}",
+        index
     );
 
     // TODO: Implement this
@@ -247,16 +235,14 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     let fmt_str = emu.maps.read_string(format);
     let specs = parse_format_specifiers(&fmt_str);
 
-    log::info!(
-        "{}** {} wincrt!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} va_list: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "wincrt!__stdio_common_vfprintf options: 0x{:x} file: 0x{:x} format: '{}' locale: 0x{:x} va_list: 0x{:x}",
         options,
         file,
         fmt_str,
         locale,
-        va_list,
-        emu.colors.nc
+        va_list
     );
 
     let mut current_ptr = va_list;
@@ -307,15 +293,13 @@ fn realloc(emu: &mut emu::Emu) {
                 .create_map(&format!("alloc_{:x}", base), base, size)
                 .expect("msvcrt!malloc cannot create map");
 
-            log::info!(
-                "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
-                emu.colors.light_red,
-                emu.pos,
-                addr,
-                size,
-                base,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x{:x}",
+        addr,
+        size,
+        base
+    );
 
             emu.regs_mut().rax = base;
             return;
@@ -323,14 +307,12 @@ fn realloc(emu: &mut emu::Emu) {
     }
 
     if size == 0 {
-        log::info!(
-            "{}** {} msvcrt!realloc 0x{:x} {} =0x1337 {}",
-            emu.colors.light_red,
-            emu.pos,
-            addr,
-            size,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x1337",
+        addr,
+        size
+    );
 
         emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
         return;
@@ -351,25 +333,21 @@ fn realloc(emu: &mut emu::Emu) {
     emu.maps.memcpy(new_addr, addr, prev_size);
     emu.maps.dealloc(addr);
 
-    log::info!(
-        "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x{:x}",
         addr,
         size,
-        new_addr,
-        emu.colors.nc
+        new_addr
     );
 
     emu.regs_mut().rax = new_addr;
 }
 
 fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} wincrt!_set_invalid_parameter_handler {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!_set_invalid_parameter_handler"
     );
     emu.regs_mut().rax = 0;
 }
@@ -388,13 +366,11 @@ fn malloc(emu: &mut emu::Emu) {
         .create_map(&format!("alloc_{:x}", base), base, size)
         .expect("msvcrt!malloc cannot create map");
 
-    log::info!(
-        "{}** {} msvcrt!malloc {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!malloc {} =0x{:x}",
         size,
-        base,
-        emu.colors.nc
+        base
     );
 
     emu.regs_mut().rax = base;
@@ -408,12 +384,10 @@ int _crt_atexit(
 fn _crt_atexit(emu: &mut emu::Emu) {
     let function = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} wincrt!_crt_atexit function: 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        function,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "wincrt!_crt_atexit function: 0x{:x}",
+        function
     );
     // TODO: Implement this
     emu.regs_mut().rax = 0;
