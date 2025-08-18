@@ -22,10 +22,10 @@ impl Emu {
         let mem_base = ins.memory_base();
         let mem_index = ins.memory_index();
         
-        if self.cfg.verbose >= 3 {
+        /*if self.cfg.verbose >= 3 {
             log::debug!("handle_memory_get_operand: mem_seg={:?}, mem_base={:?}, mem_index={:?}, do_derref={}", 
                        mem_seg, mem_base, mem_index, do_derref);
-        }
+        }*/
         
         let mem_displace = if self.cfg.is_64bits {
             ins.memory_displacement64()
@@ -33,9 +33,9 @@ impl Emu {
             ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
         };
         
-        if self.cfg.verbose >= 3 {
+        /*if self.cfg.verbose >= 3 {
             log::debug!("  mem_displace=0x{:x} (is_64bits={})", mem_displace, self.cfg.is_64bits);
-        }
+        }*/
 
         let temp_displace = if mem_index == Register::None {
             mem_displace
@@ -44,51 +44,51 @@ impl Emu {
             let index_val = self.regs().get_reg(mem_index);
             let scale_factor = index_val.wrapping_mul(scale_index as u64);
             let result = mem_displace.wrapping_add(scale_factor);
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}", 
                            scale_index, index_val, scale_factor, result);
-            }
+            }*/
             result
         };
 
         // case when address is relative to rip then just return temp_displace
         let displace = if mem_base == Register::None {
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  mem_base is None, displace=temp_displace=0x{:x}", temp_displace);
-            }
+            }*/
             temp_displace
         } else {
             let base_val = self.regs().get_reg(mem_base);
             let result = base_val.wrapping_add(temp_displace);
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  base_val=0x{:x}, displace=base+temp_displace=0x{:x}", base_val, result);
-            }
+            }*/
             result
         };
 
         let displace_result = if !self.cfg.is_64bits {
             let masked = displace & 0xffffffff;
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  32-bit mode: displace_result=0x{:x} (masked from 0x{:x})", masked, displace);
-            }
+            }*/
             masked
         } else {
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  64-bit mode: displace_result=0x{:x}", displace);
-            }
+            }*/
             displace
         };
 
         // do this for cmov optimization
         let mem_addr = if mem_base == Register::RIP {
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  RIP-relative: mem_addr=temp_displace=0x{:x}", temp_displace);
-            }
+            }*/
             temp_displace
         } else {
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  mem_addr=displace_result=0x{:x}", displace_result);
-            }
+            }*/
             displace_result
         };
 
@@ -285,9 +285,9 @@ impl Emu {
         let value: u64;
         if derref {
             let sz = self.get_operand_sz(ins, noperand);
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  Dereferencing: mem_addr=0x{:x}, size={} bits", mem_addr, sz);
-            }
+            }*/
 
             if let Some(hook_fn) = self.hooks.hook_on_memory_read {
                 hook_fn(self, self.regs().rip, mem_addr, sz)
@@ -296,9 +296,9 @@ impl Emu {
             value = match sz {
                 64 => match self.maps.read_qword(mem_addr) {
                     Some(v) => {
-                        if self.cfg.verbose >= 3 {
+                        /*if self.cfg.verbose >= 3 {
                             log::debug!("    Read qword: 0x{:x}", v);
-                        }
+                        }*/
                         v
                     },
                     None => {
@@ -310,9 +310,9 @@ impl Emu {
 
                 32 => match self.maps.read_dword(mem_addr) {
                     Some(v) => {
-                        if self.cfg.verbose >= 3 {
+                        /*if self.cfg.verbose >= 3 {
                             log::debug!("    Read dword: 0x{:x}", v);
-                        }
+                        }*/
                         v.into()
                     },
                     None => {
@@ -324,9 +324,9 @@ impl Emu {
 
                 16 => match self.maps.read_word(mem_addr) {
                     Some(v) => {
-                        if self.cfg.verbose >= 3 {
+                        /*if self.cfg.verbose >= 3 {
                             log::debug!("    Read word: 0x{:x}", v);
-                        }
+                        }*/
                         v.into()
                     },
                     None => {
@@ -338,9 +338,9 @@ impl Emu {
 
                 8 => match self.maps.read_byte(mem_addr) {
                     Some(v) => {
-                        if self.cfg.verbose >= 3 {
+                        /*if self.cfg.verbose >= 3 {
                             log::debug!("    Read byte: 0x{:x}", v);
-                        }
+                        }*/
                         v.into()
                     },
                     None => {
@@ -378,14 +378,14 @@ impl Emu {
                 }
             }
         } else {
-            if self.cfg.verbose >= 3 {
+            /*if self.cfg.verbose >= 3 {
                 log::debug!("  Not dereferencing, returning mem_addr=0x{:x}", mem_addr);
-            }
+            }*/
             value = mem_addr;
         }
-        if self.cfg.verbose >= 3 {
+        /*if self.cfg.verbose >= 3 {
             log::debug!("  Final return value: 0x{:x}", value);
-        }
+        }*/
         Some(value)
     }
 
@@ -441,11 +441,11 @@ impl Emu {
 
                 let mem_seg = ins.memory_segment();
                 
-                if self.cfg.verbose >= 3 {
+                /*if self.cfg.verbose >= 3 {
                     log::debug!("set_operand_value Memory: mem_seg={:?}, mem_base={:?}, mem_index={:?}", 
                                mem_seg, mem_base, mem_index);
                     log::debug!("  mem_displace=0x{:x}", mem_displace);
-                }
+                }*/
 
                 let temp_displace = if mem_index == Register::None {
                     mem_displace
@@ -454,10 +454,10 @@ impl Emu {
                     let index_val = self.regs().get_reg(mem_index);
                     let scale_factor = index_val.wrapping_mul(scale_index as u64);
                     let result = mem_displace.wrapping_add(scale_factor);
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}", 
                                    scale_index, index_val, scale_factor, result);
-                    }
+                    }*/
                     result
                 };
 
@@ -492,42 +492,42 @@ impl Emu {
                 */
                 // case when address is relative to rip then just return temp_displace
                 let displace = if mem_base == Register::None {
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  mem_base is None, displace=temp_displace=0x{:x}", temp_displace);
-                    }
+                    }*/
                     temp_displace
                 } else {
                     let base_val = self.regs().get_reg(mem_base);
                     let result = base_val.wrapping_add(temp_displace);
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  base_val=0x{:x}, displace=base+temp_displace=0x{:x}", base_val, result);
-                    }
+                    }*/
                     result
                 };
 
                 let displace_result = if !self.cfg.is_64bits {
                     let masked = displace & 0xffffffff;
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  32-bit mode: displace_result=0x{:x} (masked from 0x{:x})", masked, displace);
-                    }
+                    }*/
                     masked
                 } else {
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  64-bit mode: displace_result=0x{:x}", displace);
-                    }
+                    }*/
                     displace
                 };
 
                 // do this for cmov optimization
                 let mem_addr = if mem_base == Register::RIP {
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  RIP-relative: mem_addr=temp_displace=0x{:x}", temp_displace);
-                    }
+                    }*/
                     temp_displace
                 } else {
-                    if self.cfg.verbose >= 3 {
+                    /*if self.cfg.verbose >= 3 {
                         log::debug!("  Final mem_addr for write=0x{:x}", displace_result);
-                    }
+                    }*/
                     displace_result
                 };
 
