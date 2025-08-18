@@ -201,7 +201,8 @@ impl From<SerializableEmu> for Emu {
             threads: serialized.threads.into_iter().map(|t| t.into()).collect(),
             current_thread_id: serialized.current_thread_id,
             global_locks: GlobalLocks::new(), // Reset locks on deserialization
-            definitions: HashMap::new()
+            definitions: HashMap::new(),
+            stored_contexts: HashMap::new()
         }
     }
 }

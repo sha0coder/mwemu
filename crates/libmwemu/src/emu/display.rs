@@ -36,45 +36,7 @@ impl Emu {
         self.regs().show_r14(&self.maps, 0);
         self.regs().show_r15(&self.maps, 0);
     }
-
-
-    pub fn show_definition(&mut self) {
-        let rip = self.regs().rip;
-        let definitions = &self.cfg.definitions;
-        if let Some(definition) = definitions.get(&rip) {
-            log::info!("Function definition: {} (0x{:x})", definition.name, rip);
-                
-            for (i, param) in definition.parameters.iter().enumerate() {
-                let value = match i {
-                    0 => self.regs().rcx,
-                    1 => self.regs().rdx,
-                    2 => self.regs().r8,
-                    3 => self.regs().r9,
-                    _ => {
-                        // Stack parameters (5th and beyond) at rsp + 0x20 + (i-4)*8
-                        let addr = self.regs().rsp + 0x20 + ((i - 4) * 8) as u64;
-                        self.maps.read_qword(addr).unwrap_or(0)
-                    }
-                };
-                
-                let display_value = match param.param_type.as_str() {
-                    "pointer" => format!("0x{:x}", value),
-                    "wide_string" => {
-                        if value != 0 {
-                            let s = self.maps.read_wide_string(value);
-                            format!("L\"{}\" (0x{:x})", s, value)
-                        } else {
-                            "NULL".to_string()
-                        }
-                    }
-                    _ => format!("0x{:x}", value),
-                };
-                
-                log::info!("    {}: {}", param.name, display_value);
-            }
-        }
-    }
-
+    
     #[inline]
     pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
         if self.cfg.verbose < 2 {
