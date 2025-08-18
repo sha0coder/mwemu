@@ -63,6 +63,7 @@ impl Emu {
             threads: vec![ThreadContext::new(0x1000)],
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
+            definitions: vec![]
         }
     }
 

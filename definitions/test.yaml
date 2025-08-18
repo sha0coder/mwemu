@@ -1,0 +1,7 @@
+functions:
+  - address: 0x1800b50a0
+    parameters:
+    - name: output
+      type: pointer
+    - name: input
+      type: wide_string

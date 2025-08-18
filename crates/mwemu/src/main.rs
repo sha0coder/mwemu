@@ -7,6 +7,7 @@ use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
+use libmwemu::definitions;
 use fast_log::{Config};
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
@@ -422,6 +423,9 @@ fn main() {
             .console()
             .chan_len(Some(100000))).unwrap();
     }
+
+    // definitions
+    emu.cfg.definitions = definitions::load_definitions("definitions/test.yaml");
 
     // setup hook to flush the log when end the program
     let orig_hook = panic::take_hook();

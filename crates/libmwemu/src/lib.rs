@@ -11,6 +11,7 @@ pub mod config;
 pub mod console;
 pub mod constants;
 pub mod context;
+pub mod definitions;
 pub mod eflags;
 pub mod elf;
 pub mod emu;

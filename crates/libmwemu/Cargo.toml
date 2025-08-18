@@ -33,6 +33,7 @@ serde_arrays = "0.2.0"
 slab = { version = "0.4.10", features=["serde"] }
 bytemuck = "1.23.1"
 minidump = "0.26.0"
+serde_yaml = "0.9"
 
 [dev-dependencies]
 env_logger = "0.11.8"
