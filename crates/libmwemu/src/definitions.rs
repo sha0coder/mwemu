@@ -13,6 +13,7 @@ pub struct Parameter {
 pub struct Definition {
     #[serde(deserialize_with = "deserialize_address")]
     pub address: u64,
+    pub name: String,
     pub parameters: Vec<Parameter>,
 }
 

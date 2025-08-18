@@ -37,66 +37,13 @@ impl Emu {
         self.regs().show_r15(&self.maps, 0);
     }
 
-    #[inline]
-    pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
-        if self.cfg.verbose < 2 {
-            return;
-        }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
-        if self.cfg.verbose >= 2 {
-            if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {} ; {}",
-                    self.pos,
-                    ins.ip(),
-                    out,
-                    comment
-                );
-            } else {
-                log::info!(
-                    "{}{} 0x{:x}: {} ; {}{}",
-                    color,
-                    self.pos,
-                    ins.ip(),
-                    out,
-                    comment,
-                    self.colors.nc
-                );
-            }
-        }
-    }
 
-    #[inline]
-    pub fn show_instruction(&mut self, color: &str, ins: &Instruction) {
-        if self.cfg.verbose < 2 {
-            return;
-        }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
-        if self.cfg.verbose >= 2 {
-            if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {}",
-                    self.pos,
-                    ins.ip(),
-                    out
-                );
-            } else {
-                log::info!(
-                    "{}{} 0x{:x}: {}{}",
-                    color,
-                    self.pos,
-                    ins.ip(),
-                    out,
-                    self.colors.nc
-                );
-            }
-        }
-
+    pub fn show_definition(&mut self) {
         let rip = self.regs().rip;
         let definitions = &self.cfg.definitions;
         if let Some(definition) = definitions.get(&rip) {
+            log::info!("Function definition: {} (0x{:x})", definition.name, rip);
+                
             for (i, param) in definition.parameters.iter().enumerate() {
                 let value = match i {
                     0 => self.regs().rcx,
@@ -129,6 +76,66 @@ impl Emu {
     }
 
     #[inline]
+    pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
+        if self.cfg.verbose >= 2 {
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} ; {}",
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    comment
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} ; {}{}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    comment,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
+        }
+    }
+
+    #[inline]
+    pub fn show_instruction(&mut self, color: &str, ins: &Instruction) {
+        if self.cfg.verbose < 2 {
+            return;
+        }
+        let mut out: String = String::new();
+        self.formatter.format(ins, &mut out);
+        if self.cfg.verbose >= 2 {
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {}",
+                    self.pos,
+                    ins.ip(),
+                    out
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {}{}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
+        }
+    }
+
+    #[inline]
     pub fn show_instruction_ret(&mut self, color: &str, ins: &Instruction, addr: u64) {
         if self.cfg.verbose < 2 {
             return;
@@ -157,6 +164,7 @@ impl Emu {
                     self.colors.nc
                 );
             }
+            self.show_definition();
         }
     }
 
@@ -187,6 +195,7 @@ impl Emu {
                     self.colors.nc
                 );
             }
+            self.show_definition();
         }
     }
 
@@ -215,6 +224,7 @@ impl Emu {
                     self.colors.nc
                 );
             }
+            self.show_definition();
         }
     }
 
@@ -242,6 +252,7 @@ impl Emu {
                     self.colors.nc
                 );
             }
+            self.show_definition();
         }
     }
 }
