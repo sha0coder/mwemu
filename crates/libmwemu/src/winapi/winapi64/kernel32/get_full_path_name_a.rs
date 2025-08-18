@@ -14,5 +14,6 @@ pub fn GetFullPathNameA(emu: &mut emu::Emu) {
         filename
     );
     // TODO: save the path to buff.
-    emu.regs_mut().rax = 10;
+    //emu.regs_mut().rax = 10;
+    panic!("TODO");
 }

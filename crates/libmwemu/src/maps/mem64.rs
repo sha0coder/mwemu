@@ -452,9 +452,10 @@ impl Mem64 {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_string: 0x{:x?} = {:x?}",
-                        self.build_addresses(addr, s.len() + 1),
-                        s
+                        "mem_trace: write_string: 0x{:x?} = {} ({:x?})",
+                        self.build_addresses(addr, v.len()),
+                        s,
+                        v
                     );
                 }
             }).unwrap();
@@ -495,17 +496,18 @@ impl Mem64 {
         if wide_string.last() != Some(&0) {
             wide_string.push(0);
         }
-        let byte_slice: &[u8] = cast_slice(&wide_string);
-        self.write_bytes(addr, &byte_slice);
+        let wide_string_byte_slice: &[u8] = cast_slice(&wide_string);
+        self.write_bytes(addr, &wide_string_byte_slice);
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_wide_string: 0x{:x?} = {:x?}",
-                        self.build_addresses(addr, s.len() + 1),
-                        s
+                        "mem_trace: write_wide_string: 0x{:x?} = {} ({:x?})",
+                        self.build_addresses(addr, wide_string_byte_slice.len()),
+                        s,
+                        wide_string_byte_slice
                     );
                 }
             }).unwrap();

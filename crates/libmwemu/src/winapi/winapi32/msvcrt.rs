@@ -268,11 +268,11 @@ fn malloc(emu: &mut emu::Emu) {
             .expect("msvcrt!malloc cannot create map");
 
         log_red!(
-        emu,
-        "msvcrt!malloc sz: {} addr: 0x{:x}",
-        size,
-        base
-    );
+            emu,
+            "msvcrt!malloc sz: {} addr: 0x{:x}",
+            size,
+            base
+        );
 
         emu.regs_mut().rax = base;
     } else {
