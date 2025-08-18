@@ -11,6 +11,7 @@ pub struct Parameter {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Definition {
+    #[serde(deserialize_with = "deserialize_address")]
     pub address: u64,
     pub parameters: Vec<Parameter>,
 }
@@ -18,6 +19,20 @@ pub struct Definition {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct Definitions {
     functions: Vec<Definition>,
+}
+
+fn deserialize_address<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = serde::Deserialize::deserialize(deserializer)?;
+    if s.starts_with("0x") {
+        u64::from_str_radix(&s[2..], 16)
+            .map_err(|e| serde::de::Error::custom(e))
+    } else {
+        s.parse::<u64>()
+            .map_err(|e| serde::de::Error::custom(e))
+    }
 }
 
 pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {

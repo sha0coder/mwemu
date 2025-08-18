@@ -1,5 +1,5 @@
 functions:
-  - address: 0x1800b50a0
+  - address: "0x1800b50a0"
     parameters:
     - name: output
       type: pointer
