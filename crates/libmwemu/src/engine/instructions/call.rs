@@ -14,6 +14,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         None => return false,
     };
 
+    if emu.cfg.trace_calls {
+        log::info!("{} 0x{:x} CALL 0x{:x} (0x{:x}, 0x{:x}, 0x{:x})", emu.pos, emu.regs().rip, addr,
+            emu.regs().rcx, emu.regs().rdx, emu.regs().r8);
+    }
+
     if emu.regs_mut().rip == addr - 5 {
         if emu.cfg.verbose >= 1 {
             log::info!("call next instruction, prolly call/pop");
@@ -25,6 +30,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
       }*/
 
     let call_stack_label = format!("{:x}:call:{:x}", emu.regs().rip, addr);
+
     emu.call_stack_mut()
         .push(call_stack_label);
 

@@ -7,6 +7,7 @@ use crate::{constants, definitions::Definition};
 pub struct Config {
     pub filename: String, // filename with full path included
     pub trace_mem: bool,  // show memory operations in every step.
+    pub trace_calls: bool, // trace every call
     pub trace_regs: bool, // show all the regs in every step.
     pub trace_reg: bool,  // show value and content of a reg in every step.
     pub trace_filename: Option<String>,
@@ -55,6 +56,7 @@ impl Config {
         Config {
             filename: String::new(),
             trace_mem: false,
+            trace_calls: false,
             trace_regs: false,
             trace_reg: false,
             trace_filename: None,
