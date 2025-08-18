@@ -93,6 +93,17 @@ impl Emu {
                 );
             }
         }
+
+        let rip = self.regs().rip;
+        let definitions = &self.cfg.definitions;
+        if let Some(definition) = definitions.get(&rip) {
+            // TODO: loop over the parameters and log them
+            // 0 = rcx
+            // 1 = rdx
+            // 2 = r8
+            // 3 = r9
+            // 4 = read from rsp + 0x20
+        }
     }
 
     #[inline]

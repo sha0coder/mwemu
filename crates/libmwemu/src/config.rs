@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use crate::{constants, definitions::Definition};
 
@@ -39,7 +41,7 @@ pub struct Config {
     pub enable_threading: bool,  // Enable multi-threading support
     pub verbose_at: Option<u64>,
     pub command: Option<String>,
-    pub definitions: Vec<Definition>,
+    pub definitions: HashMap<u64, Definition>,
 }
 
 impl Default for Config {
@@ -87,7 +89,7 @@ impl Config {
             enable_threading: false,  // Default to single-threaded for backward compatibility
             verbose_at: None,
             command: None,
-            definitions: vec![]
+            definitions: HashMap::new()
         }
     }
 }

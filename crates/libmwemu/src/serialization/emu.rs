@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::sync::atomic;
 use std::sync::Arc;
@@ -200,7 +201,7 @@ impl From<SerializableEmu> for Emu {
             threads: serialized.threads.into_iter().map(|t| t.into()).collect(),
             current_thread_id: serialized.current_thread_id,
             global_locks: GlobalLocks::new(), // Reset locks on deserialization
-            definitions: vec![]
+            definitions: HashMap::new()
         }
     }
 }

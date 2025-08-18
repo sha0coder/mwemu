@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -19,12 +20,16 @@ struct Definitions {
     functions: Vec<Definition>,
 }
 
-pub fn load_definitions(filename: &str) -> Vec<Definition> {
+pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
     let contents = fs::read_to_string(filename)
         .expect("Failed to read definitions file");
     
     let definitions: Definitions = serde_yaml::from_str(&contents)
         .expect("Failed to parse YAML");
     
-    definitions.functions
+    let mut map = HashMap::new();
+    for def in definitions.functions {
+        map.insert(def.address, def);
+    }
+    map
 }

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant};
+use std::{cell::RefCell, collections::HashMap, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant};
 
 use iced_x86::{Instruction, IntelFormatter};
 
@@ -78,5 +78,5 @@ pub struct Emu {
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
     pub global_locks: GlobalLocks,  // Critical section lock tracking
-    pub definitions: Vec<Definition>,
+    pub definitions: HashMap<u64, Definition>,
 }
