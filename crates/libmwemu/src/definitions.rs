@@ -75,7 +75,7 @@ impl Emu {
             if let Some(context_name) = &definition.store_context {
                 let mut context_values = HashMap::new();
                 for param in &definition.parameters {
-                    let value = self.get_parameter_value(&param.source);
+                    let value = self.resolve_source(&param.source);
                     context_values.insert(param.name.clone(), value);
                 }
                 self.stored_contexts.insert(context_name.clone(), StoredContext { values: context_values });
@@ -83,26 +83,48 @@ impl Emu {
             
             // Display parameters
             for param in &definition.parameters {
-                let value = if param.source.starts_with("context:") {
-                    // Parse context reference: "context:context_name:param_name"
-                    let parts: Vec<&str> = param.source.split(':').collect();
-                    if parts.len() == 3 {
-                        let context_name = parts[1];
-                        let param_name = parts[2];
-                        if let Some(context) = self.stored_contexts.get(context_name) {
-                            *context.values.get(param_name).unwrap_or(&0)
-                        } else {
-                            0
-                        }
+                let value = self.resolve_source(&param.source);
+                let display_value = self.format_parameter_value(value, &param.param_type);
+                log::info!("    {}: {}", param.name, display_value);
+            }
+        }
+    }
+    
+    fn resolve_source(&self, source: &str) -> u64 {
+        let parts: Vec<&str> = source.split(':').collect();
+        
+        match parts[0] {
+            "deref" => {
+                // deref:context:context_name:param_name or deref:register
+                if parts.len() >= 2 {
+                    let inner_source = &source[6..]; // Skip "deref:"
+                    let ptr_value = self.resolve_source(inner_source);
+                    if ptr_value != 0 {
+                        self.maps.read_qword(ptr_value).unwrap_or(0)
                     } else {
                         0
                     }
                 } else {
-                    self.get_parameter_value(&param.source)
-                };
-                
-                let display_value = self.format_parameter_value(value, &param.param_type);
-                log::info!("    {}: {}", param.name, display_value);
+                    0
+                }
+            }
+            "context" => {
+                // context:context_name:param_name
+                if parts.len() == 3 {
+                    let context_name = parts[1];
+                    let param_name = parts[2];
+                    if let Some(context) = self.stored_contexts.get(context_name) {
+                        *context.values.get(param_name).unwrap_or(&0)
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            }
+            _ => {
+                // Direct register or other source
+                self.get_parameter_value(source)
             }
         }
     }

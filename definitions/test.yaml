@@ -11,17 +11,20 @@ events:
       type: wide_string
       source: rdx
 
-  - address: "0x1800b5104" 
+  - address: "0x1800b5104"
     name: "test1_exit"
     type: "function_return"
-    use_context: "test1_call"   # Reference the stored context
+    use_context: "test1_call"
     parameters:
     - name: input
       type: wide_string
-      source: context:test1_call:input    # Get 'input' param from stored context
-    - name: output
-      type: pointer  
-      source: context:test1_call:output   # Get 'output' param from stored context
+      source: context:test1_call:input
+    - name: output_ptr
+      type: pointer
+      source: context:test1_call:output
+    - name: output_result
+      type: wide_string
+      source: deref:context:test1_call:output  # Dereference the pointer
     - name: return_value
       type: int32
       source: rax
