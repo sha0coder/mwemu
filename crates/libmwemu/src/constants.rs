@@ -18,8 +18,13 @@ pub const SYSTEM_DIRECTORY: &str = "C:\\Windows\\System32"; // randomize this
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
 pub const BLOCK_LEN: usize = 0x300;
+pub const ALLOC32_MIN: u64 = 0x60000000;
+pub const ALLOC32_MAX: u64 = 0x6FFFFFFF;
 pub const LIBS32_MIN: u64 = 0x70000000;
 pub const LIBS32_MAX: u64 = 0x7FFFFFFF;
+
+pub const ALLOC64_MIN: u64 = 0x7fe000000000;
+pub const ALLOC64_MAX: u64 = 0x7fefffffffff;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;
 pub const LIBS64_MAX: u64 = 0x7FFFFFFFFFFF;
 
