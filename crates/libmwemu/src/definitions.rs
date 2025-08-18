@@ -69,36 +69,89 @@ impl Emu {
         let rip = self.regs().rip;
         let definitions = &self.cfg.definitions;
         if let Some(definition) = definitions.get(&rip) {
-            log::info!("Function definition: {} (0x{:x})", definition.name, rip);
-                
-            for (i, param) in definition.parameters.iter().enumerate() {
-                let value = match i {
-                    0 => self.regs().rcx,
-                    1 => self.regs().rdx,
-                    2 => self.regs().r8,
-                    3 => self.regs().r9,
-                    _ => {
-                        // Stack parameters (5th and beyond) at rsp + 0x20 + (i-4)*8
-                        let addr = self.regs().rsp + 0x20 + ((i - 4) * 8) as u64;
-                        self.maps.read_qword(addr).unwrap_or(0)
-                    }
-                };
-                
-                let display_value = match param.param_type.as_str() {
-                    "pointer" => format!("0x{:x}", value),
-                    "wide_string" => {
-                        if value != 0 {
-                            let s = self.maps.read_wide_string(value);
-                            format!("L\"{}\" (0x{:x})", s, value)
+            log::info!("Event: {} (0x{:x}) - {}", definition.name, rip, definition.event_type);
+            
+            // Store context if needed
+            if let Some(context_name) = &definition.store_context {
+                let mut context_values = HashMap::new();
+                for param in &definition.parameters {
+                    let value = self.get_parameter_value(&param.source);
+                    context_values.insert(param.name.clone(), value);
+                }
+                self.stored_contexts.insert(context_name.clone(), StoredContext { values: context_values });
+            }
+            
+            // Display parameters
+            for param in &definition.parameters {
+                let value = if param.source.starts_with("context:") {
+                    // Parse context reference: "context:context_name:param_name"
+                    let parts: Vec<&str> = param.source.split(':').collect();
+                    if parts.len() == 3 {
+                        let context_name = parts[1];
+                        let param_name = parts[2];
+                        if let Some(context) = self.stored_contexts.get(context_name) {
+                            *context.values.get(param_name).unwrap_or(&0)
                         } else {
-                            "NULL".to_string()
+                            0
                         }
+                    } else {
+                        0
                     }
-                    _ => format!("0x{:x}", value),
+                } else {
+                    self.get_parameter_value(&param.source)
                 };
                 
+                let display_value = self.format_parameter_value(value, &param.param_type);
                 log::info!("    {}: {}", param.name, display_value);
             }
+        }
+    }
+    
+    fn get_parameter_value(&self, source: &str) -> u64 {
+        match source {
+            "rcx" => self.regs().rcx,
+            "rdx" => self.regs().rdx,
+            "r8" => self.regs().r8,
+            "r9" => self.regs().r9,
+            "rax" => self.regs().rax,
+            "rbx" => self.regs().rbx,
+            "rsi" => self.regs().rsi,
+            "rdi" => self.regs().rdi,
+            "rsp" => self.regs().rsp,
+            "rbp" => self.regs().rbp,
+            _ => {
+                // Try to parse as stack offset like "rsp+0x20"
+                if source.starts_with("rsp+") {
+                    if let Ok(offset) = u64::from_str_radix(&source[6..], 16) {
+                        let addr = self.regs().rsp + offset;
+                        self.maps.read_qword(addr).unwrap_or(0)
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            }
+        }
+    }
+    
+    fn format_parameter_value(&self, value: u64, param_type: &str) -> String {
+        match param_type {
+            "pointer" => format!("0x{:x}", value),
+            "wide_string" => {
+                if value != 0 {
+                    let s = self.maps.read_wide_string(value);
+                    if !s.is_empty() {
+                        format!("L\"{}\" (0x{:x})", s, value)
+                    } else {
+                        format!("0x{:x}", value)
+                    }
+                } else {
+                    "NULL".to_string()
+                }
+            }
+            "int32" => format!("{} (0x{:x})", value as i32, value),
+            _ => format!("0x{:x}", value),
         }
     }
 }
