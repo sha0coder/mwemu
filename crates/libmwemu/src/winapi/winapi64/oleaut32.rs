@@ -48,52 +48,45 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         char_count
     );
     
-    // Calculate sizes like the Python version
-    let ws_len = (char_count + 1) * 2;  // Wide chars + null terminator
-    let total_alloc_size = 4 + ws_len;  // 4-byte length prefix + string data
+    // Calculate exact sizes like the real API
+    let string_bytes = char_count * 2;          // Requested characters in bytes
+    let total_alloc_size = 4 + string_bytes + 2; // Length prefix + string + null terminator
     
-    // Allocate memory
-    let bstr = emu.maps.alloc(total_alloc_size + 100)
+    // Allocate memory (no extra padding needed)
+    let bstr = emu.maps.alloc(total_alloc_size)
         .expect("oleaut32!SysAllocStringLen out of memory");
 
-    let name = format!("alloc_{:x}", bstr);
-    emu.maps.create_map(&name, bstr, total_alloc_size + 100);
+    let name = format!("bstr_alloc_{:x}", bstr);
+    emu.maps.create_map(&name, bstr, total_alloc_size);
+    
+    // Write length prefix (byte count of string data, excluding null terminator)
+    emu.maps.write_dword(bstr, string_bytes as u32);
     
     if str_ptr == 0 {
-        // Handle null input - just write the length prefix
-        let length_bytes = (char_count * 2) as u32;
-        emu.maps.write_dword(bstr, length_bytes);
-
-        // Zero out the string data area
-        for i in 0..=char_count {  // <= to include null terminator
+        // Handle null input - zero out the string area
+        for i in 0..char_count {
             emu.maps.write_word(bstr + 4 + (i * 2), 0);
         }
     } else {
-        // Read the input string
-        let input_string = emu.maps.read_wide_string_n(str_ptr, char_count as usize);
-        
-        // Truncate to requested length and add null terminator
-        let mut truncated = input_string;
-        if truncated.len() > char_count as usize {
-            truncated.truncate(char_count as usize);
+        // Copy exactly char_count characters from input
+        for i in 0..char_count {
+            let char_addr = str_ptr + (i * 2);
+            let wide_char = emu.maps.read_word(char_addr).unwrap();
+            emu.maps.write_word(bstr + 4 + (i * 2), wide_char);
         }
-        truncated.push('\0');
-        
-        // Write length prefix (byte count, not char count)
-        let byte_count = (char_count * 2) as u32;
-        emu.maps.write_dword(bstr, byte_count);
-        
-        // Write the wide string data
-        emu.maps.write_wide_string(bstr + 4, &truncated);
     }
+    
+    // Always write null terminator after the copied characters
+    emu.maps.write_word(bstr + 4 + (char_count * 2), 0);
     
     let return_ptr = bstr + 4;  // Return pointer to string data (after length prefix)
     
     log_red!(
         emu,
-        "SysAllocStringLen returning: 0x{:x} (base: 0x{:x})",
+        "SysAllocStringLen returning: 0x{:x} (base: 0x{:x}, length_prefix: {})",
         return_ptr,
-        bstr
+        bstr,
+        string_bytes
     );
     
     emu.regs_mut().rax = return_ptr;

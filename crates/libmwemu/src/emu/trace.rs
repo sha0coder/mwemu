@@ -46,7 +46,7 @@ impl Emu {
         let pre_op_regs = self.pre_op_regs();
         let post_op_regs = self.post_op_regs();
         let mut registers = String::new();
-        if index == 0 {
+        if self.pos == self.cfg.trace_start || index == 0 {
             registers = format!(
                 "{} rax: {:x}-> {:x}",
                 registers, pre_op_regs.rax, post_op_regs.rax
@@ -116,6 +116,74 @@ impl Emu {
             registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
+        // temp test, always dump all?
+        /*{
+            registers = format!(
+                "{} rax: {:x}-> {:x}",
+                registers, pre_op_regs.rax, post_op_regs.rax
+            );
+            registers = format!(
+                "{} rbx: {:x}-> {:x}",
+                registers, pre_op_regs.rbx, post_op_regs.rbx
+            );
+            registers = format!(
+                "{} rcx: {:x}-> {:x}",
+                registers, pre_op_regs.rcx, post_op_regs.rcx
+            );
+            registers = format!(
+                "{} rdx: {:x}-> {:x}",
+                registers, pre_op_regs.rdx, post_op_regs.rdx
+            );
+            registers = format!(
+                "{} rsp: {:x}-> {:x}",
+                registers, pre_op_regs.rsp, post_op_regs.rsp
+            );
+            registers = format!(
+                "{} rbp: {:x}-> {:x}",
+                registers, pre_op_regs.rbp, post_op_regs.rbp
+            );
+            registers = format!(
+                "{} rsi: {:x}-> {:x}",
+                registers, pre_op_regs.rsi, post_op_regs.rsi
+            );
+            registers = format!(
+                "{} rdi: {:x}-> {:x}",
+                registers, pre_op_regs.rdi, post_op_regs.rdi
+            );
+            registers = format!(
+                "{} r8: {:x}-> {:x}",
+                registers, pre_op_regs.r8, post_op_regs.r8
+            );
+            registers = format!(
+                "{} r9: {:x}-> {:x}",
+                registers, pre_op_regs.r9, post_op_regs.r9
+            );
+            registers = format!(
+                "{} r10: {:x}-> {:x}",
+                registers, pre_op_regs.r10, post_op_regs.r10
+            );
+            registers = format!(
+                "{} r11: {:x}-> {:x}",
+                registers, pre_op_regs.r11, post_op_regs.r11
+            );
+            registers = format!(
+                "{} r12: {:x}-> {:x}",
+                registers, pre_op_regs.r12, post_op_regs.r12
+            );
+            registers = format!(
+                "{} r13: {:x}-> {:x}",
+                registers, pre_op_regs.r13, post_op_regs.r13
+            );
+            registers = format!(
+                "{} r14: {:x}-> {:x}",
+                registers, pre_op_regs.r14, post_op_regs.r14
+            );
+            registers = format!(
+                "{} r15: {:x}-> {:x}",
+                registers, pre_op_regs.r15, post_op_regs.r15
+            );
+        }*/
+
         let mut flags = String::new();
         // dump all flags on first, only differences on next
         let pre_op_flags = self.pre_op_flags();
@@ -167,7 +235,7 @@ impl Emu {
 
         log::info!(
             r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
-            index = index,
+            index = index + 1,
             address = pre_op_regs.rip,
             bytes = instruction_bytes,
             disassembly = output,
