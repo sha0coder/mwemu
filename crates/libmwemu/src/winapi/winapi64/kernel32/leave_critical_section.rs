@@ -28,6 +28,4 @@ pub fn LeaveCriticalSection(emu: &mut emu::Emu) {
 
     // Small delay to simulate atomic operation overhead
     helper::advance_tick(emu, 1);
-
-    emu.regs_mut().rax = cs_ptr;
 }
