@@ -429,7 +429,7 @@ fn main() {
     }
 
     // definitions
-    emu.cfg.definitions = definitions::load_definitions("definitions/test.yaml");
+    //emu.cfg.definitions = definitions::load_definitions("definitions/test.yaml");
 
     // setup hook to flush the log when end the program
     let orig_hook = panic::take_hook();
