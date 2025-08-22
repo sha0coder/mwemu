@@ -7,7 +7,7 @@ use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
-use libmwemu::definitions;
+//use libmwemu::definitions;
 use fast_log::{Config};
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 

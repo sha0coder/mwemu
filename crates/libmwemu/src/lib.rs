@@ -40,6 +40,7 @@ pub mod crit_state;
 pub mod global_locks;
 pub mod thread_context;
 pub mod threading;
+pub mod tracing;
 
 #[cfg(test)]
 mod tests;

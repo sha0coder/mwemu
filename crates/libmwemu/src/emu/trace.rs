@@ -219,9 +219,9 @@ impl Emu {
             );
         }
 
+        /*
         let mut trace_file = self.trace_file.as_ref().unwrap();
-
-        /*writeln!(
+        writeln!(
             trace_file,
             r#""{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
             index = index,
