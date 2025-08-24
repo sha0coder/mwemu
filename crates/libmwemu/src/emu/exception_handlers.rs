@@ -9,12 +9,12 @@ impl Emu {
         self.threads[self.current_thread_id].veh = value;
     }
     
-    pub fn ueh(&self) -> u64 {
-        self.threads[self.current_thread_id].ueh
+    pub fn uef(&self) -> u64 {
+        self.threads[self.current_thread_id].uef
     }
     
-    pub fn set_ueh(&mut self, value: u64) {
-        self.threads[self.current_thread_id].ueh = value;
+    pub fn set_uef(&mut self, value: u64) {
+        self.threads[self.current_thread_id].uef = value;
     }
     
     pub fn eh_ctx(&self) -> u32 {
@@ -52,7 +52,7 @@ impl Emu {
         };
 
         // No handled exceptions
-        if self.seh() == 0 && self.veh() == 0 && self.ueh() == 0 {
+        if self.seh() == 0 && self.veh() == 0 && self.uef() == 0 {
                 log::info!(
                     "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                     self.pos,
@@ -67,6 +67,8 @@ impl Emu {
         }
 
         if self.veh() > 0 {
+            // VEH
+            
             addr = self.veh();
 
             exception::enter(self, ex_type);
@@ -77,36 +79,33 @@ impl Emu {
                 self.set_eip(addr, false);
             }
 
-
-        } else if self.seh() == 0 {
-        } else if self.ueh() > 0 {
-            addr = self.ueh();
-
-            exception::enter(self, ex_type);
-            if self.cfg.is_64bits {
-                self.set_rip(addr, false);
-            } else {
-                self.set_eip(addr, false);
-            }
-        } else {
-
+        } else if self.seh() > 0 {
             // SEH
 
-            next = match self.maps.read_dword(self.seh()) {
-                Some(value) => value.into(),
-                None => {
-                    log::info!("exception wihout correct SEH");
-                    return;
-                }
-            };
+            
+            if self.cfg.is_64bits {
+                // 64bits seh
+                
+                unimplemented!("check .pdata if exists");
+                
+            } else {
+                // 32bits seh
+                next = match self.maps.read_dword(self.seh()) {
+                    Some(value) => value.into(),
+                    None => {
+                        log::info!("exception wihout correct SEH");
+                        return;
+                    }
+                };
 
-            addr = match self.maps.read_dword(self.seh() + 4) {
-                Some(value) => value.into(),
-                None => {
-                    log::info!("exception without correct SEH.");
-                    return;
-                }
-            };
+                addr = match self.maps.read_dword(self.seh() + 4) {
+                    Some(value) => value.into(),
+                    None => {
+                        log::info!("exception without correct SEH.");
+                        return;
+                    }
+                };
+            }
 
             let con = Console::new();
             if self.running_script {
@@ -131,6 +130,22 @@ impl Emu {
                     self.set_eip(addr, false);
                 }
             }
+
+
+        } else if self.uef() > 0 {
+            // UEF
+            
+            addr = self.uef();
+
+            exception::enter(self, ex_type);
+            if self.cfg.is_64bits {
+                self.set_rip(addr, false);
+            } else {
+                self.set_eip(addr, false);
+            }
+
+        } else {
+            unreachable!();
         }
     }
     

@@ -1085,7 +1085,7 @@ fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    emu.set_ueh(filter);
+    emu.set_uef(filter);
     emu.regs_mut().rax = 1;
 }
 
