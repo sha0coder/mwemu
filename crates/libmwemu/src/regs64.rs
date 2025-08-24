@@ -541,7 +541,6 @@ impl Regs64 {
     }
 
     pub fn clear<const B: usize>(&mut self) {
-        panic!("something is clearing regs");
         match B {
             64 => {
                 self.rax = 0;
