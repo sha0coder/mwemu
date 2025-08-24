@@ -8,7 +8,7 @@
 
 x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
 
-![MWEMU Logo](./pics/mwemu_logo.png)
+![MWEMU Logo](./docs/pics/mwemu_logo.png)
 
 ## Some Videos
 
