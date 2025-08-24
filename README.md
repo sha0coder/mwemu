@@ -159,23 +159,23 @@ make tests
 
 mwemu emulates a simple shellcode detecting the execve() interrupt.
 note that I renamed this tool from scemu to mwemu (in italian scemu is a bad word)
-![exploring basic shellcode](pics/basic_shellcode1.png)
+![exploring basic shellcode](docs/pics/basic_shellcode1.png)
 
 We select the line to stop and inspect the memory.
-![inspecting basic shellcode](pics/basic_shellcode2.png)
+![inspecting basic shellcode](docs/pics/basic_shellcode2.png)
 
 After emulating near 2 million instructions of GuLoader win32 in linux, faking cpuid's and other tricks in the way, arrives to a sigtrap to confuse debuggers. 
-![exception handlers](pics/guloader1.png)
+![exception handlers](docs/pics/guloader1.png)
 
 Example of memory dump on the api loader.
-![exception handlers](pics/memdump.png)
+![exception handlers](docs/pics/memdump.png)
 
 There are several maps by default, and can be created more with apis like LoadLibraryA or manually from the console.
 
-![exception handlers](pics/maps.png)
+![exception handlers](docs/pics/maps.png)
 
 Emulating basic windows shellcode based on LdrLoadDLl() that prints a message:
-![msgbox](pics/msgbox.png)
+![msgbox](docs/pics/msgbox.png)
 
 The console allow to view an edit the current state of the cpu:
 ```
@@ -232,19 +232,19 @@ enter .................. step into
 ```
 
 The cobalt strike api loader is the same that metasploit, emulating it:
-![api loader](pics/metasploit_api_loader.png)
+![api loader](docs/pics/metasploit_api_loader.png)
 
 Cobalt Strike API called:
-![cobalt strike](pics/cobalt_strike.png)
+![cobalt strike](docs/pics/cobalt_strike.png)
 
 Metasploit rshell API called:
-![msf rshell](pics/metasploit_rshell.png)
+![msf rshell](docs/pics/metasploit_rshell.png)
 
 Metasploit SGN encoder using few fpu to hide the polymorfism:
-![msf encoded](pics/msf_encoded.png)
+![msf encoded](docs/pics/msf_encoded.png)
 
 Metasploit shikata-ga-nai encoder that also starts with fpu:
-![msf encoded](pics/shikata.png)
+![msf encoded](docs/pics/shikata.png)
 
 Displaying PEB structure:
 ```
