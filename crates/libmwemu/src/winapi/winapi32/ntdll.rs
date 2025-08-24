@@ -1100,7 +1100,7 @@ fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         filter
     );
 
-    emu.set_feh(filter);
+    emu.set_uef(filter);
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;
 }

@@ -20,6 +20,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "exit" => exit(emu),
         "_exit" => _exit(emu),
         "atexit" => atexit(emu),
+        "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -394,4 +395,19 @@ pub fn CharLowerBuffW(emu: &mut emu::Emu) {
 
     // Return the number of characters processed
     emu.regs_mut().rax = processed_count;
+}
+
+fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
+    let ptr1 = emu.regs().rcx;
+
+    log::info!(
+        "{}** {} kernelbase!SetUnhandledExceptionFilter 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        ptr1,
+        emu.colors.nc
+    );
+
+    emu.set_uef(ptr1 as u64);
+    emu.regs_mut().rax = 0;
 }

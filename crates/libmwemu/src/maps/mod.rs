@@ -359,7 +359,8 @@ impl Maps {
                 None
             }
             _ => {
-                panic!("Reading dword to unmapped region at 0x{:x}", addr);
+                log::warn!("Reading dword to unmapped region at 0x{:x}", addr);
+                None
             }
         }
     }

@@ -172,7 +172,7 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         ptr1
     );
 
-    emu.set_feh(ptr1 as u64);
+    emu.set_uef(ptr1 as u64);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0;
