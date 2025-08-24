@@ -190,7 +190,6 @@ impl Emu {
 
         //log::info!("initializing regs");
         if clear_registers {
-            println!("clearing registers");
             self.regs_mut().clear::<64>();
         }
         if clear_flags {
