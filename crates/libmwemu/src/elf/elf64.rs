@@ -279,6 +279,10 @@ impl Elf64 {
             let sh_size = self.elf_shdr[i].sh_size; 
             let mut sh_addr = self.elf_shdr[i].sh_addr;
 
+            //TODO: align sh_size to page size by extending the size, something like:
+            //sh_size = ((sh_size + constants::ELF_PAGE_SIZE - 1) / constants::ELF_PAGE_SIZE) * constants::ELF_PAGE_SIZE;
+
+
             let sname = self.get_section_name(sh_name as usize);
 
             //log::info!("loading elf64 section {}", sname);
