@@ -4,6 +4,7 @@ use std::cell::UnsafeCell;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
+use std::time::Instant;
 
 use crate::emu::Emu;
 
@@ -79,6 +80,14 @@ thread_local! {
     
     // Reusable buffer for the trace record to avoid allocations
     static TRACE_RECORD_BUFFER: UnsafeCell<TraceRecord> = UnsafeCell::new(unsafe { std::mem::zeroed() });
+    
+    // Start time for IPS calculations
+    static TRACE_START_TIME: UnsafeCell<Option<Instant>> = UnsafeCell::new(None);
+    
+    // Last IPS log time and count for rate limiting logs
+    static LAST_IPS_LOG: UnsafeCell<(Instant, u64)> = UnsafeCell::new(unsafe { 
+        (std::mem::zeroed(), 0)
+    });
 }
 
 pub fn init_tracing(path: impl AsRef<Path>) -> std::io::Result<()> {
@@ -88,6 +97,16 @@ pub fn init_tracing(path: impl AsRef<Path>) -> std::io::Result<()> {
     
     TRACE_WRITER.with(|w| unsafe {
         *w.get() = Some(writer);
+    });
+    
+    // Initialize start time
+    TRACE_START_TIME.with(|t| unsafe {
+        *t.get() = Some(Instant::now());
+    });
+    
+    // Initialize last IPS log
+    LAST_IPS_LOG.with(|l| unsafe {
+        *l.get() = (Instant::now(), 0);
     });
     
     log::info!("📝 Trace logging initialized");
@@ -115,6 +134,31 @@ pub fn trace_instruction(emu: &Emu, instruction_count: u64) {
             TRACE_RECORDS_WRITTEN.with(|count_cell| {
                 let count = unsafe { &mut *count_cell.get() };
                 *count += 1;
+                
+                // Calculate and log IPS every 10M instructions
+                if *count % 10_000_000 == 0 {
+                    TRACE_START_TIME.with(|start_cell| {
+                        if let Some(start_time) = unsafe { *start_cell.get() } {
+                            // If emu.now is available as Instant from execution start
+                            let elapsed = start_time.elapsed();
+                            let elapsed_secs = elapsed.as_secs_f64();
+                            if elapsed_secs > 0.0 {
+                                let ips = instruction_count as f64 / elapsed_secs;
+                                
+                                // Rate limit IPS logs to once per second
+                                LAST_IPS_LOG.with(|last_log_cell| {
+                                    let (last_time, _) = unsafe { &mut *last_log_cell.get() };
+                                    let now = Instant::now();
+                                    if now.duration_since(*last_time).as_secs() >= 1 {
+                                        log::info!("⚡ IPS: {:.2} ({} instructions in {:.2}s)", 
+                                            ips, instruction_count, elapsed_secs);
+                                        *last_time = now;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
                 
                 // Flush every 1M records to avoid losing too much data if we crash
                 if *count % 1_000_000 == 0 {

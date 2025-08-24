@@ -54,7 +54,7 @@ pub fn emu64() -> Emu {
     cfg.is_64bits = true;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-    tracing::init_tracing("/tmp/mwemu-tracing.bin");
+    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
     emu
 }
 
@@ -64,5 +64,6 @@ pub fn emu32() -> Emu {
     cfg.is_64bits = false;
     emu.set_config(cfg);
     emu.disable_ctrlc();
+    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
     emu
 }

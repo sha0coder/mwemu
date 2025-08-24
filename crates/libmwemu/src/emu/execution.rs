@@ -597,6 +597,15 @@ impl Emu {
                         }
                     }
 
+                    // trace pre instruction
+                    {
+                        if self.pos >= 100_000_000 {
+                            let mut output = String::new();
+                            self.formatter.format(&ins, &mut output);
+                            tracing::trace_instruction(self, self.pos, &output);
+                        }
+                    }
+
                     let is_ret = match ins.code() {
                         Code::Retnw | Code::Retnd | Code::Retnq => true,
                         _ => false

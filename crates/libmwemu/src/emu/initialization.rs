@@ -110,7 +110,7 @@ impl Emu {
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x22a000;
             // Set up 1MB stack
-            self.regs_mut().rsp = self.cfg.stack_addr + stack_size; // 1MB offset
+            self.regs_mut().rsp = self.cfg.stack_addr + stack_size - 0x08; // 1MB offset
             self.regs_mut().rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
         }
 
@@ -444,13 +444,13 @@ impl Emu {
 
         winapi64::kernel32::load_library(self, "kernel32.dll");
         winapi64::kernel32::load_library(self, "kernelbase.dll");
-        winapi64::kernel32::load_library(self, "iphlpapi.dll");
-        winapi64::kernel32::load_library(self, "ws2_32.dll");
-        winapi64::kernel32::load_library(self, "advapi32.dll");
+        //winapi64::kernel32::load_library(self, "iphlpapi.dll");
+        //winapi64::kernel32::load_library(self, "ws2_32.dll");
+        //winapi64::kernel32::load_library(self, "advapi32.dll");
         winapi64::kernel32::load_library(self, "comctl32.dll");
-        winapi64::kernel32::load_library(self, "winhttp.dll");
-        winapi64::kernel32::load_library(self, "wininet.dll");
-        winapi64::kernel32::load_library(self, "dnsapi.dll");
+        //winapi64::kernel32::load_library(self, "winhttp.dll");
+        //winapi64::kernel32::load_library(self, "wininet.dll");
+        //winapi64::kernel32::load_library(self, "dnsapi.dll");
         winapi64::kernel32::load_library(self, "shell32.dll");
         winapi64::kernel32::load_library(self, "shlwapi.dll");
 
