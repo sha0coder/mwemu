@@ -90,11 +90,15 @@ pub const INTERNET_OPTION_DATA_SEND_TIMEOUT: u32 = 7;
 // https://docs.microsoft.com/en-us/windows/win32/wininet/api-flags
 pub const INTERNET_FLAG_SECURE: u64 = 0x00800000;
 
-pub const ERROR_NO_MORE_FILES: u64 = 18;
-pub const CREATE_SUSPENDED: u64 = 0x00000004;
-pub const EXCEPTION_CONTINUE_EXECUTION: u32 = 0xFFFFFFFF;
+// exceptions
+pub const EXCEPTION_CONTINUE_EXECUTION32: u32 = 0xffffffff;
+pub const EXCEPTION_CONTINUE_EXECUTION64: u64 = 0xffffffff_ffffffff;
 pub const EXCEPTION_CONTINUE_SEARCH:    u32 = 0x00000000;
 pub const EXCEPTION_EXECUTE_HANDLER:    u32 = 0x00000001;
+
+
+pub const ERROR_NO_MORE_FILES: u64 = 18;
+pub const CREATE_SUSPENDED: u64 = 0x00000004;
 pub const STATUS_BREAKPOINT: u32 = 0x80000003;
 pub const STATUS_INTEGER_DIVIDE_BY_ZERO: u32 = 0xc0000094;
 pub const STATUS_INTEGER_OVERFLOW: u32 = 0xc0000095;

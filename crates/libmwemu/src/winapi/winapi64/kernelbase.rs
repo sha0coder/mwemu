@@ -417,3 +417,18 @@ pub fn CharLowerBuffW(emu: &mut emu::Emu) {
     // Return the number of characters processed
     emu.regs_mut().rax = processed_count;
 }
+
+fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
+    let ptr1 = emu.regs().rcx;
+
+    log::info!(
+        "{}** {} kernelbase!SetUnhandledExceptionFilter 0x{:x} {}",
+        emu.colors.light_red,
+        emu.pos,
+        ptr1,
+        emu.colors.nc
+    );
+
+    emu.set_ueh(ptr1 as u64);
+    emu.regs_mut().rax = 0;
+}

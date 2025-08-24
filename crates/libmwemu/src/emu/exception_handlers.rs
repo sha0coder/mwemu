@@ -9,12 +9,12 @@ impl Emu {
         self.threads[self.current_thread_id].veh = value;
     }
     
-    pub fn feh(&self) -> u64 {
-        self.threads[self.current_thread_id].feh
+    pub fn ueh(&self) -> u64 {
+        self.threads[self.current_thread_id].ueh
     }
     
-    pub fn set_feh(&mut self, value: u64) {
-        self.threads[self.current_thread_id].feh = value;
+    pub fn set_ueh(&mut self, value: u64) {
+        self.threads[self.current_thread_id].ueh = value;
     }
     
     pub fn eh_ctx(&self) -> u32 {
@@ -38,6 +38,11 @@ impl Emu {
     /// If it has to be handled initiate contex tand jump to the programmed error routine.
     /// Support SEH, VEH and UEF
     pub fn exception(&mut self, ex_type: ExceptionType) {
+        /*
+            Priority: VEH → SEH → UEF
+         */
+
+
         let addr: u64;
         let next: u64;
 
@@ -46,40 +51,43 @@ impl Emu {
             None => true,
         };
 
-        /*if !handle_exception {
-            return;
-        }*/
-
-        if self.veh() > 0 {
-            addr = self.veh();
-
-            exception::enter(self, ex_type);
-            if self.cfg.is_64bits {
-                self.set_rip(addr, false);
-            } else {
-                self.set_eip(addr, false);
-            }
-        } else if self.feh() > 0 {
-            addr = self.feh();
-
-            exception::enter(self, ex_type);
-            if self.cfg.is_64bits {
-                self.set_rip(addr, false);
-            } else {
-                self.set_eip(addr, false);
-            }
-
-        } else if self.seh() == 0 {
+        // No handled exceptions
+        if self.seh() == 0 && self.veh() == 0 && self.ueh() == 0 {
                 log::info!(
                     "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                     self.pos,
                     self.regs().rip
                 );
-                /* 
-                 * if self.cfg.console_enabled {
-                    Console::spawn_console(self);
-                }*/
                 return;
+        }
+
+        if !handle_exception {
+            log::info!("cancelled exception handling from hook.");
+            return;
+        }
+
+        if self.veh() > 0 {
+            addr = self.veh();
+
+            exception::enter(self, ex_type);
+
+            if self.cfg.is_64bits {
+                self.set_rip(addr, false);
+            } else {
+                self.set_eip(addr, false);
+            }
+
+
+        } else if self.seh() == 0 {
+        } else if self.ueh() > 0 {
+            addr = self.ueh();
+
+            exception::enter(self, ex_type);
+            if self.cfg.is_64bits {
+                self.set_rip(addr, false);
+            } else {
+                self.set_eip(addr, false);
+            }
         } else {
 
             // SEH
