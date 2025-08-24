@@ -347,6 +347,8 @@ pub fn get_crypto_key_len(value: u32) -> usize {
 /// LINUX ////
 // elf
 pub const PT_LOAD: u32 = 1;
+pub const ELF_PAGE_SIZE: u64 = 4096;
+pub const ELF_PAGE_MASK: u64 = ELF_PAGE_SIZE - 1;
 
 // linux errors
 pub const ENOTSOCK: u64 = -1i64 as u64; /* not open sock */

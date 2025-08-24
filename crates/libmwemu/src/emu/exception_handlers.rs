@@ -75,9 +75,10 @@ impl Emu {
                     self.pos,
                     self.regs().rip
                 );
-                if self.cfg.console_enabled {
+                /* 
+                 * if self.cfg.console_enabled {
                     Console::spawn_console(self);
-                }
+                }*/
                 return;
         } else {
 

@@ -237,7 +237,7 @@ impl Emu {
     /// The minimum initializations necessary to emualte asm with no OS simulation.
     pub fn init_cpu(&mut self) {
         self.pos = 0;
-        self.regs_mut().clear::<64>();
+        //self.regs_mut().clear::<64>();
         self.flags_mut().clear();
 
         if self.cfg.is_64bits {
@@ -252,7 +252,7 @@ impl Emu {
 
     /// Initialize linux simulation, it's called from load_code() if the sample is an ELF.
     pub fn init_linux64(&mut self, dyn_link: bool) {
-        self.regs_mut().clear::<64>();
+        //self.regs_mut().clear::<64>();
         self.flags_mut().clear();
         self.flags_mut().f_if = true;
 

@@ -51,16 +51,21 @@ pub fn log_emu_state(emu: &mut Emu) {
 
     let mut out: String = String::new();
     let color = "\x1b[0;31m";
-    let ins = emu.instruction.unwrap().clone();
-    emu.formatter.format(&ins, &mut out);
-    log::info!(
-        "{}{} 0x{:x}: {}{}",
-        color,
-        emu.pos,
-        ins.ip(),
-        out,
-        emu.colors.nc
-    );
+    match emu.instruction {
+        Some(ins) => {
+            let ins = ins.clone();
+            emu.formatter.format(&ins, &mut out);
+            log::info!(
+                "{}{} 0x{:x}: {}{}",
+                color,
+                emu.pos,
+                ins.ip(),
+                out,
+                emu.colors.nc
+            );
+        }
+        None => {}
+    }; 
     
     // Log general purpose registers
     log::error!("Registers:");
