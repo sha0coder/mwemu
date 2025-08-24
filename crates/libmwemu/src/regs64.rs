@@ -541,6 +541,7 @@ impl Regs64 {
     }
 
     pub fn clear<const B: usize>(&mut self) {
+        panic!("something is clearing regs");
         match B {
             64 => {
                 self.rax = 0;
@@ -1765,6 +1766,7 @@ impl Regs64 {
             "r13" => Register::R13,
             "r14" => Register::R14,
             "r15" => Register::R15,
+            "rip" => Register::RIP,
             _ => unimplemented!("unimplemented register {:?}", reg_name),
         };
         self.set_reg(reg, value);

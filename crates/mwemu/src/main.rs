@@ -20,7 +20,7 @@ macro_rules! match_register_arg {
                     .trim_start_matches("0x"),
                 16,
             )
-            .expect("invalid address");
+            .expect("invalid register value");
             $emu.regs_mut().set_reg_by_name($reg, value);
         }
     };
@@ -119,6 +119,7 @@ fn main() {
         .arg(clap_arg!("rdx", "", "rdx", "set rdx register", "RDX"))
         .arg(clap_arg!("rsp", "", "rsp", "set rsp register", "RSP"))
         .arg(clap_arg!("rbp", "", "rbp", "set rbp register", "RBP"))
+        .arg(clap_arg!("rip", "", "rip", "set rip register", "RIP"))
         .arg(clap_arg!("rsi", "", "rsi", "set rsi register", "RSI"))
         .arg(clap_arg!("rdi", "", "rdi", "set rdi register", "RDI"))
         .arg(clap_arg!("r8", "", "r8", "set r8 register", "R8"))
@@ -296,6 +297,7 @@ fn main() {
     match_register_arg!(matches, emu, "rcx");
     match_register_arg!(matches, emu, "rdx");
     match_register_arg!(matches, emu, "rsp");
+    match_register_arg!(matches, emu, "rip");
     match_register_arg!(matches, emu, "rbp");
     match_register_arg!(matches, emu, "rsi");
     match_register_arg!(matches, emu, "rdi");
