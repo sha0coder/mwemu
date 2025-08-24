@@ -1373,10 +1373,6 @@ impl Flags {
         result
     }
 
-
-
-
-
     pub fn shr2p64_overflow(&mut self, value0: u64, value1: u64) -> u64 {
         if value1 == 0 {
             return value0;

@@ -3,11 +3,11 @@ use crate::tests::helpers;
 
 #[test]
 // arithmetic calculations on an 64bits elf
-pub fn elf64lin_cpu_arithmetics() {
+pub fn elf64lin_cpu_arithmetics1() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.load_code("../../test/elf64lin_cpu_arithmetics.bin");
+    emu.load_code("../../test/elf64lin_cpu_arithmetics1.bin");
 
     assert_eq!(emu.flags().dump(), 0x202); // initial flags (match with gdb linux)
 
@@ -90,3 +90,74 @@ pub fn elf64lin_cpu_arithmetics() {
 
     emu.run_to(69);
 }
+
+#[test]
+// arithmetic calculations on an 64bits elf
+pub fn elf64lin_cpu_arithmetics2() {
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.load_code("../../test/elf64lin_cpu_arithmetics2.bin");
+    emu.flags_mut().f_if = true;
+    emu.run_to(790022);
+
+    assert_eq!(emu.regs().rax, 0xffffff03);
+    assert_eq!(emu.regs().rbx, 0x100);
+    assert_eq!(emu.regs().rcx, 0);
+    assert_eq!(emu.regs().rdx, 0);
+    assert_eq!(emu.regs().rsp, 0x402868);
+    assert_eq!(emu.regs().rbp, 0x402868);
+    assert_eq!(emu.regs().rip, 0x4013c1);
+
+    assert!(emu.flags().dump() == 0x206);
+}
+
+#[test]
+// arithmetic calculations on an 64bits elf
+pub fn elf64lin_cpu_arithmetics3() {
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.load_code("../../test/elf64lin_cpu_arithmetics3.bin");
+
+    emu.run_to(1513234);
+
+    assert_eq!(emu.regs().rax, 0xffffffffffffffff);
+    assert_eq!(emu.regs().rbx, 0xffffffffffffffff);
+    assert_eq!(emu.regs().rcx, 0);
+    assert_eq!(emu.regs().rdx, 0);
+    assert_eq!(emu.regs().rsi, 0x40204b);
+    assert_eq!(emu.regs().rbp, 0);
+    assert_eq!(emu.regs().rip, 0x401167);
+}
+
+#[test]
+// arithmetic calculations on an 64bits elf
+pub fn elf64lin_cpu_arithmetics4() {
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.load_code("../../test/elf64lin_cpu_arithmetics4.bin");
+
+    emu.run_to(294);
+
+    assert_eq!(emu.regs().rax, 0x14);
+    assert_eq!(emu.regs().rbx, 0x14);
+    assert_eq!(emu.regs().rcx, 0);
+    assert_eq!(emu.regs().rdx, 0);
+    assert_eq!(emu.regs().rsi, 0x3333333333333333);
+    assert_eq!(emu.regs().rdi, 0x4444444444444444);
+    assert_eq!(emu.regs().rbp, 0);
+    assert_eq!(emu.regs().r8, 0x5555555555555555);
+    assert_eq!(emu.regs().r9, 0x6666666666666666);
+    assert_eq!(emu.regs().r10, 0x7777777777777777);
+    assert_eq!(emu.regs().r11, 0x8888888888888888);
+    assert_eq!(emu.regs().r12, 0x9999999999999999);
+    assert_eq!(emu.regs().r13, 0xaaaaaaaaaaaaaaaa);
+    assert_eq!(emu.regs().r14, 0xbbbbbbbbbbbbbbbb);
+    assert_eq!(emu.regs().r15, 0xcccccccccccccccc);
+    assert_eq!(emu.regs().rip, 0x401188);
+}
+
+
+
