@@ -20,6 +20,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "exit" => exit(emu),
         "_exit" => _exit(emu),
         "atexit" => atexit(emu),
+        "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
