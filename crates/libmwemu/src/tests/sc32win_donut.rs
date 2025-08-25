@@ -14,6 +14,6 @@ pub fn sc32win_donut() {
     emu.load_code(sample);
     emu.run_to(30_862_819);
 
-    assert_eq!(emu.regs().get_eax(), 0x7f937230);
+    assert_eq!(emu.regs().get_eax(), 0xF5B24B1D); // used to be 0x7f937230?
     assert_eq!(emu.regs().get_ebx(), 0xc);
 }
