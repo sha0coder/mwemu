@@ -533,7 +533,11 @@ impl Mem64 {
                 }
             }).unwrap();
         }
-        String::from_utf16(&s).expect("invalid utf-16")
+        
+        match String::from_utf16(&s) {
+            Ok(s) => { return s; }
+            Err(_) => { return "".to_string(); }
+        }
     }
 
     pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {
