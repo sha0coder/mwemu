@@ -189,7 +189,7 @@ impl Emu {
         }
         // emulate
         let result_ok = engine::emulate_instruction(self, &ins, sz, true);
-        tracing::trace_instruction(self, self.pos);
+        //tracing::trace_instruction(self, self.pos);
         self.last_instruction_size = sz;
 
         // Run post-instruction hook
@@ -598,13 +598,11 @@ impl Emu {
                     }
 
                     // trace pre instruction
-                    {
+                    /*{
                         if self.pos >= 100_000_000 {
-                            let mut output = String::new();
-                            self.formatter.format(&ins, &mut output);
-                            tracing::trace_instruction(self, self.pos, &output);
+                            tracing::trace_instruction(self, self.pos);
                         }
-                    }
+                    }*/
 
                     let is_ret = match ins.code() {
                         Code::Retnw | Code::Retnd | Code::Retnq => true,
@@ -631,7 +629,7 @@ impl Emu {
                     
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
-                    tracing::trace_instruction(self, self.pos);
+                    //tracing::trace_instruction(self, self.pos);
                     /*************************************/
 
                     if let Some(rep_count) = self.rep {
