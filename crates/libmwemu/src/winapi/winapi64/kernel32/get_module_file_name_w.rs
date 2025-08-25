@@ -5,36 +5,30 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
     let lp_filename = emu.regs().rdx;
     let n_size = emu.regs().r8 as u32;
     
-    log::info!(
-        "{}** {} kernel32!GetModuleFileNameW hModule: 0x{:x} lpFilename: 0x{:x} nSize: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetModuleFileNameW hModule: 0x{:x} lpFilename: 0x{:x} nSize: {}",
         module_handle,
         lp_filename,
-        n_size,
-        emu.colors.nc
+        n_size
     );
 
     // Handle zero size buffer
     if n_size == 0 {
-        log::info!(
-            "{}** {} GetModuleFileNameW: Zero size buffer {}",
-            emu.colors.light_red,
-            emu.pos,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetModuleFileNameW: Zero size buffer"
+    );
         emu.regs_mut().rax = 0;
         return;
     }
 
     // Validate buffer pointer
     if lp_filename == 0 || !emu.maps.is_mapped(lp_filename) {
-        log::info!(
-            "{}** {} GetModuleFileNameW: Invalid buffer pointer {}",
-            emu.colors.light_red,
-            emu.pos,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetModuleFileNameW: Invalid buffer pointer"
+    );
         emu.regs_mut().rax = 0;
         return;
     }
@@ -59,13 +53,11 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
         
         emu.maps.write_wide_string(lp_filename, &truncated);
         
-        log::info!(
-            "{}** {} GetModuleFileNameW: Buffer too small, truncated to '{}' {}",
-            emu.colors.light_red,
-            emu.pos,
-            truncated,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetModuleFileNameW: Buffer too small, truncated to '{}'",
+        truncated
+    );
         
         // Set last error for Windows XP+ behavior
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
@@ -74,14 +66,12 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
         // Buffer is large enough
         emu.maps.write_wide_string(lp_filename, module_name);
         
-        log::info!(
-            "{}** {} GetModuleFileNameW: Returning '{}' (length: {}) {}",
-            emu.colors.light_red,
-            emu.pos,
-            module_name,
-            name_chars,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "GetModuleFileNameW: Returning '{}' (length: {})",
+        module_name,
+        name_chars
+    );
         
         emu.regs_mut().rax = name_chars as u64; // Return actual length (without null terminator)
     }

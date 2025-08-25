@@ -11,13 +11,11 @@ pub fn WaitForSingleObject(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!WaitForSingleObject error reading millis");
 
-    log::info!(
-        "{}** {} kernel32!WaitForSingleObject  hndl: {} millis: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!WaitForSingleObject  hndl: {} millis: {}",
         handle,
-        millis,
-        emu.colors.nc
+        millis
     );
 
     emu.stack_pop32(false);

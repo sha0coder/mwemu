@@ -6,13 +6,11 @@ pub fn Process32Next(emu: &mut emu::Emu) {
     let handle = emu.regs().rcx;
     let lppe = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!Process32Next hndl: {:x} lppe: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!Process32Next hndl: {:x} lppe: 0x{:x}",
         handle,
-        lppe,
-        emu.colors.nc
+        lppe
     );
 
     emu.maps.write_string(lppe + 44, "explorer.exe\x00");

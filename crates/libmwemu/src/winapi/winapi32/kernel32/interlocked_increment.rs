@@ -13,14 +13,12 @@ pub fn InterlockedIncrement(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(addend as u64, prev + 1);
 
-    log::info!(
-        "{}** {} kernel32!InterlockedIncrement 0x{:x} {}->{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!InterlockedIncrement 0x{:x} {}->{}",
         addend,
         prev,
-        prev + 1,
-        emu.colors.nc
+        prev + 1
     );
 
     emu.stack_pop32(false);

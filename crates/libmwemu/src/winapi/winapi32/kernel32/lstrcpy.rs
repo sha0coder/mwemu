@@ -12,13 +12,11 @@ pub fn lstrcpy(emu: &mut emu::Emu) {
     let s = emu.maps.read_string(src);
     emu.maps.write_string(dst, &s);
 
-    log::info!(
-        "{}** {} kernel32!lstrcpy 0x{:x} `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!lstrcpy 0x{:x} `{}`",
         dst,
-        s,
-        emu.colors.nc
+        s
     );
 
     emu.regs_mut().rax = dst;

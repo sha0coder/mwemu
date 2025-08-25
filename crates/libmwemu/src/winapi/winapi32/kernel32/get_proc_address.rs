@@ -35,15 +35,13 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
 
                 if ordinal.func_name.to_lowercase() == func {
                     emu.regs_mut().rax = ordinal.func_va;
-                    log::info!(
-                        "{}** {} kernel32!GetProcAddress  `{}!{}` =0x{:x} {}",
-                        emu.colors.light_red,
-                        emu.pos,
-                        flink.mod_name,
-                        ordinal.func_name,
-                        emu.regs().get_eax() as u32,
-                        emu.colors.nc
-                    );
+                    log_red!(
+        emu,
+        "kernel32!GetProcAddress  `{}!{}` =0x{:x}",
+        flink.mod_name,
+        ordinal.func_name,
+        emu.regs().get_eax() as u32
+    );
                     return;
                 }
             }

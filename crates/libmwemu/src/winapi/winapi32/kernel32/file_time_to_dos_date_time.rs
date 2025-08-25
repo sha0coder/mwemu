@@ -44,13 +44,11 @@ pub fn FileTimeToDosDateTime(emu: &mut emu::Emu) {
     emu.maps.write_dword(out_lpFatDate, 0);
     emu.maps.write_dword(out_lpFatTime, 0);
 
-    log::info!(
-        "{}** {} kernel32!FileTimeToDosDateTime {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!FileTimeToDosDateTime {} {}",
         dwLowDateTime,
-        dwHighDateTime,
-        emu.colors.nc
+        dwHighDateTime
     );
 
     emu.stack_pop32(false);

@@ -1,11 +1,9 @@
 use crate::emu;
 
 pub fn GetEnvironmentStringsW(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!GetEnvironmentStringsW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetEnvironmentStringsW"
     );
     let addr = emu.alloc("environment", 1024);
     emu.maps

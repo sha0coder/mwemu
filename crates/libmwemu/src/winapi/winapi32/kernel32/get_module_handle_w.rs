@@ -27,12 +27,10 @@ pub fn GetModuleHandleW(emu: &mut emu::Emu) {
         emu.regs_mut().rax = mod_mem.get_base();
     }
 
-    log::info!(
-        "{}** {} kernel32!GetModuleHandleW '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        mod_name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetModuleHandleW '{}'",
+        mod_name
     );
 
     emu.stack_pop32(false);

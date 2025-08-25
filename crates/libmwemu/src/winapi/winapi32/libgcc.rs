@@ -44,13 +44,11 @@ fn __register_frame_info(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!__register_frame_info error reading param");
 
-    log::info!(
-        "{}** {} libgcc!__register_frame_info {:x} {:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "libgcc!__register_frame_info {:x} {:x}",
         p1,
-        p2,
-        emu.colors.nc
+        p2
     );
 
     let mem = match emu.maps.get_mem_by_addr_mut(0x40E198) {
@@ -75,12 +73,10 @@ fn __deregister_frame_info(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("advapi32!__deregister_frame_info error reading param");
 
-    log::info!(
-        "{}** {} libgcc!__deregister_frame_info {:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        p1,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "libgcc!__deregister_frame_info {:x}",
+        p1
     );
 
     emu.stack_pop32(false);

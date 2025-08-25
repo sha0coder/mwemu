@@ -4,12 +4,10 @@ use crate::emu;
 pub fn TlsFree(emu: &mut emu::Emu) {
     let idx = emu.regs().rcx as usize;  // First parameter passed in RCX in x64
 
-    log::info!(
-        "{}** {} kernel32!TlsFree idx: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        idx,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!TlsFree idx: {}",
+        idx
     );
 
     if idx < emu.tls64().len() {

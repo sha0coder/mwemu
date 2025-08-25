@@ -66,33 +66,27 @@ lazy_static! {
 }
 
 fn WsaStartup(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!WsaStartup {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaStartup"
     );
 
     emu.regs_mut().rax = 0;
 }
 
 fn WsaSocketA(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!WsaSocketA {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaSocketA"
     );
 
     emu.regs_mut().rax = helper::socket_create();
 }
 
 fn socket(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} ws2_32!socket {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!socket"
     );
 
     emu.regs_mut().rax = helper::socket_create();
@@ -102,12 +96,10 @@ fn WsaHtons(emu: &mut emu::Emu) {
     let host_port = emu.regs().rdx;
     let out_port = emu.regs().r8;
 
-    log::info!(
-        "{}** {} ws2_32!WsaHtons {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        host_port,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!WsaHtons {}",
+        host_port
     );
 
     //TODO: implement this
@@ -117,12 +109,10 @@ fn WsaHtons(emu: &mut emu::Emu) {
 fn htons(emu: &mut emu::Emu) {
     let port: u16 = emu.regs().rcx as u16;
 
-    log::info!(
-        "{}** {} ws2_32!htons port: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        port,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!htons port: {}",
+        port
     );
 
     emu.regs_mut().rax = port.to_be() as u64;
@@ -133,11 +123,9 @@ fn inet_addr(emu: &mut emu::Emu) {
 
     //TODO: derreferece addr
 
-    log::info!(
-        "{}** {} ws2_32!inet_addr {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!inet_addr"
     );
 
     emu.regs_mut().rax = 0;
@@ -168,14 +156,12 @@ fn connect(emu: &mut emu::Emu) {
         (ip & 0xff0000) >> 16,
         (ip & 0xff000000) >> 24
     );
-    log::info!(
-        "{}** {} ws2_32!connect  family: {} {}:{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!connect  family: {} {}:{}",
         family,
         sip,
-        port,
-        emu.colors.nc
+        port
     );
 
     if emu.cfg.endpoint {
@@ -204,13 +190,11 @@ fn recv(emu: &mut emu::Emu) {
     let mut len = emu.regs().r8;
     let flags = emu.regs().r9;
 
-    log::info!(
-        "{}** {} ws2_32!recv   buff: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!recv   buff: 0x{:x} sz: {}",
         buff,
-        len,
-        emu.colors.nc
+        len
     );
 
     if !helper::socket_exist(sock) {
@@ -263,12 +247,10 @@ fn send(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(buff, len as usize);
 
-    log::info!(
-        "{}** {} ws2_32!send {{{}}}   {}",
-        emu.colors.light_red,
-        emu.pos,
-        bytes,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!send {{{}}}",
+        bytes
     );
 
     if !helper::socket_exist(sock) {
@@ -321,14 +303,12 @@ fn bind(emu: &mut emu::Emu) {
         (ip & 0xff000000) >> 24
     );
 
-    log::info!(
-        "{}** {} ws2_32!bind  family: {} {}:{}  {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!bind  family: {} {}:{}",
         family,
         sip,
-        port.to_be(),
-        emu.colors.nc
+        port.to_be()
     );
 
     if !helper::socket_exist(sock) {
@@ -343,12 +323,10 @@ fn listen(emu: &mut emu::Emu) {
     let sock = emu.regs().rcx;
     let connections = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} ws2_32!listen  connections: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        connections,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!listen  connections: {}",
+        connections
     );
 
     if !helper::socket_exist(sock) {
@@ -367,12 +345,10 @@ fn accept(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
-    log::info!(
-        "{}** {} ws2_32!accept  connections: {}  {}",
-        emu.colors.light_red,
-        emu.pos,
-        bytes,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!accept  connections: {}",
+        bytes
     );
 
     if !helper::socket_exist(sock) {
@@ -386,11 +362,9 @@ fn accept(emu: &mut emu::Emu) {
 fn closesocket(emu: &mut emu::Emu) {
     let sock = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} ws2_32!closesocket {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!closesocket"
     );
 
     helper::socket_close(sock);
@@ -415,14 +389,12 @@ fn setsockopt(emu: &mut emu::Emu) {
 
     let val = emu.maps.read_dword(optval).unwrap_or_default();
 
-    log::info!(
-        "{}** {} ws2_32!setsockopt  lvl: {} opt: {} val: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!setsockopt  lvl: {} opt: {} val: {}",
         level,
         optname,
-        val,
-        emu.colors.nc
+        val
     );
 
     if !helper::socket_exist(sock) {
@@ -445,13 +417,11 @@ fn getsockopt(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(optval, 1);
 
-    log::info!(
-        "{}** {} ws2_32!getsockopt  lvl: {} opt: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!getsockopt  lvl: {} opt: {}",
         level,
-        optname,
-        emu.colors.nc
+        optname
     );
 
     if !helper::socket_exist(sock) {
@@ -474,13 +444,11 @@ fn WsaAccept(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
-    log::info!(
-        "{}** {} ws2_32!WsaAccept  connections: {} callback: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "ws2_32!WsaAccept  connections: {} callback: {}",
         bytes,
-        callback,
-        emu.colors.nc
+        callback
     );
 
     if !helper::socket_exist(sock) {
@@ -499,12 +467,10 @@ fn GetSockName(emu: &mut emu::Emu) {
     emu.maps.write_dword(sockaddr_ptr, 0);
     emu.maps.write_dword(namelen_ptr, 4);
 
-    log::info!(
-        "{}** {} ws2_32!GetSockName sock: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        sock,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!GetSockName sock: {}",
+        sock
     );
 
     emu.regs_mut().rax = 0;
@@ -514,12 +480,10 @@ fn gethostbyname(emu: &mut emu::Emu) {
     let domain_name_ptr = emu.regs().rcx;
     let domain_name = emu.maps.read_string(domain_name_ptr);
 
-    log::info!(
-        "{}** {} ws2_32!gethostbyname `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        domain_name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "ws2_32!gethostbyname `{}`",
+        domain_name
     );
 
     let addr = emu.maps.alloc(1024).expect("low memory");

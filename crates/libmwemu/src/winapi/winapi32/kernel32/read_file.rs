@@ -46,14 +46,12 @@ pub fn ReadFile(emu: &mut emu::Emu) {
     //TODO: write some random bytes to the buffer
     //emu.maps.write_spaced_bytes(buff, "00 00 00 01".to_string());
 
-    log::info!(
-        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {}",
         file_hndl,
         buff,
-        size,
-        emu.colors.nc
+        size
     );
 
     if !helper::handler_exist(file_hndl) {

@@ -60,13 +60,11 @@ fn _initterm_e(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!_initterm_e: error reading en pointer") as u64;
 
-    log::info!(
-        "{}** {} msvcrt!_initterm_e 0x{:x} - 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!_initterm_e 0x{:x} - 0x{:x}",
         start_ptr,
-        end_ptr,
-        emu.colors.nc
+        end_ptr
     );
 
     emu.regs_mut().rax = 0;
@@ -82,13 +80,11 @@ fn _initterm(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("msvcrt!_initterm_e: error reading end pointer") as u64;
 
-    log::info!(
-        "{}** {} msvcrt!_initterm 0x{:x} - 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!_initterm 0x{:x} - 0x{:x}",
         start_ptr,
-        end_ptr,
-        emu.colors.nc
+        end_ptr
     );
 
     emu.regs_mut().rax = 0;
@@ -106,25 +102,21 @@ fn StrCmpCA(emu: &mut emu::Emu) {
 
     if str1_ptr == 0 || str2_ptr == 0 {
         emu.regs_mut().rax = 0xffffffff;
-        log::info!(
-            "{}** {} msvcrt!StrCmpA null ptrs {}",
-            emu.colors.light_red,
-            emu.pos,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "msvcrt!StrCmpA null ptrs"
+    );
         return;
     }
 
     let str1 = emu.maps.read_string(str1_ptr);
     let str2 = emu.maps.read_string(str2_ptr);
 
-    log::info!(
-        "{}** {} msvcrt!StrCmpA {} == {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!StrCmpA {} == {}",
         str1,
-        str2,
-        emu.colors.nc
+        str2
     );
 
     if str1 == str2 {
@@ -146,25 +138,21 @@ fn fopen(emu: &mut emu::Emu) {
 
     if filepath_ptr == 0 || mode_ptr == 0 {
         emu.regs_mut().rax = 0xffffffff;
-        log::info!(
-            "{}** {} msvcrt!fopen null ptrs {}",
-            emu.colors.light_red,
-            emu.pos,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "msvcrt!fopen null ptrs"
+    );
         return;
     }
 
     let filepath = emu.maps.read_string(filepath_ptr);
     let mode = emu.maps.read_string(mode_ptr);
 
-    log::info!(
-        "{}** {} msvcrt!fopen `{}` fmt:`{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!fopen `{}` fmt:`{}`",
         filepath,
-        mode,
-        emu.colors.nc
+        mode
     );
 
     emu.regs_mut().rax = helper::handler_create(&filepath);
@@ -190,14 +178,12 @@ fn fwrite(emu: &mut emu::Emu) {
 
     let filename = helper::handler_get_uri(file as u64);
 
-    log::info!(
-        "{}** {} msvcrt!fwrite `{}` 0x{:x} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!fwrite `{}` 0x{:x} {}",
         filename,
         buff_ptr,
-        size,
-        emu.colors.nc
+        size
     );
 
     emu.regs_mut().rax = size as u64;
@@ -211,12 +197,10 @@ fn fflush(emu: &mut emu::Emu) {
 
     let filename = helper::handler_get_uri(file as u64);
 
-    log::info!(
-        "{}** {} msvcrt!fflush `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        filename,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!fflush `{}`",
+        filename
     );
 
     //emu.stack_pop32(false);
@@ -232,47 +216,42 @@ fn fclose(emu: &mut emu::Emu) {
 
     let filename = helper::handler_get_uri(file as u64);
 
-    log::info!(
-        "{}** {} msvcrt!fclose `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        filename,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!fclose `{}`",
+        filename
     );
 
     emu.regs_mut().rax = 1;
 }
 
 fn __p___argv(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} msvcrt!__p___argc {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!__p___argc"
     );
     emu.regs_mut().rax = 0;
 }
 
 fn __p___argc(emu: &mut emu::Emu) {
-    let args = match emu.maps.get_map_by_name("args") {
-        Some(a) => a,
+    let args_base = match emu.maps.get_map_by_name("args") {
+        Some(a) => a.get_base(),
         None => {
             let addr = emu.maps.alloc(1024).expect("out of memory");
             emu.maps
                 .create_map("args", addr, 1024)
                 .expect("cannot create args map")
+                .get_base()
         }
     };
 
-    log::info!(
-        "{}** {} msvcrt!__p___argc {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        args.get_base(),
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!__p___argc {}",
+        args_base
     );
 
-    emu.regs_mut().rax = args.get_base();
+    emu.regs_mut().rax = args_base;
 }
 
 fn malloc(emu: &mut emu::Emu) {
@@ -288,13 +267,11 @@ fn malloc(emu: &mut emu::Emu) {
             .create_map(&format!("alloc_{:x}", base), base, size)
             .expect("msvcrt!malloc cannot create map");
 
-        log::info!(
-            "{}** {} msvcrt!malloc sz: {} addr: 0x{:x} {}",
-            emu.colors.light_red,
-            emu.pos,
+        log_red!(
+            emu,
+            "msvcrt!malloc sz: {} addr: 0x{:x}",
             size,
-            base,
-            emu.colors.nc
+            base
         );
 
         emu.regs_mut().rax = base;
@@ -304,11 +281,9 @@ fn malloc(emu: &mut emu::Emu) {
 }
 
 fn __p__acmdln(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} msvcrt!__p___argc {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!__p___argc"
     );
     emu.regs_mut().rax = 0;
 }
@@ -319,12 +294,10 @@ fn _onexit(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_onexit") as u64;
 
-    log::info!(
-        "{}** {} msvcrt!_onexit 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        fptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!_onexit 0x{:x}",
+        fptr
     );
 
     emu.regs_mut().rax = fptr;
@@ -336,12 +309,10 @@ fn _lock(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("msvcrt!_lock");
 
-    log::info!(
-        "{}** {} msvcrt!_lock {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        lock_num,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!_lock {}",
+        lock_num
     );
 
     emu.regs_mut().rax = 1;
@@ -353,12 +324,10 @@ fn free(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("msvcrt!free error reading addr");
 
-    log::info!(
-        "{}** {} msvcrt!free 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        addr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!free 0x{:x}",
+        addr
     );
 }
 
@@ -383,15 +352,13 @@ fn realloc(emu: &mut emu::Emu) {
                 .create_map(&format!("alloc_{:x}", base), base, size)
                 .expect("msvcrt!malloc cannot create map");
 
-            log::info!(
-                "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
-                emu.colors.light_red,
-                emu.pos,
-                addr,
-                size,
-                base,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x{:x}",
+        addr,
+        size,
+        base
+    );
 
             emu.regs_mut().rax = base;
             return;
@@ -399,14 +366,12 @@ fn realloc(emu: &mut emu::Emu) {
     }
 
     if size == 0 {
-        log::info!(
-            "{}** {} msvcrt!realloc 0x{:x} {} =0x1337 {}",
-            emu.colors.light_red,
-            emu.pos,
-            addr,
-            size,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x1337",
+        addr,
+        size
+    );
 
         emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
         return;
@@ -427,14 +392,12 @@ fn realloc(emu: &mut emu::Emu) {
     emu.maps.memcpy(new_addr, addr, prev_size);
     emu.maps.dealloc(addr);
 
-    log::info!(
-        "{}** {} msvcrt!realloc 0x{:x} {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!realloc 0x{:x} {} =0x{:x}",
         addr,
         size,
-        new_addr,
-        emu.colors.nc
+        new_addr
     );
 
     emu.regs_mut().rax = new_addr;
@@ -454,13 +417,11 @@ fn strtok(emu: &mut emu::Emu) {
     let str = emu.maps.read_string(str_ptr as u64);
     let delim = emu.maps.read_string(delim_ptr as u64);
 
-    log::info!(
-        "{}** {} msvcrt!strtok `{}` `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "msvcrt!strtok `{}` `{}`",
         str,
-        delim,
-        emu.colors.nc
+        delim
     );
 
     emu.regs_mut().rax = 0;
@@ -472,11 +433,9 @@ fn __set_app_type(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("msvcrt!__set_app_type error reading app_type");
 
-    log::info!(
-        "{}** {} msvcrt!__set_app_type  app_type: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        app_type,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "msvcrt!__set_app_type  app_type: 0x{:x}",
+        app_type
     );
 }

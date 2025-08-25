@@ -4,12 +4,10 @@ use crate::{emu, structures};
 pub fn GetVersionExW(emu: &mut emu::Emu) {
     let version_info_ptr = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} kernel32!GetVersionExW 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        version_info_ptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetVersionExW 0x{:x}",
+        version_info_ptr
     );
 
     let os_version_info = structures::OsVersionInfoExW::new();

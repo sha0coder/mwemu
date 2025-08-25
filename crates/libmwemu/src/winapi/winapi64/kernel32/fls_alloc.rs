@@ -4,12 +4,10 @@ use crate::emu;
 pub fn FlsAlloc(emu: &mut emu::Emu) {
     let callback = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} kernel32!FlsAlloc callback: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        callback,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!FlsAlloc callback: 0x{:x}",
+        callback
     );
 
     emu.regs_mut().rax = 1;

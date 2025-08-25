@@ -13,12 +13,10 @@ pub fn FindFirstFileW(emu: &mut emu::Emu) {
 
     let file = emu.maps.read_wide_string(file_ptr);
 
-    log::info!(
-        "{}** {} kernel32!FindFirstFileW file: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        file,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!FindFirstFileW file: {}",
+        file
     );
 
     emu.stack_pop32(false);

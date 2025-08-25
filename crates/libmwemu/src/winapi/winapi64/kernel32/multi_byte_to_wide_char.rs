@@ -55,30 +55,27 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         utf8 = String::from_utf8_lossy(&bytes).to_string();
     }
 
-    log::info!(
-        "{}** {}:{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}{}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        ":{:x} kernel32!MultiByteToWideChar code_page: {} dw_flags: {} utf8_ptr: 0x{:x} cb_multi_byte: {} wide_ptr: 0x{:x} cch_wide_char: {}",
         emu.regs().rip,
         code_page,
         dw_flags,
         utf8_ptr,
         cb_multi_byte,
         wide_ptr,
-        cch_wide_char,
-        emu.colors.nc
+        cch_wide_char
     );
 
     // LOG THE INPUT STRING
     if utf8_ptr > 0 && !utf8.is_empty() {
-        log::info!(
-            "{}** {} Input UTF-8 string: \"{}\" (length: {} bytes) {}",
-            emu.colors.light_red,
-            emu.pos,
-            utf8.escape_debug(), // This will show escape sequences for non-printable chars
-            cb_multi_byte,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "Input UTF-8 string: \"{}\" (length: {} bytes)",
+        utf8.escape_debug(),
+        // This will show escape sequences for non-printable chars
+            cb_multi_byte
+    );
     }
 
     // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)

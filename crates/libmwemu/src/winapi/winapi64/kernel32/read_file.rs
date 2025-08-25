@@ -12,16 +12,14 @@ pub fn ReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!ReadFile cannot read the overlapped");
 
-    log::info!(
-        "{}** {} kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} bytes_read: {:x} overlapped: {:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!ReadFile hndl: 0x{:x} buff: 0x{:x} sz: {} bytes_read: {:x} overlapped: {:x}",
         file_hndl,
         buff,
         size,
         bytes_read,
-        overlapped,
-        emu.colors.nc
+        overlapped
     );
 
     if !helper::handler_exist(file_hndl) {

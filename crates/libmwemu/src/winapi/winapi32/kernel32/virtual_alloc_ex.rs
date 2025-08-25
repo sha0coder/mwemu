@@ -22,13 +22,11 @@ pub fn VirtualAllocEx(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("kernel32!VirtualAllocEx cannot read the protect");
 
-    log::info!(
-        "{}** {} kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x}",
         proc_hndl,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     let base = emu

@@ -8,11 +8,9 @@ pub fn QueryPerformanceCounter(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(counter_ptr, 0x1);
 
-    log::info!(
-        "{}** {} kernel32!QueryPerformanceCounter {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!QueryPerformanceCounter"
     );
 
     emu.stack_pop32(false);

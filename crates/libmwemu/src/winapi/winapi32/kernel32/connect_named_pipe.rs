@@ -11,12 +11,10 @@ pub fn ConnectNamedPipe(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!ConnectNamedPipe cannot read the overlapped");
 
-    log::info!(
-        "{}** {} kernel32!ConnectNamedPipe hndl: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        handle,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!ConnectNamedPipe hndl: 0x{:x}",
+        handle
     );
     if !helper::handler_exist(handle) {
         log::info!("\tinvalid handle.");

@@ -48,7 +48,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         let bytes = emu.maps.read_bytes(addr, 16);
         if bytes.len() != 16 {
-            log::info!("error reading 16 bytes");
+            log::info!("error reading 16 bytes at {addr:x}");
             return false;
         }
 

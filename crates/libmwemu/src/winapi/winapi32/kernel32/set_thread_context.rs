@@ -12,11 +12,9 @@ pub fn SetThreadContext(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!SetThreadContext cannot read the ctx_ptr");
 
-    log::info!(
-        "{}** {} kernel32!SetThreadContext  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!SetThreadContext"
     );
 
     let con = console::Console::new();

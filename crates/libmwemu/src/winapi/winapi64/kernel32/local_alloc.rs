@@ -5,13 +5,11 @@ pub fn LocalAlloc(emu: &mut emu::Emu) {
     let flags = emu.regs().rcx;
     let bytes = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!LocalAlloc flags: {:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!LocalAlloc flags: {:x} sz: {}",
         flags,
-        bytes,
-        emu.colors.nc
+        bytes
     );
 
     let base = emu

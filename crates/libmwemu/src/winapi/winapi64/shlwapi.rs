@@ -48,13 +48,11 @@ pub fn PathIsContentTypeW(emu: &mut emu::Emu) {
         content_type = emu.maps.read_wide_string(content_type_ptr);
     }
 
-    log::info!(
-        "{}** {} shlwapi!PathIsContentTypeW path: {} content-type: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "shlwapi!PathIsContentTypeW path: {} content-type: {}",
         path,
-        content_type,
-        emu.colors.nc
+        content_type
     );
 
     emu.regs_mut().rax = 1;
@@ -74,13 +72,11 @@ pub fn PathFindSuffixArrayA(emu: &mut emu::Emu) {
         suffixes = emu.maps.read_string(suffixes_ptr);
     }
 
-    log::info!(
-        "{}** {} shlwapi!PathFindSuffixArrayA path: {} suffixes: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "shlwapi!PathFindSuffixArrayA path: {} suffixes: {}",
         path,
-        suffixes,
-        emu.colors.nc
+        suffixes
     );
 
     emu.regs_mut().rax = emu.regs().rdx;

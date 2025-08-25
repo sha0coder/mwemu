@@ -5,12 +5,10 @@ use crate::winapi::helper;
 pub fn ResumeThread(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} kernel32!ResumeThread hndl: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        hndl,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!ResumeThread hndl: 0x{:x}",
+        hndl
     );
 
     // Get the URI from the handle to extract thread ID

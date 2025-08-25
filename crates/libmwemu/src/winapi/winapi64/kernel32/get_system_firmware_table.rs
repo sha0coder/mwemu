@@ -24,16 +24,14 @@ pub fn GetSystemFirmwareTable(emu: &mut emu::Emu) {
     // TODO: Fill buffer with fake firmware table data
     // TODO: Common anti-VM check: looks for VMware/VirtualBox signatures in SMBIOS
 
-    log::info!(
-       "{}** {} kernel32!GetSystemFirmwareTable provider: 0x{:x} ('{}') table_id: 0x{:x} buffer: 0x{:x} size: {} {}",
-       emu.colors.light_red,
-       emu.pos,
-       provider_signature,
-       std::str::from_utf8(&provider_signature.to_le_bytes()).unwrap_or("????"),
-       table_id,
-       buffer_ptr,
-       buffer_size,
-       emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemFirmwareTable provider: 0x{:x} ('{}') table_id: 0x{:x} buffer: 0x{:x} size: {}",
+        provider_signature,
+        std::str::from_utf8(&provider_signature.to_le_bytes()).unwrap_or("????"),
+        table_id,
+        buffer_ptr,
+        buffer_size
     );
 
     // TODO: Return actual bytes written/required, or 0 on error

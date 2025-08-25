@@ -3,18 +3,18 @@ use crate::{emu, structures};
 pub fn GetVersionExA(emu: &mut emu::Emu) {
     let version_info_ptr = emu.regs().rcx;
 
-    log::info!(
-        "{}** {} kernel32!GetVersionExA 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        version_info_ptr,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetVersionExA 0x{:x}",
+        version_info_ptr
     );
 
     // Check if pointer is valid
     if version_info_ptr == 0 || !emu.maps.is_mapped(version_info_ptr) {
-        log::info!("{}** {} GetVersionExA: Invalid pointer {}", 
-                  emu.colors.light_red, emu.pos, emu.colors.nc);
+        log_red!(
+        emu,
+        "GetVersionExA: Invalid pointer"
+    );
         emu.regs_mut().rax = 0;
         return;
     }
@@ -22,12 +22,10 @@ pub fn GetVersionExA(emu: &mut emu::Emu) {
     // Read the dwOSVersionInfoSize field (first 4 bytes) to determine structure type
     let struct_size = emu.maps.read_dword(version_info_ptr).expect("Cannot read struct size");
     
-    log::info!(
-        "{}** {} GetVersionExA: Structure size: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        struct_size,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "GetVersionExA: Structure size: {}",
+        struct_size
     );
 
     // Determine which structure type based on size
@@ -36,25 +34,27 @@ pub fn GetVersionExA(emu: &mut emu::Emu) {
 
     let use_extended = match struct_size {
         OSVERSIONINFOA_SIZE => {
-            log::info!("{}** {} Using OSVERSIONINFOA (basic) {}", 
-                      emu.colors.light_red, emu.pos, emu.colors.nc);
+            log_red!(
+        emu,
+        "Using OSVERSIONINFOA (basic)"
+    );
             false
         },
         OSVERSIONINFOEXA_SIZE => {
-            log::info!("{}** {} Using OSVERSIONINFOEXA (extended) {}", 
-                      emu.colors.light_red, emu.pos, emu.colors.nc);
+            log_red!(
+        emu,
+        "Using OSVERSIONINFOEXA (extended)"
+    );
             true
         },
         _ => {
-            log::info!(
-                "{}** {} GetVersionExA: Invalid struct size: {} (expected {} or {}) {}",
-                emu.colors.light_red,
-                emu.pos,
-                struct_size,
-                OSVERSIONINFOA_SIZE,
-                OSVERSIONINFOEXA_SIZE,
-                emu.colors.nc
-            );
+            log_red!(
+        emu,
+        "GetVersionExA: Invalid struct size: {} (expected {} or {})",
+        struct_size,
+        OSVERSIONINFOA_SIZE,
+        OSVERSIONINFOEXA_SIZE
+    );
             emu.regs_mut().rax = 0;
             return;
         }

@@ -7,12 +7,10 @@ pub fn OpenProcess(emu: &mut emu::Emu) {
     let inherit = emu.regs().rdx;
     let pid = emu.regs().r8;
 
-    log::info!(
-        "{}** {} kernel32!OpenProcess pid: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        pid,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!OpenProcess pid: {}",
+        pid
     );
 
     let uri = format!("pid://{}", pid);

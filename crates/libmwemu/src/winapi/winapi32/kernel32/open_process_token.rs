@@ -15,13 +15,11 @@ pub fn OpenProcessToken(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 8)
         .expect("kernel32!OpenProcessToken error reading param") as u64;
 
-    log::info!(
-        "{}** {} kernel32!OpenProcessToken 0x{:x} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!OpenProcessToken 0x{:x} {}",
         hndl,
-        access,
-        emu.colors.nc,
+        access
     );
 
     emu.maps.write_dword(

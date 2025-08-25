@@ -13,11 +13,9 @@ pub fn GetModuleFileNameA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 0;
     }
 
-    log::info!(
-        "{}** {} kernel32!GetModuleFileNameA hndl:{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        hndl,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetModuleFileNameA hndl:{:x}",
+        hndl
     );
 }

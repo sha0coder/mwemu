@@ -14,12 +14,10 @@ pub fn FlsGetValue(emu: &mut emu::Emu) {
         emu.regs_mut().rax = emu.fls_mut()[idx as usize] as u64;
     }
 
-    log::info!(
-        "{}** {} kernel32!FlsGetValue idx: {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!FlsGetValue idx: {} =0x{:x}",
         idx,
-        emu.regs().get_eax() as u32,
-        emu.colors.nc
+        emu.regs().get_eax() as u32
     );
 }

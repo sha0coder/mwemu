@@ -8,12 +8,10 @@ pub fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
 
     let src = emu.maps.read_string(src_ptr);
 
-    log::info!(
-        "{}** {} kernel32!ExpandEnvironmentStringsA `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
-        src,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!ExpandEnvironmentStringsA `{}`",
+        src
     );
     // TODO: expand typical environment varsl.
     emu.regs_mut().rax = 1;

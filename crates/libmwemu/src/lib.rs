@@ -11,6 +11,7 @@ pub mod config;
 pub mod console;
 pub mod constants;
 pub mod context;
+pub mod definitions;
 pub mod eflags;
 pub mod elf;
 pub mod emu;
@@ -39,6 +40,7 @@ pub mod crit_state;
 pub mod global_locks;
 pub mod thread_context;
 pub mod threading;
+pub mod tracing;
 
 #[cfg(test)]
 mod tests;
@@ -52,6 +54,7 @@ pub fn emu64() -> Emu {
     cfg.is_64bits = true;
     emu.set_config(cfg);
     emu.disable_ctrlc();
+    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
     emu
 }
 
@@ -61,5 +64,6 @@ pub fn emu32() -> Emu {
     cfg.is_64bits = false;
     emu.set_config(cfg);
     emu.disable_ctrlc();
+    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
     emu
 }

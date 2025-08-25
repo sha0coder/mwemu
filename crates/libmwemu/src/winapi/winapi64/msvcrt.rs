@@ -57,14 +57,12 @@ fn malloc(emu: &mut emu::Emu) {
             .create_map(&format!("alloc_{:x}", base), base, size)
             .expect("msvcrt!malloc cannot create map");
 
-        log::info!(
-            "{}** {} msvcrt!malloc sz: {} addr: 0x{:x} {}",
-            emu.colors.light_red,
-            emu.pos,
-            size,
-            base,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "msvcrt!malloc sz: {} addr: 0x{:x}",
+        size,
+        base
+    );
 
         emu.regs_mut().rax = base;
     } else {

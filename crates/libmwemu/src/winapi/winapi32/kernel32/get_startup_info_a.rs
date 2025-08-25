@@ -7,11 +7,9 @@ pub fn GetStartupInfoA(emu: &mut emu::Emu) {
             .read_dword(emu.regs().get_esp())
             .expect("kernel32!GetStartupInfoA cannot read startup_info_ptr param") as u64;
 
-    log::info!(
-        "{}** {} kernel32!GetStartupInfoA {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetStartupInfoA"
     );
     if startup_info_ptr > 0 {
         let startupinfo = structures::StartupInfo32::new();

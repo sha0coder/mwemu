@@ -5,7 +5,6 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 mod add_vectored_exception_handler;
-mod are_file_apis_a_n_s_i;
 mod are_file_apis_ansi;
 mod close_handle;
 mod connect_named_pipe;
@@ -45,9 +44,7 @@ mod fls_get_value;
 mod fls_set_value;
 mod free_library;
 mod free_resource;
-mod get_a_c_p;
 mod get_acp;
-mod get_c_p_info;
 mod get_command_line_a;
 mod get_command_line_w;
 mod get_computer_name_a;
@@ -72,7 +69,6 @@ mod get_module_file_name_w;
 mod get_module_handle_a;
 mod get_module_handle_w;
 mod get_native_system_info;
-mod get_o_e_m_c_p;
 mod get_oemcp;
 mod get_proc_address;
 mod get_process_affinity_mask;
@@ -90,15 +86,11 @@ mod get_system_windows_directory_a;
 mod get_system_windows_directory_w;
 mod get_temp_path_w;
 mod get_thread_context;
-mod get_thread_preferred_u_i_languages;
 mod get_thread_preferred_ui_languages;
-mod get_thread_u_i_language;
 mod get_thread_ui_language;
 mod get_tick_count;
 mod get_time_zone_information;
-mod get_user_default_lang_i_d;
 mod get_user_default_lang_id;
-mod get_user_default_u_i_language;
 mod get_user_default_ui_language;
 mod get_version_ex_w;
 mod get_version;
@@ -117,7 +109,6 @@ mod is_debugger_present;
 mod is_processor_feature_present;
 mod is_valid_code_page;
 mod is_valid_locale;
-mod l_c_map_string_w;
 mod lc_map_string_w;
 mod leave_critical_section;
 mod load_library_a;
@@ -130,7 +121,6 @@ mod lock_resource;
 mod lstrcat;
 mod lstrcmp_a;
 mod lstrcmp_w;
-mod lstrcmp;
 mod lstrcpy;
 mod lstrlen;
 mod map_view_of_file;
@@ -186,7 +176,7 @@ mod write_file;
 mod write_process_memory;
 
 pub use add_vectored_exception_handler::*;
-pub use are_file_apis_a_n_s_i::*;
+pub use are_file_apis_ansi::*;
 pub use close_handle::*;
 pub use connect_named_pipe::*;
 pub use copy_file_a::*;
@@ -225,9 +215,8 @@ pub use fls_get_value::*;
 pub use fls_set_value::*;
 pub use free_library::*;
 pub use free_resource::*;
-pub use get_a_c_p::*;
 pub use get_acp::*;
-pub use get_c_p_info::*;
+pub use get_cp_info::*;
 pub use get_command_line_a::*;
 pub use get_command_line_w::*;
 pub use get_computer_name_a::*;
@@ -251,7 +240,7 @@ pub use get_module_file_name_w::*;
 pub use get_module_handle_a::*;
 pub use get_module_handle_w::*;
 pub use get_native_system_info::*;
-pub use get_o_e_m_c_p::*;
+pub use get_oemcp::*;
 pub use get_proc_address::*;
 pub use get_process_affinity_mask::*;
 pub use get_process_heap::*;
@@ -268,13 +257,12 @@ pub use get_system_windows_directory_a::*;
 pub use get_system_windows_directory_w::*;
 pub use get_temp_path_w::*;
 pub use get_thread_context::*;
-pub use get_thread_preferred_u_i_languages::*;
-pub use get_thread_u_i_language::*;
+pub use get_thread_preferred_ui_languages::*;
+pub use get_thread_ui_language::*;
 pub use get_tick_count::*;
 pub use get_time_zone_information::*;
-pub use get_user_default_lang_i_d::*;
-pub use get_user_default_u_i_language::*;
-//pub use get_user_default_ui_language::*;
+pub use get_user_default_lang_id::*;
+pub use get_user_default_ui_language::*;
 pub use get_version_ex_w::*;
 pub use get_version::*;
 pub use get_windows_directory_a::*;
@@ -292,8 +280,7 @@ pub use is_debugger_present::*;
 pub use is_processor_feature_present::*;
 pub use is_valid_code_page::*;
 pub use is_valid_locale::*;
-pub use l_c_map_string_w::*;
-//pub use lc_map_string_w::*;
+pub use lc_map_string_w::*;
 pub use leave_critical_section::*;
 pub use load_library_a::*;
 pub use load_library_ex_a::*;
@@ -305,7 +292,6 @@ pub use lock_resource::*;
 pub use lstrcat::*;
 pub use lstrcmp_a::*;
 pub use lstrcmp_w::*;
-//pub use lstrcmp::*;
 pub use lstrcpy::*;
 pub use lstrlen::*;
 pub use map_view_of_file::*;
@@ -363,178 +349,177 @@ pub use write_process_memory::*;
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
     match api.as_str() {
+        "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
+        "AreFileApisANSI" => AreFileApisANSI(emu),
+        "CloseHandle" => CloseHandle(emu),
+        "ConnectNamedPipe" => ConnectNamedPipe(emu),
+        "CopyFileA" => CopyFileA(emu),
+        "CopyFileW" => CopyFileW(emu),
+        "CreateEventA" => CreateEventA(emu),
+        "CreateFileMappingA" => CreateFileMappingA(emu),
+        "CreateFileMappingW" => CreateFileMappingW(emu),
+        "CreateFileW" => CreateFileW(emu),
+        "CreateMutexA" => CreateMutexA(emu),
+        "CreateMutexW" => CreateMutexW(emu),
+        "CreateNamedPipeA" => CreateNamedPipeA(emu),
+        "CreateProcessA" => CreateProcessA(emu),
+        "CreateRemoteThread" => CreateRemoteThread(emu),
+        "CreateThread" => CreateThread(emu),
+        "CreateToolhelp32Snapshot" => CreateToolhelp32Snapshot(emu),
+        "CryptCreateHash" => CryptCreateHash(emu),
+        "DecodePointer" => DecodePointer(emu),
+        "DisconnectNamedPipe" => DisconnectNamedPipe(emu),
+        "EncodePointer" => EncodePointer(emu),
+        "EnterCriticalSection" => EnterCriticalSection(emu),
+        "ExitProcess" => ExitProcess(emu),
+        "ExpandEnvironmentStringsA" => ExpandEnvironmentStringsA(emu),
+        "ExpandEnvironmentStringsW" => ExpandEnvironmentStringsW(emu),
+        "FileTimeToDosDateTime" => FileTimeToDosDateTime(emu),
+        "FileTimeToLocalFileTime" => FileTimeToLocalFileTime(emu),
+        "FileTimeToSystemTime" => FileTimeToSystemTime(emu),
+        "FindClose" => FindClose(emu),
+        "FindFirstFileA" => FindFirstFileA(emu),
+        "FindFirstFileW" => FindFirstFileW(emu),
+        "FindNextFileA" => FindNextFileA(emu),
+        "FindNextFileW" => FindNextFileW(emu),
+        "FindResourceA" => FindResourceA(emu),
+        "FindResourceW" => FindResourceW(emu),
+        "FlsAlloc" => FlsAlloc(emu),
+        "FlsGetValue" => FlsGetValue(emu),
+        "FlsSetValue" => FlsSetValue(emu),
+        "FreeLibrary" => FreeLibrary(emu),
+        "FreeResource" => FreeResource(emu),
+        "GetACP" => GetACP(emu),
+        "GetCommandLineA" => GetCommandLineA(emu),
+        "GetCommandLineW" => GetCommandLineW(emu),
+        "GetComputerNameA" => GetComputerNameA(emu),
+        "GetCPInfo" => GetCPInfo(emu),
+        "GetCurrentDirectoryA" => GetCurrentDirectoryA(emu),
+        "GetCurrentDirectoryW" => GetCurrentDirectoryW(emu),
+        "GetCurrentProcess" => GetCurrentProcess(emu),
+        "GetCurrentProcessId" => GetCurrentProcessId(emu),
+        "GetCurrentThreadId" => GetCurrentThreadId(emu),
+        "GetEnvironmentStrings" => GetEnvironmentStrings(emu),
+        "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
+        "GetFileAttributesA" => GetFileAttributesA(emu),
+        "GetFileAttributesW" => GetFileAttributesW(emu),
+        "GetFileType" => GetFileType(emu),
+        "GetFullPathNameA" => GetFullPathNameA(emu),
+        "GetFullPathNameW" => GetFullPathNameW(emu),
+        "GetLastError" => GetLastError(emu),
+        "GetLogicalDrives" => GetLogicalDrives(emu),
+        "GetLongPathNameW" => GetLongPathNameW(emu),
+        "GetModuleFileNameA" => GetModuleFileNameA(emu),
+        "GetModuleFileNameW" => GetModuleFileNameW(emu),
+        "GetModuleHandleA" => GetModuleHandleA(emu),
+        "GetModuleHandleW" => GetModuleHandleW(emu),
+        "GetNativeSystemInfo" => GetNativeSystemInfo(emu),
+        "GetOEMCP" => GetOEMCP(emu),
+        "GetProcAddress" => GetProcAddress(emu),
+        "GetProcessAffinityMask" => GetProcessAffinityMask(emu),
+        "GetProcessHeap" => GetProcessHeap(emu),
+        "GetStartupInfoA" => GetStartupInfoA(emu),
+        "GetStartupInfoW" => GetStartupInfoW(emu),
+        "GetStdHandle" => GetStdHandle(emu),
+        "GetStringTypeW" => GetStringTypeW(emu),
+        "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
+        "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
+        "GetSystemInfo" => GetSystemInfo(emu),
+        "GetSystemTime" => GetSystemTime(emu),
+        "GetSystemTimeAsFileTime" => GetSystemTimeAsFileTime(emu),
+        "GetSystemWindowsDirectoryA" => GetSystemWindowsDirectoryA(emu),
+        "GetSystemWindowsDirectoryW" => GetSystemWindowsDirectoryW(emu),
+        "GetTempPathW" => GetTempPathW(emu),
+        "GetThreadContext" => GetThreadContext(emu),
+        "GetThreadPreferredUILanguages" => GetThreadPreferredUILanguages(emu),
+        "GetThreadUILanguage" => GetThreadUILanguage(emu),
+        "GetTickCount" => GetTickCount(emu),
+        "GetTimeZoneInformation" => GetTimeZoneInformation(emu),
+        "GetUserDefaultLangID" => GetUserDefaultLangID(emu),
+        "GetUserDefaultUILanguage" => GetUserDefaultUILanguage(emu),
+        "GetVersion" => GetVersion(emu),
+        "GetVersionExW" => GetVersionExW(emu),
+        "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
+        "GetWindowsDirectoryW" => GetWindowsDirectoryW(emu),
+        "HeapAlloc" => HeapAlloc(emu),
+        "HeapCreate" => HeapCreate(emu),
+        "HeapDestroy" => HeapDestroy(emu),
+        "HeapFree" => HeapFree(emu),
+        "HeapSetInformation" => HeapSetInformation(emu),
+        "InitializeCriticalSection" => InitializeCriticalSection(emu),
+        "InitializeCriticalSectionAndSpinCount" => InitializeCriticalSectionAndSpinCount(emu),
+        "InitializeCriticalSectionEx" => InitializeCriticalSectionEx(emu),
+        "InterlockedIncrement" => InterlockedIncrement(emu),
+        "IsDebuggerPresent" => IsDebuggerPresent(emu),
+        "IsProcessorFeaturePresent" => IsProcessorFeaturePresent(emu),
+        "IsValidCodePage" => IsValidCodePage(emu),
+        "IsValidLocale" => IsValidLocale(emu),
+        "LCMapStringW" => LCMapStringW(emu),
+        "LeaveCriticalSection" => LeaveCriticalSection(emu),
         "LoadLibraryA" => LoadLibraryA(emu),
         "LoadLibraryExA" => LoadLibraryExA(emu),
         "LoadLibraryExW" => LoadLibraryExW(emu),
-        "GetProcAddress" => GetProcAddress(emu),
         "LoadLibraryW" => LoadLibraryW(emu),
-        "WinExec" => WinExec(emu),
-        "GetVersion" => GetVersion(emu),
-        "CreateProcessA" => CreateProcessA(emu),
-        "WaitForSingleObject" => WaitForSingleObject(emu),
-        "VirtualAlloc" => VirtualAlloc(emu),
-        "VirtualAllocEx" => VirtualAllocEx(emu),
-        "WriteProcessMemory" => WriteProcessMemory(emu),
-        "CreateRemoteThread" => CreateRemoteThread(emu),
-        "CreateNamedPipeA" => CreateNamedPipeA(emu),
-        "ConnectNamedPipe" => ConnectNamedPipe(emu),
-        "DisconnectNamedPipe" => DisconnectNamedPipe(emu),
-        "ReadFile" => ReadFile(emu),
-        "WriteFile" => WriteFile(emu),
-        "CreateFileW" => CreateFileW(emu),
-        "CloseHandle" => CloseHandle(emu),
-        "ExitProcess" => ExitProcess(emu),
-        "TerminateProcess" => TerminateProcess(emu),
-        "GetThreadContext" => GetThreadContext(emu),
-        "ReadProcessMemory" => ReadProcessMemory(emu),
-        "GetCurrentDirectoryW" => GetCurrentDirectoryW(emu),
-        "GetCurrentDirectoryA" => GetCurrentDirectoryA(emu),
-        "VirtualProtect" => VirtualProtect(emu),
-        "VirtualProtectEx" => VirtualProtectEx(emu),
-        "ResumeThread" => ResumeThread(emu),
-        "GetFullPathNameA" => GetFullPathNameA(emu),
-        "GetFullPathNameW" => GetFullPathNameW(emu),
-        "SystemTimeToTzSpecificLocalTime" => SystemTimeToTzSpecificLocalTime(emu),
-        "GetLogicalDrives" => GetLogicalDrives(emu),
-        "ExpandEnvironmentStringsA" => ExpandEnvironmentStringsA(emu),
-        "ExpandEnvironmentStringsW" => ExpandEnvironmentStringsW(emu),
-        "GetFileAttributesA" => GetFileAttributesA(emu),
-        "GetFileAttributesW" => GetFileAttributesW(emu),
-        "FileTimeToSystemTime" => FileTimeToSystemTime(emu),
-        "FindFirstFileA" => FindFirstFileA(emu),
-        "FindNextFileA" => FindNextFileA(emu),
-        "FindFirstFileW" => FindFirstFileW(emu),
-        "FindNextFileW" => FindNextFileW(emu),
-        "CopyFileA" => CopyFileA(emu),
-        "CopyFileW" => CopyFileW(emu),
-        "FindClose" => FindClose(emu),
-        "MoveFileA" => MoveFileA(emu),
-        "MoveFileW" => MoveFileW(emu),
-        "OpenProcess" => OpenProcess(emu),
-        "GetCurrentProcessId" => GetCurrentProcessId(emu),
-        "Thread32First" => Thread32First(emu),
-        "Thread32Next" => Thread32Next(emu),
-        "OpenThread" => OpenThread(emu),
-        "CreateToolhelp32Snapshot" => CreateToolhelp32Snapshot(emu),
-        "CreateThread" => CreateThread(emu),
-        "SetThreadContext" => SetThreadContext(emu),
-        "MapViewOfFile" => MapViewOfFile(emu),
-        "GetSystemTimeAsFileTime" => GetSystemTimeAsFileTime(emu),
-        "GetCurrentThreadId" => GetCurrentThreadId(emu),
-        "GetTickCount" => GetTickCount(emu),
-        "QueryPerformanceCounter" => QueryPerformanceCounter(emu),
-        "HeapCreate" => HeapCreate(emu),
-        "HeapDestroy" => HeapDestroy(emu),
-        "GetModuleHandleA" => GetModuleHandleA(emu),
-        "GetModuleHandleW" => GetModuleHandleW(emu),
-        "TlsAlloc" => TlsAlloc(emu),
-        "TlsSetValue" => TlsSetValue(emu),
-        "TlsGetValue" => TlsGetValue(emu),
-        "TlsFree" => TlsFree(emu),
-        "EncodePointer" => EncodePointer(emu),
-        "DecodePointer" => DecodePointer(emu),
-        "Sleep" => Sleep(emu),
-        "InitializeCriticalSectionAndSpinCount" => InitializeCriticalSectionAndSpinCount(emu),
-        "HeapAlloc" => HeapAlloc(emu),
-        "GetProcessAffinityMask" => GetProcessAffinityMask(emu),
-        "IsDebuggerPresent" => IsDebuggerPresent(emu),
-        "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
-        "UnhandledExceptionFilter" => UnhandledExceptionFilter(emu),
-        "GetCurrentProcess" => GetCurrentProcess(emu),
+        "LoadResource" => LoadResource(emu),
         "LocalAlloc" => LocalAlloc(emu),
-        "VirtualAllocExNuma" => VirtualAllocExNuma(emu),
-        "GetUserDefaultLangID" => GetUserDefaultLangID(emu),
-        "GetProcessHeap" => GetProcessHeap(emu),
-        "GetComputerNameA" => GetComputerNameA(emu),
-        "CreateMutexA" => CreateMutexA(emu),
-        "GetLastError" => GetLastError(emu),
-        "CreateFileMappingA" => CreateFileMappingA(emu),
-        "CreateFileMappingW" => CreateFileMappingW(emu),
-        "GetSystemTime" => GetSystemTime(emu),
+        "LockResource" => LockResource(emu),
         "lstrcat" => lstrcat(emu),
-        "SetErrorMode" => SetErrorMode(emu),
-        "GetVersionExW" => GetVersionExW(emu),
-        "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
-        "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
-        "GetStartupInfoA" => GetStartupInfoA(emu),
-        "GetStartupInfoW" => GetStartupInfoW(emu),
-        "FlsGetValue" => FlsGetValue(emu),
-        "IsProcessorFeaturePresent" => IsProcessorFeaturePresent(emu),
-        "InitializeCriticalSection" => InitializeCriticalSection(emu),
-        "InitializeCriticalSectionEx" => InitializeCriticalSectionEx(emu),
-        "FlsAlloc" => FlsAlloc(emu),
-        "FlsSetValue" => FlsSetValue(emu),
-        "SetLastError" => SetLastError(emu),
-        "lstrlen" => lstrlen(emu),
-        "MultiByteToWideChar" => MultiByteToWideChar(emu),
-        "GetSystemInfo" => GetSystemInfo(emu),
-        "HeapFree" => HeapFree(emu),
-        "SetThreadLocale" => SetThreadLocale(emu),
-        "GetCommandLineA" => GetCommandLineA(emu),
-        "GetCommandLineW" => GetCommandLineW(emu),
-        "GetAcp" => GetAcp(emu),
-        "GetModuleFileNameW" => GetModuleFileNameW(emu),
-        "RegOpenKeyExW" => RegOpenKeyExW(emu),
-        "GetUserDefaultUILanguage" => GetUserDefaultUILanguage(emu),
-        "EnterCriticalSection" => EnterCriticalSection(emu),
-        "LeaveCriticalSection" => LeaveCriticalSection(emu),
-        "IsValidLocale" => IsValidLocale(emu),
-        "GetThreadUILanguage" => GetThreadUILanguage(emu),
-        "GetThreadPreferredUILanguages" => GetThreadPreferredUILanguages(emu),
         "lstrcmp" => lstrcmpA(emu),
         "lstrcmpA" => lstrcmpA(emu),
         "lstrcmpW" => lstrcmpW(emu),
-        "GetNativeSystemInfo" => GetNativeSystemInfo(emu),
-        "GetTempPathW" => GetTempPathW(emu),
-        "FileTimeToLocalFileTime" => FileTimeToLocalFileTime(emu),
-        "FileTimeToDosDateTime" => FileTimeToDosDateTime(emu),
-        "CreateMutexW" => CreateMutexW(emu),
-        "VirtualQuery" => VirtualQuery(emu),
-        "VirtualFree" => VirtualFree(emu),
-        "RaiseException" => RaiseException(emu),
-        "VerifyVersionInfoW" => VerifyVersionInfoW(emu),
-        "GetTimeZoneInformation" => GetTimeZoneInformation(emu),
-        "VirtualQueryEx" => VirtualQueryEx(emu),
-        "InterlockedIncrement" => InterlockedIncrement(emu),
-        "GetEnvironmentStrings" => GetEnvironmentStrings(emu),
-        "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
-        "GetStdHandle" => GetStdHandle(emu),
-        "GetFileType" => GetFileType(emu),
-        "SetHandleCount" => SetHandleCount(emu),
-        "IsValidCodePage" => IsValidCodePage(emu),
-        "GetCPInfo" => GetCPInfo(emu),
-        "GetStringTypeW" => GetStringTypeW(emu),
-        "LCMapStringW" => LCMapStringW(emu),
-        "WideCharToMultiByte" => WideCharToMultiByte(emu),
-        "CryptCreateHash" => CryptCreateHash(emu),
-        "HeapSetInformation" => HeapSetInformation(emu),
-        "OpenProcessToken" => OpenProcessToken(emu),
-        "CreateEventA" => CreateEventA(emu),
-        "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
-        "GetLongPathNameW" => GetLongPathNameW(emu),
-        "FreeLibrary" => FreeLibrary(emu),
-        "AreFileApisANSI" => AreFileApisANSI(emu),
-        "GetModuleFileNameA" => GetModuleFileNameA(emu),
         "lstrcpy" => lstrcpy(emu),
-        "GetACP" => GetACP(emu),
-        "GetOEMCP" => GetOEMCP(emu),
-        "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
-        "GetWindowsDirectoryW" => GetWindowsDirectoryW(emu),
-        "GetSystemWindowsDirectoryA" => GetSystemWindowsDirectoryA(emu),
-        "GetSystemWindowsDirectoryW" => GetSystemWindowsDirectoryW(emu),
+        "lstrlen" => lstrlen(emu),
+        "MapViewOfFile" => MapViewOfFile(emu),
+        "MoveFileA" => MoveFileA(emu),
+        "MoveFileW" => MoveFileW(emu),
+        "MultiByteToWideChar" => MultiByteToWideChar(emu),
+        "OpenProcess" => OpenProcess(emu),
+        "OpenProcessToken" => OpenProcessToken(emu),
+        "OpenThread" => OpenThread(emu),
+        "QueryPerformanceCounter" => QueryPerformanceCounter(emu),
+        "RaiseException" => RaiseException(emu),
+        "ReadFile" => ReadFile(emu),
+        "ReadProcessMemory" => ReadProcessMemory(emu),
+        "RegCloseKey" => RegCloseKey(emu),
         "RegCreateKeyExA" => RegCreateKeyExA(emu),
         "RegCreateKeyExW" => RegCreateKeyExW(emu),
+        "RegOpenKeyA" => RegOpenKeyA(emu),
+        "RegOpenKeyExW" => RegOpenKeyExW(emu),
+        "RegOpenKeyW" => RegOpenKeyW(emu),
         "RegSetValueExA" => RegSetValueExA(emu),
         "RegSetValueExW" => RegSetValueExW(emu),
-        "RegCloseKey" => RegCloseKey(emu),
-        "RegOpenKeyA" => RegOpenKeyA(emu),
-        "RegOpenKeyW" => RegOpenKeyW(emu),
-        "FindResourceA" => FindResourceA(emu),
-        "FindResourceW" => FindResourceW(emu),
-        "LoadResource" => LoadResource(emu),
+        "ResumeThread" => ResumeThread(emu),
+        "SetErrorMode" => SetErrorMode(emu),
+        "SetHandleCount" => SetHandleCount(emu),
+        "SetLastError" => SetLastError(emu),
+        "SetThreadContext" => SetThreadContext(emu),
+        "SetThreadLocale" => SetThreadLocale(emu),
+        "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
         "SizeofResource" => SizeofResource(emu),
-        "LockResource" => LockResource(emu),
-        "FreeResource" => FreeResource(emu),
+        "Sleep" => Sleep(emu),
+        "SystemTimeToTzSpecificLocalTime" => SystemTimeToTzSpecificLocalTime(emu),
+        "TerminateProcess" => TerminateProcess(emu),
+        "Thread32First" => Thread32First(emu),
+        "Thread32Next" => Thread32Next(emu),
+        "TlsAlloc" => TlsAlloc(emu),
+        "TlsFree" => TlsFree(emu),
+        "TlsGetValue" => TlsGetValue(emu),
+        "TlsSetValue" => TlsSetValue(emu),
+        "UnhandledExceptionFilter" => UnhandledExceptionFilter(emu),
+        "VerifyVersionInfoW" => VerifyVersionInfoW(emu),
+        "VirtualAlloc" => VirtualAlloc(emu),
+        "VirtualAllocEx" => VirtualAllocEx(emu),
+        "VirtualAllocExNuma" => VirtualAllocExNuma(emu),
+        "VirtualFree" => VirtualFree(emu),
+        "VirtualProtect" => VirtualProtect(emu),
+        "VirtualProtectEx" => VirtualProtectEx(emu),
+        "VirtualQuery" => VirtualQuery(emu),
+        "VirtualQueryEx" => VirtualQueryEx(emu),
+        "WaitForSingleObject" => WaitForSingleObject(emu),
+        "WideCharToMultiByte" => WideCharToMultiByte(emu),
+        "WinExec" => WinExec(emu),
+        "WriteFile" => WriteFile(emu),
+        "WriteProcessMemory" => WriteProcessMemory(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {

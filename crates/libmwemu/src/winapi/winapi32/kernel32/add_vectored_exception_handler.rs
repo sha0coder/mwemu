@@ -10,13 +10,11 @@ pub fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!AddVectoredExceptionHandler: error reading fptr") as u64;
 
-    log::info!(
-        "{}** {} kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!AddVectoredExceptionHandler  {} callback: 0x{:x}",
         p1,
-        fptr,
-        emu.colors.nc
+        fptr
     );
 
     emu.set_veh(fptr);

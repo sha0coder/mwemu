@@ -7,12 +7,10 @@ pub fn GetSystemTime(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!GetSystemTime cannot read out_time param") as u64;
 
-    log::info!(
-        "{}** {} kernel32!GetSystemTime ptr: 0x{:x}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        out_time,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemTime ptr: 0x{:x}'",
+        out_time
     );
     let systime = structures::SystemTime::now();
     systime.save(out_time, &mut emu.maps);

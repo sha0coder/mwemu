@@ -16,15 +16,13 @@ pub fn VirtualAllocEx(emu: &mut emu::Emu) {
         .alloc(size)
         .expect("kernel32!VirtualAllocEx out of memory");
 
-    log::info!(
-        "{}** {} kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x} sz: {} = 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x} sz: {} = 0x{:x}",
         proc_hndl,
         addr,
         size,
-        base,
-        emu.colors.nc
+        base
     );
 
     emu.maps

@@ -10,13 +10,11 @@ pub fn lstrlen(emu: &mut emu::Emu) {
     let s = emu.maps.read_string(s_ptr);
     let len = s.len() as u64;
 
-    log::info!(
-        "{}** {} kernel32!lstrlen '{}' ={} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!lstrlen '{}' ={}",
         s,
-        len,
-        emu.colors.nc
+        len
     );
 
     emu.regs_mut().rax = len;

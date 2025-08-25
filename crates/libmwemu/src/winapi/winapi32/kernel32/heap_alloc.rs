@@ -24,15 +24,13 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
         )
         .expect("kernel32!HeapAlloc out of memory");
 
-    log::info!(
-        "{}** {} kernel32!HeapAlloc eip: 0x{:x} flags: 0x{:x} size: {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!HeapAlloc eip: 0x{:x} flags: 0x{:x} size: {} =0x{:x}",
         emu.regs().get_eip(),
         flags,
         size,
-        emu.regs().get_eax() as u32,
-        emu.colors.nc
+        emu.regs().get_eax() as u32
     );
 
     for _ in 0..3 {

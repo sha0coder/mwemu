@@ -21,12 +21,10 @@ pub fn CreateFileMappingA(emu: &mut emu::Emu) {
     }
 
     emu.regs_mut().rax = helper::handler_create(&name);
-    log::info!(
-        "{}** {} kernel32!CreateFileMappingA '{}' ={} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateFileMappingA '{}' ={}",
         name,
-        emu.regs().get_eax(),
-        emu.colors.nc
+        emu.regs().get_eax()
     );
 }

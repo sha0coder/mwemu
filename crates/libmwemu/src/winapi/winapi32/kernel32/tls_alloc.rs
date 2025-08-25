@@ -1,11 +1,9 @@
 use crate::emu;
 
 pub fn TlsAlloc(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!TlsAlloc {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!TlsAlloc"
     );
 
     emu.tls32_mut().push(0);

@@ -8,13 +8,11 @@ pub fn MoveFileA(emu: &mut emu::Emu) {
     let src = emu.maps.read_string(src_ptr);
     let dst = emu.maps.read_string(dst_ptr);
 
-    log::info!(
-        "{}** {} kernel32!MoveFileA `{}` to `{}` {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!MoveFileA `{}` to `{}`",
         src,
-        dst,
-        emu.colors.nc
+        dst
     );
     emu.regs_mut().rax = 1;
 }

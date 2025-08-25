@@ -40,15 +40,13 @@ pub fn MapViewOfFile(emu: &mut emu::Emu) {
         .expect("kernel32!MapViewOfFile cannot create map");
     let loaded = mem.load_chunk(&emu.filename, off, size as usize);
 
-    log::info!(
-        "{}** {} kernel32!MapViewOfFile hndl: {} off: {} sz: {} ={} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!MapViewOfFile hndl: {} off: {} sz: {} ={}",
         hndl,
         off,
         size,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     if off > 0 {

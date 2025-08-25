@@ -7,12 +7,10 @@ pub fn GetFileAttributesW(emu: &mut emu::Emu) {
             .expect("kernel32!GetFileAttributesW cannot read filename_ptr") as u64;
     let filename = emu.maps.read_wide_string(filename_ptr);
 
-    log::info!(
-        "{}** {} kernel32!GetFileAttributesW file: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        filename,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetFileAttributesW file: {}",
+        filename
     );
 
     emu.stack_pop32(false);

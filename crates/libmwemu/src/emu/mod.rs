@@ -1,8 +1,8 @@
-use std::{cell::RefCell, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant};
+use std::{cell::RefCell, collections::HashMap, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant};
 
 use iced_x86::{Instruction, IntelFormatter};
 
-use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe::pe32::PE32, pe::pe64::PE64, structures::MemoryOperation, thread_context::ThreadContext};
+use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, definitions::{Definition, StoredContext}, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe::{pe32::PE32, pe64::PE64}, structures::MemoryOperation, thread_context::ThreadContext};
 
 mod operands;
 mod display;
@@ -78,4 +78,6 @@ pub struct Emu {
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
     pub global_locks: GlobalLocks,  // Critical section lock tracking
+    pub definitions: HashMap<u64, Definition>,
+    pub stored_contexts: HashMap<String, StoredContext>,
 }

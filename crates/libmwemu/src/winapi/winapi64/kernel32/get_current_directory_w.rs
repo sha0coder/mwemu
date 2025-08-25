@@ -5,13 +5,11 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     let buff_len = emu.regs().rcx as u32;
     let buff_ptr = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!GetCurrentDirectoryW nBufferLength: {} lpBuffer: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!GetCurrentDirectoryW nBufferLength: {} lpBuffer: 0x{:x}",
         buff_len,
-        buff_ptr,
-        emu.colors.nc
+        buff_ptr
     );
 
     let current_dir = constants::CWD_PATH;
@@ -21,12 +19,6 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     if buff_len == 0 || buff_ptr == 0 {
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
         emu.regs_mut().rax = (dir_char_count + 1) as u64; // +1 for null terminator
-        return;
-    }
-
-    if !emu.maps.is_mapped(buff_ptr) {
-        log::error!("GetCurrentDirectoryW: lpBuffer 0x{:x} is not mapped", buff_ptr);
-        emu.regs_mut().rax = 0;
         return;
     }
 
@@ -41,15 +33,14 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     // Buffer is large enough, write the directory
     emu.maps.write_wide_string(buff_ptr, current_dir);
 
-    log::info!(
-        "{}** {} GetCurrentDirectoryW returning: '{}' (length: {}) {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "GetCurrentDirectoryW returning: '{}' (length: {})",
         current_dir,
-        dir_char_count,
-        emu.colors.nc
+        dir_char_count
     );
 
     // Return number of characters written (NOT including null terminator)
+    set_last_error(0);
     emu.regs_mut().rax = dir_char_count as u64;
 }

@@ -10,15 +10,13 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let mut base:u64 = 0;
 
     if size == 0 {
-        log::info!(
-            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0 flags: {} {}",
-            emu.colors.light_red,
-            emu.pos,
-            addr,
-            size,
-            typ,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "kernel32!VirtualAlloc addr: 0x{:x} sz: {} = 0 flags: {}",
+        addr,
+        size,
+        typ
+    );
         emu.regs_mut().rax = 0
     } else {
 
@@ -52,16 +50,14 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
             base = 0;
         }
 
-        log::info!(
-            "{}** {} kernel32!VirtualAlloc addr: 0x{:x} sz: {}  flags: {} =0x{:x} {}",
-            emu.colors.light_red,
-            emu.pos,
-            addr,
-            size,
-            typ,
-            base,
-            emu.colors.nc
-        );
+        log_red!(
+        emu,
+        "kernel32!VirtualAlloc addr: 0x{:x} sz: {}  flags: {} =0x{:x}",
+        addr,
+        size,
+        typ,
+        base
+    );
 
         emu.regs_mut().rax = base;
     }

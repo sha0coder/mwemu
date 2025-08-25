@@ -7,12 +7,10 @@ pub fn SetLastError(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!SetLastError cannot read err_code");
 
-    log::info!(
-        "{}** {} kernel32!SetLastError err: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        err_code,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!SetLastError err: {}",
+        err_code
     );
 
     let mut err = LAST_ERROR.lock().unwrap();

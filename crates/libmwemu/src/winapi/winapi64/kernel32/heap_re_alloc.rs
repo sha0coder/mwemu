@@ -7,15 +7,13 @@ pub fn HeapReAlloc(emu: &mut emu::Emu) {
     let old_mem = emu.regs().r8;
     let new_size = emu.regs().r9;
 
-    log::info!(
-        "{}** {} kernel32!HeapReAlloc heap: 0x{:x} flags: 0x{:x} old_mem: 0x{:x} new_size: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!HeapReAlloc heap: 0x{:x} flags: 0x{:x} old_mem: 0x{:x} new_size: {}",
         heap_handle,
         flags,
         old_mem,
-        new_size,
-        emu.colors.nc
+        new_size
     );
 
     // Check if we're dealing with a valid memory pointer

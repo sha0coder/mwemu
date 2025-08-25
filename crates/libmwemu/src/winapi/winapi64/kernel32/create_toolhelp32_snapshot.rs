@@ -5,13 +5,11 @@ pub fn CreateToolhelp32Snapshot(emu: &mut emu::Emu) {
     let flags = emu.regs().rcx;
     let pid = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!CreateToolhelp32Snapshot flags: {:x} pid: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateToolhelp32Snapshot flags: {:x} pid: {}",
         flags,
-        pid,
-        emu.colors.nc
+        pid
     );
 
     let uri = format!("CreateToolhelp32Snapshot://{}", pid);

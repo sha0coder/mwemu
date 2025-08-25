@@ -7,12 +7,10 @@ pub fn LoadLibraryW(emu: &mut emu::Emu) {
         None => panic!("bad LoadLibraryW parameter"),
     };
     let dll = emu.maps.read_wide_string(dllptr);
-    log::info!(
-        "{}** {} LoadLibraryW  '{}'  {}",
-        emu.colors.light_red,
-        emu.pos,
-        dll,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "LoadLibraryW  '{}'",
+        dll
     );
 
     //if dll == "ntdll.dll" {

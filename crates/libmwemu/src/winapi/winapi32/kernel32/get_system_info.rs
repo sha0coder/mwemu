@@ -6,12 +6,10 @@ pub fn GetSystemInfo(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!GetSystemInfo cannot read out_sysinfo") as u64;
 
-    log::info!(
-        "{}** {} kernel32!GetSystemInfo sysinfo: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        out_sysinfo,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemInfo sysinfo: 0x{:x}",
+        out_sysinfo
     );
 
     // let mut sysinfo = emu::structures::SystemInfo32::new();

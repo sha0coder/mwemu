@@ -6,11 +6,9 @@ pub fn GetSystemTimeAsFileTime(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!GetSystemTimeAsFileTime cannot read sys_time_ptr");
 
-    log::info!(
-        "{}** {} kernel32!GetSystemTimeAsFileTime {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemTimeAsFileTime"
     );
 
     emu.stack_pop32(false);
