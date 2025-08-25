@@ -6,7 +6,7 @@ use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemo
 use crate::console::Console;
 use crate::emu::Emu;
 use crate::err::MwemuError;
-use crate::{constants, engine, serialization, tracing};
+use crate::{constants, engine, serialization};
 
 impl Emu {
     #[inline]

@@ -357,7 +357,7 @@ pub fn emulate_instruction(
         Mnemonic::Enter => instructions::enter::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Rdmsr => instructions::rdmsr::execute(emu, ins, instruction_sz, rep_step),
         _ => {
-            log::info!("Unimplemented instruction: {:?}", ins.mnemonic());
+            log::info!("{} Unimplemented instruction: {:?}", emu.pos, ins.mnemonic());
             false
         }
     }

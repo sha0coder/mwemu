@@ -4,7 +4,7 @@ use crate::winapi::helper;
 
 pub fn GetModuleHandleA(emu: &mut emu::Emu) {
     let module_name_ptr = emu.regs().rcx;
-    let mut module_name: String;
+    let module_name: String;
 
     if module_name_ptr == 0 {
         module_name = "self".to_string();
