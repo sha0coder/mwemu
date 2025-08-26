@@ -14,14 +14,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let xmm = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::info!("{} error getting xmm value1", emu.pos);
                 return false;
             }
         };
         let addr = match emu.get_operand_value(ins, 0, false) {
             Some(v) => v,
             None => {
-                log::info!("error getting address value0");
+                log::info!("{} error getting address value0", emu.pos);
                 return false;
             }
         };
@@ -41,14 +41,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let addr = match emu.get_operand_value(ins, 1, false) {
             Some(v) => v,
             None => {
-                log::info!("error reading address value1");
+                log::info!("{} error reading address value1", emu.pos);
                 return false;
             }
         };
 
         let bytes = emu.maps.read_bytes(addr, 16);
         if bytes.len() != 16 {
-            log::info!("error reading 16 bytes at {addr:x}");
+            log::info!("{} error reading 16 bytes at {addr:x}", emu.pos);
             return false;
         }
 
@@ -63,14 +63,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let xmm = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::info!("{} error getting xmm value1", emu.pos);
                 return false;
             }
         };
 
         emu.set_operand_xmm_value_128(ins, 0, xmm);
     } else {
-        log::info!("sz0: {}  sz1: {}\n", sz0, sz1);
+        log::info!("{} sz0: {}  sz1: {}\n", emu.pos, sz0, sz1);
         unimplemented!("movdqa");
     }
     true

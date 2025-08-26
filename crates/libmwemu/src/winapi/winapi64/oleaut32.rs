@@ -50,7 +50,10 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     
     // Calculate exact sizes like the real API
     let string_bytes = char_count * 2;          // Requested characters in bytes
-    let total_alloc_size = 4 + string_bytes + 2; // Length prefix + string + null terminator
+    let total_alloc_size = 4 + string_bytes + 2 + 16; // Length prefix + string + null terminator
+                                                      // the extra 16 byes are not allocated on the
+                                                      // real winapi, but it's needed to allo some
+                                                      // optimizations
     
     // Allocate memory (no extra padding needed)
     let bstr = emu.maps.alloc(total_alloc_size)
