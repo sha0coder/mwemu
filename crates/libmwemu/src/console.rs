@@ -182,7 +182,7 @@ impl Console {
         let precmd = format!("dr rax={}?; dr rbx={}?; dr rcx={}?; dr rdx={}?; dr rsi={}?;
                               dr rdi={}?; dr rbp={}?; dr rsp={}?; dr rip={}?; dr r8={}?
                               dr r9={}?; dr r10={}?; dr r11={}?; dr r12={}?; dr r13={}?; 
-                              dr r14={}?; dr r15={}?; decai -e model=qwen3-coder:30?",
+                              dr r14={}?; dr r15={}?; decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
                               emu.regs().rax, emu.regs().rbx, emu.regs().rcx, emu.regs().rdx,
                               emu.regs().rsi, emu.regs().rdi, emu.regs().rbp, emu.regs().rsp,
                               emu.regs().rip, emu.regs().r8, emu.regs().r9, emu.regs().r10,

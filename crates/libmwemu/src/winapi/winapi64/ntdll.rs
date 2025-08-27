@@ -719,11 +719,6 @@ fn NtCreateFile(emu: &mut emu::Emu) {
 
     log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
 
-    // TODO: fix path duplication!
-    if filename != "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
-        panic!("TODO: NtCreateFile {}", filename);
-    }
-
     if out_hndl_ptr > 0 {
         emu.maps
             .write_qword(out_hndl_ptr, helper::handler_create(&filename) as u64);
