@@ -371,6 +371,7 @@ impl Emu {
         if text_addr == 0 {
             panic!(".text not found on this elf64");
         }
+        log::info!("text_addr: 0x{:x}", text_addr);
 
         // entry point logic:
 
@@ -386,7 +387,7 @@ impl Emu {
 
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
-            self.regs_mut().rip = elf64.elf_hdr.e_entry + text_addr;
+            self.regs_mut().rip = elf64.elf_hdr.e_entry + elf64.base; //text_addr;
             println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs().rip);
 
         // 4. Entry point points below .text, weird case.
