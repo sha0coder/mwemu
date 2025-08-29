@@ -1,27 +1,22 @@
 
 use crate::emu;
+use crate::peb;
+use crate::constants;
 use crate::winapi::helper;
 
 pub fn GetModuleHandleA(emu: &mut emu::Emu) {
     let module_name_ptr = emu.regs().rcx;
     let module_name: String;
+    let base;
 
     if module_name_ptr == 0 {
-        module_name = "self".to_string();
-
-        let base = match emu.maps.get_base() {
-            Some(base) => base,
+    
+        module_name = constants::EXE_NAME.to_string();
+        base = match peb::peb64::get_module_base(&module_name, emu) {
+            Some(b) => b,
             None => helper::handler_create(&module_name),
         };
 
-        log_red!(
-            emu,
-            "kernel32!GetModuleHandleA `{}` {:x}",
-            module_name,
-            base
-        );
-        
-        emu.regs_mut().rax = base;
     } else {
         module_name = emu.maps.read_string(module_name_ptr);
 
@@ -32,17 +27,16 @@ pub fn GetModuleHandleA(emu: &mut emu::Emu) {
                 return;
             }
         };
-        let base = mod_mem.get_base();
+        base = mod_mem.get_base();
 
-        log_red!(
-            emu,
-            "kernel32!GetModuleHandleA `{}` {:x}",
-            module_name,
-            base
-        );
-
-        emu.regs_mut().rax = base;
     }
 
+    log_red!(
+        emu,
+        "kernel32!GetModuleHandleA `{}` {:x}",
+        module_name,
+        base
+    );
     
+    emu.regs_mut().rax = base;
 }
