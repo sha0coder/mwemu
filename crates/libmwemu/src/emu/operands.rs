@@ -457,6 +457,9 @@ impl Emu {
                     0
                 };
 
+                // now we flush the cacheline if it is written to executable memory and the cacheline exist
+                let mem1 = self.maps.get_mem_by_addr(mem_addr).expect("The memory doesn't exists");
+
                 match sz {
                     64 => {
                         if !self.maps.write_qword(mem_addr, value2) {

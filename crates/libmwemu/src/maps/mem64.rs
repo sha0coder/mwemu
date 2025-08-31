@@ -13,11 +13,14 @@ use std::io::Write;
 use bytemuck::cast_slice;
 use crate::emu_context;
 
+
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
     mem_name: String,
     base_addr: u64,
     bottom_addr: u64,
+    permission:
     mem: Vec<u8>,
 }
 

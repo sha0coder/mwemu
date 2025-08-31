@@ -7,6 +7,7 @@ use crate::console::Console;
 use crate::emu::Emu;
 use crate::err::MwemuError;
 use crate::{constants, engine, serialization};
+use crate::emu::disassemble::InstructionCache;
 
 impl Emu {
     #[inline]
@@ -358,6 +359,8 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
+        let mut instruction_cache = InstructionCache::new();
+        self.instruction_cache = instruction_cache;
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.run_multi_threaded(end_addr)
         } else {
@@ -831,6 +834,7 @@ impl Emu {
         // the need of Reallocate everytime
         let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
         block.resize(constants::BLOCK_LEN, 0x0);
+        let mut instruction_cache = InstructionCache::new();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs().rip);
@@ -848,28 +852,32 @@ impl Emu {
                     }
                 };
 
-                // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
-                // reading anymore would be a waste of time
-                let block_sz = constants::BLOCK_LEN;
-                let block_temp = code.read_bytes(rip, block_sz);
-                let block_temp_len = block_temp.len();
-                if block_temp_len != block.len() {
-                    block.resize(block_temp_len, 0);
-                }
-                block.clone_from_slice(block_temp);
-                if block.len() == 0 {
-                     return Err(MwemuError::new("cannot read code block, weird address."));
-                } 
-                let mut decoder =
-                    Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
-                let mut sz: usize = 0;
-                let mut addr: u64 = 0;
+                if !self.instruction_cache.lookup_entry(rip, 0) {
+                    // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
+                    // reading anymore would be a waste of time
+                    let block_sz = constants::BLOCK_LEN;
+                    let block_temp = code.read_bytes(rip, block_sz);
+                    let block_temp_len = block_temp.len();
+                    if block_temp_len != block.len() {
+                        block.resize(block_temp_len, 0);
+                    }
+                    block.clone_from_slice(block_temp);
+                    if block.len() == 0 {
+                        return Err(MwemuError::new("cannot read code block, weird address."));
+                    }
+                    let mut decoder =
+                        Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
 
-                self.rep = None;
-                let addition = if block_temp_len < 16 {block_temp_len} else {16};
-                while decoder.can_decode() && (decoder.position() + addition <= decoder.max_position()) {
+                    self.rep = None;
+                    let addition = if block_temp_len < 16 {block_temp_len} else {16};
+                    self.instruction_cache.insert_from_decoder(&mut decoder, addition, rip);
+                }
+
+                let mut sz = 0;
+                let mut addr = 0;
+                while self.instruction_cache.can_decode() {
                     if self.rep.is_none() {
-                        decoder.decode_out(&mut ins);
+                        self.instruction_cache.decode_out(&mut ins);
                         sz = ins.len();
                         addr = ins.ip();
 
@@ -883,7 +891,7 @@ impl Emu {
                     }
 
                     self.instruction = Some(ins);
-                    self.decoder_position = decoder.position();
+                    self.decoder_position = self.instruction_cache.current_instruction_slot;
                     self.memory_operations.clear();
                     self.pos += 1;
 
