@@ -84,6 +84,7 @@ pub struct SerializableEmu {
     pub heap_addr: u64,
     pub threads: Vec<SerializableThreadContext>,
     pub current_thread_id: usize,
+    pub entropy: f64,
 }
 
 impl<'a> From<&'a Emu> for SerializableEmu {
@@ -144,6 +145,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             heap_addr: emu.heap_addr,
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
+            entropy: emu.entropy,
         }
     }
 }
@@ -202,7 +204,8 @@ impl From<SerializableEmu> for Emu {
             current_thread_id: serialized.current_thread_id,
             global_locks: GlobalLocks::new(), // Reset locks on deserialization
             definitions: HashMap::new(),
-            stored_contexts: HashMap::new()
+            stored_contexts: HashMap::new(),
+            entropy: 0.0,
         }
     }
 }
@@ -266,6 +269,7 @@ impl Default for SerializableEmu {
             heap_addr: emu.heap_addr,
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
+            entropy: emu.entropy,
         }
     }
 }

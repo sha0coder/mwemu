@@ -36,11 +36,24 @@ impl Emu {
         };
 
         let map_name = self.filename.as_str();
+        /*
         if addr < constants::LIBS64_MIN
             || name == "code"
             || (!map_name.is_empty() && name.starts_with(&map_name))
-            || name == "loader.text"
-        {
+            || name == "loader.text"*/
+        if addr < constants::LIBS64_MIN {
+            if self.cfg.verbose > 0 {
+                let rip = self.regs().rip;
+                let prev = match self.maps.get_addr_name(rip) {
+                    Some(n) => n,
+                    None => "??",
+                };
+
+                if prev != name {
+                    log::info!("{}:0x{:x} map change  {} -> {}", self.pos, rip, prev, name);
+                }
+            }
+
             self.regs_mut().rip = addr;
         } else if self.linux {
             self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
@@ -107,11 +120,24 @@ impl Emu {
         };
 
         let map_name = self.filename_to_mapname(&self.filename);
+        /*
         if name == "code"
             || addr < constants::LIBS32_MIN
             || (!map_name.is_empty() && name.starts_with(&map_name))
-            || name == "loader.text"
-        {
+            || name == "loader.text"*/
+        if addr < constants::LIBS32_MIN {
+            if self.cfg.verbose > 0 {
+                let eip = self.regs().get_eip();
+                let prev = match self.maps.get_addr_name(eip) {
+                    Some(n) => n,
+                    None => "??",
+                };
+                if prev != name {
+                    log::info!("{}:0x{:x} map change  {} -> {}", self.pos, eip, prev, name);
+                }
+            }
+            
+
             self.regs_mut().set_eip(addr);
         } else {
             if self.cfg.verbose >= 1 {

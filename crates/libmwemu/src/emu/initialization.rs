@@ -65,7 +65,8 @@ impl Emu {
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
             definitions: HashMap::new(),
-            stored_contexts: HashMap::new()
+            stored_contexts: HashMap::new(),
+            entropy: 0.0,
         }
     }
 

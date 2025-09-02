@@ -80,4 +80,5 @@ pub struct Emu {
     pub global_locks: GlobalLocks,  // Critical section lock tracking
     pub definitions: HashMap<u64, Definition>,
     pub stored_contexts: HashMap<String, StoredContext>,
+    pub entropy: f64,
 }

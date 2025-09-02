@@ -43,6 +43,7 @@ pub struct Config {
     pub verbose_at: Option<u64>,
     pub command: Option<String>,
     pub definitions: HashMap<u64, Definition>,
+    pub entropy: bool,
 }
 
 impl Default for Config {
@@ -91,7 +92,8 @@ impl Config {
             enable_threading: false,  // Default to single-threaded for backward compatibility
             verbose_at: None,
             command: None,
-            definitions: HashMap::new()
+            definitions: HashMap::new(),
+            entropy: false,
         }
     }
 }

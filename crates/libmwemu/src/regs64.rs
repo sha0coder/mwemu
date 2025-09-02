@@ -86,6 +86,7 @@ pub struct Regs64 {
     pub rbp: u64,
     pub rsp: u64,
     pub rip: u64,
+    pub prev_rip: u64,
 
     pub r8: u64,
     pub r9: u64,
@@ -193,6 +194,7 @@ impl Regs64 {
             rbp: 0,
             rsp: 0,
             rip: 0,
+            prev_rip: 0,
 
             r8: 0,
             r9: 0,

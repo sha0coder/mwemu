@@ -135,6 +135,7 @@ fn main() {
         .arg(clap_arg!("mxcsr", "", "mxcsr", "set mxcsr register", "MXCSR"))
         .arg(clap_arg!("call", "", "call", "enable call tracer"))
         .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
+        .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -173,6 +174,10 @@ fn main() {
     emu.cfg.trace_mem = matches.is_present("trace_memory");
     emu.cfg.trace_regs = matches.is_present("trace_registers");
     emu.cfg.trace_calls = matches.is_present("call");
+
+    if matches.is_present("entropy") {
+        emu.cfg.entropy = true;
+    }
 
     if matches.is_present("register") {
         emu.cfg.trace_reg = true;
