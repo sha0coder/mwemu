@@ -463,13 +463,14 @@ impl Emu {
         //let mut prev_prev_addr:u64 = 0;
         let mut repeat_counter: u32 = 0;
 
+        /*
         if end_addr.is_none() && self.max_pos.is_none() {
             log::info!(" ----- emulation -----");
         } else if !self.max_pos.is_none() {
             log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
         } else {
             log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
-        }
+        }*/
 
         //self.pos = 0;
         let arch = if self.cfg.is_64bits { 64 } else { 32 };
