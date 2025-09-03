@@ -12,6 +12,7 @@ repository = "https://github.com/sha0coder/mwemu"
 [dependencies]
 clap = "2.33.3"
 log = "0.4.22"
+#libmwemu = "0.22.1"
 libmwemu = { path = "../libmwemu" }
 fast_log = { version = "1.7" }
 
