@@ -14,6 +14,28 @@ use crate::peb::{peb32, peb64};
 use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
 
+use fast_log::appender::{Command, FastLogRecord, RecordFormat};
+
+pub struct CustomLogFormat;
+impl RecordFormat for CustomLogFormat {
+    fn do_format(&self, arg: &mut FastLogRecord) {
+        match &arg.command {
+            Command::CommandRecord => {
+                arg.formated = format!("{}\n", arg.args);
+            }
+            Command::CommandExit => {}
+            Command::CommandFlush(_) => {}
+        }
+    }
+}
+
+impl CustomLogFormat {
+    pub fn new() -> CustomLogFormat {
+        Self {}
+    }
+
+}
+
 impl Emu {
     pub fn new() -> Emu {
         let mut formatter = IntelFormatter::new();
@@ -177,6 +199,13 @@ impl Emu {
         self.flags_mut().f_if = true;
 
         self.flags_mut().f_nt = false;
+    }
+
+    pub fn init_logger(&mut self) {
+        fast_log::init(fast_log::Config::new()
+            .format(CustomLogFormat::new())
+            .console()
+            .chan_len(Some(100000))).unwrap();
     }
 
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
