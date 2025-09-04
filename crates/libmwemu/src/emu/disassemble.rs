@@ -1,6 +1,6 @@
+use crate::emu::Emu;
 use iced_x86::{Decoder, DecoderOptions, Formatter as _, Instruction};
 use serde::{Deserialize, Serialize};
-use crate::emu::Emu;
 
 // about 10 mb should be on l3 cache
 // 8192 cache lines,
@@ -12,7 +12,11 @@ const INSTRUCTION_ARRAY_SIZE: usize = 8192 * 32;
 const CACHE_SIZE: usize = 2048 * 16;
 const CACHE_MASK: usize = CACHE_SIZE - 1; // Assumes power of 2
 const MAX_CACHE_PER_LINE: usize = 16;
+
+// we need INVALID_KEY and INVALID_LEN to be the same as INVALID_LPF_ADDR to optimize for memset
 pub const INVALID_LPF_ADDR: u64 = 0xffffffffffffffff;
+pub const INVALID_KEY: usize = 0xffffffffffffffff;
+pub const INVALID_LEN: usize = 0xffffffffffffffff;
 
 pub fn LPF_OF(addr: u64) -> u64 {
     // Implementation of LPF_OF macro/function
@@ -22,7 +26,7 @@ pub fn LPF_OF(addr: u64) -> u64 {
 #[derive(Clone, Serialize, Deserialize)]
 struct CachedInstruction {
     pub lpf: u64,
-    pub instruction_key : usize,
+    pub instruction_key: usize,
     pub instruction_len: usize,
 }
 
@@ -30,8 +34,8 @@ impl Default for CachedInstruction {
     fn default() -> Self {
         CachedInstruction {
             lpf: INVALID_LPF_ADDR,
-            instruction_key: 0x0,
-            instruction_len: 0x0,
+            instruction_key: INVALID_KEY,
+            instruction_len: INVALID_LEN,
         }
     }
 }
@@ -49,8 +53,7 @@ pub struct InstructionCache {
     next_instruction_slot: usize,
     pub current_instruction_slot: usize,
     current_decode_len: usize,
-    current_decode_idx: usize
-    // probe_stats: ProbeStats,
+    current_decode_idx: usize, // probe_stats: ProbeStats,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
@@ -87,7 +90,7 @@ impl InstructionCache {
     }
 
     #[inline]
-    fn flush_cache_line(&mut self, idx: usize) {
+    pub fn flush_cache_line(&mut self, idx: usize) {
         for i in 0..MAX_CACHE_PER_LINE {
             self.cache_entries[idx].lpf = INVALID_LPF_ADDR;
         }
@@ -99,14 +102,14 @@ impl InstructionCache {
 
         // do a linear probing for each cache line
         for i in 0..MAX_CACHE_PER_LINE {
-            if self.cache_entries[idx+i].lpf == INVALID_LPF_ADDR {
+            if self.cache_entries[idx + i].lpf == INVALID_LPF_ADDR {
                 return false;
             }
             // found the instruction now do initialization and return true
-            if self.cache_entries[idx+i].lpf == addr {
-                let key = self.cache_entries[idx+i].instruction_key;
+            if self.cache_entries[idx + i].lpf == addr {
+                let key = self.cache_entries[idx + i].instruction_key;
                 self.current_instruction_slot = key;
-                self.current_decode_len = self.cache_entries[idx+i].instruction_len;
+                self.current_decode_len = self.cache_entries[idx + i].instruction_len;
                 self.current_decode_idx = 0;
                 return true;
             }
@@ -114,13 +117,18 @@ impl InstructionCache {
 
         // the cache_line is full now we flush all the cache line
         self.flush_cache_line(idx);
-        true
+        false
     }
 
     #[inline(always)]
     fn flush_cache(&mut self) {
-        self.cache_entries = vec![CachedInstruction::default(); CACHE_SIZE];
-        self.instructions = vec![Instruction::default(); INSTRUCTION_ARRAY_SIZE];
+        self.cache_entries
+            .iter_mut()
+            .for_each(|entry| {
+                entry.lpf = INVALID_LPF_ADDR;
+                entry.instruction_key = INVALID_KEY;
+                entry.instruction_len = INVALID_LEN;
+            });
         self.next_instruction_slot = 0;
     }
 
@@ -134,22 +142,38 @@ impl InstructionCache {
         // but I think this is simple and good enough
         let slot = self.next_instruction_slot;
 
-        if self.next_instruction_slot >= INSTRUCTION_ARRAY_SIZE {
+        let mut count: usize = 0;
+        let max_position = decoder.max_position();
+        if max_position + self.next_instruction_slot > INSTRUCTION_ARRAY_SIZE {
             self.flush_cache();
         }
-        let mut count: usize = 0;
-        while decoder.can_decode() && decoder.position() + addition <= decoder.max_position() {
-            decoder.decode_out(&mut self.instructions[slot+count]);
+
+        while decoder.can_decode() && decoder.position() + addition <= max_position {
+            decoder.decode_out(&mut self.instructions[slot + count]);
+            let temp = self.instructions[slot + count];
+            if temp.is_jmp_short_or_near()
+                || temp.is_jmp_near_indirect()
+                || temp.is_jmp_far()
+                || temp.is_jmp_far_indirect()
+                || temp.is_jcc_short_or_near()
+                || temp.is_call_near_indirect()
+                || temp.is_call_near()
+                || temp.is_call_far_indirect()
+                || temp.is_call_far()
+            {
+                count += 1;
+                break;
+            }
             count += 1;
         }
         self.next_instruction_slot += count;
 
         // insert to the cache
         for i in 0..MAX_CACHE_PER_LINE {
-            if self.cache_entries[idx+i].lpf == INVALID_LPF_ADDR {
-                self.cache_entries[idx+i].instruction_key = slot;
-                self.cache_entries[idx+i].lpf = rip_addr;
-                self.cache_entries[idx+i].instruction_len = count;
+            if self.cache_entries[idx + i].lpf == INVALID_LPF_ADDR {
+                self.cache_entries[idx + i].instruction_key = slot;
+                self.cache_entries[idx + i].lpf = rip_addr;
+                self.cache_entries[idx + i].instruction_len = count;
                 break;
             }
         }
@@ -172,15 +196,15 @@ impl InstructionCache {
         }
 
         for i in 0..instrs.len() {
-            self.instructions[slot+i] = instrs[i];
+            self.instructions[slot + i] = instrs[i];
         }
 
         // insert to the cache
         for i in 0..MAX_CACHE_PER_LINE {
-            if self.cache_entries[idx+i].lpf == INVALID_LPF_ADDR {
-                self.cache_entries[idx+i].instruction_key = slot;
-                self.cache_entries[idx+i].lpf = addr;
-                self.cache_entries[idx+i].instruction_len = instrs.len();
+            if self.cache_entries[idx + i].lpf == INVALID_LPF_ADDR {
+                self.cache_entries[idx + i].instruction_key = slot;
+                self.cache_entries[idx + i].lpf = addr;
+                self.cache_entries[idx + i].instruction_len = instrs.len();
                 break;
             }
         }
@@ -198,7 +222,7 @@ impl InstructionCache {
 
 impl Emu {
     /// Disassemble an amount of instruccions on an specified address.
-    /// This not used on the emulation engine, just from console, 
+    /// This not used on the emulation engine, just from console,
     /// but the api could be used programatilcally.
     pub fn disassemble(&mut self, addr: u64, amount: u32) -> String {
         let mut out = String::new();

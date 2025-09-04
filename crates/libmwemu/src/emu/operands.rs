@@ -1,6 +1,7 @@
 use iced_x86::{Instruction, MemorySize, OpKind, Register};
 
 use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, regs64, structures::{self, MemoryOperation}, to32};
+use crate::maps::mem64::Permission;
 
 impl Emu {
     /// Decode the jump parameter
@@ -143,7 +144,7 @@ impl Emu {
                     if self.cfg.verbose >= 1 {
                         log::info!("Reading local ");
                     }
-                    let locale = self.alloc("locale", 100);
+                    let locale = self.alloc("locale", 100, Permission::READ_WRITE);
                     self.maps.write_dword(locale, constants::EN_US_LOCALE);
                     //TODO: return a table of locales
                     /*
@@ -228,7 +229,7 @@ impl Emu {
                             // This should be sized based on the number of modules with .tls sections
                             // For now, allocate space for a few module entries
                             let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
-                            let tls_array = self.alloc("static_tls_array", size);
+                            let tls_array = self.alloc("static_tls_array", size, Permission::READ_WRITE);
 
                             // Initialize to null pointers
                             self.maps.write_bytes(tls_array, vec![0; size as usize]);
@@ -459,7 +460,10 @@ impl Emu {
 
                 // now we flush the cacheline if it is written to executable memory and the cacheline exist
                 let mem1 = self.maps.get_mem_by_addr(mem_addr).expect("The memory doesn't exists");
-
+                if mem1.can_execute() {
+                    let idx = self.instruction_cache.get_index_of(mem_addr, 0);
+                    self.instruction_cache.flush_cache_line(idx);
+                }
                 match sz {
                     64 => {
                         if !self.maps.write_qword(mem_addr, value2) {
@@ -467,7 +471,7 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100)
+                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
                                     .expect("cannot create banzai map");
                                 map.write_qword(mem_addr, value2);
                                 return true;
@@ -489,7 +493,7 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100)
+                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
                                     .expect("cannot create banzai map");
                                 map.write_dword(mem_addr, to32!(value2));
                                 return true;
@@ -511,7 +515,7 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100)
+                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
                                     .expect("cannot create banzai map");
                                 map.write_word(mem_addr, value2 as u16);
                                 return true;
@@ -533,7 +537,7 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100)
+                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
                                     .expect("cannot create banzai map");
                                 map.write_byte(mem_addr, value2 as u8);
                                 return true;

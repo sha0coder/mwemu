@@ -14,6 +14,7 @@ use crate::winapi::winapi64;
 use std::process::{Command, Stdio}; 
 use std::fs;
 use std::io;
+use crate::maps::mem64::Permission;
 
 pub struct Console {}
 
@@ -520,7 +521,7 @@ impl Console {
                         }
                     };
                     emu.maps
-                        .create_map(&name, addr, sz)
+                        .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mc");
                     log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }
@@ -546,7 +547,7 @@ impl Console {
                     };
 
                     emu.maps
-                        .create_map(&name, addr, sz)
+                        .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mca");
                     log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }

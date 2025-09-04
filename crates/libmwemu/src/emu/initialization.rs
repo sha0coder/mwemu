@@ -12,6 +12,8 @@ use crate::emu::Emu;
 use crate::peb::{peb32, peb64};
 use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
+use crate::emu::disassemble::InstructionCache;
+use crate::maps::mem64::Permission;
 
 impl Emu {
     pub fn new() -> Emu {
@@ -63,6 +65,7 @@ impl Emu {
             threads: vec![ThreadContext::new(0x1000)],
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
+            instruction_cache: InstructionCache::new(),
         }
     }
 
@@ -84,7 +87,7 @@ impl Emu {
 
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, 0x030000)
+            .create_map("stack", self.cfg.stack_addr, 0x030000, Permission::READ_WRITE)
             .expect("cannot create stack map");
         let stack_base = stack.get_base();
         let stack_bottom = stack.get_bottom();
@@ -118,7 +121,7 @@ impl Emu {
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000) // Increased size
+            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000, Permission::READ_WRITE) // Increased size
             .expect("cannot create stack map");
         let stack_base = stack.get_base();
         let stack_bottom = stack.get_bottom();
@@ -259,27 +262,27 @@ impl Emu {
             //self.regs_mut().rsp = 0x7fffffffe2b0;
             self.regs_mut().rsp = 0x7fffffffe790;
             self.maps
-                .create_map("linux_dynamic_stack", 0x7ffffffde000, 0x100000)
+                .create_map("linux_dynamic_stack", 0x7ffffffde000, 0x100000, Permission::READ_WRITE)
                 .expect("cannot create linux_dynamic_stack map");
             //self.maps.create_map("dso_dyn").load_at(0x7ffff7ffd0000);
             self.maps
-                .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000)
+                .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000, Permission::READ_WRITE)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000)
+                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000, Permission::READ_WRITE)
                 .expect("cannot create linker map");
         } else {
             self.regs_mut().rsp = 0x7fffffffe270;
             self.maps
-                .create_map("linux_static_stack", 0x7ffffffde000, 0x100000)
+                .create_map("linux_static_stack", 0x7ffffffde000, 0x100000, Permission::READ_WRITE)
                 .expect("cannot create linux_static_stack map");
             self.maps
-                .create_map("dso", 0x7ffff7ffd000, 0x100000)
+                .create_map("dso", 0x7ffff7ffd000, 0x100000, Permission::READ_WRITE)
                 .expect("cannot create dso map");
         }
         let tls = self
             .maps
-            .create_map("tls", 0x7ffff8fff000, 0xfff)
+            .create_map("tls", 0x7ffff8fff000, 0xfff, Permission::READ_WRITE)
             .expect("cannot create tls map");
         tls.load("tls.bin");
 
@@ -292,7 +295,7 @@ impl Emu {
             self.heap_addr = self.maps.alloc(heap_sz).expect("cannot allocate heap");
             let heap = self
                 .maps
-                .create_map("heap", self.heap_addr, heap_sz) //.create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
+                .create_map("heap", self.heap_addr, heap_sz, Permission::READ_WRITE) //.create_map("heap", 0x4b5b00, 0x4d8000 - 0x4b5000)
                 .expect("cannot create heap map");
             heap.load("heap.bin");
         }
@@ -351,7 +354,7 @@ impl Emu {
     pub fn init_tests(&mut self) {
         let mem = self
             .maps
-            .create_map("test", 0, 1024)
+            .create_map("test", 0, 1024, Permission::READ_WRITE_EXECUTE)
             .expect("cannot create test map");
         mem.write_qword(0, 0x1122334455667788);
         assert!(mem.read_qword(0) == 0x1122334455667788);

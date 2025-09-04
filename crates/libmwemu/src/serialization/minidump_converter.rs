@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::ops::Deref;
 
-use crate::maps::mem64::Mem64;
+use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::tlb::TLB;
 use crate::maps::Maps;
 use crate::serialization::emu::SerializableEmu;
@@ -85,7 +85,16 @@ impl MinidumpConverter {
             for info in memory_info.iter() {
                 let base_addr = info.raw.base_address;
                 let size = info.raw.region_size;
-                
+                let permission = match info.protection {
+                    PAGE_NOACCESS => Permission::NONE,
+                    PAGE_READWRITE => Permission::READ_WRITE,
+                    PAGE_READONLY => Permission::READ,
+                    PAGE_EXECUTE => Permission::EXECUTE,
+                    PAGE_EXECUTE_READ => Permission::READ_EXECUTE,
+                    PAGE_EXECUTE_READWRITE => Permission::READ_WRITE_EXECUTE,
+                    _ => Permission::READ_WRITE_EXECUTE,
+                };
+
                 // Try to get the actual memory data for this region
                 let mem_data = memory.memory_at_address(base_addr)
                     .unwrap()
@@ -93,10 +102,11 @@ impl MinidumpConverter {
                     .to_vec();
                 
                 let mem_entry = Mem64::new(
-                    format!("mem_0x{:016x}", base_addr), // name
-                    base_addr,     // base_addr
+                    format!("mem_0x{:016x}", base_addr),  // name
+                    base_addr,                                      // base_addr
                     base_addr + size,                    // bottom_addr (base + size)
-                    mem_data       // mem data
+                    mem_data,                                       // mem data
+                    permission
                 );
 
                 let slab_key = mem_slab.insert(mem_entry);

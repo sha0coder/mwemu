@@ -1,5 +1,6 @@
 
 use crate::emu;
+use crate::maps::mem64::Permission;
 
 pub fn HeapAlloc(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
@@ -13,6 +14,7 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
             format!("alloc_{:x}", emu.regs().rax).as_str(),
             emu.regs().rax,
             size,
+            Permission::READ_WRITE,
         )
         .expect("kernel32!HeapAlloc out of memory");
 

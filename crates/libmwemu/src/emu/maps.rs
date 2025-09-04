@@ -1,6 +1,7 @@
 use std::{fs, io, path::Path};
 
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 
 impl Emu {
     /// For simulating a windows process space, select the folder with maps32 or maps64 depending upon the arch, do this before loading the binary.
@@ -128,7 +129,7 @@ impl Emu {
 
     /// This find an empty space on the memory of selected size
     /// and also creates a map there.
-    pub fn alloc(&mut self, name: &str, size: u64) -> u64 {
+    pub fn alloc(&mut self, name: &str, size: u64, permission: Permission) -> u64 {
         let addr = match self.maps.alloc(size) {
             Some(a) => a,
             None => {
@@ -137,7 +138,7 @@ impl Emu {
             }
         };
         self.maps
-            .create_map(name, addr, size)
+            .create_map(name, addr, size, permission)
             .expect("cannot create map from alloc api");
         addr
     }

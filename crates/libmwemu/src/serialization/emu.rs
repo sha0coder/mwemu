@@ -25,6 +25,8 @@ use crate::serialization::pe64::SerializablePE64;
 use crate::serialization::thread_context::SerializableThreadContext;
 use crate::structures::MemoryOperation;
 
+use crate::emu::disassemble::InstructionCache;
+
 #[derive(Serialize, Deserialize)]
 pub struct SerializableEmu {
     pub regs: Regs64,
@@ -143,6 +145,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             heap_addr: emu.heap_addr,
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
+
         }
     }
 }
@@ -157,6 +160,7 @@ impl From<SerializableEmu> for Emu {
         };
 
         Emu {
+            instruction_cache: InstructionCache::new(),
             maps: serialized.maps.into(),
             hooks: Hooks::default(), // not possible
             exp: serialized.exp,

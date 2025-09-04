@@ -1,5 +1,17 @@
 use crate::emu;
 use crate::constants;
+use crate::maps::mem64::Permission;
+
+const PAGE_NOACCESS: u32 = 0x01;
+const PAGE_READONLY: u32 = 0x02;
+const PAGE_READWRITE: u32 = 0x04;
+const PAGE_WRITECOPY: u32 = 0x08;
+const PAGE_EXECUTE: u32 = 0x10;
+const PAGE_EXECUTE_READ: u32 = 0x20;
+const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+const PAGE_EXECUTE_WRITECOPY: u32 = 0x80;
+const PAGE_GUARD: u32 = 0x100;
+const PAGE_NOCACHE: u32 = 0x200;
 
 pub fn VirtualAlloc(emu: &mut emu::Emu) {
     let addr = emu
@@ -18,6 +30,15 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp() + 12)
         .expect("kernel32!VirtualAlloc error reading protect");
+    let can_read = (protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
+        PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
+        PAGE_EXECUTE_WRITECOPY)) != 0;
+
+    let can_write = (protect & (PAGE_READWRITE | PAGE_WRITECOPY |
+        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+
+    let can_execute = (protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
+        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
 
 
     let mem_reserve = (atype & constants::MEM_RESERVE) != 0;
@@ -36,7 +57,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
                 .expect("kernel32!VirtualAlloc out of memory");
         }
         emu.maps
-            .create_map(format!("alloc_{:x}", base).as_str(), base, size)
+            .create_map(format!("alloc_{:x}", base).as_str(), base, size, Permission::from_flags(can_read, can_write, can_execute))
             .expect("kernel32!VirtualAlloc out of memory");
     } else {
         if mem_commit && emu.maps.is_allocated(addr) {

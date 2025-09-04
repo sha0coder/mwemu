@@ -2,6 +2,8 @@ use std::mem::MaybeUninit;
 use bitfield::bitfield;
 use crate::emu;
 use std::ptr;
+use crate::maps::mem64::Permission;
+
 const USER_KUSER_SHARED_ADDR: u64 = 0x7FFE0000;
 
 #[repr(u32)]
@@ -258,7 +260,7 @@ pub struct KuserSharedData {
 
 pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     emu.maps
-        .create_map("KuserSharedData", USER_KUSER_SHARED_ADDR, 0x1000)
+        .create_map("KuserSharedData", USER_KUSER_SHARED_ADDR, 0x1000, Permission::READ_WRITE)
         .expect("cannot create KuserSharedData map");
 
     // The KUSER_SHARED_DATA is getting from: https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp

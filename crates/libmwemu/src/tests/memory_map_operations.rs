@@ -1,4 +1,5 @@
 use crate::{tests::helpers, *};
+use crate::maps::mem64::Permission;
 
 #[test]
 // test memory map operations and edge cases
@@ -9,9 +10,9 @@ pub fn memory_map_operations() {
     // Don't call init to avoid DLL loading issues
     
     // Test multiple memory maps
-    emu.maps.create_map("map1", 0x10000, 0x1000).unwrap();
-    emu.maps.create_map("map2", 0x20000, 0x2000).unwrap();
-    emu.maps.create_map("map3", 0x30000, 0x1000).unwrap();
+    emu.maps.create_map("map1", 0x10000, 0x1000, Permission::READ_WRITE).unwrap();
+    emu.maps.create_map("map2", 0x20000, 0x2000, Permission::READ_WRITE).unwrap();
+    emu.maps.create_map("map3", 0x30000, 0x1000, Permission::READ_WRITE).unwrap();
     
     // Test map existence
     assert!(emu.maps.exists_mapname("map1"));

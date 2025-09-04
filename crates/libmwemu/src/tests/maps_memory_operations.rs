@@ -1,4 +1,5 @@
 use crate::*;
+use crate::maps::mem64::Permission;
 use crate::tests::helpers;
 
 #[test]
@@ -12,7 +13,7 @@ pub fn maps_memory_operations() {
     // Test memory allocation
     let base = 0x10000;
     let size = 0x1000;
-    let result = emu.maps.create_map("test_map", base, size);
+    let result = emu.maps.create_map("test_map", base, size, Permission::READ_WRITE);
     assert!(result.is_ok());
     
     // Test memory exists
@@ -44,12 +45,16 @@ pub fn maps_memory_operations() {
     let test_str = "Hello World";
     emu.maps.write_string(base + 32, test_str);
     assert_eq!(emu.maps.read_string(base + 32), test_str);
+    let test_map = emu.maps.get_map_by_name("test_map").expect("Fail to get map");
+    assert_eq!(test_map.permission().can_execute(), false);
     
     // Test duplicate map creation should fail
-    let result2 = emu.maps.create_map("test_map", base, size);
+    let result2 = emu.maps.create_map("test_map", base, size, Permission::READ_WRITE);
     assert!(result2.is_err());
     
     // Test overlapping memory should fail
-    let result3 = emu.maps.create_map("test_map2", base + 0x500, size);
+    let result3 = emu.maps.create_map("test_map2", base + 0x500, size, Permission::READ_WRITE_EXECUTE);
     assert!(result3.is_err());
+    let test_map = emu.maps.get_map_by_name("test_map2").expect("Fail to get map");
+    assert_eq!(test_map.permission().can_execute(), true);
 }

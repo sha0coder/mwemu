@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::winapi32::kernel32;
 //use crate::winapi::helper;
@@ -54,7 +55,7 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         .alloc(size + 8)
         .expect("oleaut32!SysAllocStringLen out of memory");
     let name = format!("alloc_{:x}", base + 8);
-    emu.maps.create_map(&name, base, size);
+    emu.maps.create_map(&name, base, size, Permission::READ_WRITE);
     emu.maps.memcpy(base + 8, str_ptr, size as usize - 1);
 
     log::info!(

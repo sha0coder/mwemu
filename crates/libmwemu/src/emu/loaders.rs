@@ -4,6 +4,7 @@ use crate::constants;
 use crate::elf::elf32::Elf32;
 use crate::elf::elf64::Elf64;
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 use crate::pe::pe32::PE32;
 use crate::pe::pe64::PE64;
 use crate::peb::{peb32, peb64};
@@ -109,6 +110,7 @@ impl Emu {
                 &format!("{}.pe", filename2),
                 base.into(),
                 pe32.opt.size_of_headers.into(),
+                Permission::READ_WRITE
             )
             .expect("cannot create pe map");
         pemap.memcpy(pe32.get_headers(), pe32.opt.size_of_headers as usize);
@@ -116,6 +118,11 @@ impl Emu {
         for i in 0..pe32.num_of_sections() {
             let ptr = pe32.get_section_ptr(i);
             let sect = pe32.get_section(i);
+            let charactis = sect.characteristics;
+            let is_exec = charactis & 0x20000000 != 0x0;
+            let is_read = charactis & 0x40000000 != 0x0;
+            let is_write = charactis & 0x80000000 != 0x0;
+            let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
                 sect.virtual_size as u64
@@ -143,6 +150,7 @@ impl Emu {
                 &format!("{}{}", filename2, sect_name),
                 base as u64 + sect.virtual_address as u64,
                 sz,
+                permission
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -257,6 +265,7 @@ impl Emu {
                 &format!("{}.pe", filename2),
                 base,
                 pe64.opt.size_of_headers.into(),
+                Permission::READ_WRITE
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -268,6 +277,11 @@ impl Emu {
         for i in 0..pe64.num_of_sections() {
             let ptr = pe64.get_section_ptr(i);
             let sect = pe64.get_section(i);
+            let charistic = sect.characteristics;
+            let is_exec = charistic & 0x20000000 != 0x0;
+            let is_read = charistic & 0x40000000 != 0x0;
+            let is_write = charistic & 0x80000000 != 0x0;
+            let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
                 sect.virtual_size as u64
@@ -279,7 +293,7 @@ impl Emu {
                 log::info!("size of section {} is 0", sect.get_name());
                 continue;
             }
-
+            
             let mut sect_name = sect
                 .get_name()
                 .replace(" ", "")
@@ -295,6 +309,7 @@ impl Emu {
                 &format!("{}{}", filename2, sect_name),
                 base + sect.virtual_address as u64,
                 sz,
+                permission
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -454,7 +469,7 @@ impl Emu {
             elf32.load(&mut self.maps);
             self.regs_mut().rip = elf32.elf_hdr.e_entry.into();
             let stack_sz = 0x30000;
-            let stack = self.alloc("stack", stack_sz);
+            let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
         } else if Elf64::is_elf64(filename) {
@@ -538,7 +553,7 @@ impl Emu {
 
             if !self
                 .maps
-                .create_map("code", self.cfg.code_base_addr, 0)
+                .create_map("code", self.cfg.code_base_addr, 0, Permission::READ_WRITE_EXECUTE)
                 .expect("cannot create code map")
                 .load(filename)
             {
@@ -570,7 +585,7 @@ impl Emu {
 
         self.init_cpu();
 
-        let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64).expect("cannot create code map");
+        let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64, Permission::READ_WRITE_EXECUTE).expect("cannot create code map");
         let base = code.get_base();
         code.write_bytes(base, bytes);
         self.regs_mut().rip = code.get_base();

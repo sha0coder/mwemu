@@ -7,10 +7,22 @@ use crate::console::Console;
 use crate::constants;
 use crate::context::context64::Context64;
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi64::kernel32;
+
+const PAGE_NOACCESS: u32 = 0x01;
+const PAGE_READONLY: u32 = 0x02;
+const PAGE_READWRITE: u32 = 0x04;
+const PAGE_WRITECOPY: u32 = 0x08;
+const PAGE_EXECUTE: u32 = 0x10;
+const PAGE_EXECUTE_READ: u32 = 0x20;
+const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+const PAGE_EXECUTE_WRITECOPY: u32 = 0x80;
+const PAGE_GUARD: u32 = 0x100;
+const PAGE_NOCACHE: u32 = 0x200;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
@@ -93,6 +105,25 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
 
     let addr_ptr = emu.regs().rcx;
     let size_ptr = emu.regs().rdx;
+    let protection_offset = 0x30;
+    let protection_addr = emu.regs().rsp + protection_offset;
+    let protect_value = emu.maps.read_dword(protection_addr).expect("Failed to read Protection argument at NtAllocateVirtualMemory");
+
+    let can_read = (protect_value & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
+        PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
+        PAGE_EXECUTE_WRITECOPY)) != 0;
+
+    let can_write = (protect_value & (PAGE_READWRITE | PAGE_WRITECOPY |
+        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+
+    let can_execute = (protect_value & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
+        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+
+    // Special cases
+    let no_access = (protect_value & PAGE_NOACCESS) != 0;
+    let guard_page = (protect_value & PAGE_GUARD) != 0;
+    let no_cache = (protect_value & PAGE_NOCACHE) != 0;
+
 
     let addr = emu
         .maps
@@ -137,6 +168,7 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
             format!("valloc_{:x}", alloc_addr).as_str(),
             alloc_addr,
             size,
+            Permission::from_flags(can_read, can_write, can_execute)
         )
         .expect("ntdll!NtAllocateVirtualMemory cannot create map");
 
@@ -236,12 +268,12 @@ fn LdrLoadDll(emu: &mut emu::Emu) {
     if libname == "user32.dll" {
         let user32 = emu
             .maps
-            .create_map("user32", 0x773b0000, 0x1000)
+            .create_map("user32", 0x773b0000, 0x1000, Permission::READ_WRITE)
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32.load("maps32/user32.bin");
         let user32_text = emu
             .maps
-            .create_map("user32_text", 0x773b1000, 0x1000)
+            .create_map("user32_text", 0x773b1000, 0x1000, Permission::READ_WRITE_EXECUTE)
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32_text.load("maps32/user32_text.bin");
 
@@ -367,9 +399,11 @@ fn RtlAllocateHeap(emu: &mut emu::Emu) {
         Some(a) => a,
         None => panic!("/!\\ out of memory cannot allocate ntdll!RtlAllocateHeap"),
     };
+
+    // TODO: fix this from READ_WRITE_EXECUTE to maybe READ_WRITE
     let map_name = format!("valloc_{:x}", alloc_addr);
     emu.maps
-        .create_map(&map_name, alloc_addr, size)
+        .create_map(&map_name, alloc_addr, size, Permission::READ_WRITE)
         .expect("ntdll!RtlAllocateHeap cannot create map");
     //}
 
@@ -550,7 +584,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             Some(string_buffer_addr) => {
                 // TODO: only create if it does not already exist
                 // Create the string buffer map
-                emu.maps.create_map(&format!("nt_path_string_{:x}", string_buffer_addr), string_buffer_addr, (string_length_bytes + 2) as u64)
+                emu.maps.create_map(&format!("nt_path_string_{:x}", string_buffer_addr), string_buffer_addr, (string_length_bytes + 2) as u64, Permission::READ_WRITE)
                     .expect("Failed to create nt_path_string map");
                 
                 // Write the NT path string to the allocated buffer

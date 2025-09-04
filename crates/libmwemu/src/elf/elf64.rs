@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::err::MwemuError;
-use crate::maps::mem64::Mem64;
+use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
 use std::fs::File;
 use std::io::Read;
@@ -259,7 +259,7 @@ impl Elf64 {
 
             // elf executable need to map the header.
             let hdr = maps
-                .create_map("elf64.hdr", elf64_base, 512)
+                .create_map("elf64.hdr", elf64_base, 512, Permission::READ_WRITE)
                 .expect("cannot create elf64.hdr map");
             hdr.write_bytes(elf64_base, &self.bin[..512]);
         }
@@ -278,6 +278,7 @@ impl Elf64 {
             let sh_offset = self.elf_shdr[i].sh_offset;
             let sh_size = self.elf_shdr[i].sh_size; 
             let mut sh_addr = self.elf_shdr[i].sh_addr;
+            let permission = Permission::from_bits(self.elf_shdr[i].sh_type as u8);
 
             //TODO: align sh_size to page size by extending the size, something like:
             //sh_size = ((sh_size + constants::ELF_PAGE_SIZE - 1) / constants::ELF_PAGE_SIZE) * constants::ELF_PAGE_SIZE;
@@ -347,12 +348,12 @@ impl Elf64 {
                 if sh_addr < elf64_base {
                     sh_addr += elf64_base;
                 }
-                mem = match maps.create_map(&map_name, sh_addr, sh_size) {
+                mem = match maps.create_map(&map_name, sh_addr, sh_size, permission) {
                     Ok(m) => m,
                     Err(_) => {
                         println!("elf64 {} overlappss 0x{:x} {}", map_name, sh_addr, sh_size);
                         sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
-                        maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
+                        maps.create_map(&map_name, sh_addr, sh_size, permission).expect("cannot create map")
                     }
                 };
 

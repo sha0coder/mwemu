@@ -7,6 +7,7 @@ use crate::winapi::winapi64;
 
 use lazy_static::lazy_static;
 use std::sync::Mutex;
+use crate::maps::mem64::Permission;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
@@ -526,7 +527,7 @@ fn gethostbyname(emu: &mut emu::Emu) {
     let str_addr = addr + 1024 - 100;
     let mem = emu
         .maps
-        .create_map("hostent", addr, 1024)
+        .create_map("hostent", addr, 1024, Permission::READ_WRITE)
         .expect("cannot create hostent map");
     mem.write_dword(addr, 0x04030201);
     mem.write_qword(addr + 8, addr);

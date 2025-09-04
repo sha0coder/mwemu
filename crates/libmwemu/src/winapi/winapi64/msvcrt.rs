@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::winapi64::kernel32;
 
@@ -54,7 +55,7 @@ fn malloc(emu: &mut emu::Emu) {
         let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
         emu.maps
-            .create_map(&format!("alloc_{:x}", base), base, size)
+            .create_map(&format!("alloc_{:x}", base), base, size, Permission::READ_WRITE)
             .expect("msvcrt!malloc cannot create map");
 
         log::info!(

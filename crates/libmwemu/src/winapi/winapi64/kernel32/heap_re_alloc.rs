@@ -1,5 +1,6 @@
 
 use crate::{constants, emu};
+use crate::maps::mem64::Permission;
 
 pub fn HeapReAlloc(emu: &mut emu::Emu) {
     let heap_handle = emu.regs().rcx;
@@ -32,6 +33,7 @@ pub fn HeapReAlloc(emu: &mut emu::Emu) {
                 format!("alloc_{:x}", new_addr).as_str(),
                 new_addr,
                 new_size,
+                Permission::READ_WRITE,
             ) {
                 emu.regs_mut().rax = 0;
                 return;

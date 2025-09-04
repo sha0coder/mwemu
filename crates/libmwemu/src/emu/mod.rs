@@ -24,7 +24,7 @@ mod fls;
 mod fpu;
 mod stack;
 mod fs;
-mod disassemble;
+pub mod disassemble;
 mod initialization;
 mod tls;
 mod threading;
@@ -79,5 +79,5 @@ pub struct Emu {
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
     pub global_locks: GlobalLocks,  // Critical section lock tracking
-    instruction_cache: InstructionCache
+    pub instruction_cache: InstructionCache
 }

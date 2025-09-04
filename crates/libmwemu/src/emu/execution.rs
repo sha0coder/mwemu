@@ -359,7 +359,7 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
-        let mut instruction_cache = InstructionCache::new();
+        let instruction_cache = InstructionCache::new();
         self.instruction_cache = instruction_cache;
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.run_multi_threaded(end_addr)
@@ -834,7 +834,7 @@ impl Emu {
         // the need of Reallocate everytime
         let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
         block.resize(constants::BLOCK_LEN, 0x0);
-        let mut instruction_cache = InstructionCache::new();
+        self.instruction_cache = InstructionCache::new();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs().rip);

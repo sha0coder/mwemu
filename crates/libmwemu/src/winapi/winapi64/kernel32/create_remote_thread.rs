@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::thread_context::ThreadContext;
 use crate::winapi::helper;
 
@@ -45,6 +46,7 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
                 &format!("remote_thread_stack_{:x}", new_thread_id),
                 stack_base,
                 stack_size,
+                Permission::READ_WRITE,
             ).ok();
         }
     }

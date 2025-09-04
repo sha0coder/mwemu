@@ -1,4 +1,5 @@
 use crate::{tests::helpers, *};
+use crate::maps::mem64::Permission;
 
 #[test]
 pub fn test_unified_step_and_run_methods() {
@@ -10,7 +11,7 @@ pub fn test_unified_step_and_run_methods() {
     
     // Load some simple code - NOP instructions
     let code = vec![0x90, 0x90, 0x90]; // 3 NOP instructions
-    emu.maps.create_map("code", 0x1000, 0x1000);
+    emu.maps.create_map("code", 0x1000, 0x1000, Permission::READ_WRITE_EXECUTE);
     emu.maps.write_bytes(0x1000, code);
     emu.regs_mut().rip = 0x1000;
     
@@ -30,13 +31,13 @@ pub fn test_unified_step_and_run_methods() {
     
     // Test 3: Verify run() method works
     let mut emu2 = emu32();
-    emu2.maps.create_map("code", 0x1000, 0x1000);
+    emu2.maps.create_map("code", 0x1000, 0x1000, Permission::READ_WRITE_EXECUTE);
     let code32 = vec![0x90, 0x90, 0xC3]; // 2 NOPs and RET
     emu2.maps.write_bytes(0x1000, code32);
     emu2.regs_mut().set_eip(0x1000);
     
     // Create a minimal stack for the RET instruction
-    emu2.maps.create_map("stack", 0x2000, 0x1000);
+    emu2.maps.create_map("stack", 0x2000, 0x1000, Permission::READ_WRITE);
     emu2.regs_mut().set_esp(0x2500);
     emu2.maps.write_dword(0x2500, 0x3000); // Return address
     

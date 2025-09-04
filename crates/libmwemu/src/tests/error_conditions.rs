@@ -1,4 +1,5 @@
 use crate::*;
+use crate::maps::mem64::Permission;
 use crate::tests::helpers;
 
 #[test]
@@ -20,7 +21,7 @@ pub fn error_conditions() {
     
     // Test zero-sized memory operations
     let base = 0x20000;
-    emu.maps.create_map("zero_test", base, 0x1000).unwrap();
+    emu.maps.create_map("zero_test", base, 0x1000, Permission::READ_WRITE_EXECUTE).unwrap();
     
     // Test reading/writing at exact boundaries
     assert!(emu.maps.write_dword(base + 0x1000 - 4, 0x12345678));

@@ -1,5 +1,6 @@
 use crate::emu;
 use crate::constants;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::winapi64::kernel32;
 //use crate::winapi::helper;
@@ -59,7 +60,7 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
         .expect("oleaut32!SysAllocStringLen out of memory");
 
     let name = format!("alloc_{:x}", bstr);
-    emu.maps.create_map(&name, bstr, total_alloc_size + 100);
+    emu.maps.create_map(&name, bstr, total_alloc_size + 100, Permission::READ_WRITE);
     
     if str_ptr == 0 {
         // Handle null input - just write the length prefix
@@ -210,7 +211,7 @@ fn SysReAllocStringLen(emu: &mut emu::Emu) {
         .expect("oleaut32!SysReAllocStringLen out of memory");
     
     let name = format!("bstr_{:x}", new_base);
-    emu.maps.create_map(&name, new_base, total_alloc_size + 100);
+    emu.maps.create_map(&name, new_base, total_alloc_size + 100, Permission::READ_WRITE);
     
     // Write length prefix (in bytes, not including null terminator)
     emu.maps.write_dword(new_base, byte_len as u32);

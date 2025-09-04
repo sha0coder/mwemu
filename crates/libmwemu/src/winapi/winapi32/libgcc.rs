@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 //use crate::constants::*;
 //use crate::winapi::helper;
 use crate::serialization;
@@ -57,7 +58,7 @@ fn __register_frame_info(emu: &mut emu::Emu) {
         Some(m) => m,
         None => emu
             .maps
-            .create_map("glob1", 0x40E198, 100)
+            .create_map("glob1", 0x40E198, 100, Permission::READ_WRITE_EXECUTE)
             .expect("cannot create glob1 map"),
     };
 

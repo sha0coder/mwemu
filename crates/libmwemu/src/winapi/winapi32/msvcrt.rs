@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
@@ -259,7 +260,7 @@ fn __p___argc(emu: &mut emu::Emu) {
         None => {
             let addr = emu.maps.alloc(1024).expect("out of memory");
             emu.maps
-                .create_map("args", addr, 1024)
+                .create_map("args", addr, 1024, Permission::READ_WRITE)
                 .expect("cannot create args map")
         }
     };
@@ -285,7 +286,7 @@ fn malloc(emu: &mut emu::Emu) {
         let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
         emu.maps
-            .create_map(&format!("alloc_{:x}", base), base, size)
+            .create_map(&format!("alloc_{:x}", base), base, size, Permission::READ_WRITE)
             .expect("msvcrt!malloc cannot create map");
 
         log::info!(
@@ -374,13 +375,14 @@ fn realloc(emu: &mut emu::Emu) {
 
     if addr == 0 {
         if size == 0 {
+            emu.maps.dealloc(addr);
             emu.regs_mut().rax = 0;
             return;
         } else {
             let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
             emu.maps
-                .create_map(&format!("alloc_{:x}", base), base, size)
+                .create_map(&format!("alloc_{:x}", base), base, size, Permission::READ_WRITE)
                 .expect("msvcrt!malloc cannot create map");
 
             log::info!(
@@ -421,7 +423,7 @@ fn realloc(emu: &mut emu::Emu) {
     let new_addr = emu.maps.alloc(size).expect("msvcrt!realloc out of memory");
 
     emu.maps
-        .create_map(&format!("alloc_{:x}", new_addr), new_addr, size)
+        .create_map(&format!("alloc_{:x}", new_addr), new_addr, size, Permission::READ_WRITE)
         .expect("msvcrt!realloc cannot create map");
 
     emu.maps.memcpy(new_addr, addr, prev_size);

@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::convert::TryInto;
 use slab::Slab;
 use std::str;
+use crate::maps::mem64::{Permission};
 use crate::maps::tlb::LPF_OF;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -129,7 +130,7 @@ impl Maps {
             })
     }
 
-    pub fn create_map(&mut self, name: &str, base: u64, size: u64) -> Result<&mut Mem64, String> {
+    pub fn create_map(&mut self, name: &str, base: u64, size: u64, permission: Permission) -> Result<&mut Mem64, String> {
         //if size == 0 {
         //    return Err(format!("map size cannot be 0"));
         //}
@@ -147,6 +148,8 @@ impl Maps {
         mem.set_name(name);
         mem.set_base(base);
         mem.set_size(size);
+        mem.set_permission(permission);
+
 
         let base_key = self.mem_slab.insert(mem);
         self.name_map.insert(name.to_string(), base_key);
@@ -1159,20 +1162,20 @@ impl Maps {
         self.maps.remove(&addr);
     }
 
-    pub fn map(&mut self, name: &str, sz: u64) -> u64 {
+    pub fn map(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
-        self.create_map(name, addr, sz).expect("emu.maps.map(sz) cannot create map");
+        self.create_map(name, addr, sz, permission).expect("emu.maps.map(sz) cannot create map");
         addr
     }
 
-    pub fn map_lib(&mut self, name: &str, sz: u64) -> u64 {
+    pub fn map_lib(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
         if self.is_64bits { 
             let addr = self.lib64_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
         } else {
             let addr = self.lib32_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
         }
-        self.create_map(name, addr, sz).expect("emu.maps.map_lib(sz) cannot create map");
+        self.create_map(name, addr, sz, permission).expect("emu.maps.map_lib(sz) cannot create map");
         addr
     }
 

@@ -9,7 +9,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-
+use crate::maps::mem64::Permission;
 /*
  * /usr/include/asm/unistd_64.h
  *
@@ -882,7 +882,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             let map = emu
                 .maps
-                .create_map(&format!("mmap_{:x}", addr), addr, sz)
+                .create_map(&format!("mmap_{:x}", addr), addr, sz, Permission::from_bits(prot as u8))
                 .expect("cannot create mmap map");
 
             if helper::handler_exist(fd) {
