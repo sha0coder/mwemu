@@ -392,20 +392,6 @@ impl PE64 {
         self.sect_hdr.clear();
     }
 
-    /*pub fn vaddr_to_off(sections: &Vec<ImageSectionHeader>, vaddr: u32) -> u32 {
-        for sect in sections {
-            if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
-                /*
-                log::info!("{:x} = vaddr:{:x} - sect.vaddr:{:x} + sect.ptr2rawdata:{:x}",
-                    (vaddr - sect.virtual_address + sect.pointer_to_raw_data),
-                    vaddr, sect.virtual_address, sect.pointer_to_raw_data); */
-                return vaddr - sect.virtual_address + sect.pointer_to_raw_data;
-            }
-        }
-
-        0
-    }*/
-
     pub fn vaddr_to_off(sections: &Vec<ImageSectionHeader>, vaddr: u32) -> u32 {
         for sect in sections {
             if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
@@ -429,36 +415,6 @@ impl PE64 {
 
         log::warn!("Virtual address 0x{:x} not found in any section", vaddr);
         0
-    }
-
-    // Alternative version that returns an Option for better error handling
-    pub fn vaddr_to_off_safe(sections: &Vec<ImageSectionHeader>, vaddr: u32, file_size: usize) -> Option<u32> {
-        for sect in sections {
-            if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
-                let offset_within_section = vaddr - sect.virtual_address;
-                
-                // Check if the offset is within the raw data size
-                if offset_within_section >= sect.size_of_raw_data {
-                    log::warn!("Virtual address 0x{:x} maps to uninitialized data in section '{}'", 
-                            vaddr, sect.get_name());
-                    return None;
-                }
-                
-                let file_offset = sect.pointer_to_raw_data + offset_within_section;
-                
-                // Verify the file offset is within the actual file bounds
-                if file_offset as usize >= file_size {
-                    log::warn!("Calculated file offset 0x{:x} exceeds file size {} for vaddr 0x{:x}", 
-                            file_offset, file_size, vaddr);
-                    return None;
-                }
-                
-                return Some(file_offset);
-            }
-        }
-
-        log::warn!("Virtual address 0x{:x} not found in any section", vaddr);
-        None
     }
 
     // this approach sume that the string exist there and will find the \x00

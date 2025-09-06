@@ -32,11 +32,9 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 pub fn _CorExeMain(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} mscoree!_CorExeMain {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "mscoree!_CorExeMain"
     );
     emu.regs_mut().rax = 1;
     unimplemented!();

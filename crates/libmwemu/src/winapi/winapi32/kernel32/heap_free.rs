@@ -14,12 +14,10 @@ pub fn HeapFree(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!HeapFree cannot read heap handle");
 
-    log::info!(
-        "{}** {} kernel32!HeapFree mem: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        mem,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!HeapFree mem: 0x{:x}",
+        mem
     );
 
     emu.stack_pop32(false);

@@ -16,12 +16,10 @@ pub fn CreateMutexW(emu: &mut emu::Emu) {
         .expect("kernel32!CreateMutexW cannot read name param") as u64;
     let name = emu.maps.read_wide_string(name_ptr);
 
-    log::info!(
-        "{}** {} kernel32!CreateMutexW '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!CreateMutexW '{}'",
+        name
     );
 
     for _ in 0..3 {

@@ -5,13 +5,11 @@ pub fn FlsSetValue(emu: &mut emu::Emu) {
     let idx = emu.regs().rcx;
     let val = emu.regs().rdx as u32;
 
-    log::info!(
-        "{}** {} kernel32!FlsSetValue idx: {} val: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!FlsSetValue idx: {} val: {}",
         idx,
-        val,
-        emu.colors.nc
+        val
     );
 
     if emu.fls().len() > idx as usize {

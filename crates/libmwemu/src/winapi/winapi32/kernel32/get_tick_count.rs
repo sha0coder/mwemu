@@ -1,11 +1,9 @@
 use crate::emu;
 
 pub fn GetTickCount(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!GetTickCount {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetTickCount"
     );
 
     emu.regs_mut().rax = emu.tick as u64;

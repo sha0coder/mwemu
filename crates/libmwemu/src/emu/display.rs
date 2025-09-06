@@ -36,7 +36,7 @@ impl Emu {
         self.regs().show_r14(&self.maps, 0);
         self.regs().show_r15(&self.maps, 0);
     }
-
+    
     #[inline]
     pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
         if self.cfg.verbose < 2 {
@@ -45,15 +45,26 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {} ; {}{}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                comment,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} ; {}",
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    comment
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} ; {}{}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    comment,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 
@@ -65,14 +76,24 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {}{}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {}",
+                    self.pos,
+                    ins.ip(),
+                    out
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {}{}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 
@@ -84,16 +105,28 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x} {}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                addr,
-                self.regs().rax,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x}",
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    addr,
+                    self.regs().rax
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x} {}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    addr,
+                    self.regs().rax,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 
@@ -105,15 +138,26 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {} ;0x{:x} {}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                value,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} ;0x{:x}",
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    value
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} ;0x{:x} {}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    value,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 
@@ -125,14 +169,24 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {} taken {}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} taken",
+                    self.pos,
+                    ins.ip(),
+                    out
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} taken {}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 
@@ -143,14 +197,24 @@ impl Emu {
         let mut out: String = String::new();
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
-            log::info!(
-                "{}{} 0x{:x}: {} not taken {}",
-                color,
-                self.pos,
-                ins.ip(),
-                out,
-                self.colors.nc
-            );
+            if self.cfg.nocolors {
+                log::info!(
+                    "{} 0x{:x}: {} not taken",
+                    self.pos,
+                    ins.ip(),
+                    out
+                );
+            } else {
+                log::info!(
+                    "{}{} 0x{:x}: {} not taken {}",
+                    color,
+                    self.pos,
+                    ins.ip(),
+                    out,
+                    self.colors.nc
+                );
+            }
+            self.show_definition();
         }
     }
 }

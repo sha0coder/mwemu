@@ -7,12 +7,10 @@ pub fn HeapCreate(emu: &mut emu::Emu) {
     let initSZ = emu.regs().rdx;
     let maxSZ = emu.regs().r8;
 
-    log::info!(
-        "{}** {} kernel32!HeapCreate maxSZ:{} {}",
-        emu.colors.light_red,
-        emu.pos,
-        maxSZ,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!HeapCreate maxSZ:{}",
+        maxSZ
     );
 
     let uri = format!("HeapCreate://{}", maxSZ);

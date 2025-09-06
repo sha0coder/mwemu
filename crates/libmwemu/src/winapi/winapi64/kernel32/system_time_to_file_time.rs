@@ -8,10 +8,8 @@ pub fn SystemTimeToFileTime(emu: &mut emu::Emu) {
     let now = structures::SystemTime::now();
     now.save(out_ptr, &mut emu.maps);
 
-    log::info!(
-        "{}** {} kernel32!SystemTimeToFileTime  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!SystemTimeToFileTime"
     );
 }

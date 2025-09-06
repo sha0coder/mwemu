@@ -137,14 +137,12 @@ pub fn CreateThread(emu: &mut emu::Emu) {
         log::info!("tid_ptr is NULL, not writing thread ID");
     }
 
-    log::info!(
-        "{}** {} kernel32!CreateThread code: 0x{:x} param: 0x{:x} flags: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateThread code: 0x{:x} param: 0x{:x} flags: 0x{:x}",
         code,
         param,
-        flags,
-        emu.colors.nc
+        flags
     );
 
     log::info!("THREAD ARRAY STATE:");

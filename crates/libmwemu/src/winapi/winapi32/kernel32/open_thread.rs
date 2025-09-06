@@ -15,12 +15,10 @@ pub fn OpenThread(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!OpenThread cannot read tid");
 
-    log::info!(
-        "{}** {} kernel32!OpenThread tid: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        tid,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!OpenThread tid: {}",
+        tid
     );
 
     emu.stack_pop32(false);

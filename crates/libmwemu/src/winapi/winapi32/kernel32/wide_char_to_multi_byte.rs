@@ -45,15 +45,13 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
         emu.maps.write_string(mbytestr_ptr, &s);
     }
 
-    log::info!(
-        "{}** {} kernel32!WideCharToMultiByte `{}` sz:{}->{} ={} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!WideCharToMultiByte `{}` sz:{}->{} ={}",
         s,
         wstr_sz,
         mbytestr_sz,
-        s.len(),
-        emu.colors.nc,
+        s.len()
     );
 
     for _ in 0..8 {

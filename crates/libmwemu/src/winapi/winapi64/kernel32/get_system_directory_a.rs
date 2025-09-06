@@ -8,11 +8,9 @@ pub fn GetSystemDirectoryA(emu: &mut emu::Emu) {
     let output = constants::SYSTEM_DIRECTORY;
     emu.maps.write_string(out_buff_ptr, &output);
 
-    log::info!(
-        "{}** {} kernel32!GetSystemDirectoryA  {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetSystemDirectoryA"
     );
 
     emu.regs_mut().rax = output.len() as u64;

@@ -1,0 +1,30 @@
+events:
+  - address: "0x1800b50a0"
+    name: "test1_entry"
+    type: "function_call"
+    store_context: "test1_call"  # Store this call's context for later
+    parameters:
+    - name: output
+      type: pointer
+      source: rcx
+    - name: input
+      type: wide_string
+      source: rdx
+
+  - address: "0x1800b5104"
+    name: "test1_exit"
+    type: "function_return"
+    use_context: "test1_call"
+    parameters:
+    - name: input
+      type: wide_string
+      source: context:test1_call:input
+    - name: output_ptr
+      type: pointer
+      source: context:test1_call:output
+    - name: output_result
+      type: wide_string
+      source: deref:context:test1_call:output  # Dereference the pointer
+    - name: return_value
+      type: int32
+      source: rax

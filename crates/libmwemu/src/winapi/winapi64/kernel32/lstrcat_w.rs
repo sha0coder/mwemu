@@ -8,13 +8,11 @@ pub fn lstrcatW(emu: &mut emu::Emu) {
     let mut str1 = emu.maps.read_wide_string(str1_ptr);
     let str2 = emu.maps.read_wide_string(str2_ptr);
 
-    log::info!(
-        "{}** {} kernel32!lstrcatW '{}'+'{}' {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!lstrcatW '{}'+'{}'",
         str1,
-        str2,
-        emu.colors.nc
+        str2
     );
 
     str1.push_str(&str2);

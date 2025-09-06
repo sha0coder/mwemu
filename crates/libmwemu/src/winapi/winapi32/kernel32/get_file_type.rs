@@ -6,12 +6,10 @@ pub fn GetFileType(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp)
         .expect("kernel32!GetFileType error getting hndl param");
 
-    log::info!(
-        "{}** {} kernel32!GetFileType 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        hndl,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetFileType 0x{:x}",
+        hndl
     );
 
     emu.stack_pop32(false);

@@ -362,7 +362,8 @@ impl Maps {
                 None
             }
             _ => {
-                panic!("Reading dword to unmapped region at 0x{:x}", addr);
+                log::warn!("Reading dword to unmapped region at 0x{:x}", addr);
+                None
             }
         }
     }
@@ -1189,9 +1190,9 @@ impl Maps {
 
     pub fn alloc(&self, sz: u64) -> Option<u64> {
         if self.is_64bits {
-            self._alloc(sz, 1, constants::LIBS64_MIN, false)
+            self._alloc(sz, constants::ALLOC64_MIN, constants::ALLOC64_MAX, false)
         } else {
-            self._alloc(sz, 1, constants::LIBS32_MIN, false)
+            self._alloc(sz, constants::ALLOC32_MIN, constants::ALLOC32_MAX, false)
         }
     }
 

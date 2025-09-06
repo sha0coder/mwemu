@@ -20,11 +20,11 @@ impl Emu {
         let mut pe32 = PE32::load(filename);
         let base: u32;
 
-        println!("loading pe32 {}", filename);
+        log::info!("loading pe32 {}", filename);
 
         /* .rsrc extraction tests
         if set_entry {
-            println!("get_resource_by_id");
+            log::info!("get_resource_by_id");
             pe32.get_resource(Some(3), Some(0), None, None);
         }*/
 
@@ -98,12 +98,12 @@ impl Emu {
                 );
             }
 
-            println!("base: 0x{:x}", base);
+            log::info!("base: 0x{:x}", base);
         }
 
 
         // 4. map pe and then sections
-        println!("mapeando PE de {}", filename2);
+        log::info!("mapeando PE de {}", filename2);
         let pemap = self
             .maps
             .create_map(
@@ -255,7 +255,7 @@ impl Emu {
                     self.regs().rip
                 );
             }
-            println!("base: 0x{:x}", base);
+            log::info!("base: 0x{:x}", base);
         }
 
         // 4. map pe and then sections
@@ -391,18 +391,18 @@ impl Emu {
 
         // 1. Configured entry point
         if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
-            println!("forcing entry point to 0x{:x}", self.cfg.entry_point);
+            log::info!("forcing entry point to 0x{:x}", self.cfg.entry_point);
             self.regs_mut().rip = self.cfg.entry_point;
 
         // 2. Entry point pointing inside .text
         } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr+text_sz {
-            println!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
+            log::info!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
             self.regs_mut().rip = elf64.elf_hdr.e_entry;
 
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
-            self.regs_mut().rip = elf64.elf_hdr.e_entry + text_addr;
-            println!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs().rip);
+            self.regs_mut().rip = elf64.elf_hdr.e_entry + elf64.base; //text_addr;
+            log::info!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs().rip);
 
         // 4. Entry point points below .text, weird case.
         } else {

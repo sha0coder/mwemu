@@ -22,14 +22,12 @@ pub fn LocalAlloc(emu: &mut emu::Emu) {
         )
         .expect("kernel32!LocalAlloc out of memory");
 
-    log::info!(
-        "{}** {} kernel32!LocalAlloc flags: 0x{:x} size: {} =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!LocalAlloc flags: 0x{:x} size: {} =0x{:x}",
         flags,
         size,
-        emu.regs().get_eax() as u32,
-        emu.colors.nc
+        emu.regs().get_eax() as u32
     );
 
     emu.stack_pop32(false);

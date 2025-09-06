@@ -10,11 +10,9 @@ pub fn FileTimeToSystemTime(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!FileTimeToSystemTime cannot read sys_time_ptr");
 
-    log::info!(
-        "{}** {} kernel32!FileTimeToSystemTime {} ",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!FileTimeToSystemTime"
     );
 
     emu.stack_pop32(false);

@@ -8,12 +8,10 @@ pub fn LoadLibraryExA(emu: &mut emu::Emu) {
 
     emu.regs_mut().rax = load_library(emu, &dll);
 
-    log::info!(
-        "{}** {} kernel32!LoadLibraryExA  '{}' =0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!LoadLibraryExA  '{}' =0x{:x}",
         dll,
-        emu.regs().rax,
-        emu.colors.nc
+        emu.regs().rax
     );
 }

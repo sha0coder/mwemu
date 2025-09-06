@@ -6,8 +6,8 @@ use crate::maps::mem64::Permission;
 impl Emu {
     /// For simulating a windows process space, select the folder with maps32 or maps64 depending upon the arch, do this before loading the binary.
     pub fn set_maps_folder(&mut self, folder: &str) {
-        let mut f = folder.to_string();
-        f.push('/');
+        //let mut f = folder.to_string();
+        //f.push('/');
         self.cfg.maps_folder = folder.to_string();
         
         // Check if maps folder exists and contains essential files

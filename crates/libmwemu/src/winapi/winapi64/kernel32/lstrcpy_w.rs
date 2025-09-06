@@ -9,14 +9,12 @@ pub fn lstrcpyW(emu: &mut emu::Emu) {
     emu.maps.write_wide_string(dst, &s);
     emu.maps.write_byte(dst + (s.len() as u64 * 2), 0);
 
-    log::info!(
-        "{}** {} kernel32!lstrcpyW 0x{:x} 0x{:x} {}  {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!lstrcpyW 0x{:x} 0x{:x} {}",
         dst,
         src,
-        &s,
-        emu.colors.nc
+        &s
     );
 
     if s.is_empty() {

@@ -9,6 +9,13 @@ use crate::err::MwemuError;
 use crate::{constants, engine, serialization};
 use crate::emu::disassemble::InstructionCache;
 
+macro_rules! round_to {
+    ($num:expr, $dec:expr) => {{
+        let factor = 10f64.powi($dec);
+        ($num * factor).round() / factor
+    }};
+}
+
 impl Emu {
     #[inline]
     pub fn stop(&mut self) {
@@ -103,6 +110,52 @@ impl Emu {
         }
     }
 
+
+
+    pub fn update_entropy(&mut self) {
+        let prev_entropy = self.entropy;
+
+        let mem = match self.maps.get_mem_by_addr(self.regs().rip) {
+            Some(n) => n,
+            None => {
+                self.entropy = 0.0;
+                if self.entropy != prev_entropy {
+                    log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+                }
+                return;
+            }
+        };
+
+        let data = mem.get_bytes();
+
+        if data.is_empty() {
+            self.entropy = 0.0;
+            if self.entropy != prev_entropy {
+                log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+            }
+            return;
+        }
+
+        let mut counts = [0usize; 256];
+        for &b in data {
+            counts[b as usize] += 1;
+        }
+        let len = data.len() as f64;
+        self.entropy = round_to!(counts
+            .iter()
+            .filter(|&&c| c > 0)
+            .map(|&c| {
+                let p = c as f64 / len;
+                -p * p.log2()
+            })
+            .sum::<f64>(), 3);
+
+        if self.entropy != prev_entropy {
+            log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+        }
+    }
+
+
     /// Emulate a single step from the current point (single-threaded implementation).
     /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
     /// the current emulation moment. 
@@ -124,7 +177,7 @@ impl Emu {
                 );
             }
 
-            if self.cfg.trace_filename.is_some() {
+            if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                 self.trace_file
                     .as_ref()
                     .unwrap()
@@ -190,6 +243,7 @@ impl Emu {
         }
         // emulate
         let result_ok = engine::emulate_instruction(self, &ins, sz, true);
+        //tracing::trace_instruction(self, self.pos);
         self.last_instruction_size = sz;
 
         // Run post-instruction hook
@@ -231,7 +285,7 @@ impl Emu {
                 );
             }
 
-            if self.cfg.trace_filename.is_some() {
+            if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                 self.trace_file
                     .as_ref()
                     .unwrap()
@@ -374,414 +428,7 @@ impl Emu {
     /// self.pos is not set to zero, can be used to continue emulation.
     #[deprecated(since = "0.1.0", note = "Use run() instead, which automatically handles threading")]
     pub fn run_multi_threaded(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
-        //self.stack_lvl.clear();
-        //self.stack_lvl_idx = 0;
-        //self.stack_lvl.push(0);
-        
-        match self.maps.get_mem_by_addr(self.regs().rip) {
-            Some(mem) =>  {
-            }
-            None => {
-                log::info!("Cannot start emulation, pc pointing to unmapped area");
-                return Err(MwemuError::new("program counter pointing to unmapped memory"))
-            }
-        };
-
-        self.is_running.store(1, atomic::Ordering::Relaxed);
-        let is_running2 = Arc::clone(&self.is_running);
-
-        if self.enabled_ctrlc {
-            ctrlc::set_handler(move || {
-                log::info!("Ctrl-C detected, spawning console");
-                is_running2.store(0, atomic::Ordering::Relaxed);
-            })
-            .expect("ctrl-c handler failed");
-        }
-
-        let mut looped: Vec<u64> = Vec::new();
-        let mut prev_addr: u64 = 0;
-        //let mut prev_prev_addr:u64 = 0;
-        let mut repeat_counter: u32 = 0;
-
-        if end_addr.is_none() && self.max_pos.is_none() {
-            log::info!(" ----- emulation -----");
-        } else if !self.max_pos.is_none() {
-            log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
-        } else {
-            log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
-        }
-
-        //self.pos = 0;
-        let arch = if self.cfg.is_64bits { 64 } else { 32 };
-        let mut ins: Instruction = Instruction::default();
-        // we using a single block to store all the instruction to optimize for without
-        // the need of Reallocate everytime
-        let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
-        block.resize(constants::BLOCK_LEN, 0x0);
-        loop {
-            while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                // turn on verbosity after a lot of pos
-                if let Some(vpos) = self.cfg.verbose_at {
-                    if vpos == self.pos {
-                        if self.cfg.verbose < 2 {
-                            self.cfg.verbose = 2;
-                        }
-                        //self.cfg.trace_mem = true;
-                    }
-                }
-
-                // Debug: Track which thread we're executing
-                if self.threads.len() > 1 && self.cfg.verbose >= 3 {
-                    /*log::debug!(
-                        "Executing thread {} (ID: 0x{:x}) at RIP: 0x{:x}",
-                        self.current_thread_id,
-                        self.threads[self.current_thread_id].id,
-                        self.regs().rip
-                    );*/
-                }
-
-                let rip = self.regs().rip;
-                let code = match self.maps.get_mem_by_addr(rip) {
-                    Some(c) => c,
-                    None => {
-                        log::info!(
-                            "redirecting code flow to non mapped address 0x{:x}",
-                            rip
-                        );
-                        Console::spawn_console(self);
-                        return Err(MwemuError::new("cannot read program counter"));
-                    }
-                };
-
-                // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
-                // reading anymore would be a waste of time
-                let block_sz = constants::BLOCK_LEN;
-                let block_temp = code.read_bytes(rip, block_sz);
-                let block_temp_len = block_temp.len();
-                if block_temp_len != block.len() {
-                    block.resize(block_temp_len, 0);
-                }
-                block.clone_from_slice(block_temp);
-                if block.len() == 0 {
-                     return Err(MwemuError::new("cannot read code block, weird address."));
-                } 
-                let mut decoder =
-                    Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
-                let mut sz: usize = 0;
-                let mut addr: u64 = 0;
-
-                self.rep = None;
-                let addition = if block_temp_len < 16 {block_temp_len} else {16};
-                while decoder.can_decode() && (decoder.position() + addition <= decoder.max_position()) {
-                    if self.rep.is_none() {
-                        decoder.decode_out(&mut ins);
-                        sz = ins.len();
-                        addr = ins.ip();
-
-                        if end_addr.is_some() && Some(addr) == end_addr {
-                            return Ok(self.regs().rip);
-                        }
-
-                        if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
-                            return Ok(self.regs().rip);
-                        }
-                    }
-
-                    // Verify instruction belongs to current thread
-                    if self.threads.len() > 1 && self.cfg.verbose >= 4 {
-                        /*log::debug!(
-                            "Thread {} decoding instruction at 0x{:x} (ins.ip: 0x{:x})",
-                            self.current_thread_id,
-                            self.regs().rip,
-                            addr
-                        );*/
-                    }
-                    
-                    self.instruction = Some(ins);
-                    self.decoder_position = decoder.position();
-                    self.memory_operations.clear();
-                    self.pos += 1;
-
-                    if let Some(vpos) = self.cfg.verbose_at {
-                        if vpos == self.pos {
-                            self.cfg.verbose = 2;
-                            //self.cfg.trace_mem = true;
-                        }
-                    }
-
-                    if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
-                        log::info!("exit position reached");
-
-                        if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                            serialization::Serialization::dump_to_file(
-                                self,
-                                self.cfg.dump_filename.as_ref().unwrap(),
-                            );
-                        }
-
-                        if self.cfg.trace_filename.is_some() {
-                            self.trace_file
-                                .as_ref()
-                                .unwrap()
-                                .flush()
-                                .expect("failed to flush trace file");
-                        }
-
-                        return Ok(self.regs().rip);
-                    }
-
-                    if self.exp == self.pos
-                        || self.bp.is_bp_instruction(self.pos)
-                        || self.bp.is_bp(addr)
-                        || (self.cfg.console2 && self.cfg.console_addr == addr)
-                    {
-                        if self.running_script {
-                            return Ok(self.regs().rip);
-                        }
-
-                        self.cfg.console2 = false;
-                        if self.cfg.verbose >= 2 {
-                            let mut output = String::new();
-                            self.formatter.format(&ins, &mut output);
-                            log::info!("-------");
-                            log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
-                        }
-                        
-                        Console::spawn_console(self);
-
-                        if self.force_break {
-                            self.force_break = false;
-                            break;
-                        }
-                    }
-
-                    // prevent infinite loop (only for single-threaded execution)
-                    // With multiple threads, addresses will naturally repeat as threads execute similar code
-                    if self.rep.is_none() && self.threads.len() == 1 {
-                        if addr == prev_addr {
-                            // || addr == prev_prev_addr {
-                            repeat_counter += 1;
-                        }
-                        //prev_prev_addr = prev_addr;
-                        prev_addr = addr;
-                        if repeat_counter == 100 {
-                            log::info!(
-                                "infinite loop!  opcode: {}",
-                                ins.op_code().op_code_string()
-                            );
-                            return Err(MwemuError::new("inifinite loop found"));
-                        }
-
-                        if self.cfg.loops {
-                            // loop detector
-                            looped.push(addr);
-                            let mut count: u32 = 0;
-                            for a in looped.iter() {
-                                if addr == *a {
-                                    count += 1;
-                                }
-                            }
-                            if count > 2 {
-                                log::info!("    loop: {} interations", count);
-                            }
-                            /*
-                            if count > self.loop_limit {
-                            panic!("/!\\ iteration limit reached");
-                            }*/
-                            //TODO: if more than x addresses remove the bottom ones
-                        }
-                    } else if self.rep.is_none() && self.threads.len() > 1 {
-                        // For multi-threaded execution, just update prev_addr for tracking
-                        // but don't check for infinite loops
-                        prev_addr = addr;
-                    }
-
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
-                        self.capture_pre_op();
-                    }
-
-                    if self.cfg.trace_reg {
-                        for reg in self.cfg.reg_names.iter() {
-                            self.trace_specific_register(reg);
-                        }
-                    }
-
-                    if self.cfg.trace_flags {
-                        self.flags().print_trace(self.pos);
-                    }
-
-
-                    if self.cfg.trace_string {
-                        self.trace_string();
-                    }
-
-                    //let mut info_factory = InstructionInfoFactory::new();
-                    //let info = info_factory.info(&ins);
-
-                    if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-                        if !hook_fn(self, self.regs().rip, &ins, sz) {
-                            continue;
-                        }
-                    }
-
-                    let is_ret = match ins.code() {
-                        Code::Retnw | Code::Retnd | Code::Retnq => true,
-                        _ => false
-                    };
-
-                    if !is_ret && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix()) {
-                        if self.rep.is_none() {
-                            self.rep = Some(0);
-                        }
-
-                        // if rcx is 0 in first rep step, skip instruction.
-                        if self.regs_mut().rcx == 0 {
-                            self.rep = None;
-                            if self.cfg.is_64bits {
-                                self.regs_mut().rip += sz as u64;
-                            } else {
-                                let new_eip = self.regs().get_eip() + sz as u64;
-                                self.regs_mut().set_eip(new_eip);
-                            }
-                            continue;
-                        }
-                    }
-                    
-                    /*************************************/
-                    let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
-                    /*************************************/
-
-
-                    if let Some(rep_count) = self.rep {
-                        if self.cfg.verbose >= 3 {
-                            log::info!("    rcx: {}", self.regs().rcx);
-                        }
-                        if self.regs().rcx > 0 {
-                            self.regs_mut().rcx -= 1;
-                            if self.regs_mut().rcx == 0 {
-                                self.rep = None;
-                            } else {
-                                self.rep = Some(rep_count + 1);
-                            }
-                        }
-
-                        // repe and repe are the same on x86 (0xf3) so you have to check if it is movement or comparison
-                        let is_string_movement = matches!(
-                            ins.mnemonic(),
-                            Mnemonic::Movsb
-                                | Mnemonic::Movsw
-                                | Mnemonic::Movsd
-                                | Mnemonic::Movsq
-                                | Mnemonic::Stosb
-                                | Mnemonic::Stosw
-                                | Mnemonic::Stosd
-                                | Mnemonic::Stosq
-                                | Mnemonic::Lodsb
-                                | Mnemonic::Lodsw
-                                | Mnemonic::Lodsd
-                                | Mnemonic::Lodsq
-                        );
-                        let is_string_comparison = matches!(
-                            ins.mnemonic(),
-                            Mnemonic::Cmpsb
-                                | Mnemonic::Cmpsw
-                                | Mnemonic::Cmpsd
-                                | Mnemonic::Cmpsq
-                                | Mnemonic::Scasb
-                                | Mnemonic::Scasw
-                                | Mnemonic::Scasd
-                                | Mnemonic::Scasq
-                        );
-                        if is_string_movement {
-                            // do not clear rep if it is a string movement
-                        } else if is_string_comparison {
-                            if ins.has_repe_prefix() && !self.flags().f_zf {
-                                self.rep = None;
-                            }
-                            if ins.has_repne_prefix() && self.flags().f_zf {
-                                self.rep = None;
-                            }
-                        } else {
-                            self.rep = None;
-                            //unimplemented!("string instruction not supported");
-                        }
-                    }
-
-                    if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-                        hook_fn(self, self.regs().rip, &ins, sz, emulation_ok)
-                    }
-
-                    if self.cfg.inspect {
-                        self.trace_memory_inspection();
-                    }
-
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
-                        self.capture_post_op();
-                        self.write_to_trace_file();
-                    }
-
-                    if !emulation_ok {
-                        if self.cfg.console_enabled {
-                            Console::spawn_console(self);
-                        } else {
-                            if self.running_script {
-                                return Ok(self.regs().rip);
-                            } else {
-                                return Err(MwemuError::new(&format!(
-                                    "emulation error at pos = {} rip = 0x{:x}",
-                                    self.pos, self.regs().rip
-                                )));
-                            }
-                        }
-                    }
-
-                    if self.force_reload {
-                        self.force_reload = false;
-                        break;
-                    }
-
-                    if self.rep.is_none() {
-                        if self.cfg.is_64bits {
-                            self.regs_mut().rip += sz as u64;
-                        } else {
-                            let new_eip = self.regs().get_eip() + sz as u64;
-                            self.regs_mut().set_eip(new_eip);
-                        }
-                    }
-
-                    // Thread scheduling - switch threads after executing each instruction
-                    if self.threads.len() > 1 {
-                        let old_rip = self.regs().rip;
-                        let old_thread = self.current_thread_id;
-                        
-                        // Try to schedule the next thread (round-robin)
-                        if crate::threading::ThreadScheduler::schedule_next_thread(self) {
-                            // Thread switched, need to reload at new RIP
-                            /*log::trace!(
-                                "Thread switch in run(): thread {} (RIP: 0x{:x}) -> thread {} (RIP: 0x{:x})",
-                                old_thread, old_rip,
-                                self.current_thread_id, self.regs().rip
-                            );*/
-                            
-                            // Clear any instruction state from the previous thread
-                            self.instruction = None;
-                            
-                            // Break from decoder loop to reload with new thread's context
-                            break;
-                        }
-                        // If no switch occurred, continue with current thread
-                    }
-
-                    if self.force_break {
-                        self.force_break = false;
-                        break;
-                    }
-                } // end decoder loop
-            } // end running loop
-            
-            self.is_running.store(1, atomic::Ordering::Relaxed);
-            Console::spawn_console(self);
-        } // end infinite loop
+        todo!()
     } // end run
 
     /// Start or continue emulation (single-threaded implementation).
@@ -819,13 +466,14 @@ impl Emu {
         //let mut prev_prev_addr:u64 = 0;
         let mut repeat_counter: u32 = 0;
 
+        /*
         if end_addr.is_none() && self.max_pos.is_none() {
             log::info!(" ----- emulation -----");
         } else if !self.max_pos.is_none() {
             log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
         } else {
             log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
-        }
+        }*/
 
         //self.pos = 0;
         let arch = if self.cfg.is_64bits { 64 } else { 32 };
@@ -898,8 +546,9 @@ impl Emu {
                     // turn on verbosity after a lot of pos
                     if let Some(vpos) = self.cfg.verbose_at {
                         if vpos == self.pos {
-                            self.cfg.verbose = 2;
-                            //self.cfg.trace_mem = true;
+                            self.cfg.verbose = 3;
+                            self.cfg.trace_mem = true;
+                            self.cfg.trace_regs = true;
                         }
                     }
 
@@ -913,7 +562,7 @@ impl Emu {
                             );
                         }
 
-                        if self.cfg.trace_filename.is_some() {
+                        if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                             self.trace_file
                                 .as_ref()
                                 .unwrap()
@@ -983,7 +632,7 @@ impl Emu {
                         }
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_pre_op();
                     }
 
@@ -1010,6 +659,13 @@ impl Emu {
                         }
                     }
 
+                    // trace pre instruction
+                    /*{
+                        if self.pos >= 100_000_000 {
+                            tracing::trace_instruction(self, self.pos);
+                        }
+                    }*/
+
                     let is_ret = match ins.code() {
                         Code::Retnw | Code::Retnd | Code::Retnq => true,
                         _ => false
@@ -1032,9 +688,17 @@ impl Emu {
                             continue;
                         }
                     }
+
+                    if self.pos % 10000 == 0 {
+                        if self.cfg.entropy {
+                            self.update_entropy();
+                        }
+                    }
+
                     
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
+                    //tracing::trace_instruction(self, self.pos);
                     /*************************************/
 
                     if let Some(rep_count) = self.rep {
@@ -1100,7 +764,7 @@ impl Emu {
                         self.trace_memory_inspection();
                     }
 
-                    if self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
                         self.capture_post_op();
                         self.write_to_trace_file();
                     }
@@ -1139,6 +803,7 @@ impl Emu {
                         break;
                     }
                 } // end decoder loop
+
             } // end running loop
             
             self.is_running.store(1, atomic::Ordering::Relaxed);

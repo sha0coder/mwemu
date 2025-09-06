@@ -21,15 +21,13 @@ pub fn CreateEventA(emu: &mut emu::Emu) {
         name = emu.maps.read_string(name_ptr);
     }
 
-    log::info!(
-        "{}** {} kernel32!CreateEventA attr: 0x{:x} manual_reset: {} init_state: {} name: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateEventA attr: 0x{:x} manual_reset: {} init_state: {} name: {}",
         attributes,
         bManualReset,
         bInitialState,
-        name,
-        emu.colors.nc
+        name
     );
 
     let uri = format!("event://{}", name);

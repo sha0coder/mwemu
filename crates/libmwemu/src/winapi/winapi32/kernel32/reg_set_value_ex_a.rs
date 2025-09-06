@@ -29,14 +29,12 @@ pub fn RegSetValueExA(emu: &mut emu::Emu) {
 
     let value_name = emu.maps.read_string(value_name_ptr);
 
-    log::info!(
-        "{}** {} kernel32!RegSetValueExA `{}` type: {} data: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!RegSetValueExA `{}` type: {} data: 0x{:x}",
         value_name,
         value_type,
-        data_ptr,
-        emu.colors.nc
+        data_ptr
     );
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

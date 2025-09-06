@@ -23,6 +23,4 @@ pub fn EnterCriticalSection(emu: &mut emu::Emu) {
         // The actual blocking will be handled by the scheduler
         helper::advance_tick(emu, 2);
     }
-
-    emu.regs_mut().rax = cs_ptr;
 }

@@ -44,13 +44,11 @@ pub fn VirtualAllocEx(emu: &mut emu::Emu) {
     let can_execute = (protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
         PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
 
-    log::info!(
-        "{}** {} kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualAllocEx hproc: 0x{:x} addr: 0x{:x}",
         proc_hndl,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     let base = emu

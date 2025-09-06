@@ -13,12 +13,10 @@ pub fn lstrcpyn(emu: &mut emu::Emu) {
     emu.maps.memset(out_str1, 0, len);
     emu.maps.write_string(out_str1, &s);
 
-    log::info!(
-        "{}** {} kernel32!lstrcpyn {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        s,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!lstrcpyn {}",
+        s
     );
 
     emu.regs_mut().rax = out_str1;

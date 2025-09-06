@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
-use crate::constants;
+use crate::{constants, definitions::Definition};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -40,6 +42,8 @@ pub struct Config {
     pub enable_threading: bool,  // Enable multi-threading support
     pub verbose_at: Option<u64>,
     pub command: Option<String>,
+    pub definitions: HashMap<u64, Definition>,
+    pub entropy: bool,
 }
 
 impl Default for Config {
@@ -87,7 +91,9 @@ impl Config {
             arguments: "".to_string(),
             enable_threading: false,  // Default to single-threaded for backward compatibility
             verbose_at: None,
-            command: None
+            command: None,
+            definitions: HashMap::new(),
+            entropy: false,
         }
     }
 }

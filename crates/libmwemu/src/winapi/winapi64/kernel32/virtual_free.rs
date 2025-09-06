@@ -5,13 +5,11 @@ pub fn VirtualFree(emu: &mut emu::Emu) {
     let addr = emu.regs().rcx;
     let sz = emu.regs().rdx;
 
-    log::info!(
-        "{}** {} kernel32!VirtualFree {} bytes at 0x{:x}  {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualFree {} bytes at 0x{:x}",
         sz,
-        addr,
-        emu.colors.nc
+        addr
     );
 
     // zero out the memory?

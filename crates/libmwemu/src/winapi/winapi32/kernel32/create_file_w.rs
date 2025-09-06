@@ -26,13 +26,11 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
         perm = "unknown permissions".to_string();
     }
 
-    log::info!(
-        "{}** {} kernel32!CreateFileW `{}` {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateFileW `{}` {}",
         fname,
-        perm,
-        emu.colors.nc
+        perm
     );
 
     for _ in 0..7 {

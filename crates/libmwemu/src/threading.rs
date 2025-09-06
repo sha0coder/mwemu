@@ -321,7 +321,7 @@ impl ThreadScheduler {
             );
         }
         
-        if emu.cfg.trace_filename.is_some() {
+        if emu.cfg.trace_regs && emu.cfg.trace_filename.is_some() {
             emu.trace_file
                 .as_ref()
                 .unwrap()

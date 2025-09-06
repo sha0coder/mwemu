@@ -946,7 +946,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.21.6"
+version = "0.22.1"
 dependencies = [
  "ahash",
  "atty",
@@ -957,6 +957,8 @@ dependencies = [
  "csv",
  "ctrlc",
  "env_logger",
+ "fast_log",
+ "hex",
  "iced-x86",
  "lazy_static",
  "log",
@@ -966,6 +968,7 @@ dependencies = [
  "scan_fmt",
  "serde",
  "serde_arrays",
+ "serde_yaml",
  "slab",
  "uint",
  "ureq",
@@ -1071,7 +1074,7 @@ dependencies = [
 
 [[package]]
 name = "mwemu"
-version = "0.7.11"
+version = "0.7.12"
 dependencies = [
  "clap",
  "env_logger",
@@ -1563,6 +1566,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.9.34+deprecated"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1825,6 +1841,12 @@ name = "unindent"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1766d682d402817b5ac4490b3c3002d91dfa0d22812f341609f97b08757359c"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "untrusted"

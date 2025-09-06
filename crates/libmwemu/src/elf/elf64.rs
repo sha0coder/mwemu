@@ -61,13 +61,10 @@ pub const DT_STRTAB: u64 = 5;
 pub const PT_DYNAMIC: u32 = 2;
 pub const STT_FUNC: u8 = 2;
 pub const STT_OBJECT: u8 = 1;
-pub const ELF64_DYN_BASE: u64 = 0x555555554000;
-pub const ELF64_STA_BASE: u64 = 0x400000;
-pub const LIBC_BASE: u64 = 0x7ffff7da7000;
-pub const LD_BASE: u64 = 0x7ffff7fd2000;
 
 #[derive(Debug)]
 pub struct Elf64 {
+    pub base: u64,
     pub bin: Vec<u8>,
     pub elf_hdr: Elf64Ehdr,
     pub elf_phdr: Vec<Elf64Phdr>,
@@ -122,6 +119,7 @@ impl Elf64 {
         let dynstr: Vec<String> = Vec::new();
 
         Ok(Elf64 {
+            base: 0,
             bin,
             elf_hdr: ehdr,
             elf_phdr: ephdr,
@@ -245,15 +243,15 @@ impl Elf64 {
         force_base: u64,
     ) {
         
-        let mut elf64_base: u64;
-
+        let elf64_base: u64;
 
         if dynamic_linking {
-            elf64_base = ELF64_DYN_BASE;
+            elf64_base = constants::ELF64_DYN_BASE;
             self.load_programs(maps, name, is_lib, dynamic_linking);
         } else {
-            elf64_base = ELF64_STA_BASE;
-            if force_base != constants::CFG_DEFAULT_BASE {
+            if force_base == constants::CFG_DEFAULT_BASE {
+                elf64_base = constants::ELF64_STA_BASE;
+            } else {
                 elf64_base = force_base;
             }
 
@@ -263,6 +261,8 @@ impl Elf64 {
                 .expect("cannot create elf64.hdr map");
             hdr.write_bytes(elf64_base, &self.bin[..512]);
         }
+
+        self.base = elf64_base;
 
         // pre-load .dynstr
         for shdr in &self.elf_shdr {
@@ -386,7 +386,7 @@ impl Elf64 {
     pub fn craft_got_sym(&self, addr: u64, got: &mut Mem64, sym_name: &str) {
         if let Some(mut sym_addr) = self.sym_get_addr_from_name(sym_name) {
             if sym_name.contains("libc") {
-                sym_addr += LIBC_BASE;
+                sym_addr += constants::LIBC_BASE;
             }
             log::info!("crafting got 0x{:x} <- 0x{:x} {}", addr, sym_addr, sym_name);
             got.write_qword(addr, sym_addr);

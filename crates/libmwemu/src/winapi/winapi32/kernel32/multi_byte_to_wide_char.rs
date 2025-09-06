@@ -37,13 +37,11 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         wide.push('\x00');
     }
 
-    log::info!(
-        "{}** {} kernel32!MultiByteToWideChar '{}' dst:0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!MultiByteToWideChar '{}' dst:0x{:x}",
         utf8,
-        wide_ptr,
-        emu.colors.nc
+        wide_ptr
     );
 
     if cchWideChar > 0 {

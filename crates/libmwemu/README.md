@@ -18,13 +18,14 @@ use libmwemu::emu32;
 fn main() {
     let mut emu = emu32();
     emu.set_maps_folder("/tmp/maps32/");
-    emu.init(false, false);
+    emu.init_logger();
 ```
 
 Load your shellcode or PE binary and run the emulator.
 None parameter means emulate for-ever.
 
 ```rust
+// emu.init(false, false); needed if load_code is not called
 emu.load_code("shellcodes32/shikata.bin");
 emu.set_verbose(2);
 emu.run(None).unwrap(); 

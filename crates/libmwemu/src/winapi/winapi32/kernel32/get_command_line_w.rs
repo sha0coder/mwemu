@@ -2,11 +2,9 @@ use crate::emu;
 use crate::maps::mem64::Permission;
 
 pub fn GetCommandLineW(emu: &mut emu::Emu) {
-    log::info!(
-        "{}** {} kernel32!GetCommandlineW {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetCommandlineW"
     );
 
     let addr = emu.maps.alloc(1024).expect("out of memory");

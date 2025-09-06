@@ -5,13 +5,11 @@ pub fn TlsSetValue(emu: &mut emu::Emu) {
     let idx = emu.regs().rcx as usize;     // First parameter in RCX
     let val = emu.regs().rdx;              // Second parameter in RDX
 
-    log::info!(
-        "{}** {} kernel32!TlsSetValue idx: {} val: 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!TlsSetValue idx: {} val: 0x{:x}",
         idx,
-        val,
-        emu.colors.nc
+        val
     );
 
     if idx < emu.tls64().len() {

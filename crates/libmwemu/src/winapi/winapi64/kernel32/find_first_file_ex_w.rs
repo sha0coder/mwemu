@@ -35,19 +35,17 @@ pub fn FindFirstFileExW(emu: &mut emu::Emu) {
    //   - cFileName[MAX_PATH] (WCHAR array)
    //   - cAlternateFileName[14] (WCHAR array)
    
-   log::info!(
-       "{}** {} kernel32!FindFirstFileExW filename_ptr: 0x{:x} filename: {} info_level: {} find_data_ptr: 0x{:x} search_op: {} search_filter: {} additional_flags: {} {}",
-       emu.colors.light_red,
-       emu.pos,
-       filename_ptr,
-       filename,
-       info_level,
-       find_data_ptr,
-       search_op,
-       search_filter,
-       additional_flags,
-       emu.colors.nc
-   );
+   log_red!(
+        emu,
+        "kernel32!FindFirstFileExW filename_ptr: 0x{:x} filename: {} info_level: {} find_data_ptr: 0x{:x} search_op: {} search_filter: {} additional_flags: {}",
+        filename_ptr,
+        filename,
+        info_level,
+        find_data_ptr,
+        search_op,
+        search_filter,
+        additional_flags
+    );
 
    // TODO: Return valid HANDLE (not INVALID_HANDLE_VALUE = -1) on success
    // TODO: Set appropriate error code with SetLastError on failure

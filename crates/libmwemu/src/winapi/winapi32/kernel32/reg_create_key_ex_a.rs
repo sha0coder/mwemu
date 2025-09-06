@@ -33,13 +33,11 @@ pub fn RegCreateKeyExA(emu: &mut emu::Emu) {
         class_name = emu.maps.read_string(class_ptr);
     }
 
-    log::info!(
-        "{}** {} kernel32!RegCreateKeyExA {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!RegCreateKeyExA {} {}",
         subkey,
-        class_name,
-        emu.colors.nc
+        class_name
     );
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

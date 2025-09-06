@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use std::time::Instant;
@@ -14,6 +15,28 @@ use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi
 use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
 use crate::emu::disassemble::InstructionCache;
 use crate::maps::mem64::Permission;
+
+use fast_log::appender::{Command, FastLogRecord, RecordFormat};
+
+pub struct CustomLogFormat;
+impl RecordFormat for CustomLogFormat {
+    fn do_format(&self, arg: &mut FastLogRecord) {
+        match &arg.command {
+            Command::CommandRecord => {
+                arg.formated = format!("{}\n", arg.args);
+            }
+            Command::CommandExit => {}
+            Command::CommandFlush(_) => {}
+        }
+    }
+}
+
+impl CustomLogFormat {
+    pub fn new() -> CustomLogFormat {
+        Self {}
+    }
+
+}
 
 impl Emu {
     pub fn new() -> Emu {
@@ -66,6 +89,9 @@ impl Emu {
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
             instruction_cache: InstructionCache::new(),
+            definitions: HashMap::new(),
+            stored_contexts: HashMap::new(),
+            entropy: 0.0,
         }
     }
 
@@ -176,6 +202,13 @@ impl Emu {
         self.flags_mut().f_if = true;
 
         self.flags_mut().f_nt = false;
+    }
+
+    pub fn init_logger(&mut self) {
+        fast_log::init(fast_log::Config::new()
+            .format(CustomLogFormat::new())
+            .console()
+            .chan_len(Some(100000))).unwrap();
     }
 
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.

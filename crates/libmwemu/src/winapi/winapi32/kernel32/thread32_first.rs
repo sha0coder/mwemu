@@ -10,11 +10,9 @@ pub fn Thread32First(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!Thread32First cannot read the entry32");
 
-    log::info!(
-        "{}** {} kernel32!Thread32First {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!Thread32First"
     );
 
     emu.stack_pop32(false);

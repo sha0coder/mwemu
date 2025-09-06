@@ -7,12 +7,10 @@ pub fn OpenThread(emu: &mut emu::Emu) {
     let inherit = emu.regs().rdx;
     let tid = emu.regs().r8;
 
-    log::info!(
-        "{}** {} kernel32!OpenThread tid: {} {}",
-        emu.colors.light_red,
-        emu.pos,
-        tid,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!OpenThread tid: {}",
+        tid
     );
 
     let uri = format!("tid://{}", tid);

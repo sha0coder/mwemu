@@ -9,12 +9,10 @@ pub fn WinExec(emu: &mut emu::Emu) {
 
     //emu.spawn_console();
 
-    log::info!(
-        "{}** {} WinExec  '{}'  {}",
-        emu.colors.light_red,
-        emu.pos,
-        cmdline,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "WinExec  '{}'",
+        cmdline
     );
 
     emu.regs_mut().rax = 0;

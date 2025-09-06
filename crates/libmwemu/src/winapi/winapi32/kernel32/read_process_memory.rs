@@ -22,15 +22,13 @@ pub fn ReadProcessMemory(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("kernel32!ReadProcessMemory cannot read bytes") as u64;
 
-    log::info!(
-        "{}** {} kernel32!ReadProcessMemory hndl: {} from: 0x{:x} to: 0x{:x} sz: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!ReadProcessMemory hndl: {} from: 0x{:x} to: 0x{:x} sz: {}",
         hndl,
         addr,
         buff,
-        size,
-        emu.colors.nc
+        size
     );
 
     emu.maps.write_dword(bytes, size);

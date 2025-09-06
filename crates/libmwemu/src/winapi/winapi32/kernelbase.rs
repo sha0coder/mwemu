@@ -78,12 +78,10 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
         emu.regs_mut().rax = mod_mem.get_base();
     }
 
-    log::info!(
-        "{}** {} kernel32!GetModuleHandleW '{}' {}",
-        emu.colors.light_red,
-        emu.pos,
-        mod_name,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetModuleHandleW '{}'",
+        mod_name
     );
 
     emu.stack_pop32(false);
@@ -108,13 +106,11 @@ fn LoadStringW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 12)
         .expect("kernelbase!LoadStringW error reading param");
 
-    log::info!(
-        "{}** {} kernelbase!LoadStringW {} 0x{} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!LoadStringW {} 0x{}",
         id,
-        buff,
-        emu.colors.nc,
+        buff
     );
 
     emu.stack_pop32(false);
@@ -133,13 +129,11 @@ fn _initterm(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm error reading param");
-    log::info!(
-        "{}** {} kernelbase!_initterm 0x{:x} 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!_initterm 0x{:x} 0x{:x}",
         ptr1,
-        ptr2,
-        emu.colors.nc
+        ptr2
     );
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -155,13 +149,11 @@ fn _initterm_e(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm_e error reading param");
-    log::info!(
-        "{}** {} kernelbase!_initterm_e 0x{:x} 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernelbase!_initterm_e 0x{:x} 0x{:x}",
         ptr1,
-        ptr2,
-        emu.colors.nc
+        ptr2
     );
     emu.stack_pop32(false);
 emu.stack_pop32(false);
@@ -174,15 +166,13 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp)
         .expect("kernelbase!SetUnhandledExceptionFilter error reading param");
 
-    log::info!(
-        "{}** {} kernelbase!SetUnhandledExceptionFilter 0x{:x} {}",
-        emu.colors.light_red,
-        emu.pos,
-        ptr1,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernelbase!SetUnhandledExceptionFilter 0x{:x}",
+        ptr1
     );
 
-    emu.set_feh(ptr1 as u64);
+    emu.set_uef(ptr1 as u64);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0;

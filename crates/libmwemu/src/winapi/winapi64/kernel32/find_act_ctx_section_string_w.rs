@@ -25,9 +25,12 @@ pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
     let actctx_section_keyed_data = structures::ActCtxSectionKeyedData64::new();
     actctx_section_keyed_data.save(out_ptr, &mut emu.maps);
 
-    log::info!(
-        "{}** {} kernel32!FindActCtxSectionStringW section_name: {} string_name: {} string_value: {} {}",
-        emu.colors.light_red, emu.pos, section_name, string_name, string_value, emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!FindActCtxSectionStringW section_name: {} string_name: {} string_value: {}",
+        section_name,
+        string_name,
+        string_value
     );
 
     emu.regs_mut().rax = 1;

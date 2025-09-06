@@ -18,8 +18,13 @@ pub const SYSTEM_DIRECTORY: &str = "C:\\Windows\\System32"; // randomize this
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 
 pub const BLOCK_LEN: usize = 0x300;
+pub const ALLOC32_MIN: u64 = 0x60000000;
+pub const ALLOC32_MAX: u64 = 0x6FFFFFFF;
 pub const LIBS32_MIN: u64 = 0x70000000;
 pub const LIBS32_MAX: u64 = 0x7FFFFFFF;
+
+pub const ALLOC64_MIN: u64 = 0x7fe000000000;
+pub const ALLOC64_MAX: u64 = 0x7fefffffffff;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;
 pub const LIBS64_MAX: u64 = 0x7FFFFFFFFFFF;
 
@@ -90,11 +95,15 @@ pub const INTERNET_OPTION_DATA_SEND_TIMEOUT: u32 = 7;
 // https://docs.microsoft.com/en-us/windows/win32/wininet/api-flags
 pub const INTERNET_FLAG_SECURE: u64 = 0x00800000;
 
-pub const ERROR_NO_MORE_FILES: u64 = 18;
-pub const CREATE_SUSPENDED: u64 = 0x00000004;
-pub const EXCEPTION_CONTINUE_EXECUTION: u32 = 0xFFFFFFFF;
+// exceptions
+pub const EXCEPTION_CONTINUE_EXECUTION32: u32 = 0xffffffff;
+pub const EXCEPTION_CONTINUE_EXECUTION64: u64 = 0xffffffff_ffffffff;
 pub const EXCEPTION_CONTINUE_SEARCH:    u32 = 0x00000000;
 pub const EXCEPTION_EXECUTE_HANDLER:    u32 = 0x00000001;
+
+
+pub const ERROR_NO_MORE_FILES: u64 = 18;
+pub const CREATE_SUSPENDED: u64 = 0x00000004;
 pub const STATUS_BREAKPOINT: u32 = 0x80000003;
 pub const STATUS_INTEGER_DIVIDE_BY_ZERO: u32 = 0xc0000094;
 pub const STATUS_INTEGER_OVERFLOW: u32 = 0xc0000095;
@@ -344,6 +353,10 @@ pub fn get_crypto_key_len(value: u32) -> usize {
 pub const PT_LOAD: u32 = 1;
 pub const ELF_PAGE_SIZE: u64 = 4096;
 pub const ELF_PAGE_MASK: u64 = ELF_PAGE_SIZE - 1;
+pub const ELF64_DYN_BASE: u64 = 0x555555554000;
+pub const ELF64_STA_BASE: u64 = 0x400000;
+pub const LIBC_BASE: u64 = 0x7ffff7da7000;
+pub const LD_BASE: u64 = 0x7ffff7fd2000;
 
 // linux errors
 pub const ENOTSOCK: u64 = -1i64 as u64; /* not open sock */
@@ -772,27 +785,6 @@ pub const ARCH_GET_FS: u64 = 0x1003;
 pub const ARCH_GET_GS: u64 = 0x1004;
 
 pub const LOCALE_USER_DEFAULT: u64 = 0x400;
-pub const LOCALE_SABBREVMONTHNAME1: u64 = 68;
-pub const LOCALE_SABBREVMONTHNAME2: u64 = 69;
-pub const LOCALE_SABBREVMONTHNAME3: u64 = 70;
-pub const LOCALE_SABBREVMONTHNAME4: u64 = 71;
-pub const LOCALE_SABBREVMONTHNAME5: u64 = 72;
-pub const LOCALE_SABBREVMONTHNAME6: u64 = 73;
-pub const LOCALE_SABBREVMONTHNAME7: u64 = 74;
-pub const LOCALE_SABBREVMONTHNAME8: u64 = 75;
-pub const LOCALE_SABBREVMONTHNAME9: u64 = 76;
-pub const LOCALE_SABBREVMONTHNAME10: u64 = 77;
-pub const LOCALE_SABBREVMONTHNAME11: u64 = 78;
-pub const LOCALE_SABBREVMONTHNAME12: u64 = 79;
-pub const LOCALE_SLANGUAGE: u64 = 0x00000002;
-pub const LOCALE_SCOUNTRY: u64 = 0x00000006;
-pub const LOCALE_SLIST: u64 = 0x0000000C;
-pub const LOCALE_SDECIMAL: u64 = 0x0000000E;
-pub const LOCALE_STHOUSAND: u64 = 0x0000000F;
-pub const LOCALE_SCURRENCY: u64 = 0x00000014;
-pub const LOCALE_SDATE: u64 = 0x0000001D;
-pub const LOCALE_STIME: u64 = 0x0000001E;
-pub const LOCALE_RETURN_NUMBER: u64 = 0x20000000;
 
 pub const HEAP_GENERATE_EXCEPTIONS: u64 = 0x00000004;
 pub const HEAP_NO_SERIALIZE: u64 = 0x00000001;

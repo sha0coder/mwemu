@@ -52,13 +52,11 @@ pub fn IsProcessorFeaturePresent(emu: &mut emu::Emu) {
         _ => "unknown feature",
     };
 
-    log::info!(
-        "{}** {} kernel32!IsProcessorFeaturePresent feature: {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!IsProcessorFeaturePresent feature: {} {}",
         feature,
-        msg,
-        emu.colors.nc
+        msg
     );
 
     emu.regs_mut().rax = 1;

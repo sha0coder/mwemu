@@ -10,13 +10,11 @@ pub fn TerminateProcess(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!TerminateProcess cannot read the exit code");
 
-    log::info!(
-        "{}** {} kernel32!TerminateProcess hndl: {} code: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!TerminateProcess hndl: {} code: {}",
         hndl,
-        code,
-        emu.colors.nc
+        code
     );
 
     emu.stack_pop32(false);

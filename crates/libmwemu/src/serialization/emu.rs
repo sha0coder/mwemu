@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::sync::atomic;
 use std::sync::Arc;
@@ -44,7 +45,7 @@ pub struct SerializableEmu {
     pub bp: Breakpoints,
     pub seh: u64,
     pub veh: u64,
-    pub feh: u64,
+    pub uef: u64,
     pub eh_ctx: u32,
     pub cfg: Config,
     pub colors: Colors,
@@ -85,6 +86,7 @@ pub struct SerializableEmu {
     pub heap_addr: u64,
     pub threads: Vec<SerializableThreadContext>,
     pub current_thread_id: usize,
+    pub entropy: f64,
 }
 
 impl<'a> From<&'a Emu> for SerializableEmu {
@@ -104,7 +106,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             bp: emu.bp.clone(),
             seh: emu.seh(),
             veh: emu.veh(),
-            feh: emu.feh(),
+            uef: emu.uef(),
             eh_ctx: emu.eh_ctx(),
             cfg: emu.cfg.clone(),
             colors: emu.colors.clone(),
@@ -145,7 +147,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             heap_addr: emu.heap_addr,
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
-
+            entropy: emu.entropy,
         }
     }
 }
@@ -204,6 +206,9 @@ impl From<SerializableEmu> for Emu {
             threads: serialized.threads.into_iter().map(|t| t.into()).collect(),
             current_thread_id: serialized.current_thread_id,
             global_locks: GlobalLocks::new(), // Reset locks on deserialization
+            definitions: HashMap::new(),
+            stored_contexts: HashMap::new(),
+            entropy: 0.0,
         }
     }
 }
@@ -226,7 +231,7 @@ impl Default for SerializableEmu {
             bp: emu.bp.clone(),
             seh: emu.seh(),
             veh: emu.veh(),
-            feh: emu.feh().clone(),
+            uef: emu.uef().clone(),
             eh_ctx: emu.eh_ctx().clone(),
             cfg: emu.cfg.clone(),
             colors: emu.colors.clone(),
@@ -267,6 +272,7 @@ impl Default for SerializableEmu {
             heap_addr: emu.heap_addr,
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
+            entropy: emu.entropy,
         }
     }
 }

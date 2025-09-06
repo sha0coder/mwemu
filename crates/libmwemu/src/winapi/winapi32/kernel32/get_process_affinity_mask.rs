@@ -19,11 +19,9 @@ pub fn GetProcessAffinityMask(emu: &mut emu::Emu) {
     emu.maps.write_dword(proc_affinity_mask_ptr, 0x1337);
     emu.maps.write_dword(sys_affinity_mask_ptr, 0x1337);
 
-    log::info!(
-        "{}** {} kernel32!GetProcessAffinityMask {}",
-        emu.colors.light_red,
-        emu.pos,
-        emu.colors.nc
+    log_red!(
+        emu,
+        "kernel32!GetProcessAffinityMask"
     );
 
     emu.regs_mut().rax = 1;

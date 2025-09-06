@@ -67,14 +67,12 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         }
     };
 
-    log::info!(
-        "{}** {} kernel32!VirtualAlloc sz: {} addr: 0x{:x} mem_reserve: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!VirtualAlloc sz: {} addr: 0x{:x} mem_reserve: {}",
         size,
         base,
-        mem_reserve,
-        emu.colors.nc
+        mem_reserve
     );
 
     emu.regs_mut().rax = base;

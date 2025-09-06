@@ -7,13 +7,11 @@ pub fn CreateProcessW(emu: &mut emu::Emu) {
     let appname = emu.maps.read_wide_string(appname_ptr);
     let cmdline = emu.maps.read_wide_string(cmdline_ptr);
 
-    log::info!(
-        "{}** {} kernel32!CreateProcessW  {} {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!CreateProcessW  {} {}",
         appname,
-        cmdline,
-        emu.colors.nc
+        cmdline
     );
 
     emu.regs_mut().rax = 1;

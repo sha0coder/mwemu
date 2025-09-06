@@ -10,13 +10,11 @@ pub fn FlsSetValue(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!FlsSetValue cannot read value");
 
-    log::info!(
-        "{}** {} kernel32!FlsSetValue idx: {} val: {} {}",
-        emu.colors.light_red,
-        emu.pos,
+    log_red!(
+        emu,
+        "kernel32!FlsSetValue idx: {} val: {}",
         idx,
-        val,
-        emu.colors.nc
+        val
     );
 
     if emu.fls().len() > idx as usize {
