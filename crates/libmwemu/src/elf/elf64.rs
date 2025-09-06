@@ -272,13 +272,17 @@ impl Elf64 {
             }
         }
 
-        // map sections
-        for i in 0..self.elf_shdr.len() {
+        // map sections, remember to skip section start from 0 because it is empty section
+        for i in 1..self.elf_shdr.len() {
             let sh_name = self.elf_shdr[i].sh_name;
             let sh_offset = self.elf_shdr[i].sh_offset;
             let sh_size = self.elf_shdr[i].sh_size; 
             let mut sh_addr = self.elf_shdr[i].sh_addr;
-            let permission = Permission::from_bits(self.elf_shdr[i].sh_type as u8);
+
+            let can_write = self.elf_shdr[i].sh_flags & 0x1 != 0;
+            let can_execute = self.elf_shdr[i].sh_flags & 0x4 != 0;
+            let can_read = self.elf_shdr[i].sh_flags & 0x2 != 0;
+            let permission = Permission::from_flags(can_read, can_write, can_execute);
 
             //TODO: align sh_size to page size by extending the size, something like:
             //sh_size = ((sh_size + constants::ELF_PAGE_SIZE - 1) / constants::ELF_PAGE_SIZE) * constants::ELF_PAGE_SIZE;
@@ -372,7 +376,7 @@ impl Elf64 {
                 }
 
                 let segment = &self.bin[sh_offset as usize..end_off];
-                mem.write_bytes(sh_addr, segment);
+                mem.force_write_bytes(sh_addr, segment);
                
                 self.elf_shdr[i].sh_addr = sh_addr;
             }

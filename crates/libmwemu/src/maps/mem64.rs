@@ -148,7 +148,7 @@ impl Default for Mem64 {
             mem_name: "".to_string(),
             base_addr: 0,
             bottom_addr: 0,
-            permission: Permission::from_flags(false, false, false),
+            permission: Permission::from_flags(true, true, false),
             mem: Vec::new(),
         }
     }
@@ -343,15 +343,6 @@ impl Mem64 {
     #[inline(always)]
     pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
         if !self.can_read() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: read_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            }).unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -573,6 +564,138 @@ impl Mem64 {
             }).unwrap();
         }
         r
+    }
+
+    #[inline(always)]
+    pub fn force_write_byte(&mut self, addr: u64, value: u8) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx] = value;
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_byte: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 1),
+                    value
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_bytes(&mut self, addr: u64, bs: &[u8]) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_bytes: 0x{:x?} = {:?}",
+                    self.build_addresses(addr, bs.len()),
+                    bs
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_word(&mut self, addr: u64, value: u16) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_word: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 2),
+                    value
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_dword(&mut self, addr: u64, value: u32) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_dword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 4),
+                    value
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_qword(&mut self, addr: u64, value: u64) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_qword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 8),
+                    value
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_oword(&mut self, addr: u64, value: u128) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_oword: 0x{:x?} = 0x{:x}",
+                    self.build_addresses(addr, 16),
+                    value
+                );
+                }
+            }).unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_string(&mut self, addr: u64, s: &str) {
+        let mut v = s.as_bytes().to_vec();
+        v.push(0);
+        self.force_write_bytes(addr, &v);
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                    emu,
+                    "mem: force_write_string: 0x{:x?} = {:?}",
+                    self.build_addresses(addr, s.len() + 1),
+                    s
+                );
+                }
+            }).unwrap();
+        }
     }
 
     #[inline(always)]

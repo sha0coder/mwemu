@@ -109,7 +109,7 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
         .read_dword(size_ptr)
         .expect("bad NtAllocateVirtualMemory size parameter") as u64;
 
-    let protection_offset = 0x30;
+    let protection_offset = 20;
     let protection_addr = emu.regs().rsp + protection_offset;
     let protect_value = emu.maps.read_dword(protection_addr).expect("Failed to read Protection argument at NtAllocateVirtualMemory");
 

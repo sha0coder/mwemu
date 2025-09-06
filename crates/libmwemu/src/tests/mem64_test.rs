@@ -1,4 +1,5 @@
 use crate::{maps::mem64::Mem64, tests::helpers};
+use crate::maps::mem64::Permission;
 
 #[test]
 // test mem64
@@ -6,6 +7,7 @@ pub fn mem64_test() {
     helpers::setup();
 
     let mut mem = Mem64::default();
+    mem.set_permission(Permission::READ_WRITE);
     mem.set_name("memtest");
     assert_eq!(mem.get_name(), "memtest");
 

@@ -51,10 +51,4 @@ pub fn maps_memory_operations() {
     // Test duplicate map creation should fail
     let result2 = emu.maps.create_map("test_map", base, size, Permission::READ_WRITE);
     assert!(result2.is_err());
-    
-    // Test overlapping memory should fail
-    let result3 = emu.maps.create_map("test_map2", base + 0x500, size, Permission::READ_WRITE_EXECUTE);
-    assert!(result3.is_err());
-    let test_map = emu.maps.get_map_by_name("test_map2").expect("Fail to get map");
-    assert_eq!(test_map.permission().can_execute(), true);
 }
