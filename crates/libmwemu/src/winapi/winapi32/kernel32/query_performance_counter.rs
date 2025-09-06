@@ -8,10 +8,7 @@ pub fn QueryPerformanceCounter(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(counter_ptr, 0x1);
 
-    log_red!(
-        emu,
-        "kernel32!QueryPerformanceCounter"
-    );
+    log_red!(emu, "kernel32!QueryPerformanceCounter");
 
     emu.stack_pop32(false);
 

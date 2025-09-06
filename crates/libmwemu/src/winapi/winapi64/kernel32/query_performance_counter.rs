@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn QueryPerformanceCounter(emu: &mut emu::Emu) {
@@ -6,7 +5,7 @@ pub fn QueryPerformanceCounter(emu: &mut emu::Emu) {
 
     // Use emu.tick directly, maybe scaled up to simulate higher frequency
     let counter_value = (emu.tick as u64) * 1000; // Scale to simulate ~1MHz frequency
-    
+
     emu.maps.write_qword(counter_ptr, counter_value);
 
     log_red!(

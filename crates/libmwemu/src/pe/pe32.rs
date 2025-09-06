@@ -1257,8 +1257,8 @@ impl PE32 {
                 }
             } else if level == 0
                 && type_name.is_some()
-                && type_name.unwrap() == self.get_resource_name(&entry) {
-
+                && type_name.unwrap() == self.get_resource_name(&entry)
+            {
                 println!("type_name matched");
                 matched = true;
             } else if level == 1

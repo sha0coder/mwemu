@@ -12,5 +12,4 @@ impl Emu {
     pub fn is_threading_enabled(&self) -> bool {
         self.cfg.enable_threading
     }
-
 }

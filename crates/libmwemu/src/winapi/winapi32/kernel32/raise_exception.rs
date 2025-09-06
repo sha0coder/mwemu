@@ -18,12 +18,7 @@ pub fn RaiseException(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 12)
         .expect("kernel32!RaiseException cannot read args");
 
-    log_red!(
-        emu,
-        "kernel32!RaiseException {} {}",
-        code,
-        flags
-    );
+    log_red!(emu, "kernel32!RaiseException {} {}", code, flags);
 
     for _ in 0..4 {
         emu.stack_pop32(false);

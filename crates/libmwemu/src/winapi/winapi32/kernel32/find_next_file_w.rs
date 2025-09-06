@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn FindNextFileW(emu: &mut emu::Emu) {
     let hndl = emu
@@ -11,10 +11,7 @@ pub fn FindNextFileW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!FindNextFileW cannot read the find_data");
 
-    log_red!(
-        emu,
-        "kernel32!FindNextFileW"
-    );
+    log_red!(emu, "kernel32!FindNextFileW");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

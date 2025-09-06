@@ -1,6 +1,5 @@
 use crate::maps::Maps;
 
-
 #[derive(Debug)]
 pub struct OsVersionInfoExA {
     version_info_size: u32,

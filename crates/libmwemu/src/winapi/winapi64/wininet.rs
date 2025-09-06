@@ -486,12 +486,7 @@ fn HttpSendRequestA(emu: &mut emu::Emu) {
     let hdrs = emu.maps.read_string(hdrs_ptr);
     let opt = emu.maps.read_string(opt_ptr);
 
-    log_red!(
-        emu,
-        "wininet!HttpSendRequestA hdrs: {} opt: {}",
-        hdrs,
-        opt
-    );
+    log_red!(emu, "wininet!HttpSendRequestA hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
         log::info!("\tinvalid handle.");
@@ -519,12 +514,7 @@ fn HttpSendRequestW(emu: &mut emu::Emu) {
     let hdrs = emu.maps.read_wide_string(hdrs_ptr);
     let opt = emu.maps.read_wide_string(opt_ptr);
 
-    log_red!(
-        emu,
-        "wininet!HttpSendRequestW hdrs: {} opt: {}",
-        hdrs,
-        opt
-    );
+    log_red!(emu, "wininet!HttpSendRequestW hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
         log::info!("\tinvalid handle.");
@@ -542,11 +532,7 @@ fn HttpSendRequestW(emu: &mut emu::Emu) {
 fn InternetErrorDlg(emu: &mut emu::Emu) {
     let err = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "wininet!InternetErrorDlg err: {}",
-        err
-    );
+    log_red!(emu, "wininet!InternetErrorDlg err: {}", err);
 
     emu.regs_mut().rax = 0;
 }
@@ -595,11 +581,7 @@ fn InternetReadFileExA(emu: &mut emu::Emu) {
     let flags = emu.regs().r8;
     let ctx = emu.regs().r9;
 
-    log_red!(
-        emu,
-        "wininet!InternetReadFileExA buff: 0x{:x}",
-        buff_ptr
-    );
+    log_red!(emu, "wininet!InternetReadFileExA buff: 0x{:x}", buff_ptr);
 
     if !helper::handler_exist(file_hndl) {
         log::info!("\tinvalid handle.");
@@ -614,11 +596,7 @@ fn InternetReadFileExW(emu: &mut emu::Emu) {
     let flags = emu.regs().r8;
     let ctx = emu.regs().r9;
 
-    log_red!(
-        emu,
-        "wininet!InternetReadFileExW buff: 0x{:x}",
-        buff_ptr
-    );
+    log_red!(emu, "wininet!InternetReadFileExW buff: 0x{:x}", buff_ptr);
 
     if !helper::handler_exist(file_hndl) {
         log::info!("\tinvalid handle.");

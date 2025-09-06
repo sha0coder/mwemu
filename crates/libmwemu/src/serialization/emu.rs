@@ -9,7 +9,7 @@ use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
 use crate::banzai::Banzai;
-use crate::breakpoint::{Breakpoints};
+use crate::breakpoint::Breakpoints;
 use crate::colors::Colors;
 use crate::config::Config;
 use crate::eflags::Eflags;

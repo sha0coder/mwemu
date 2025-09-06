@@ -15,12 +15,7 @@ pub fn OpenProcessToken(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 8)
         .expect("kernel32!OpenProcessToken error reading param") as u64;
 
-    log_red!(
-        emu,
-        "kernel32!OpenProcessToken 0x{:x} {}",
-        hndl,
-        access
-    );
+    log_red!(emu, "kernel32!OpenProcessToken 0x{:x} {}", hndl, access);
 
     emu.maps.write_dword(
         ptr_token,

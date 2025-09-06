@@ -112,7 +112,7 @@ impl Emu {
                 registers, pre_op_regs.r15, post_op_regs.r15
             );
         } else {
-            let post_op_regs = post_op_regs;            
+            let post_op_regs = post_op_regs;
             registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
@@ -200,11 +200,7 @@ impl Emu {
                 pre_op_flags.dump(),
                 post_op_flags.dump()
             );
-            comments = format!(
-                "{} {}",
-                comments,
-                Flags::diff(pre_op_flags, post_op_flags)
-            );
+            comments = format!("{} {}", comments, Flags::diff(pre_op_flags, post_op_flags));
         }
 
         // dump all write memory operations
@@ -223,7 +219,7 @@ impl Emu {
         let mut trace_file = self.trace_file.as_ref().unwrap();
         writeln!(
             trace_file,
-            r#""{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
+            r#""{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#,
             index = index,
             address = pre_op_regs.rip,
             bytes = instruction_bytes,
@@ -234,7 +230,7 @@ impl Emu {
         ).expect("failed to write to trace file");*/
 
         log::info!(
-            r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#, 
+            r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#,
             index = index + 1,
             address = pre_op_regs.rip,
             bytes = instruction_bytes,
@@ -286,7 +282,12 @@ impl Emu {
         let s = self.maps.read_string(self.cfg.string_addr);
 
         if s.len() >= 2 && s.len() < 80 {
-            log::info!("\t{} trace string -> 0x{:x}: '{}'", self.pos, self.cfg.string_addr, s);
+            log::info!(
+                "\t{} trace string -> 0x{:x}: '{}'",
+                self.pos,
+                self.cfg.string_addr,
+                s
+            );
         } else {
             let w = self.maps.read_wide_string_nocrash(self.cfg.string_addr);
             if w.len() == 0 {
@@ -316,7 +317,8 @@ impl Emu {
 
         let mut s = self.maps.read_string(addr);
         self.maps.filter_string(&mut s);
-        let bytes = self.maps
+        let bytes = self
+            .maps
             .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE);
         log::info!(
             "\tmem_inspect: rip = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
@@ -328,5 +330,4 @@ impl Emu {
             bytes
         );
     }
-
 }

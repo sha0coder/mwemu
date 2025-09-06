@@ -90,6 +90,5 @@ impl TLB {
         if LPF_OF(tlb_entry.lpf) == LPF_OF(laddr) {
             tlb_entry.invalidate();
         }
-
     }
 }

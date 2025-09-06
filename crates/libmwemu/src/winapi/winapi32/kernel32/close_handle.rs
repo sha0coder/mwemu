@@ -7,11 +7,7 @@ pub fn CloseHandle(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!CloseHandle cannot read the handle") as u64;
 
-    log_red!(
-        emu,
-        "kernel32!CloseHandle 0x{:X}",
-        hndl
-    );
+    log_red!(emu, "kernel32!CloseHandle 0x{:X}", hndl);
 
     if !helper::handler_close(hndl) {
         log::info!("\tinvalid handle.")

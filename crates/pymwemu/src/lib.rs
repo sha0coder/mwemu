@@ -1,5 +1,5 @@
-use iced_x86::{Formatter};
 use env_logger::Env;
+use iced_x86::Formatter;
 use std::io::Write as _;
 
 use pyo3::exceptions::PyValueError;
@@ -26,7 +26,9 @@ impl Emu {
     /// get last emulated mnemonic with name and parameters.
     fn get_prev_mnemonic(&mut self) -> PyResult<String> {
         let mut output = String::new();
-        self.emu.formatter.format(&self.emu.instruction.unwrap(), &mut output);
+        self.emu
+            .formatter
+            .format(&self.emu.instruction.unwrap(), &mut output);
         Ok(output.clone())
     }
 
@@ -871,4 +873,3 @@ fn pymwemu(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init64, m)?)?;
     Ok(())
 }
-

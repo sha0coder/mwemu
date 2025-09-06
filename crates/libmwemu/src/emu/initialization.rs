@@ -9,12 +9,15 @@ use csv::ReaderBuilder;
 use iced_x86::{Formatter as _, IntelFormatter};
 
 use crate::console::Console;
-use crate::emu::Emu;
-use crate::peb::{peb32, peb64};
-use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
-use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext};
 use crate::emu::disassemble::InstructionCache;
+use crate::emu::Emu;
 use crate::maps::mem64::Permission;
+use crate::peb::{peb32, peb64};
+use crate::{
+    banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config,
+    global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext,
+};
+use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
@@ -35,7 +38,6 @@ impl CustomLogFormat {
     pub fn new() -> CustomLogFormat {
         Self {}
     }
-
 }
 
 impl Emu {
@@ -95,10 +97,9 @@ impl Emu {
         }
     }
 
-
     /// This inits the 32bits stack, it's called from init_cpu() and init()
     pub fn init_stack32(&mut self) {
-    // default if not set via clap args
+        // default if not set via clap args
         if self.cfg.stack_addr == 0 {
             self.cfg.stack_addr = 0x212000;
             let esp = self.cfg.stack_addr + 0x1c000 + 4;
@@ -113,7 +114,12 @@ impl Emu {
 
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, 0x030000, Permission::READ_WRITE)
+            .create_map(
+                "stack",
+                self.cfg.stack_addr,
+                0x030000,
+                Permission::READ_WRITE,
+            )
             .expect("cannot create stack map");
         let stack_base = stack.get_base();
         let stack_bottom = stack.get_bottom();
@@ -147,7 +153,12 @@ impl Emu {
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
         let stack = self
             .maps
-            .create_map("stack", self.cfg.stack_addr, stack_size + 0x2000, Permission::READ_WRITE) // Increased size
+            .create_map(
+                "stack",
+                self.cfg.stack_addr,
+                stack_size + 0x2000,
+                Permission::READ_WRITE,
+            ) // Increased size
             .expect("cannot create stack map");
         let stack_base = stack.get_base();
         let stack_bottom = stack.get_bottom();
@@ -205,10 +216,13 @@ impl Emu {
     }
 
     pub fn init_logger(&mut self) {
-        fast_log::init(fast_log::Config::new()
-            .format(CustomLogFormat::new())
-            .console()
-            .chan_len(Some(100000))).unwrap();
+        fast_log::init(
+            fast_log::Config::new()
+                .format(CustomLogFormat::new())
+                .console()
+                .chan_len(Some(100000)),
+        )
+        .unwrap();
     }
 
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
@@ -295,19 +309,34 @@ impl Emu {
             //self.regs_mut().rsp = 0x7fffffffe2b0;
             self.regs_mut().rsp = 0x7fffffffe790;
             self.maps
-                .create_map("linux_dynamic_stack", 0x7ffffffde000, 0x100000, Permission::READ_WRITE)
+                .create_map(
+                    "linux_dynamic_stack",
+                    0x7ffffffde000,
+                    0x100000,
+                    Permission::READ_WRITE,
+                )
                 .expect("cannot create linux_dynamic_stack map");
             //self.maps.create_map("dso_dyn").load_at(0x7ffff7ffd0000);
             self.maps
                 .create_map("dso_dyn", 0x7ffff7ffd000, 0x1000, Permission::READ_WRITE)
                 .expect("cannot create dso_dyn map");
             self.maps
-                .create_map("linker", 0x7ffff7ffd000-0x1000-0x10000, 0x10000, Permission::READ_WRITE)
+                .create_map(
+                    "linker",
+                    0x7ffff7ffd000 - 0x1000 - 0x10000,
+                    0x10000,
+                    Permission::READ_WRITE,
+                )
                 .expect("cannot create linker map");
         } else {
             self.regs_mut().rsp = 0x7fffffffe270;
             self.maps
-                .create_map("linux_static_stack", 0x7ffffffde000, 0x100000, Permission::READ_WRITE)
+                .create_map(
+                    "linux_static_stack",
+                    0x7ffffffde000,
+                    0x100000,
+                    Permission::READ_WRITE,
+                )
                 .expect("cannot create linux_static_stack map");
             self.maps
                 .create_map("dso", 0x7ffff7ffd000, 0x100000, Permission::READ_WRITE)
@@ -347,7 +376,6 @@ impl Emu {
     pub fn init_mem32(&mut self) {
         log::info!("loading memory maps");
 
-
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
 
@@ -375,7 +403,7 @@ impl Emu {
         //winapi32::kernel32::load_library(self, "dnsapi.dll");
         winapi32::kernel32::load_library(self, "shell32.dll");
         //winapi32::kernel32::load_library(self, "shlwapi.dll");
-        
+
         let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = self.cfg.stack_addr as u32;

@@ -55,15 +55,15 @@ fn malloc(emu: &mut emu::Emu) {
         let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
         emu.maps
-            .create_map(&format!("alloc_{:x}", base), base, size, Permission::READ_WRITE)
+            .create_map(
+                &format!("alloc_{:x}", base),
+                base,
+                size,
+                Permission::READ_WRITE,
+            )
             .expect("msvcrt!malloc cannot create map");
 
-        log_red!(
-        emu,
-        "msvcrt!malloc sz: {} addr: 0x{:x}",
-        size,
-        base
-    );
+        log_red!(emu, "msvcrt!malloc sz: {} addr: 0x{:x}", size, base);
 
         emu.regs_mut().rax = base;
     } else {

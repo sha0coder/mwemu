@@ -30,5 +30,4 @@ impl Banzai {
     pub fn add(&mut self, name: &str, nparams: i32) {
         self.api_params.insert(name.to_string(), nparams);
     }
-
 }

@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 use crate::maps::mem64::Permission;
 
 const PAGE_NOACCESS: u32 = 0x01;
@@ -30,16 +30,22 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp() + 12)
         .expect("kernel32!VirtualAlloc error reading protect");
-    let can_read = (protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
-        PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
-        PAGE_EXECUTE_WRITECOPY)) != 0;
+    let can_read = (protect
+        & (PAGE_READONLY
+            | PAGE_READWRITE
+            | PAGE_WRITECOPY
+            | PAGE_EXECUTE_READ
+            | PAGE_EXECUTE_READWRITE
+            | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
-    let can_write = (protect & (PAGE_READWRITE | PAGE_WRITECOPY |
-        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+    let can_write = (protect
+        & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
-    let can_execute = (protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
-        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
-
+    let can_execute = (protect
+        & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
     let mem_reserve = (atype & constants::MEM_RESERVE) != 0;
     let mem_commit = (atype & constants::MEM_COMMIT) != 0;
@@ -57,7 +63,12 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
                 .expect("kernel32!VirtualAlloc out of memory");
         }
         emu.maps
-            .create_map(format!("alloc_{:x}", base).as_str(), base, size, Permission::from_flags(can_read, can_write, can_execute))
+            .create_map(
+                format!("alloc_{:x}", base).as_str(),
+                base,
+                size,
+                Permission::from_flags(can_read, can_write, can_execute),
+            )
             .expect("kernel32!VirtualAlloc out of memory");
     } else {
         if mem_commit && emu.maps.is_allocated(addr) {

@@ -8,11 +8,7 @@ pub fn LoadLibraryExA(emu: &mut emu::Emu) {
             .expect("kernel32_LoadLibraryExA: error reading libname ptr param") as u64;
     let libname = emu.maps.read_string(libname_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!LoadLibraryExA '{}'",
-        libname
-    );
+    log_red!(emu, "kernel32!LoadLibraryExA '{}'", libname);
 
     emu.regs_mut().rax = load_library(emu, &libname);
 

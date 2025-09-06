@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn CreateProcessW(emu: &mut emu::Emu) {
@@ -7,12 +6,7 @@ pub fn CreateProcessW(emu: &mut emu::Emu) {
     let appname = emu.maps.read_wide_string(appname_ptr);
     let cmdline = emu.maps.read_wide_string(cmdline_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!CreateProcessW  {} {}",
-        appname,
-        cmdline
-    );
+    log_red!(emu, "kernel32!CreateProcessW  {} {}", appname, cmdline);
 
     emu.regs_mut().rax = 1;
 }

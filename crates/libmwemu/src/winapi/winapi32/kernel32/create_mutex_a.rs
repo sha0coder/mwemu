@@ -16,11 +16,7 @@ pub fn CreateMutexA(emu: &mut emu::Emu) {
         .expect("kernel32!CreateMutexA cannot read name param") as u64;
     let name = emu.maps.read_string(name_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!CreateMutexA '{}'",
-        name
-    );
+    log_red!(emu, "kernel32!CreateMutexA '{}'", name);
 
     for _ in 0..3 {
         emu.stack_pop32(false);

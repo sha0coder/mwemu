@@ -1,6 +1,8 @@
 /*
     Little endian 64 bits and inferior bits memory.
 */
+use crate::emu_context;
+use bytemuck::cast_slice;
 use md5;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -10,8 +12,6 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Write;
-use bytemuck::cast_slice;
-use crate::emu_context;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct Permission(u8);
@@ -45,9 +45,15 @@ impl Permission {
     #[inline]
     pub fn from_flags(read: bool, write: bool, execute: bool) -> Self {
         let mut bits = 0;
-        if read { bits |= 0b001; }
-        if write { bits |= 0b010; }
-        if execute { bits |= 0b100; }
+        if read {
+            bits |= 0b001;
+        }
+        if write {
+            bits |= 0b010;
+        }
+        if execute {
+            bits |= 0b100;
+        }
         Permission(bits)
     }
 
@@ -132,7 +138,6 @@ impl std::ops::Not for Permission {
     }
 }
 
-
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
     mem_name: String,
@@ -155,13 +160,19 @@ impl Default for Mem64 {
 }
 
 impl Mem64 {
-    pub fn new(mem_name: String, base_addr: u64, bottom_addr: u64, mem: Vec<u8>, permission: Permission) -> Mem64 {
+    pub fn new(
+        mem_name: String,
+        base_addr: u64,
+        bottom_addr: u64,
+        mem: Vec<u8>,
+        permission: Permission,
+    ) -> Mem64 {
         Mem64 {
             mem_name,
             base_addr,
             bottom_addr,
             permission,
-            mem
+            mem,
         }
     }
 
@@ -313,7 +324,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -335,7 +347,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -351,14 +364,14 @@ impl Mem64 {
             return &[0; 0];
         }
         if addr < self.base_addr {
-            // TODO: log trace?            
+            // TODO: log trace?
             return &[0; 0];
         }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            // TODO: log trace?            
-            let addr =  self.mem.get(idx..self.mem.len()).unwrap();
+            // TODO: log trace?
+            let addr = self.mem.get(idx..self.mem.len()).unwrap();
             return addr;
         }
         let r = self.mem.get(idx..sz2).unwrap();
@@ -372,7 +385,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -383,7 +397,7 @@ impl Mem64 {
         let sz2 = self.size();
         if sz2 > self.mem.len() {
             // TODO: log trace?
-            let bytes =  self.mem.get(idx..self.mem.len()).unwrap();
+            let bytes = self.mem.get(idx..self.mem.len()).unwrap();
             return bytes;
         }
         let r = self.mem.get(idx..sz2).unwrap();
@@ -397,7 +411,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -413,7 +428,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -429,7 +445,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -445,7 +462,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -462,7 +480,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -478,7 +497,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -494,7 +514,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -510,7 +531,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -526,7 +548,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -541,7 +564,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -561,7 +585,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -574,13 +599,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_byte: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 1),
-                    value
-                );
+                        emu,
+                        "mem: force_write_byte: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 1),
+                        value
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -592,13 +618,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_bytes: 0x{:x?} = {:?}",
-                    self.build_addresses(addr, bs.len()),
-                    bs
-                );
+                        emu,
+                        "mem: force_write_bytes: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, bs.len()),
+                        bs
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -611,13 +638,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_word: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 2),
-                    value
-                );
+                        emu,
+                        "mem: force_write_word: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 2),
+                        value
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -630,13 +658,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_dword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 4),
-                    value
-                );
+                        emu,
+                        "mem: force_write_dword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 4),
+                        value
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -649,13 +678,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_qword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 8),
-                    value
-                );
+                        emu,
+                        "mem: force_write_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        value
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -668,13 +698,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_oword: 0x{:x?} = 0x{:x}",
-                    self.build_addresses(addr, 16),
-                    value
-                );
+                        emu,
+                        "mem: force_write_oword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 16),
+                        value
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -688,13 +719,14 @@ impl Mem64 {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
-                    emu,
-                    "mem: force_write_string: 0x{:x?} = {:?}",
-                    self.build_addresses(addr, s.len() + 1),
-                    s
-                );
+                        emu,
+                        "mem: force_write_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -716,7 +748,8 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -738,7 +771,8 @@ impl Mem64 {
                         bs
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -753,7 +787,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -770,7 +805,8 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -785,7 +821,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -802,7 +839,8 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -817,7 +855,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -834,7 +873,8 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -849,7 +889,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -866,7 +907,8 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -881,7 +923,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -902,7 +945,8 @@ impl Mem64 {
                         v
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -917,14 +961,15 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
         let MAX_SIZE_STR = 1_000_000;
         let mut s: Vec<u8> = Vec::new();
         let mut idx = addr;
-        while idx < addr+MAX_SIZE_STR {
+        while idx < addr + MAX_SIZE_STR {
             let b = self.read_byte(idx);
             if b == 0 {
                 break;
@@ -942,7 +987,8 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         String::from_utf8(s).expect("invalid utf-8")
     }
@@ -958,7 +1004,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
 
@@ -980,7 +1027,8 @@ impl Mem64 {
                         wide_string_byte_slice
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -995,14 +1043,15 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
         let MAX_SIZE_STR = 1_000_000;
         let mut s: Vec<u16> = Vec::new();
         let mut idx = addr;
-        while idx < addr+MAX_SIZE_STR {
+        while idx < addr + MAX_SIZE_STR {
             let b = self.read_word(idx);
             if b == 0 {
                 break;
@@ -1020,12 +1069,17 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
-        
+
         match String::from_utf16(&s) {
-            Ok(s) => { return s; }
-            Err(_) => { return "".to_string(); }
+            Ok(s) => {
+                return s;
+            }
+            Err(_) => {
+                return "".to_string();
+            }
         }
     }
 
@@ -1039,7 +1093,8 @@ impl Mem64 {
                         addr
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
@@ -1063,7 +1118,8 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         String::from_utf16_lossy(&s)
     }

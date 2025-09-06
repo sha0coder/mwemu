@@ -4,22 +4,18 @@ use crate::maps::Maps;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableMaps {
-    maps: Maps
+    maps: Maps,
 }
 
 impl From<Maps> for SerializableMaps {
     fn from(maps: Maps) -> Self {
-        SerializableMaps {
-            maps
-        }
+        SerializableMaps { maps }
     }
 }
 
 impl From<&Maps> for SerializableMaps {
     fn from(maps: &Maps) -> Self {
-        SerializableMaps {
-            maps: maps.clone()
-        }
+        SerializableMaps { maps: maps.clone() }
     }
 }
 
@@ -31,7 +27,9 @@ impl From<SerializableMaps> for Maps {
 
 impl Default for SerializableMaps {
     fn default() -> Self {
-        Self { maps: Default::default() }
+        Self {
+            maps: Default::default(),
+        }
     }
 }
 

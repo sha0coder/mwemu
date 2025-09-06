@@ -114,7 +114,9 @@ pub fn emulate_instruction(
         Mnemonic::Test => instructions::test::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Cmpxchg => instructions::cmpxchg::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Cmpxchg8b => instructions::cmpxchg8b::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Cmpxchg16b => instructions::cmpxchg16b::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Cmpxchg16b => {
+            instructions::cmpxchg16b::execute(emu, ins, instruction_sz, rep_step)
+        }
         Mnemonic::Cmp => instructions::cmp::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Cmpsq => instructions::cmpsq::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Cmpsd => instructions::cmpsd::execute(emu, ins, instruction_sz, rep_step),
@@ -253,7 +255,9 @@ pub fn emulate_instruction(
         Mnemonic::Cvtsi2sd => instructions::cvtsi2sd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Cvtsi2ss => instructions::cvtsi2ss::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movhps => instructions::movhps::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Punpcklqdq => instructions::punpcklqdq::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Punpcklqdq => {
+            instructions::punpcklqdq::execute(emu, ins, instruction_sz, rep_step)
+        }
         Mnemonic::Movq => instructions::movq::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Punpckhdq => instructions::punpckhdq::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Punpckldq => instructions::punpckldq::execute(emu, ins, instruction_sz, rep_step),
@@ -290,14 +294,18 @@ pub fn emulate_instruction(
         Mnemonic::Pshufd => instructions::pshufd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movups => instructions::movups::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movdqu => instructions::movdqu::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Vzeroupper => instructions::vzeroupper::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Vzeroupper => {
+            instructions::vzeroupper::execute(emu, ins, instruction_sz, rep_step)
+        }
         Mnemonic::Vmovdqu => instructions::vmovdqu::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vmovdqa => instructions::vmovdqa::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movaps => instructions::movaps::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movapd => instructions::movapd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vmovd => instructions::vmovd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vmovq => instructions::vmovq::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Vpbroadcastb => instructions::vpbroadcastb::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Vpbroadcastb => {
+            instructions::vpbroadcastb::execute(emu, ins, instruction_sz, rep_step)
+        }
         Mnemonic::Vpor => instructions::vpor::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vpxor => instructions::vpxor::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pcmpeqb => instructions::pcmpeqb::execute(emu, ins, instruction_sz, rep_step),
@@ -345,7 +353,9 @@ pub fn emulate_instruction(
         Mnemonic::Stmxcsr => instructions::stmxcsr::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Ldmxcsr => instructions::ldmxcsr::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Fnstcw => instructions::fnstcw::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Prefetchnta => instructions::prefetchnta::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Prefetchnta => {
+            instructions::prefetchnta::execute(emu, ins, instruction_sz, rep_step)
+        }
         Mnemonic::Prefetchw => instructions::prefetchw::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pause => instructions::pause::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Wait => instructions::wait::execute(emu, ins, instruction_sz, rep_step),
@@ -357,7 +367,11 @@ pub fn emulate_instruction(
         Mnemonic::Enter => instructions::enter::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Rdmsr => instructions::rdmsr::execute(emu, ins, instruction_sz, rep_step),
         _ => {
-            log::info!("{} Unimplemented instruction: {:?}", emu.pos, ins.mnemonic());
+            log::info!(
+                "{} Unimplemented instruction: {:?}",
+                emu.pos,
+                ins.mnemonic()
+            );
             false
         }
     }

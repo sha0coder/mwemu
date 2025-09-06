@@ -1,13 +1,23 @@
 use iced_x86::{Instruction, MemorySize, OpKind, Register};
 
-use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, regs64, structures::{self, MemoryOperation}, to32};
 use crate::maps::mem64::Permission;
+use crate::{
+    console::Console,
+    constants,
+    emu::Emu,
+    exception_type::ExceptionType,
+    regs64,
+    structures::{self, MemoryOperation},
+    to32,
+};
 
 impl Emu {
     /// Decode the jump parameter
     pub fn get_jump_value(&mut self, ins: &Instruction, noperand: u32) -> Option<u64> {
         match ins.op_kind(noperand) {
-            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => Some(ins.near_branch_target()),
+            OpKind::NearBranch64 | OpKind::NearBranch32 | OpKind::NearBranch16 => {
+                Some(ins.near_branch_target())
+            }
             OpKind::FarBranch16 => Some(ins.far_branch16() as u64),
             OpKind::FarBranch32 => Some(ins.far_branch32() as u64),
             _ => self.get_operand_value(ins, 0, true),
@@ -15,38 +25,47 @@ impl Emu {
     }
 
     /// Instruction argument decoder.
-    fn handle_memory_get_operand(&mut self, ins: &Instruction, noperand: u32, do_derref: bool) -> Option<u64> {
+    fn handle_memory_get_operand(
+        &mut self,
+        ins: &Instruction,
+        noperand: u32,
+        do_derref: bool,
+    ) -> Option<u64> {
         let mem_seg = ins.memory_segment();
         let fs = mem_seg == Register::FS;
         let gs = mem_seg == Register::GS;
-        let derref = if mem_seg == Register::FS || mem_seg == Register::GS {false} else {do_derref};
+        let derref = if mem_seg == Register::FS || mem_seg == Register::GS {
+            false
+        } else {
+            do_derref
+        };
         let mem_base = ins.memory_base();
         let mem_index = ins.memory_index();
-        
+
         /*if self.cfg.verbose >= 3 {
-            log::debug!("handle_memory_get_operand: mem_seg={:?}, mem_base={:?}, mem_index={:?}, do_derref={}", 
+            log::debug!("handle_memory_get_operand: mem_seg={:?}, mem_base={:?}, mem_index={:?}, do_derref={}",
                        mem_seg, mem_base, mem_index, do_derref);
         }*/
-        
+
         let mem_displace = if self.cfg.is_64bits {
             ins.memory_displacement64()
         } else {
             ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
         };
-        
+
         /*if self.cfg.verbose >= 3 {
             log::debug!("  mem_displace=0x{:x} (is_64bits={})", mem_displace, self.cfg.is_64bits);
         }*/
 
         let temp_displace = if mem_index == Register::None {
             mem_displace
-        }  else {
+        } else {
             let scale_index = ins.memory_index_scale();
             let index_val = self.regs().get_reg(mem_index);
             let scale_factor = index_val.wrapping_mul(scale_index as u64);
             let result = mem_displace.wrapping_add(scale_factor);
             /*if self.cfg.verbose >= 3 {
-                log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}", 
+                log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}",
                            scale_index, index_val, scale_factor, result);
             }*/
             result
@@ -114,10 +133,7 @@ impl Emu {
             let value1: u64 = match mem_addr {
                 0xc0 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!(
-                            "{} Reading ISWOW64 is 32bits on a 64bits system?",
-                            self.pos
-                        );
+                        log::info!("{} Reading ISWOW64 is 32bits on a 64bits system?", self.pos);
                     }
                     if self.cfg.is_64bits {
                         0
@@ -264,7 +280,8 @@ impl Emu {
                             // This should be sized based on the number of modules with .tls sections
                             // For now, allocate space for a few module entries
                             let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
-                            let tls_array = self.alloc("static_tls_array", size, Permission::READ_WRITE);
+                            let tls_array =
+                                self.alloc("static_tls_array", size, Permission::READ_WRITE);
 
                             // Initialize to null pointers
                             self.maps.write_bytes(tls_array, vec![0; size as usize]);
@@ -301,7 +318,7 @@ impl Emu {
                             log::debug!("    Read qword: 0x{:x}", v);
                         }*/
                         v
-                    },
+                    }
                     None => {
                         log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::QWordDereferencing);
@@ -315,7 +332,7 @@ impl Emu {
                             log::debug!("    Read dword: 0x{:x}", v);
                         }*/
                         v.into()
-                    },
+                    }
                     None => {
                         log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::DWordDereferencing);
@@ -329,7 +346,7 @@ impl Emu {
                             log::debug!("    Read word: 0x{:x}", v);
                         }*/
                         v.into()
-                    },
+                    }
                     None => {
                         log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::WordDereferencing);
@@ -343,7 +360,7 @@ impl Emu {
                             log::debug!("    Read byte: 0x{:x}", v);
                         }*/
                         v.into()
-                    },
+                    }
                     None => {
                         log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::ByteDereferencing);
@@ -355,7 +372,10 @@ impl Emu {
             };
 
             if self.cfg.trace_mem {
-                let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
+                let name = self
+                    .maps
+                    .get_addr_name(mem_addr)
+                    .unwrap_or_else(|| "not mapped");
                 let memory_operation = MemoryOperation {
                     pos: self.pos,
                     rip: self.regs().rip,
@@ -411,7 +431,9 @@ impl Emu {
             OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
             OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
             OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
-            OpKind::Memory => self.handle_memory_get_operand(ins, noperand, do_derref).unwrap(),
+            OpKind::Memory => self
+                .handle_memory_get_operand(ins, noperand, do_derref)
+                .unwrap(),
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         Some(value)
@@ -425,7 +447,8 @@ impl Emu {
         match ins.op_kind(noperand) {
             OpKind::Register => {
                 if self.regs().is_fpu(ins.op_register(noperand)) {
-                    self.fpu_mut().set_streg(ins.op_register(noperand), value as f64);
+                    self.fpu_mut()
+                        .set_streg(ins.op_register(noperand), value as f64);
                 } else {
                     self.regs_mut().set_reg(ins.op_register(noperand), value);
                 }
@@ -441,22 +464,22 @@ impl Emu {
                 };
 
                 let mem_seg = ins.memory_segment();
-                
+
                 /*if self.cfg.verbose >= 3 {
-                    log::debug!("set_operand_value Memory: mem_seg={:?}, mem_base={:?}, mem_index={:?}", 
+                    log::debug!("set_operand_value Memory: mem_seg={:?}, mem_base={:?}, mem_index={:?}",
                                mem_seg, mem_base, mem_index);
                     log::debug!("  mem_displace=0x{:x}", mem_displace);
                 }*/
 
                 let temp_displace = if mem_index == Register::None {
                     mem_displace
-                }  else {
+                } else {
                     let scale_index = ins.memory_index_scale();
                     let index_val = self.regs().get_reg(mem_index);
                     let scale_factor = index_val.wrapping_mul(scale_index as u64);
                     let result = mem_displace.wrapping_add(scale_factor);
                     /*if self.cfg.verbose >= 3 {
-                        log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}", 
+                        log::debug!("  scale_index={}, index_val=0x{:x}, scale_factor=0x{:x}, temp_displace=0x{:x}",
                                    scale_index, index_val, scale_factor, result);
                     }*/
                     result
@@ -554,7 +577,10 @@ impl Emu {
                 };
 
                 // now we flush the cacheline if it is written to executable memory and the cacheline exist
-                let mem1 = self.maps.get_mem_by_addr(mem_addr).expect("The memory doesn't exists");
+                let mem1 = self
+                    .maps
+                    .get_mem_by_addr(mem_addr)
+                    .expect("The memory doesn't exists");
                 if mem1.can_execute() {
                     let idx = self.instruction_cache.get_index_of(mem_addr, 0);
                     self.instruction_cache.flush_cache_line(idx);
@@ -566,7 +592,12 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
+                                    .create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    )
                                     .expect("cannot create banzai map");
                                 map.write_qword(mem_addr, value2);
                                 return true;
@@ -575,9 +606,7 @@ impl Emu {
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
-                                self.exception(
-                                    ExceptionType::BadAddressDereferencing,
-                                );
+                                self.exception(ExceptionType::BadAddressDereferencing);
                                 return false;
                             }
                         }
@@ -588,7 +617,12 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
+                                    .create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    )
                                     .expect("cannot create banzai map");
                                 map.write_dword(mem_addr, to32!(value2));
                                 return true;
@@ -597,9 +631,7 @@ impl Emu {
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
-                                self.exception(
-                                    ExceptionType::BadAddressDereferencing,
-                                );
+                                self.exception(ExceptionType::BadAddressDereferencing);
                                 return false;
                             }
                         }
@@ -610,7 +642,12 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
+                                    .create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    )
                                     .expect("cannot create banzai map");
                                 map.write_word(mem_addr, value2 as u16);
                                 return true;
@@ -619,9 +656,7 @@ impl Emu {
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
-                                self.exception(
-                                    ExceptionType::BadAddressDereferencing,
-                                );
+                                self.exception(ExceptionType::BadAddressDereferencing);
                                 return false;
                             }
                         }
@@ -632,7 +667,12 @@ impl Emu {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
-                                    .create_map(&map_name, mem_addr, 100, Permission::READ_WRITE_EXECUTE)
+                                    .create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    )
                                     .expect("cannot create banzai map");
                                 map.write_byte(mem_addr, value2 as u8);
                                 return true;
@@ -641,54 +681,55 @@ impl Emu {
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
-                                self.exception(
-                                    ExceptionType::BadAddressDereferencing,
-                                );
+                                self.exception(ExceptionType::BadAddressDereferencing);
                                 return false;
                             }
                         }
-                        }
-                        _ => unimplemented!("weird size"),
                     }
+                    _ => unimplemented!("weird size"),
+                }
 
-                    if self.cfg.trace_mem {
-                        let name = self.maps.get_addr_name(mem_addr).unwrap_or_else(|| "not mapped");
-                        let memory_operation = MemoryOperation {
-                            pos: self.pos,
-                            rip: self.regs().rip,
-                            op: "write".to_string(),
-                            bits: sz,
-                            address: mem_addr,
-                            old_value,
-                            new_value: value2,
-                            name: name.to_string(),
-                        };
-                        self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
-                    }
-
-                    /*
-                    let name = match self.maps.get_addr_name(mem_addr) {
-                        Some(n) => n,
-                        None => "not mapped".to_string(),
+                if self.cfg.trace_mem {
+                    let name = self
+                        .maps
+                        .get_addr_name(mem_addr)
+                        .unwrap_or_else(|| "not mapped");
+                    let memory_operation = MemoryOperation {
+                        pos: self.pos,
+                        rip: self.regs().rip,
+                        op: "write".to_string(),
+                        bits: sz,
+                        address: mem_addr,
+                        old_value,
+                        new_value: value2,
+                        name: name.to_string(),
                     };
+                    self.memory_operations.push(memory_operation);
+                    log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
+                }
 
-                    if name == "code" {
-                        if self.cfg.verbose >= 1 {
-                            log::info!("/!\\ polymorfic code, addr 0x{:x}", mem_addr);
-                        }
+                /*
+                let name = match self.maps.get_addr_name(mem_addr) {
+                    Some(n) => n,
+                    None => "not mapped".to_string(),
+                };
+
+                if name == "code" {
+                    if self.cfg.verbose >= 1 {
+                        log::info!("/!\\ polymorfic code, addr 0x{:x}", mem_addr);
+                    }
+                    self.force_break = true;
+                }*/
+
+                if self.bp.is_bp_mem_write_addr(mem_addr) {
+                    log::info!("Memory breakpoint on write 0x{:x}", mem_addr);
+                    if self.running_script {
                         self.force_break = true;
-                    }*/
-
-                    if self.bp.is_bp_mem_write_addr(mem_addr) {
-                        log::info!("Memory breakpoint on write 0x{:x}", mem_addr);
-                        if self.running_script {
-                            self.force_break = true;
-                        } else {
-                            Console::spawn_console(self);
-                        }
+                    } else {
+                        Console::spawn_console(self);
                     }
                 }
+            }
 
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
@@ -756,7 +797,9 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         match ins.op_kind(noperand) {
-            OpKind::Register => self.regs_mut().set_xmm_reg(ins.op_register(noperand), value),
+            OpKind::Register => self
+                .regs_mut()
+                .set_xmm_reg(ins.op_register(noperand), value),
             OpKind::Memory => {
                 let mem_addr = match ins
                     .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
@@ -842,7 +885,9 @@ impl Emu {
         assert!(ins.op_count() > noperand);
 
         match ins.op_kind(noperand) {
-            OpKind::Register => self.regs_mut().set_ymm_reg(ins.op_register(noperand), value),
+            OpKind::Register => self
+                .regs_mut()
+                .set_ymm_reg(ins.op_register(noperand), value),
             OpKind::Memory => {
                 let mem_addr = match ins
                     .virtual_address(noperand, 0, |reg, idx, _sz| Some(self.regs().get_reg(reg)))
@@ -886,8 +931,8 @@ impl Emu {
             OpKind::NearBranch64
             | OpKind::Immediate64
             | OpKind::Immediate32to64
-            | OpKind::Immediate8to64 
-            | OpKind::MemoryESRDI 
+            | OpKind::Immediate8to64
+            | OpKind::MemoryESRDI
             | OpKind::MemorySegRSI => 64,
             OpKind::NearBranch32
             | OpKind::Immediate32
@@ -901,7 +946,7 @@ impl Emu {
             | OpKind::Immediate8to16 => 16,
             OpKind::Immediate8 => 8,
             OpKind::Register => self.regs().get_size(ins.op_register(noperand)),
-            
+
             OpKind::Memory => match ins.memory_size() {
                 MemorySize::Float16
                 | MemorySize::UInt16

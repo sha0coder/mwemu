@@ -13,12 +13,7 @@ pub fn lstrcat(emu: &mut emu::Emu) {
     let mut str1 = emu.maps.read_string(str1_ptr);
     let str2 = emu.maps.read_string(str2_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!lstrcat '{}'+'{}'",
-        str1,
-        str2
-    );
+    log_red!(emu, "kernel32!lstrcat '{}'+'{}'", str1, str2);
 
     str1.push_str(&str2);
 

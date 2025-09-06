@@ -5,9 +5,9 @@ use crate::maps::mem64::Permission;
 use crate::structures::LdrDataTableEntry;
 use crate::structures::OrdinalTable;
 use crate::structures::PebLdrData;
+use crate::structures::RtlUserProcessParameters32;
 use crate::structures::PEB;
 use crate::structures::TEB;
-use crate::structures::RtlUserProcessParameters32;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData::size() + 100;
@@ -35,14 +35,22 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
 }
 
 pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
-    let addr = emu.maps.map("RtlUserProcessParameters32", RtlUserProcessParameters32::size() as u64, Permission::READ_WRITE_EXECUTE);
+    let addr = emu.maps.map(
+        "RtlUserProcessParameters32",
+        RtlUserProcessParameters32::size() as u64,
+        Permission::READ_WRITE_EXECUTE,
+    );
     let mut params_struct = RtlUserProcessParameters32::new();
 
     let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
     let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
 
-    let filename = emu.maps.map("file_name", filename_len, Permission::READ_WRITE);
-    let cmdline = emu.maps.map("command_line", cmdline_len, Permission::READ_WRITE);
+    let filename = emu
+        .maps
+        .map("file_name", filename_len, Permission::READ_WRITE);
+    let cmdline = emu
+        .maps
+        .map("command_line", cmdline_len, Permission::READ_WRITE);
 
     params_struct.image_path_name.length = filename_len as u16;
     params_struct.image_path_name.maximum_length = filename_len as u16;
@@ -118,7 +126,7 @@ impl Flink {
         let peb = emu.maps.get_mem("peb");
         let peb_base = peb.get_base();
         let ldr_addr = peb.read_dword(peb_base + 0x0c) as u64; // peb->ldr
-        
+
         let ldr = PebLdrData::load(ldr_addr, &emu.maps);
 
         let flink = emu
@@ -185,7 +193,6 @@ impl Flink {
             .read_dword(self.flink_addr + 0x28) //0x38) //0x28
             .expect("error reading mod_name_ptr") as u64;*/
 
-
         self.mod_name = emu.maps.read_wide_string(mod_name_ptr);
     }
 
@@ -207,7 +214,6 @@ impl Flink {
         if self.pe_hdr == 0 {
             return false;
         }
-
 
         if self.mod_base == 0 {
             return false;
@@ -479,7 +485,10 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_dword(base as u64 + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        let addr = emu.maps.alloc(sz).expect("out of memory, cannot create the .ldr entry");
+        let addr = emu
+            .maps
+            .alloc(sz)
+            .expect("out of memory, cannot create the .ldr entry");
         if addr > u32::MAX as u64 {
             panic!("allocating .ldr  > u32::MAX");
         }

@@ -1,6 +1,6 @@
 use crate::engine::logic;
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // logic tests
@@ -9,11 +9,10 @@ pub fn logic_test() {
 
     let mut emu = emu64();
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-    
 
     let num: u64 = 0x1234_5678_9ABC_DEF0;
-    let shift:u64 = 12;
-    let size:u32 = 32;
+    let shift: u64 = 12;
+    let size: u32 = 32;
     let src: u64 = num >> (size as u64 - shift);
 
     let mut r: u64;

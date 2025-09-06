@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn Thread32Next(emu: &mut emu::Emu) {
     let hndl = emu
@@ -11,10 +11,7 @@ pub fn Thread32Next(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!Thread32Next cannot read the entry32");
 
-    log_red!(
-        emu,
-        "kernel32!Thread32Next"
-    );
+    log_red!(emu, "kernel32!Thread32Next");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

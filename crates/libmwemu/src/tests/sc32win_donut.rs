@@ -8,7 +8,6 @@ pub fn sc32win_donut() {
 
     let mut emu = emu32();
     emu.cfg.maps_folder = "../../maps/maps32/".to_string();
-    
 
     let sample = "../../test/sc32win_donut.bin";
     emu.load_code(sample);

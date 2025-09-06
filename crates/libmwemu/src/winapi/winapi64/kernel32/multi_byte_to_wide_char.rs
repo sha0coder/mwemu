@@ -1,4 +1,3 @@
-
 use crate::winapi::winapi64::kernel32::LAST_ERROR;
 use crate::{constants, emu};
 
@@ -11,10 +10,10 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         .maps
         .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
-    let cch_wide_char = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x28) // yes, read only half of the stack item
-        .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i32;
+    let cch_wide_char =
+        emu.maps
+            .read_dword(emu.regs().rsp + 0x28) // yes, read only half of the stack item
+            .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i32;
 
     let mut utf8: String = String::new();
 
@@ -28,9 +27,7 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
 
     // validation 2: output NO NULL but cch == 0
     if wide_ptr != 0 && cch_wide_char == 0 {
-        log::warn!(
-            "[ALERT] MultiByteToWideChar: output buffer is non-NULL but cch_wide_char = 0"
-        );
+        log::warn!("[ALERT] MultiByteToWideChar: output buffer is non-NULL but cch_wide_char = 0");
     }
 
     // validation 3: size too big
@@ -70,12 +67,12 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
     // LOG THE INPUT STRING
     if utf8_ptr > 0 && !utf8.is_empty() {
         log_red!(
-        emu,
-        "Input UTF-8 string: \"{}\" (length: {} bytes)",
-        utf8.escape_debug(),
-        // This will show escape sequences for non-printable chars
+            emu,
+            "Input UTF-8 string: \"{}\" (length: {} bytes)",
+            utf8.escape_debug(),
+            // This will show escape sequences for non-printable chars
             cb_multi_byte
-    );
+        );
     }
 
     // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)

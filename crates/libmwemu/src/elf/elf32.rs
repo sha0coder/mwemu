@@ -57,7 +57,6 @@ impl Elf32 {
     }
 
     pub fn load(&mut self, maps: &mut Maps) {
-
         maps.clear();
         let mut off = self.elf_hdr.e_phoff as usize;
 
@@ -76,7 +75,6 @@ impl Elf32 {
         }
 
         for phdr in &self.elf_phdr {
-
             if phdr.p_type == constants::PT_LOAD {
                 /*
                 for shdr in &self.elf_shdr {
@@ -89,13 +87,13 @@ impl Elf32 {
 
                     }
                 }*/
-                
+
                 let mem = maps
                     .create_map(
                         &"code".to_string(),
                         phdr.p_vaddr.into(),
                         phdr.p_memsz.into(),
-                        Permission::from_bits(phdr.p_flags as u8)
+                        Permission::from_bits(phdr.p_flags as u8),
                     )
                     .expect("cannot create code map from load_programs elf32");
                 if phdr.p_filesz > phdr.p_memsz {

@@ -16,11 +16,7 @@ pub fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
 
     let src = emu.maps.read_string(src_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!ExpandEnvironmentStringsA `{}`",
-        src
-    );
+    log_red!(emu, "kernel32!ExpandEnvironmentStringsA `{}`", src);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

@@ -1,4 +1,3 @@
-
 use crate::emu;
 use crate::winapi::helper;
 
@@ -27,7 +26,12 @@ pub fn ReadFile(emu: &mut emu::Emu) {
     }
 
     let name = helper::handler_get_uri(file_hndl);
-    log_red!(emu, "** {} kernel32!ReadFile name = {name} {}", emu.pos, emu.colors.nc);
+    log_red!(
+        emu,
+        "** {} kernel32!ReadFile name = {name} {}",
+        emu.pos,
+        emu.colors.nc
+    );
 
     if name == "HaspEmul.dll" {
         let bytes = std::fs::read("/Users/jesus/Downloads/enigma/surprise.dll").unwrap();

@@ -15,11 +15,7 @@ pub fn OpenProcess(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!OpenProcess cannot read pid");
 
-    log_red!(
-        emu,
-        "kernel32!OpenProcess pid: {}",
-        pid
-    );
+    log_red!(emu, "kernel32!OpenProcess pid: {}", pid);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

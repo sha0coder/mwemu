@@ -5,9 +5,9 @@ use crate::structures::*;
 use crate::winapi::helper;
 use crate::winapi::winapi64;
 
+use crate::maps::mem64::Permission;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
-use crate::maps::mem64::Permission;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
@@ -67,28 +67,19 @@ lazy_static! {
 }
 
 fn WsaStartup(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ws2_32!WsaStartup"
-    );
+    log_red!(emu, "ws2_32!WsaStartup");
 
     emu.regs_mut().rax = 0;
 }
 
 fn WsaSocketA(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ws2_32!WsaSocketA"
-    );
+    log_red!(emu, "ws2_32!WsaSocketA");
 
     emu.regs_mut().rax = helper::socket_create();
 }
 
 fn socket(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ws2_32!socket"
-    );
+    log_red!(emu, "ws2_32!socket");
 
     emu.regs_mut().rax = helper::socket_create();
 }
@@ -97,11 +88,7 @@ fn WsaHtons(emu: &mut emu::Emu) {
     let host_port = emu.regs().rdx;
     let out_port = emu.regs().r8;
 
-    log_red!(
-        emu,
-        "ws2_32!WsaHtons {}",
-        host_port
-    );
+    log_red!(emu, "ws2_32!WsaHtons {}", host_port);
 
     //TODO: implement this
     emu.regs_mut().rax = 0;
@@ -110,11 +97,7 @@ fn WsaHtons(emu: &mut emu::Emu) {
 fn htons(emu: &mut emu::Emu) {
     let port: u16 = emu.regs().rcx as u16;
 
-    log_red!(
-        emu,
-        "ws2_32!htons port: {}",
-        port
-    );
+    log_red!(emu, "ws2_32!htons port: {}", port);
 
     emu.regs_mut().rax = port.to_be() as u64;
 }
@@ -124,10 +107,7 @@ fn inet_addr(emu: &mut emu::Emu) {
 
     //TODO: derreferece addr
 
-    log_red!(
-        emu,
-        "ws2_32!inet_addr"
-    );
+    log_red!(emu, "ws2_32!inet_addr");
 
     emu.regs_mut().rax = 0;
 }
@@ -157,13 +137,7 @@ fn connect(emu: &mut emu::Emu) {
         (ip & 0xff0000) >> 16,
         (ip & 0xff000000) >> 24
     );
-    log_red!(
-        emu,
-        "ws2_32!connect  family: {} {}:{}",
-        family,
-        sip,
-        port
-    );
+    log_red!(emu, "ws2_32!connect  family: {} {}:{}", family, sip, port);
 
     if emu.cfg.endpoint {
         /*
@@ -191,12 +165,7 @@ fn recv(emu: &mut emu::Emu) {
     let mut len = emu.regs().r8;
     let flags = emu.regs().r9;
 
-    log_red!(
-        emu,
-        "ws2_32!recv   buff: 0x{:x} sz: {}",
-        buff,
-        len
-    );
+    log_red!(emu, "ws2_32!recv   buff: 0x{:x} sz: {}", buff, len);
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
@@ -228,7 +197,9 @@ fn recv(emu: &mut emu::Emu) {
             } else {
                 if emu.maps.overflow_predicted(buff, len) {
                     if emu.cfg.verbose > 0 {
-                        log::info!("/!\\ on this asm, the recv overflows the buffer, canceled the write!");
+                        log::info!(
+                            "/!\\ on this asm, the recv overflows the buffer, canceled the write!"
+                        );
                     }
                 } else {
                     emu.maps.memset(buff, 0x90, len as usize);
@@ -248,11 +219,7 @@ fn send(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(buff, len as usize);
 
-    log_red!(
-        emu,
-        "ws2_32!send {{{}}}",
-        bytes
-    );
+    log_red!(emu, "ws2_32!send {{{}}}", bytes);
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
@@ -324,11 +291,7 @@ fn listen(emu: &mut emu::Emu) {
     let sock = emu.regs().rcx;
     let connections = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "ws2_32!listen  connections: {}",
-        connections
-    );
+    log_red!(emu, "ws2_32!listen  connections: {}", connections);
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
@@ -346,11 +309,7 @@ fn accept(emu: &mut emu::Emu) {
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
-    log_red!(
-        emu,
-        "ws2_32!accept  connections: {}",
-        bytes
-    );
+    log_red!(emu, "ws2_32!accept  connections: {}", bytes);
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
@@ -363,10 +322,7 @@ fn accept(emu: &mut emu::Emu) {
 fn closesocket(emu: &mut emu::Emu) {
     let sock = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "ws2_32!closesocket"
-    );
+    log_red!(emu, "ws2_32!closesocket");
 
     helper::socket_close(sock);
 
@@ -418,12 +374,7 @@ fn getsockopt(emu: &mut emu::Emu) {
 
     emu.maps.write_dword(optval, 1);
 
-    log_red!(
-        emu,
-        "ws2_32!getsockopt  lvl: {} opt: {}",
-        level,
-        optname
-    );
+    log_red!(emu, "ws2_32!getsockopt  lvl: {} opt: {}", level, optname);
 
     if !helper::socket_exist(sock) {
         log::info!("\tinvalid socket.");
@@ -468,11 +419,7 @@ fn GetSockName(emu: &mut emu::Emu) {
     emu.maps.write_dword(sockaddr_ptr, 0);
     emu.maps.write_dword(namelen_ptr, 4);
 
-    log_red!(
-        emu,
-        "ws2_32!GetSockName sock: {}",
-        sock
-    );
+    log_red!(emu, "ws2_32!GetSockName sock: {}", sock);
 
     emu.regs_mut().rax = 0;
 }
@@ -481,11 +428,7 @@ fn gethostbyname(emu: &mut emu::Emu) {
     let domain_name_ptr = emu.regs().rcx;
     let domain_name = emu.maps.read_string(domain_name_ptr);
 
-    log_red!(
-        emu,
-        "ws2_32!gethostbyname `{}`",
-        domain_name
-    );
+    log_red!(emu, "ws2_32!gethostbyname `{}`", domain_name);
 
     let addr = emu.maps.alloc(1024).expect("low memory");
     let str_addr = addr + 1024 - 100;

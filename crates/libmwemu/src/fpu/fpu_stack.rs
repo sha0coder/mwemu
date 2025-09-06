@@ -30,7 +30,12 @@ impl FPUStack {
         info!("top: {}", self.top);
         info!("depth: {}", self.depth);
         for i in (0..8).rev() {
-            info!("ST({}) 0x{:x} {}", i, self.regs[i].get(), self.regs[i].get_f64());
+            info!(
+                "ST({}) 0x{:x} {}",
+                i,
+                self.regs[i].get(),
+                self.regs[i].get_f64()
+            );
         }
         info!("invalid_flag: {:b}", self.invalid_flag);
     }
@@ -64,7 +69,7 @@ impl FPUStack {
 
     pub fn push_f64(&mut self, value: f64) {
         if self.depth >= 8 {
-            panic!("FPU stack overflow"); 
+            panic!("FPU stack overflow");
             // in linux: terminated by signal SIGFPE (Floating point exception)
         }
         self.top = (self.top.wrapping_sub(1)) & 7;
@@ -75,7 +80,7 @@ impl FPUStack {
 
     pub fn push_f80(&mut self, value: F80) {
         if self.depth >= 8 {
-            panic!("FPU stack overflow"); 
+            panic!("FPU stack overflow");
             // in linux: terminated by signal SIGFPE (Floating point exception)
         }
         self.top = (self.top.wrapping_sub(1)) & 7;
@@ -152,6 +157,3 @@ impl FPUStack {
         self.regs.swap(a, b);
     }
 }
-
-
-

@@ -122,13 +122,11 @@ impl InstructionCache {
 
     #[inline(always)]
     fn flush_cache(&mut self) {
-        self.cache_entries
-            .iter_mut()
-            .for_each(|entry| {
-                entry.lpf = INVALID_LPF_ADDR;
-                entry.instruction_key = INVALID_KEY;
-                entry.instruction_len = INVALID_LEN;
-            });
+        self.cache_entries.iter_mut().for_each(|entry| {
+            entry.lpf = INVALID_LPF_ADDR;
+            entry.instruction_key = INVALID_KEY;
+            entry.instruction_len = INVALID_LEN;
+        });
         self.next_instruction_slot = 0;
     }
 

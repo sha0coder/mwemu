@@ -1,4 +1,3 @@
-
 use crate::emu;
 use crate::maps::mem64::Permission;
 
@@ -27,16 +26,22 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x28)
         .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
 
-    let can_read = (protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
-        PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
-        PAGE_EXECUTE_WRITECOPY)) != 0;
+    let can_read = (protect
+        & (PAGE_READONLY
+            | PAGE_READWRITE
+            | PAGE_WRITECOPY
+            | PAGE_EXECUTE_READ
+            | PAGE_EXECUTE_READWRITE
+            | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
-    let can_write = (protect & (PAGE_READWRITE | PAGE_WRITECOPY |
-        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+    let can_write = (protect
+        & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
-    let can_execute = (protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
-        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
-
+    let can_execute = (protect
+        & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
 
     log_red!(
         emu,
@@ -50,7 +55,12 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         .alloc(size)
         .expect("kernel32!VirtualAllocExNuma out of memory");
     emu.maps
-        .create_map(format!("alloc_{:x}", base).as_str(), base, size, Permission::from_flags(can_read, can_write, can_execute))
+        .create_map(
+            format!("alloc_{:x}", base).as_str(),
+            base,
+            size,
+            Permission::from_flags(can_read, can_write, can_execute),
+        )
         .expect("kernel32!VirtualAllocExNuma cannot create map");
 
     emu.regs_mut().rax = base;

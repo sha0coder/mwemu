@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn AddVectoredExceptionHandler(emu: &mut emu::Emu) {

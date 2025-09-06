@@ -10,7 +10,10 @@ pub struct SerializablePE64 {
 
 impl From<PE64> for SerializablePE64 {
     fn from(pe64: PE64) -> Self {
-        SerializablePE64 { filename: pe64.filename, raw: pe64.raw }
+        SerializablePE64 {
+            filename: pe64.filename,
+            raw: pe64.raw,
+        }
     }
 }
 

@@ -1,6 +1,6 @@
+use crate::constants;
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
 
 pub fn CreateFileW(emu: &mut emu::Emu) {
     let fname_ptr = emu
@@ -26,12 +26,7 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
         perm = "unknown permissions".to_string();
     }
 
-    log_red!(
-        emu,
-        "kernel32!CreateFileW `{}` {}",
-        fname,
-        perm
-    );
+    log_red!(emu, "kernel32!CreateFileW `{}` {}", fname, perm);
 
     for _ in 0..7 {
         emu.stack_pop32(false);

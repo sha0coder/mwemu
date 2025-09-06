@@ -4,10 +4,10 @@ use crate::emu;
 #[derive(Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub struct VS_FIXEDFILEINFO {
-    pub dw_signature: u32,        // 0xFEEF04BD
-    pub dw_struc_version: u32,    // 0x00010000
-    pub dw_file_version_ms: u32,  // 0x00060000a (6.10)
-    pub dw_file_version_ls: u32,  // 0x585d11bd (22621.4541)
+    pub dw_signature: u32,       // 0xFEEF04BD
+    pub dw_struc_version: u32,   // 0x00010000
+    pub dw_file_version_ms: u32, // 0x00060000a (6.10)
+    pub dw_file_version_ls: u32, // 0x585d11bd (22621.4541)
     pub dw_product_version_ms: u32,
     pub dw_product_version_ls: u32,
     pub dw_file_flags_mask: u32,

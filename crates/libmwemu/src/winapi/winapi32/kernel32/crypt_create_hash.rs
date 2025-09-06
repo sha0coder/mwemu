@@ -1,6 +1,6 @@
+use crate::constants;
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
 
 pub fn CryptCreateHash(emu: &mut emu::Emu) {
     let hprov = emu
@@ -26,11 +26,7 @@ pub fn CryptCreateHash(emu: &mut emu::Emu) {
 
     let alg_name = constants::get_cryptoalgorithm_name(algid);
 
-    log_red!(
-        emu,
-        "kernel32!CryptCreateHash alg:{}",
-        alg_name
-    );
+    log_red!(emu, "kernel32!CryptCreateHash alg:{}", alg_name);
 
     for _ in 0..5 {
         emu.stack_pop32(false);

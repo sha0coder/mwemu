@@ -11,23 +11,68 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
     if lpName > 0xff && lpType > 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
         let ntype = emu.maps.read_wide_string(lpType as u64);
-        log_red!(emu, "** {} kernel32!FindResourceW {:x} `{}` `{}`", emu.pos, handle, name, ntype);
+        log_red!(
+            emu,
+            "** {} kernel32!FindResourceW {:x} `{}` `{}`",
+            emu.pos,
+            handle,
+            name,
+            ntype
+        );
 
-        x = emu.pe64.as_ref().unwrap().get_resource(None, None, Some(&name), Some(&ntype));
+        x = emu
+            .pe64
+            .as_ref()
+            .unwrap()
+            .get_resource(None, None, Some(&name), Some(&ntype));
     } else if lpName > 0xff && lpType <= 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
-        log_red!(emu, "** {} kernel32!FindResourceW {:x} `{}` {}", emu.pos, handle, name, lpType);
+        log_red!(
+            emu,
+            "** {} kernel32!FindResourceW {:x} `{}` {}",
+            emu.pos,
+            handle,
+            name,
+            lpType
+        );
 
-        x = emu.pe64.as_ref().unwrap().get_resource(Some(lpType as u32), None, Some(&name), None);
+        x = emu
+            .pe64
+            .as_ref()
+            .unwrap()
+            .get_resource(Some(lpType as u32), None, Some(&name), None);
     } else if lpName <= 0xff && lpType > 0xff {
         let ntype = emu.maps.read_wide_string(lpType as u64);
-        log_red!(emu, "** {} kernel32!FindResourceW {:x} `{}` {}", emu.pos, handle, lpName, ntype);
+        log_red!(
+            emu,
+            "** {} kernel32!FindResourceW {:x} `{}` {}",
+            emu.pos,
+            handle,
+            lpName,
+            ntype
+        );
 
-        x = emu.pe64.as_ref().unwrap().get_resource(None, Some(lpName as u32), None, Some(&ntype));
+        x = emu
+            .pe64
+            .as_ref()
+            .unwrap()
+            .get_resource(None, Some(lpName as u32), None, Some(&ntype));
     } else if lpName <= 0xff && lpType <= 0xff {
-        log_red!(emu, "** {} kernel32!FindResourceW {:x} `{}` {}", emu.pos, handle, lpName, lpType);
+        log_red!(
+            emu,
+            "** {} kernel32!FindResourceW {:x} `{}` {}",
+            emu.pos,
+            handle,
+            lpName,
+            lpType
+        );
 
-        x = emu.pe64.as_ref().unwrap().get_resource(Some(lpType as u32), Some(lpName as u32), None, None);
+        x = emu.pe64.as_ref().unwrap().get_resource(
+            Some(lpType as u32),
+            Some(lpName as u32),
+            None,
+            None,
+        );
     } else {
         unreachable!();
     }

@@ -32,7 +32,6 @@ pub fn rol(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     ret
 }
 
-
 pub fn rcl_bit_based(emu: &Emu, val: u64, rot2: u64, bits: u32) -> u64 {
     let mut ret: u128 = val as u128;
 
@@ -182,7 +181,7 @@ pub fn imul64p1(emu: &mut Emu, value0: u64) {
     let value2: i64 = value0 as i64;
     let res: i128 = value1 as i128 * value2 as i128;
     let ures: u128 = res as u128;
-    emu.regs_mut().rdx =  (ures >> 64) as u64;
+    emu.regs_mut().rdx = (ures >> 64) as u64;
     emu.regs_mut().rax = (ures & 0xffffffffffffffff) as u64;
     let rax = emu.regs().rax as i64;
     let rdx = emu.regs().rdx as i64;
@@ -229,7 +228,6 @@ pub fn imul8p1(emu: &mut Emu, value0: u64) {
     emu.flags_mut().f_of = !((al < 0 && ah == -1) || (al >= 0 && ah == 0));
     emu.flags_mut().f_cf = emu.flags().f_of;
 }
-
 
 pub fn div64(emu: &mut Emu, value0: u64) {
     let mut value1: u128 = emu.regs().rdx as u128;

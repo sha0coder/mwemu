@@ -1,18 +1,18 @@
 pub mod mem64;
 pub mod tlb;
 
-use std::cell::RefCell;
 use crate::constants;
+use crate::maps::mem64::Permission;
+use crate::maps::tlb::LPF_OF;
 use ahash::AHashMap;
 use mem64::Mem64;
-use tlb::TLB;
 use serde::{Deserialize, Serialize};
+use slab::Slab;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
-use slab::Slab;
 use std::str;
-use crate::maps::mem64::{Permission};
-use crate::maps::tlb::LPF_OF;
+use tlb::TLB;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
@@ -43,12 +43,12 @@ impl Maps {
     const DEFAULT_ALIGNMENT: u64 = 0x1000; //16;
 
     pub fn new(
-        mem_slab: Slab<Mem64>, 
-        maps: BTreeMap<u64, usize>, 
-        name_map: AHashMap<String, usize>, 
-        is_64bits: bool, 
-        banzai: bool, 
-        tlb: RefCell<TLB>
+        mem_slab: Slab<Mem64>,
+        maps: BTreeMap<u64, usize>,
+        name_map: AHashMap<String, usize>,
+        is_64bits: bool,
+        banzai: bool,
+        tlb: RefCell<TLB>,
     ) -> Maps {
         Maps {
             banzai,
@@ -130,7 +130,13 @@ impl Maps {
             })
     }
 
-    pub fn create_map(&mut self, name: &str, base: u64, size: u64, permission: Permission) -> Result<&mut Mem64, String> {
+    pub fn create_map(
+        &mut self,
+        name: &str,
+        base: u64,
+        size: u64,
+        permission: Permission,
+    ) -> Result<&mut Mem64, String> {
         //if size == 0 {
         //    return Err(format!("map size cannot be 0"));
         //}
@@ -149,7 +155,6 @@ impl Maps {
         mem.set_base(base);
         mem.set_size(size);
         mem.set_permission(permission);
-
 
         let base_key = self.mem_slab.insert(mem);
         self.name_map.insert(name.to_string(), base_key);
@@ -191,9 +196,7 @@ impl Maps {
                 log::warn!("Reading byte from unmapped region at 0x{:x}", addr);
                 None
             }
-            _ => {
-                None
-            }
+            _ => None,
         }
     }
 
@@ -241,7 +244,7 @@ impl Maps {
                 true
             }
             Some(_) => {
-                if banzai{
+                if banzai {
                     log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
                 } else {
                     panic!("Writing dword to unmapped region at 0x{:x}", addr);
@@ -249,7 +252,7 @@ impl Maps {
                 false
             }
             None => {
-                if banzai{
+                if banzai {
                     log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
                 } else {
                     panic!("Writing dword to unmapped region at 0x{:x}", addr);
@@ -291,14 +294,14 @@ impl Maps {
         if data.is_empty() {
             return true;
         }
-        
+
         // Write byte by byte to handle any boundary issues
         for (i, &byte) in data.iter().enumerate() {
             if !self.write_byte(addr + i as u64, byte) {
                 return false;
             }
         }
-        
+
         true
     }
 
@@ -413,14 +416,15 @@ impl Maps {
                 if mem.inside(addr) {
                     return self.mem_slab.get_mut(tlb_entry_mut.mem64); // Clone the &Mem64
                 }
-            },
+            }
             _ => {
                 tlb_entry_mut.invalidate();
             } // Remove the tlb entry
         };
 
         // TLB miss now search in the maps
-        let mem_key_option = self.maps
+        let mem_key_option = self
+            .maps
             .range(..=addr)
             .next_back()
             .map(|(_start_addr, &key)| key);
@@ -450,14 +454,11 @@ impl Maps {
                 if mem.inside(addr) {
                     return Some(&mem); // Clone the &Mem64
                 }
-            },
-            _ => () // TLB miss now search in maps
+            }
+            _ => (), // TLB miss now search in maps
         };
 
-        let mem_key_option = self.maps
-            .range(..=addr)
-            .next_back()
-            .map(|(_k, &v)| v);
+        let mem_key_option = self.maps.range(..=addr).next_back().map(|(_k, &v)| v);
 
         let mem_key = mem_key_option?; // Return None if not found
 
@@ -738,9 +739,7 @@ impl Maps {
 
             if !self.is_64bits {
                 // only in 32bits make sense derreference dwords in memory
-                let name = self
-                    .get_addr_name(value.into())
-                    .unwrap_or_else(|| "");
+                let name = self.get_addr_name(value.into()).unwrap_or_else(|| "");
 
                 let mut s = "".to_string();
                 if !name.is_empty() {
@@ -814,12 +813,11 @@ impl Maps {
         if addr == 0 {
             return "".to_string();
         }
-        let mem = match self
-            .get_mem_by_addr(addr) {
-                Some(m) => m,
-                None => {
-                    return "".to_string();
-                }
+        let mem = match self.get_mem_by_addr(addr) {
+            Some(m) => m,
+            None => {
+                return "".to_string();
+            }
         };
         mem.read_wide_string(addr)
     }
@@ -1149,11 +1147,11 @@ impl Maps {
 
     pub fn dealloc(&mut self, addr: u64) {
         let mem_key = match self.maps.get(&addr) {
-                Some(key) => key,
-                None => {
-                    log::info!("dealloc: non mapped address 0x{:x}", addr);
-                    return;
-                }
+            Some(key) => key,
+            None => {
+                log::info!("dealloc: non mapped address 0x{:x}", addr);
+                return;
+            }
         };
         let mem = self.mem_slab.get_mut(*mem_key).unwrap();
         self.name_map.remove(mem.get_name());
@@ -1165,18 +1163,24 @@ impl Maps {
 
     pub fn map(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
-        self.create_map(name, addr, sz, permission).expect("emu.maps.map(sz) cannot create map");
+        self.create_map(name, addr, sz, permission)
+            .expect("emu.maps.map(sz) cannot create map");
         addr
     }
 
     pub fn map_lib(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
-        if self.is_64bits { 
-            let addr = self.lib64_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
+        if self.is_64bits {
+            let addr = self
+                .lib64_alloc(sz)
+                .expect("emu.maps.map_lib(sz) cannot allocate");
         } else {
-            let addr = self.lib32_alloc(sz).expect("emu.maps.map_lib(sz) cannot allocate");
+            let addr = self
+                .lib32_alloc(sz)
+                .expect("emu.maps.map_lib(sz) cannot allocate");
         }
-        self.create_map(name, addr, sz, permission).expect("emu.maps.map_lib(sz) cannot create map");
+        self.create_map(name, addr, sz, permission)
+            .expect("emu.maps.map_lib(sz) cannot create map");
         addr
     }
 
@@ -1206,7 +1210,7 @@ impl Maps {
          *  vars:
          *    prev: is an aligned address, start with bottom and iterates every map bottom.
          *    base: base address of specific map.
-        */
+         */
 
         let mut prev: u64 = self.align_up(bottom, Self::DEFAULT_ALIGNMENT);
         let debug = false;

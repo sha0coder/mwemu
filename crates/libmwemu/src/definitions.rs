@@ -42,21 +42,17 @@ where
 {
     let s: String = serde::Deserialize::deserialize(deserializer)?;
     if s.starts_with("0x") {
-        u64::from_str_radix(&s[2..], 16)
-            .map_err(|e| serde::de::Error::custom(e))
+        u64::from_str_radix(&s[2..], 16).map_err(|e| serde::de::Error::custom(e))
     } else {
-        s.parse::<u64>()
-            .map_err(|e| serde::de::Error::custom(e))
+        s.parse::<u64>().map_err(|e| serde::de::Error::custom(e))
     }
 }
 
 pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
-    let contents = fs::read_to_string(filename)
-        .expect("Failed to read definitions file");
-    
-    let definitions: Definitions = serde_yaml::from_str(&contents)
-        .expect("Failed to parse YAML");
-    
+    let contents = fs::read_to_string(filename).expect("Failed to read definitions file");
+
+    let definitions: Definitions = serde_yaml::from_str(&contents).expect("Failed to parse YAML");
+
     let mut map = HashMap::new();
     for def in definitions.events {
         map.insert(def.address, def);
@@ -69,8 +65,13 @@ impl Emu {
         let rip = self.regs().rip;
         let definitions = &self.cfg.definitions;
         if let Some(definition) = definitions.get(&rip) {
-            log::info!("Event: {} (0x{:x}) - {}", definition.name, rip, definition.event_type);
-            
+            log::info!(
+                "Event: {} (0x{:x}) - {}",
+                definition.name,
+                rip,
+                definition.event_type
+            );
+
             // Store context if needed
             if let Some(context_name) = &definition.store_context {
                 let mut context_values = HashMap::new();
@@ -78,9 +79,14 @@ impl Emu {
                     let value = self.resolve_source(&param.source);
                     context_values.insert(param.name.clone(), value);
                 }
-                self.stored_contexts.insert(context_name.clone(), StoredContext { values: context_values });
+                self.stored_contexts.insert(
+                    context_name.clone(),
+                    StoredContext {
+                        values: context_values,
+                    },
+                );
             }
-            
+
             // Display parameters
             for param in &definition.parameters {
                 let value = self.resolve_source(&param.source);
@@ -89,10 +95,10 @@ impl Emu {
             }
         }
     }
-    
+
     fn resolve_source(&self, source: &str) -> u64 {
         let parts: Vec<&str> = source.split(':').collect();
-        
+
         match parts[0] {
             "deref" => {
                 // deref:context:context_name:param_name or deref:register
@@ -128,7 +134,7 @@ impl Emu {
             }
         }
     }
-    
+
     fn get_parameter_value(&self, source: &str) -> u64 {
         match source {
             "rcx" => self.regs().rcx,
@@ -156,7 +162,7 @@ impl Emu {
             }
         }
     }
-    
+
     fn format_parameter_value(&self, value: u64, param_type: &str) -> String {
         match param_type {
             "pointer" => format!("0x{:x}", value),

@@ -12,10 +12,7 @@ pub fn SetThreadContext(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!SetThreadContext cannot read the ctx_ptr");
 
-    log_red!(
-        emu,
-        "kernel32!SetThreadContext"
-    );
+    log_red!(emu, "kernel32!SetThreadContext");
 
     let con = console::Console::new();
     con.print("apply the context (y/n)?");

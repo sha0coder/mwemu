@@ -20,10 +20,7 @@ pub fn GetThreadPreferredUILanguages(emu: &mut emu::Emu) {
         .expect("kernel32!GetThreadPreferredUILanguages cannot read sz") as u64;
 
     emu.maps.write_dword(num_langs_ptr, 0);
-    log_red!(
-        emu,
-        "kernel32!GetThreadPreferredUILanguages"
-    );
+    log_red!(emu, "kernel32!GetThreadPreferredUILanguages");
 
     emu.maps.write_dword(out_sz, 0);
     emu.maps.write_dword(num_langs_ptr, 0);

@@ -11,7 +11,7 @@ pub fn pure_rust_check() {
 
     let out = output.unwrap();
     let stdout = String::from_utf8(out.stdout);
-    
+
     assert!(stdout.is_ok()); // not utf8 errors
     let stoud2 = stdout.unwrap();
 

@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
@@ -23,7 +22,10 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
 
     // Check if buffer is mapped
     if !emu.maps.is_mapped(out_buff_ptr) {
-        log::error!("GetSystemDirectoryW: lpBuffer 0x{:x} is not mapped", out_buff_ptr);
+        log::error!(
+            "GetSystemDirectoryW: lpBuffer 0x{:x} is not mapped",
+            out_buff_ptr
+        );
         emu.regs_mut().rax = 0; // Failure
         return;
     }

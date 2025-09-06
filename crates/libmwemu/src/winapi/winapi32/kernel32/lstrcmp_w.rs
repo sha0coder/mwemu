@@ -13,12 +13,7 @@ pub fn lstrcmpW(emu: &mut emu::Emu) {
     let s1 = emu.maps.read_wide_string(s1_ptr);
     let s2 = emu.maps.read_wide_string(s2_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!lstrcmpW '{}' == '{}'",
-        s1,
-        s2
-    );
+    log_red!(emu, "kernel32!lstrcmpW '{}' == '{}'", s1, s2);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
