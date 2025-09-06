@@ -79,11 +79,8 @@ pub struct Emu {
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
     pub global_locks: GlobalLocks,  // Critical section lock tracking
-<<<<<<<
-    pub instruction_cache: InstructionCache
-=======
+    pub instruction_cache: InstructionCache,
     pub definitions: HashMap<u64, Definition>,
     pub stored_contexts: HashMap<String, StoredContext>,
     pub entropy: f64,
->>>>>>>
 }

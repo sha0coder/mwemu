@@ -1,5 +1,5 @@
 use crate::{tests::helpers, *};
-
+use crate::maps::mem64::Permission;
 // RUST_LOG=debug cargo test --target x86_64-apple-darwin --features log_mem_write memmove_non_overlapping_copy
 // RUST_LOG=debug cargo test --target x86_64-apple-darwin --features log_mem_write memmove_non_overlapping_copy
 
@@ -343,12 +343,12 @@ fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
     // Set up stack
     let stack_addr = 0x1000000;
     let stack_size = 0x10000;
-    emu.maps.create_map("stack", stack_addr, stack_size);
+    emu.maps.create_map("stack", stack_addr, stack_size, Permission::READ_WRITE);
     emu.regs_mut().rsp = stack_addr + stack_size / 2;
     
     // Load memmove code at address 0x400000
     let code_addr = 0x400000;
-    emu.maps.create_map("code", code_addr, memmove_code_len as u64 + 0x100);
+    emu.maps.create_map("code", code_addr, memmove_code_len as u64 + 0x100, Permission::READ_WRITE_EXECUTE);
     emu.maps.write_bytes(code_addr, memmove_code);
 
     (emu, code_addr, memmove_code_len)
@@ -363,8 +363,8 @@ fn memmove_non_overlapping_copy() {
     let src_addr = 0x500000;
     let dest_addr = 0x600000;
     
-    emu.maps.create_map("src", src_addr, 0x1000);
-    emu.maps.create_map("dest", dest_addr, 0x1000);
+    emu.maps.create_map("src", src_addr, 0x1000, Permission::READ_WRITE);
+    emu.maps.create_map("dest", dest_addr, 0x1000, Permission::READ_WRITE);
     
     // Initialize source with pattern
     let test_pattern = b"Hello, World! This is a test pattern.";
@@ -415,7 +415,7 @@ fn memmove_overlapping_forward() {
     let overlap_dest = 0x700010; // 16 bytes overlap
     let test_data: Vec<u8> = (0..64).collect();
     
-    emu.maps.create_map("overlap", overlap_src, 0x100);
+    emu.maps.create_map("overlap", overlap_src, 0x100, Permission::READ_WRITE);
     emu.maps.write_bytes(overlap_src, test_data.clone());
     
     // Set up for overlapping copy
@@ -447,7 +447,7 @@ fn memmove_overlapping_backward() {
     let overlap_dest = 0x800000;
     let test_data: Vec<u8> = (0..64).collect();
     
-    emu.maps.create_map("overlap2", 0x800000, 0x100);
+    emu.maps.create_map("overlap2", 0x800000, 0x100, Permission::READ_WRITE);
     emu.maps.write_bytes(overlap_src, test_data.clone());
     
     // Set up for backward overlapping copy
@@ -479,8 +479,8 @@ fn memmove_large_buffer() {
     let large_dest = 0xA00000;
     let large_size = 0x2000; // 8KB
     
-    emu.maps.create_map("large_src", large_src, large_size);
-    emu.maps.create_map("large_dest", large_dest, large_size);
+    emu.maps.create_map("large_src", large_src, large_size, Permission::READ_WRITE);
+    emu.maps.create_map("large_dest", large_dest, large_size, Permission::READ_WRITE);
     
     // Fill with pattern
     let mut pattern = Vec::new();
@@ -516,8 +516,8 @@ fn memmove_zero_length() {
     let src_addr = 0x500000;
     let dest_addr = 0x600000;
     
-    emu.maps.create_map("src", src_addr, 0x100);
-    emu.maps.create_map("dest", dest_addr, 0x100);
+    emu.maps.create_map("src", src_addr, 0x100, Permission::READ_WRITE);
+    emu.maps.create_map("dest", dest_addr, 0x100, Permission::READ_WRITE);
     
     emu.regs_mut().rdx = dest_addr;
     emu.regs_mut().rcx = src_addr;
@@ -546,8 +546,8 @@ fn memmove_unaligned_addresses() {
     let unaligned_dest = 0xC00007;
     let test_data = b"Unaligned test data";
     
-    emu.maps.create_map("unaligned_src", 0xB00000, 0x100);
-    emu.maps.create_map("unaligned_dest", 0xC00000, 0x100);
+    emu.maps.create_map("unaligned_src", 0xB00000, 0x100, Permission::READ_WRITE);
+    emu.maps.create_map("unaligned_dest", 0xC00000, 0x100, Permission::READ_WRITE);
     emu.maps.write_bytes(unaligned_src, test_data.to_vec());
     
     emu.regs_mut().rdx = unaligned_dest;
@@ -577,8 +577,8 @@ fn memmove_exact_page_boundary() {
     let page_boundary = 0xD00000;
     let test_size = 0x1000; // Exactly one page
     
-    emu.maps.create_map("page1", page_boundary - 0x800, 0x1000);
-    emu.maps.create_map("page2", page_boundary + 0x800, 0x1000);
+    emu.maps.create_map("page1", page_boundary - 0x800, 0x1000, Permission::READ_WRITE);
+    emu.maps.create_map("page2", page_boundary + 0x800, 0x1000, Permission::READ_WRITE);
     
     // Create pattern that crosses page boundary
     let pattern: Vec<u8> = (0..test_size).map(|i| (i % 256) as u8).collect();
@@ -611,8 +611,8 @@ fn memmove_alignment_boundary_sizes() {
         let src_base = 0x1000000 + (i * 0x10000) as u64;
         let dest_base = src_base + 0x8000;
         
-        emu.maps.create_map(&format!("test_src_{}", i), src_base, 0x1000);
-        emu.maps.create_map(&format!("test_dest_{}", i), dest_base, 0x1000);
+        emu.maps.create_map(&format!("test_src_{}", i), src_base, 0x1000, Permission::READ_WRITE);
+        emu.maps.create_map(&format!("test_dest_{}", i), dest_base, 0x1000, Permission::READ_WRITE);
         
         let pattern: Vec<u8> = (0..size).map(|j| ((i + j) % 256) as u8).collect();
         emu.maps.write_bytes(src_base, pattern.clone());
@@ -645,7 +645,7 @@ fn memmove_stress_overlapping_patterns() {
     let base_addr = 0x2000000;
     let buffer_size = 0x1000;
     
-    emu.maps.create_map("stress_buffer", base_addr, buffer_size * 2);
+    emu.maps.create_map("stress_buffer", base_addr, buffer_size * 2, Permission::READ_WRITE);
     
     // Initialize with a recognizable pattern
     let original_pattern: Vec<u8> = (0..buffer_size)
@@ -694,8 +694,8 @@ fn memmove_performance_threshold_boundary() {
         let src_addr = 0x3000000 + (i * 0x100000) as u64;
         let dest_addr = src_addr + 0x80000;
         
-        emu.maps.create_map(&format!("perf_src_{}", i), src_addr, size + 0x1000);
-        emu.maps.create_map(&format!("perf_dest_{}", i), dest_addr, size + 0x1000);
+        emu.maps.create_map(&format!("perf_src_{}", i), src_addr, size + 0x1000, Permission::READ_WRITE);
+        emu.maps.create_map(&format!("perf_dest_{}", i), dest_addr, size + 0x1000, Permission::READ_WRITE);
         
         // Create a pattern that's easy to verify
         let mut pattern = Vec::with_capacity(size as usize);
