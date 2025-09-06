@@ -7,7 +7,6 @@ pub fn sc64lin_arith_100iter() {
 
     let mut emu = emu64();
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-    
 
     let sample = "../../test/sc64lin_arith_100iter.bin";
     emu.load_code(sample);

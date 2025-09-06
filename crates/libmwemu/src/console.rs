@@ -1,6 +1,3 @@
-use std::io::Write;
-use std::num::ParseIntError;
-use std::sync::atomic;
 use crate::emu::Emu;
 use crate::peb::peb32;
 use crate::peb::peb64;
@@ -9,11 +6,15 @@ use crate::structures;
 use crate::to32;
 use crate::winapi::winapi32;
 use crate::winapi::winapi64;
+use std::io::Write;
+use std::num::ParseIntError;
+use std::sync::atomic;
 
 // if the user types "r2 0x123" will execute radare2
-use std::process::{Command, Stdio}; 
+use crate::maps::mem64::Permission;
 use std::fs;
 use std::io;
+use std::process::{Command, Stdio};
 
 pub struct Console {}
 
@@ -163,22 +164,25 @@ impl Console {
     }
 
     pub fn spawn_radare2(addr: u64, emu: &mut Emu) {
-
         let mem = match emu.maps.get_mem_by_addr(addr) {
             Some(m) => m,
             None => {
                 log::info!("address not found on any map");
-                return
+                return;
             }
         };
 
         let tmpfile = format!("/tmp/{}.r2", mem.get_name());
         mem.save_all(&tmpfile);
 
-        let base = format!("0x{:x}",mem.get_base());
-        let seek = format!("0x{:x}",addr);
+        let base = format!("0x{:x}", mem.get_base());
+        let seek = format!("0x{:x}", addr);
         let bits;
-        if emu.cfg.is_64bits { bits = "64" } else { bits = "32" }
+        if emu.cfg.is_64bits {
+            bits = "64"
+        } else {
+            bits = "32"
+        }
         let precmd = format!("dr rax={}?; dr rbx={}?; dr rcx={}?; dr rdx={}?; dr rsi={}?;
                               dr rdi={}?; dr rbp={}?; dr rsp={}?; dr rip={}?; dr r8={}?
                               dr r9={}?; dr r10={}?; dr r11={}?; dr r12={}?; dr r13={}?; 
@@ -189,30 +193,25 @@ impl Console {
                               emu.regs().r11, emu.regs().r12, emu.regs().r13, emu.regs().r14,
                               emu.regs().r15);
         let r2args = vec![
-            "-n",
-            "-a", "x86",
-            "-b", &bits,
-            "-m", &base, 
-            "-s", &seek, 
-            "-c", &precmd,
-            &tmpfile
+            "-n", "-a", "x86", "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,
         ];
 
         log::info!("spawning radare2 software.");
-        
+
         match Command::new("radare2")
             .args(&r2args)
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .spawn() {
-                Ok(mut child) => {
-                    let _ = child.wait();
-                }
-                Err(e) => {
-                    log::error!("Install radare first! {}", e);
-                    return
-                }
+            .spawn()
+        {
+            Ok(mut child) => {
+                let _ = child.wait();
+            }
+            Err(e) => {
+                log::error!("Install radare first! {}", e);
+                return;
+            }
         }
 
         if let Err(e) = fs::remove_file(&tmpfile) {
@@ -221,7 +220,6 @@ impl Console {
             }
         }
     }
-
 
     pub fn spawn_console(emu: &mut Emu) {
         if !emu.cfg.console_enabled {
@@ -520,7 +518,7 @@ impl Console {
                         }
                     };
                     emu.maps
-                        .create_map(&name, addr, sz)
+                        .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mc");
                     log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }
@@ -546,7 +544,7 @@ impl Console {
                     };
 
                     emu.maps
-                        .create_map(&name, addr, sz)
+                        .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mca");
                     log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }
@@ -578,7 +576,10 @@ impl Console {
                         }
                     };
 
-                    let mem = emu.maps.get_mem_by_addr(addr).expect("address not found on any map");
+                    let mem = emu
+                        .maps
+                        .get_mem_by_addr(addr)
+                        .expect("address not found on any map");
                     if emu.cfg.is_64bits {
                         log::info!(
                             "map: {} 0x{:x}-0x{:x} ({})",
@@ -1033,14 +1034,13 @@ impl Console {
                         if parts.len() >= 2 {
                             emu.maps.print_maps_keyword(&parts[1]);
                         }
-
                     } else if cmd.starts_with("r2 ") {
-                         let parts: Vec<&str> = cmd.split_whitespace().collect();
-                         if parts.len() >= 2 {
-                            if let Ok(addr) = u64::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
-
+                        let parts: Vec<&str> = cmd.split_whitespace().collect();
+                        if parts.len() >= 2 {
+                            if let Ok(addr) =
+                                u64::from_str_radix(parts[1].trim_start_matches("0x"), 16)
+                            {
                                 Console::spawn_radare2(addr, emu);
-
                             } else {
                                 println!("wrong hexa parameter");
                             }
@@ -1052,11 +1052,10 @@ impl Console {
                     }
                 }
             } // match commands
-             
+
             if emu.cfg.command.is_some() {
                 std::process::exit(1);
             }
-
         } // end loop
     } // end commands function
 }

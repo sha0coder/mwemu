@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn WaitForSingleObject(emu: &mut emu::Emu) {

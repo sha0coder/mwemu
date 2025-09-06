@@ -14,10 +14,7 @@ pub fn SystemTimeToTzSpecificLocalTime(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!SystemTimeToTzSpecificLocalTime cannot read lt_ptr");
 
-    log_red!(
-        emu,
-        "kernel32!SystemTimeToTzSpecificLocalTime"
-    );
+    log_red!(emu, "kernel32!SystemTimeToTzSpecificLocalTime");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

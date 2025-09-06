@@ -2,14 +2,14 @@
 
 extern crate clap;
 
-use std::{panic, process};
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
+use std::{panic, process};
 //use libmwemu::definitions;
-use fast_log::{Config};
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
+use fast_log::Config;
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -76,7 +76,6 @@ impl CustomLogFormat {
     pub fn new() -> CustomLogFormat {
         Self {}
     }
-
 }
 
 fn main() {
@@ -196,7 +195,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
     }
     if matches.is_present("trace_filename") {
         let trace_filename = matches
@@ -214,16 +213,18 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
     }
 
     // verbose_at
     if matches.is_present("verbose_at") {
-        emu.cfg.verbose_at = Some(matches
-            .value_of("verbose_at")
-            .expect("select the number of moment to enable verbose")
-            .parse::<u64>()
-            .expect("select a valid number where to enable verbosity"));
+        emu.cfg.verbose_at = Some(
+            matches
+                .value_of("verbose_at")
+                .expect("select the number of moment to enable verbose")
+                .parse::<u64>()
+                .expect("select a valid number where to enable verbosity"),
+        );
     }
 
     // console
@@ -279,7 +280,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
         if !matches.is_present("entry_point") {
             log::error!("if the code base is selected, you have to select the entry point ie -b 0x600000 -a 0x600000");
             std::process::exit(1);
@@ -295,7 +296,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
     }
 
     // register values
@@ -324,7 +325,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
         emu.flags_mut().load(value as u32);
     }
     if matches.is_present("mxcsr") {
@@ -335,7 +336,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
         emu.fpu_mut().mxcsr = value as u32;
     }
 
@@ -356,7 +357,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
         emu.spawn_console_at_addr(emu.cfg.console_addr);
     }
 
@@ -369,7 +370,7 @@ fn main() {
                 .trim_start_matches("0x"),
             16,
         )
-            .expect("invalid address");
+        .expect("invalid address");
     }
 
     // exit position
@@ -380,14 +381,12 @@ fn main() {
 
         emu.cfg.exit_position = if exit_pos_str.starts_with("0x") {
             // Handle hexadecimal format
-            u64::from_str_radix(
-                exit_pos_str.trim_start_matches("0x"),
-                16
-            )
+            u64::from_str_radix(exit_pos_str.trim_start_matches("0x"), 16)
         } else {
             // Handle decimal format
             exit_pos_str.parse::<u64>()
-        }.expect("invalid position");
+        }
+        .expect("invalid position");
     }
 
     // stack trace
@@ -412,29 +411,48 @@ fn main() {
 
     // cmd
     if matches.is_present("cmd") {
-        emu.cfg.command = Some(matches.value_of("cmd").expect("specify the console command").to_string());
+        emu.cfg.command = Some(
+            matches
+                .value_of("cmd")
+                .expect("specify the console command")
+                .to_string(),
+        );
     }
 
     // args
     if matches.is_present("args") {
-        log::info!("espeicificando argumentos: {}", matches.value_of("args").expect("specify the argument string").to_string());
-        emu.cfg.arguments = matches.value_of("args").expect("specify the argument string").to_string();
+        log::info!(
+            "espeicificando argumentos: {}",
+            matches
+                .value_of("args")
+                .expect("specify the argument string")
+                .to_string()
+        );
+        emu.cfg.arguments = matches
+            .value_of("args")
+            .expect("specify the argument string")
+            .to_string();
     }
 
     // log to file
     if matches.is_present("log") {
         let filename = matches.value_of("log").expect("log filename is missing");
         emu.colors.disable();
-        fast_log::init(Config::new()
-            .format(CustomLogFormat::new())
-            .file(filename)
-            .chan_len(Some(100000))).unwrap();
-
+        fast_log::init(
+            Config::new()
+                .format(CustomLogFormat::new())
+                .file(filename)
+                .chan_len(Some(100000)),
+        )
+        .unwrap();
     } else {
-        fast_log::init(Config::new()
-            .format(CustomLogFormat::new())
-            .console()
-            .chan_len(Some(100000))).unwrap();
+        fast_log::init(
+            Config::new()
+                .format(CustomLogFormat::new())
+                .console()
+                .chan_len(Some(100000)),
+        )
+        .unwrap();
     }
 
     // definitions
@@ -456,7 +474,7 @@ fn main() {
                 );
             }
         });
-        
+
         // flush all the log
         log::logger().flush();
         // invoke the default handler and exit the process
@@ -480,7 +498,7 @@ fn main() {
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }
 
-    // script 
+    // script
     if matches.is_present("script") {
         emu.disable_ctrlc();
         let mut script = libmwemu::script::Script::new();
@@ -489,23 +507,23 @@ fn main() {
                 .value_of("script")
                 .expect("select a script filename"),
         );
-        
+
         // Run script
         script.run(&mut emu);
-        
+
         // Clear the current emu
         libmwemu::emu_context::clear_current_emu();
     } else {
         if matches.is_present("handle") {
-            emu.cfg.console_enabled = true; 
+            emu.cfg.console_enabled = true;
             emu.enable_ctrlc();
         }
-        
+
         let result = emu.run(None);
-        
+
         // Clear the current emu
         libmwemu::emu_context::clear_current_emu();
-        
+
         log::logger().flush();
         result.unwrap();
     }

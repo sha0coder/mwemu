@@ -1,6 +1,6 @@
 use crate::emu::Emu;
 use crate::{color, to32};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     let value = match emu.get_operand_value(ins, 0, true) {

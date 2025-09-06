@@ -11,8 +11,7 @@ impl Emu {
         self.enabled_ctrlc = false;
     }
 
-
-     /// Disable the console mode, it will not be spawned automatically.
+    /// Disable the console mode, it will not be spawned automatically.
     pub fn disable_console(&mut self) {
         self.cfg.console_enabled = false;
     }
@@ -21,7 +20,6 @@ impl Emu {
     pub fn enable_console(&mut self) {
         self.cfg.console_enabled = true;
     }
-
 
     /// Do spawn a console, for user interaction with the current emulation state.
     /// Command h for help.

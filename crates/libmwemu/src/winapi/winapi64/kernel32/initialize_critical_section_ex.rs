@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn InitializeCriticalSectionEx(emu: &mut emu::Emu) {

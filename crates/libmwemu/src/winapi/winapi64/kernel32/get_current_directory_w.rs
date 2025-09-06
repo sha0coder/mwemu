@@ -1,4 +1,3 @@
-
 use crate::{constants, emu, winapi::winapi64::kernel32::set_last_error};
 
 pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
@@ -15,7 +14,6 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
         buff_ptr,
     );
 
-    
     // When buffer length is 0 or buffer is null, return required size INCLUDING null terminator
     if buff_len == 0 || buff_ptr == 0 {
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
@@ -44,5 +42,4 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     // Return number of characters written (NOT including null terminator)
     set_last_error(0);
     emu.regs_mut().rax = dir_char_count as u64;
-
 }

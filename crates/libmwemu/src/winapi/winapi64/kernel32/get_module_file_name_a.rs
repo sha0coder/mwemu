@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn GetModuleFileNameA(emu: &mut emu::Emu) {
@@ -13,9 +12,5 @@ pub fn GetModuleFileNameA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 0;
     }
 
-    log_red!(
-        emu,
-        "kernel32!GetModuleFileNameA hndl:{:x}",
-        hndl
-    );
+    log_red!(emu, "kernel32!GetModuleFileNameA hndl:{:x}", hndl);
 }

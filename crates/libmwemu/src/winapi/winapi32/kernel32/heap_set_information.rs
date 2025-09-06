@@ -18,10 +18,7 @@ pub fn HeapSetInformation(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 12)
         .expect("kernel32!HeapSetInformation error reading param");
 
-    log_red!(
-        emu,
-        "kernel32!HeapSetInformation"
-    );
+    log_red!(emu, "kernel32!HeapSetInformation");
 
     for _ in 0..4 {
         emu.stack_pop32(false);

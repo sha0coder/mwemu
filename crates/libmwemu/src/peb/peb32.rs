@@ -1,12 +1,13 @@
 use crate::console::Console;
 use crate::constants;
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::structures::LdrDataTableEntry;
 use crate::structures::OrdinalTable;
 use crate::structures::PebLdrData;
+use crate::structures::RtlUserProcessParameters32;
 use crate::structures::PEB;
 use crate::structures::TEB;
-use crate::structures::RtlUserProcessParameters32;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData::size() + 100;
@@ -16,7 +17,7 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
         .expect("cannot alloc the LDR");
     log::debug!("LDR ALLOCATED AT: 0x{:x}", ldr_addr);
     emu.maps
-        .create_map("ldr", ldr_addr, ldr_sz as u64)
+        .create_map("ldr", ldr_addr, ldr_sz as u64, Permission::READ_WRITE)
         .expect("cannot create ldr map");
     let module_entry = create_ldr_entry(emu, 0, 0, constants::EXE_NAME, 0, 0) as u32;
     let mut ldr = PebLdrData::new();
@@ -34,14 +35,22 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
 }
 
 pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
-    let addr = emu.maps.map("RtlUserProcessParameters32", RtlUserProcessParameters32::size() as u64);
+    let addr = emu.maps.map(
+        "RtlUserProcessParameters32",
+        RtlUserProcessParameters32::size() as u64,
+        Permission::READ_WRITE_EXECUTE,
+    );
     let mut params_struct = RtlUserProcessParameters32::new();
 
     let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
     let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
 
-    let filename = emu.maps.map("file_name", filename_len);
-    let cmdline = emu.maps.map("command_line", cmdline_len);
+    let filename = emu
+        .maps
+        .map("file_name", filename_len, Permission::READ_WRITE);
+    let cmdline = emu
+        .maps
+        .map("command_line", cmdline_len, Permission::READ_WRITE);
 
     params_struct.image_path_name.length = filename_len as u16;
     params_struct.image_path_name.maximum_length = filename_len as u16;
@@ -72,7 +81,7 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .expect("cannot alloc the PEB32");
     let peb_map = emu
         .maps
-        .create_map("peb", peb_addr, PEB::size() as u64)
+        .create_map("peb", peb_addr, PEB::size() as u64, Permission::READ_WRITE)
         .expect("cannot create peb map");
     let peb = PEB::new(0, ldr as u32, args_addr as u32);
     peb.save(peb_map);
@@ -83,7 +92,7 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .expect("cannot alloc the TEB32");
     let teb_map = emu
         .maps
-        .create_map("teb", teb_addr, TEB::size() as u64)
+        .create_map("teb", teb_addr, TEB::size() as u64, Permission::READ_WRITE)
         .expect("cannot create teb map");
     let teb = TEB::new(peb_addr as u32);
     teb.save(teb_map);
@@ -117,7 +126,7 @@ impl Flink {
         let peb = emu.maps.get_mem("peb");
         let peb_base = peb.get_base();
         let ldr_addr = peb.read_dword(peb_base + 0x0c) as u64; // peb->ldr
-        
+
         let ldr = PebLdrData::load(ldr_addr, &emu.maps);
 
         let flink = emu
@@ -184,7 +193,6 @@ impl Flink {
             .read_dword(self.flink_addr + 0x28) //0x38) //0x28
             .expect("error reading mod_name_ptr") as u64;*/
 
-
         self.mod_name = emu.maps.read_wide_string(mod_name_ptr);
     }
 
@@ -206,7 +214,6 @@ impl Flink {
         if self.pe_hdr == 0 {
             return false;
         }
-
 
         if self.mod_base == 0 {
             return false;
@@ -478,7 +485,10 @@ pub fn create_ldr_entry(
         image_sz = emu.maps.read_dword(base as u64 + pe_hdr + 0x50).unwrap() as u64;
         base_addr = base;
     } else {
-        let addr = emu.maps.alloc(sz).expect("out of memory, cannot create the .ldr entry");
+        let addr = emu
+            .maps
+            .alloc(sz)
+            .expect("out of memory, cannot create the .ldr entry");
         if addr > u32::MAX as u64 {
             panic!("allocating .ldr  > u32::MAX");
         }
@@ -486,7 +496,7 @@ pub fn create_ldr_entry(
     }
     let mem = emu
         .maps
-        .create_map(lib.as_str(), space_addr, sz)
+        .create_map(lib.as_str(), space_addr, sz, Permission::READ_WRITE)
         .expect("create_ldr_entry cannot create map");
     mem.write_byte(space_addr + sz - 1, 0x61);
 

@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::err::MwemuError;
-use crate::maps::mem64::Mem64;
+use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
 use std::fs::File;
 use std::io::Read;
@@ -242,7 +242,6 @@ impl Elf64 {
         dynamic_linking: bool,
         force_base: u64,
     ) {
-        
         let elf64_base: u64;
 
         if dynamic_linking {
@@ -257,7 +256,7 @@ impl Elf64 {
 
             // elf executable need to map the header.
             let hdr = maps
-                .create_map("elf64.hdr", elf64_base, 512)
+                .create_map("elf64.hdr", elf64_base, 512, Permission::READ_WRITE)
                 .expect("cannot create elf64.hdr map");
             hdr.write_bytes(elf64_base, &self.bin[..512]);
         }
@@ -272,21 +271,29 @@ impl Elf64 {
             }
         }
 
-        // map sections
-        for i in 0..self.elf_shdr.len() {
+        // map sections, remember to skip section start from 0 because it is empty section
+        for i in 1..self.elf_shdr.len() {
             let sh_name = self.elf_shdr[i].sh_name;
             let sh_offset = self.elf_shdr[i].sh_offset;
-            let sh_size = self.elf_shdr[i].sh_size; 
+            let sh_size = self.elf_shdr[i].sh_size;
             let mut sh_addr = self.elf_shdr[i].sh_addr;
+
+            let can_write = self.elf_shdr[i].sh_flags & 0x1 != 0;
+            let can_execute = self.elf_shdr[i].sh_flags & 0x4 != 0;
+            let can_read = self.elf_shdr[i].sh_flags & 0x2 != 0;
+            let permission = Permission::from_flags(can_read, can_write, can_execute);
 
             //TODO: align sh_size to page size by extending the size, something like:
             //sh_size = ((sh_size + constants::ELF_PAGE_SIZE - 1) / constants::ELF_PAGE_SIZE) * constants::ELF_PAGE_SIZE;
 
-
             let sname = self.get_section_name(sh_name as usize);
 
             //log::info!("loading elf64 section {}", sname);
-            if sname == ".comment" ||  sname.starts_with(".note") || sname == ".interp" || sname.starts_with(".gnu") {
+            if sname == ".comment"
+                || sname.starts_with(".note")
+                || sname == ".interp"
+                || sname.starts_with(".gnu")
+            {
                 continue;
             }
 
@@ -320,7 +327,6 @@ impl Elf64 {
                 }
             }
 
-
             // map if its vaddr is on a PT_LOAD program
             if self.is_loadable(sh_addr) || !dynamic_linking {
                 if sname == ".shstrtab" || sname == ".tbss" {
@@ -341,18 +347,18 @@ impl Elf64 {
                     continue;
                 }
 
-
                 let mem;
 
                 if sh_addr < elf64_base {
                     sh_addr += elf64_base;
                 }
-                mem = match maps.create_map(&map_name, sh_addr, sh_size) {
+                mem = match maps.create_map(&map_name, sh_addr, sh_size, permission) {
                     Ok(m) => m,
                     Err(_) => {
                         println!("elf64 {} overlappss 0x{:x} {}", map_name, sh_addr, sh_size);
-                        sh_addr = maps.alloc(sh_size+10).expect("cannot allocate");
-                        maps.create_map(&map_name, sh_addr, sh_size).expect("cannot create map")
+                        sh_addr = maps.alloc(sh_size + 10).expect("cannot allocate");
+                        maps.create_map(&map_name, sh_addr, sh_size, permission)
+                            .expect("cannot create map")
                     }
                 };
 
@@ -366,13 +372,16 @@ impl Elf64 {
                     continue;
                 }
                 if end_off as u64 - sh_offset > sh_size {
-                    log::info!("no room at sh_size for all the data in the section, skipping {}", sname);
+                    log::info!(
+                        "no room at sh_size for all the data in the section, skipping {}",
+                        sname
+                    );
                     continue;
                 }
 
                 let segment = &self.bin[sh_offset as usize..end_off];
-                mem.write_bytes(sh_addr, segment);
-               
+                mem.force_write_bytes(sh_addr, segment);
+
                 self.elf_shdr[i].sh_addr = sh_addr;
             }
         }

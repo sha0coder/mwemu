@@ -13,12 +13,7 @@ pub fn MoveFileW(emu: &mut emu::Emu) {
     let src = emu.maps.read_wide_string(src_ptr);
     let dst = emu.maps.read_wide_string(dst_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!MoveFileW `{}` to `{}`",
-        src,
-        dst
-    );
+    log_red!(emu, "kernel32!MoveFileW `{}` to `{}`", src, dst);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

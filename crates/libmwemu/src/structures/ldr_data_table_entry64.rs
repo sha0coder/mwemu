@@ -1,4 +1,7 @@
-use crate::{maps::Maps, structures::{list_entry64::ListEntry64, unicode_string64::UnicodeString64}};
+use crate::{
+    maps::Maps,
+    structures::{list_entry64::ListEntry64, unicode_string64::UnicodeString64},
+};
 
 #[derive(Debug)]
 pub struct LdrDataTableEntry64 {

@@ -34,9 +34,6 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "wincrt!_set_invalid_parameter_handler"
-    );
+    log_red!(emu, "wincrt!_set_invalid_parameter_handler");
     emu.regs_mut().rax = 0;
 }

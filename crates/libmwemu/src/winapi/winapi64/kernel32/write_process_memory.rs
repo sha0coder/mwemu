@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn WriteProcessMemory(emu: &mut emu::Emu) {

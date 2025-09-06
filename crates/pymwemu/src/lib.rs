@@ -1,5 +1,5 @@
-use iced_x86::{Formatter};
 use env_logger::Env;
+use iced_x86::Formatter;
 use std::io::Write as _;
 
 use pyo3::exceptions::PyValueError;
@@ -8,6 +8,7 @@ use pyo3::prelude::*;
 use libmwemu::console::Console;
 use libmwemu::emu32;
 use libmwemu::emu64;
+use libmwemu::maps::mem64::Permission;
 
 #[pyclass(unsendable)]
 pub struct Emu {
@@ -25,7 +26,9 @@ impl Emu {
     /// get last emulated mnemonic with name and parameters.
     fn get_prev_mnemonic(&mut self) -> PyResult<String> {
         let mut output = String::new();
-        self.emu.formatter.format(&self.emu.instruction.unwrap(), &mut output);
+        self.emu
+            .formatter
+            .format(&self.emu.instruction.unwrap(), &mut output);
         Ok(output.clone())
     }
 
@@ -284,14 +287,14 @@ impl Emu {
 
     /// allocate a buffer on the emulated process address space.  
     fn alloc(&mut self, name: &str, size: u64) -> PyResult<u64> {
-        Ok(self.emu.alloc(name, size))
+        Ok(self.emu.alloc(name, size, Permission::READ_WRITE_EXECUTE))
     }
 
     /// allocate at specific address
     fn alloc_at(&mut self, name: &str, addr: u64, size: u64) {
         self.emu
             .maps
-            .create_map(name, addr, size)
+            .create_map(name, addr, size, Permission::READ_WRITE_EXECUTE)
             .expect("pymwemu alloc_at out of memory");
     }
 
@@ -300,7 +303,7 @@ impl Emu {
         let map = self
             .emu
             .maps
-            .create_map(name, base_addr, 1)
+            .create_map(name, base_addr, 1, Permission::READ_WRITE_EXECUTE)
             .expect("pymwemu load_map out of memory");
         map.load(filename);
     }
@@ -870,4 +873,3 @@ fn pymwemu(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init64, m)?)?;
     Ok(())
 }
-

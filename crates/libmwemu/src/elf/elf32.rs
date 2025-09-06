@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::err::MwemuError;
-use crate::maps::mem64::Mem64;
+use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
 use std::fs::File;
 use std::io::Read;
@@ -93,6 +93,7 @@ impl Elf32 {
                         &"code".to_string(),
                         phdr.p_vaddr.into(),
                         phdr.p_memsz.into(),
+                        Permission::from_bits(phdr.p_flags as u8),
                     )
                     .expect("cannot create code map from load_programs elf32");
                 if phdr.p_filesz > phdr.p_memsz {

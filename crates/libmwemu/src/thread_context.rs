@@ -4,10 +4,10 @@ use crate::{eflags::Eflags, flags::Flags, fpu::FPU, regs64::Regs64};
 
 #[derive(Clone)]
 pub struct ThreadContext {
-    pub id: u64,  // Thread ID (e.g., 0x1000, 0x1001, etc.)
-    pub suspended: bool,  // Whether thread is suspended
-    pub wake_tick: usize,  // Global tick when thread can next run (0 = runnable)
-    pub blocked_on_cs: Option<u64>,  // Pointer to critical section if blocked
+    pub id: u64,                    // Thread ID (e.g., 0x1000, 0x1001, etc.)
+    pub suspended: bool,            // Whether thread is suspended
+    pub wake_tick: usize,           // Global tick when thread can next run (0 = runnable)
+    pub blocked_on_cs: Option<u64>, // Pointer to critical section if blocked
     pub regs: Regs64,
     pub pre_op_regs: Regs64,
     pub post_op_regs: Regs64,
@@ -32,7 +32,7 @@ impl ThreadContext {
         ThreadContext {
             id,
             suspended: false,
-            wake_tick: 0,  // 0 means runnable
+            wake_tick: 0, // 0 means runnable
             blocked_on_cs: None,
             regs: Regs64::new(),
             pre_op_regs: Regs64::new(),

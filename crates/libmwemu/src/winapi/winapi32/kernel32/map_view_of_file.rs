@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 
 pub fn MapViewOfFile(emu: &mut emu::Emu) {
     let hndl = emu
@@ -36,7 +37,7 @@ pub fn MapViewOfFile(emu: &mut emu::Emu) {
         .expect("kernel32!MapViewOfFile cannot allocate");
     let mem = emu
         .maps
-        .create_map("file_map", addr, size)
+        .create_map("file_map", addr, size, Permission::READ_WRITE)
         .expect("kernel32!MapViewOfFile cannot create map");
     let loaded = mem.load_chunk(&emu.filename, off, size as usize);
 

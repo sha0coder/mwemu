@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn GetSystemFirmwareTable(emu: &mut emu::Emu) {

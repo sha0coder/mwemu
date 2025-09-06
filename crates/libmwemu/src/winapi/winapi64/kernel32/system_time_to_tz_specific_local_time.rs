@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn SystemTimeToTzSpecificLocalTime(emu: &mut emu::Emu) {
@@ -6,10 +5,7 @@ pub fn SystemTimeToTzSpecificLocalTime(emu: &mut emu::Emu) {
     let ut_ptr = emu.regs().rcx;
     let lt_ptr = emu.regs().r8;
 
-    log_red!(
-        emu,
-        "kernel32!SystemTimeToTzSpecificLocalTime"
-    );
+    log_red!(emu, "kernel32!SystemTimeToTzSpecificLocalTime");
 
     emu.regs_mut().rax = 1;
 }

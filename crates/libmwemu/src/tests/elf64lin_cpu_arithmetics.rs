@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // arithmetic calculations on an 64bits elf
@@ -15,7 +15,7 @@ pub fn elf64lin_cpu_arithmetics1() {
     assert_eq!(emu.regs().rax, 3);
     assert_eq!(emu.flags().dump(), 0x206);
 
-    emu.run_to(6);  // dec ax
+    emu.run_to(6); // dec ax
     assert_eq!(emu.regs().rax, 2);
     assert_eq!(emu.flags().dump(), 0x202);
 
@@ -23,7 +23,7 @@ pub fn elf64lin_cpu_arithmetics1() {
     assert_eq!(emu.regs().rax, 0);
     assert_eq!(emu.flags().dump(), 0x246);
 
-    emu.run_to(11); // neg ax 
+    emu.run_to(11); // neg ax
     assert_eq!(emu.regs().rax, 0x1122334455668888);
     assert_eq!(emu.flags().dump(), 0x297); // [ CF PF AF SF IF ]
 
@@ -38,13 +38,13 @@ pub fn elf64lin_cpu_arithmetics1() {
     emu.run_to(29); // shl rax, cl
     assert_eq!(emu.regs().rax, 0x55658980);
     assert_eq!(emu.flags().dump(), 0x212);
-    
+
     emu.run_to(30); // shr al, 1
-    assert_eq!(emu.regs().rax, 0x55658940);                
+    assert_eq!(emu.regs().rax, 0x55658940);
     assert_eq!(emu.flags().dump(), 0xa12);
-                    
+
     emu.run_to(31); // shr ax, 1
-    assert_eq!(emu.regs().rax, 0x556544a0);                
+    assert_eq!(emu.regs().rax, 0x556544a0);
     assert_eq!(emu.flags().dump(), 0xa16);
 
     emu.run_to(40); // imul eax
@@ -54,7 +54,7 @@ pub fn elf64lin_cpu_arithmetics1() {
     emu.run_to(41); // imul rax
     assert_eq!(emu.regs().rax, 0x441000000000000);
     assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
-                                            
+
     emu.run_to(43); // imul eax, eax
     assert_eq!(emu.regs().rax, 0);
     assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
@@ -65,10 +65,10 @@ pub fn elf64lin_cpu_arithmetics1() {
 
     emu.run_to(48); // imul  rax,2
     assert_eq!(emu.regs().rax, 0x120bdc200);
-    assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]  
+    assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
 
     emu.run_to(49); // rcl al, 1
-    assert_eq!(emu.regs().rax, 0x120bdc200); 
+    assert_eq!(emu.regs().rax, 0x120bdc200);
     assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
 
     emu.run_to(50); // rcl ax, 1
@@ -78,7 +78,6 @@ pub fn elf64lin_cpu_arithmetics1() {
     emu.run_to(52); // rcl   rax,1
     assert_eq!(emu.regs().rax, 0x82f61002); // ERROR
     assert_eq!(emu.flags().dump(), 0x216); // [ PF AF IF ]
-
 
     emu.run_to(58); // rcr   ax,1
     assert_eq!(emu.regs().rax, 0x82f60800);
@@ -158,6 +157,3 @@ pub fn elf64lin_cpu_arithmetics4() {
     assert_eq!(emu.regs().r15, 0xcccccccccccccccc);
     assert_eq!(emu.regs().rip, 0x401188);
 }
-
-
-

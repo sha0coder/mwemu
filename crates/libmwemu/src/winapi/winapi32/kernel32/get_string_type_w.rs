@@ -20,12 +20,7 @@ pub fn GetStringTypeW(emu: &mut emu::Emu) {
 
     let ustr = emu.maps.read_wide_string(str_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!GetStringTypeW `{}` 0x{}",
-        ustr,
-        sz
-    );
+    log_red!(emu, "kernel32!GetStringTypeW `{}` 0x{}", ustr, sz);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

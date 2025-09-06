@@ -34,10 +34,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 void InitCommonControls();
 */
 fn InitCommonControls(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "comctl32!InitCommonControls"
-    );
+    log_red!(emu, "comctl32!InitCommonControls");
     // TODO: do something
 }
 
@@ -47,10 +44,7 @@ BOOL InitCommonControlsEx(
 );
 */
 fn InitCommonControlsEx(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "comctl32!InitCommonControlsEx"
-    );
+    log_red!(emu, "comctl32!InitCommonControlsEx");
     // TODO: do something
     emu.regs_mut().rax = 1; // TRUE
 }

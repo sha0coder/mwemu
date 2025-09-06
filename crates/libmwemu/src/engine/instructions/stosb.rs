@@ -1,6 +1,6 @@
+use crate::color;
 use crate::emu::Emu;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     if emu.rep.is_some() {
@@ -12,7 +12,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     }
 
     if emu.cfg.is_64bits {
-        if !emu.maps.write_byte(emu.regs().rdi, emu.regs().get_al() as u8) {
+        if !emu
+            .maps
+            .write_byte(emu.regs().rdi, emu.regs().get_al() as u8)
+        {
             return false;
         }
         if emu.flags().f_df {

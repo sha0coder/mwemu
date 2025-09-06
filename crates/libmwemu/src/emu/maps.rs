@@ -1,6 +1,7 @@
 use std::{fs, io, path::Path};
 
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 
 impl Emu {
     /// For simulating a windows process space, select the folder with maps32 or maps64 depending upon the arch, do this before loading the binary.
@@ -8,10 +9,13 @@ impl Emu {
         //let mut f = folder.to_string();
         //f.push('/');
         self.cfg.maps_folder = folder.to_string();
-        
+
         // Check if maps folder exists and contains essential files
         if !self.maps_folder_is_valid(folder) {
-            log::info!("Maps folder '{}' not found or incomplete, attempting to download...", folder);
+            log::info!(
+                "Maps folder '{}' not found or incomplete, attempting to download...",
+                folder
+            );
             if let Err(e) = self.download_and_extract_maps(folder) {
                 log::error!("Failed to download maps folder '{}': {}", folder, e);
                 panic!("Cannot proceed without maps folder. Please download manually or check your internet connection.");
@@ -36,7 +40,10 @@ impl Emu {
         for file in essential_files {
             let file_path = folder_path.join(file);
             if !file_path.exists() {
-                log::info!("Essential file '{}' missing from maps folder", file_path.display());
+                log::info!(
+                    "Essential file '{}' missing from maps folder",
+                    file_path.display()
+                );
                 return false;
             }
         }
@@ -47,19 +54,26 @@ impl Emu {
     /// Download and extract maps folder from specific URL
     fn download_and_extract_maps(&self, folder: &str) -> Result<(), Box<dyn std::error::Error>> {
         let url = match folder {
-            "maps32" | "maps32/" | "maps/maps32" | "maps/maps32/" => "https://github.com/sha0coder/mwemu/releases/download/maps/maps32.zip",
-            "maps64" | "maps64/" | "maps/maps64" | "maps/maps64/" => "https://github.com/sha0coder/mwemu/releases/download/maps/maps64.zip",
+            "maps32" | "maps32/" | "maps/maps32" | "maps/maps32/" => {
+                "https://github.com/sha0coder/mwemu/releases/download/maps/maps32.zip"
+            }
+            "maps64" | "maps64/" | "maps/maps64" | "maps/maps64/" => {
+                "https://github.com/sha0coder/mwemu/releases/download/maps/maps64.zip"
+            }
             _ => return Err(format!("Unknown maps folder: {}", folder).into()),
         };
 
-        log::info!("Downloading {} from GitHub releases... (this may take a moment)", folder);
-        
+        log::info!(
+            "Downloading {} from GitHub releases... (this may take a moment)",
+            folder
+        );
+
         // Download the file using ureq
         // Note: To reduce TLS verbosity, set RUST_LOG=info instead of debug
         let response = ureq::get(url)
             .timeout(std::time::Duration::from_secs(30))
             .call()?;
-        
+
         if response.status() != 200 {
             return Err(format!("Failed to download: HTTP {}", response.status()).into());
         }
@@ -73,7 +87,7 @@ impl Emu {
         let mut archive = zip::ZipArchive::new(cursor)?;
 
         log::info!("Extracting {} files...", archive.len());
-        
+
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             let outpath = Path::new(file.name());
@@ -88,7 +102,7 @@ impl Emu {
                         fs::create_dir_all(p)?;
                     }
                 }
-                
+
                 // Extract file
                 let mut outfile = fs::File::create(&outpath)?;
                 io::copy(&mut file, &mut outfile)?;
@@ -99,7 +113,7 @@ impl Emu {
         Ok(())
     }
 
-     /// Get the base address of the code, if code map doesn't exist yet will return None.
+    /// Get the base address of the code, if code map doesn't exist yet will return None.
     pub fn get_base_addr(&self) -> Option<u64> {
         //TODO: fix this, now there is no code map.
         let map = match self.maps.get_map_by_name("code") {
@@ -128,7 +142,7 @@ impl Emu {
 
     /// This find an empty space on the memory of selected size
     /// and also creates a map there.
-    pub fn alloc(&mut self, name: &str, size: u64) -> u64 {
+    pub fn alloc(&mut self, name: &str, size: u64, permission: Permission) -> u64 {
         let addr = match self.maps.alloc(size) {
             Some(a) => a,
             None => {
@@ -137,9 +151,8 @@ impl Emu {
             }
         };
         self.maps
-            .create_map(name, addr, size)
+            .create_map(name, addr, size, permission)
             .expect("cannot create map from alloc api");
         addr
     }
-
 }

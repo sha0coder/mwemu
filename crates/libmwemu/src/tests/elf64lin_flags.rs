@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // this tests a linux 64bits flags
@@ -8,7 +8,6 @@ pub fn elf64lin_flags() {
 
     let mut emu = emu64();
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-    
 
     let sample = "../../test/elf64lin_flags.bin";
     emu.load_code(sample);
@@ -37,7 +36,6 @@ pub fn elf64lin_flags() {
     assert_eq!(emu.flags().f_sf, true);
     assert_eq!(emu.flags().f_pf, false);
 
-
     // test instruction test
     emu.run(Some(0x401056));
     assert_eq!(emu.flags().f_cf, false);
@@ -53,7 +51,6 @@ pub fn elf64lin_flags() {
     assert_eq!(emu.flags().f_zf, true);
     assert_eq!(emu.flags().f_sf, false);
     assert_eq!(emu.flags().f_pf, true);
-
 
     // test or with 0x0
     emu.run(Some(0x401087));

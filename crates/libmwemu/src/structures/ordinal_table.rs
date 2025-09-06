@@ -1,5 +1,3 @@
-
-
 #[derive(Debug)]
 pub struct OrdinalTable {
     pub func_name: String,

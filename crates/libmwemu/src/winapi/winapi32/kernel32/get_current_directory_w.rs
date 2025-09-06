@@ -13,10 +13,7 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     emu.maps
         .write_string(buff_ptr, "c\x00:\x00\\\x00\x00\x00\x00\x00");
 
-    log_red!(
-        emu,
-        "kernel32!GetCurrentDirectoryW"
-    );
+    log_red!(emu, "kernel32!GetCurrentDirectoryW");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

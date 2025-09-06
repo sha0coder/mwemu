@@ -10,12 +10,7 @@ pub fn TlsSetValue(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!TlsSetValue cannot read val_ptr");
 
-    log_red!(
-        emu,
-        "kernel32!TlsSetValue idx: {} val: 0x{:x}",
-        idx,
-        val
-    );
+    log_red!(emu, "kernel32!TlsSetValue idx: {} val: 0x{:x}", idx, val);
 
     if emu.tls32().len() > idx as usize {
         emu.tls32_mut()[idx as usize] = val;

@@ -1,15 +1,10 @@
-
 use crate::emu;
 use crate::winapi::helper;
 
 pub fn ResumeThread(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "kernel32!ResumeThread hndl: 0x{:x}",
-        hndl
-    );
+    log_red!(emu, "kernel32!ResumeThread hndl: 0x{:x}", hndl);
 
     // Get the URI from the handle to extract thread ID
     let uri = helper::handler_get_uri(hndl);
@@ -36,14 +31,14 @@ pub fn ResumeThread(emu: &mut emu::Emu) {
     // Find the thread in the threads vector
     let mut previous_suspend_count = 0;
     let mut thread_found = false;
-    
+
     for thread in &mut emu.threads {
         if thread.id == thread_id {
             thread_found = true;
             // Track previous suspend count (Windows tracks multiple suspends)
             // For now we use a simple boolean, so count is either 0 or 1
             previous_suspend_count = if thread.suspended { 1 } else { 0 };
-            
+
             // Resume the thread
             if thread.suspended {
                 thread.suspended = false;
@@ -63,5 +58,8 @@ pub fn ResumeThread(emu: &mut emu::Emu) {
 
     // Return the previous suspend count
     emu.regs_mut().rax = previous_suspend_count;
-    log::info!("ResumeThread returning previous suspend count: {}", previous_suspend_count);
+    log::info!(
+        "ResumeThread returning previous suspend count: {}",
+        previous_suspend_count
+    );
 }

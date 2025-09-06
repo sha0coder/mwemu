@@ -1,9 +1,8 @@
-
-use crate::{constants, emu};
 use crate::winapi::winapi64::kernel32::LAST_ERROR;
+use crate::{constants, emu};
 
 pub fn TlsGetValue(emu: &mut emu::Emu) {
-    let idx = emu.regs().rcx as usize;  // Parameter passed in RCX in x64
+    let idx = emu.regs().rcx as usize; // Parameter passed in RCX in x64
 
     let val = if idx < emu.tls64().len() {
         // Set last error to SUCCESS when the function succeeds
@@ -19,7 +18,9 @@ pub fn TlsGetValue(emu: &mut emu::Emu) {
 
     emu.regs_mut().rax = val;
 
-    log_red!(emu, "** {} kernel32!TlsGetValue idx: {} =0x{:x}",
+    log_red!(
+        emu,
+        "** {} kernel32!TlsGetValue idx: {} =0x{:x}",
         emu.pos,
         idx,
         val

@@ -1,4 +1,4 @@
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub const FPU_80_BITS_MAX: u128 = (1u128 << 80) - 1;
 pub const REAL_INDEFINITE: u128 = 0xffff_c000_0000_0000_0000 & FPU_80_BITS_MAX;
@@ -23,26 +23,20 @@ pub const INT_BIT_SHIFT: u32 = 63;
 // f80 emulation
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct F80 {
-    pub st:u128,
+    pub st: u128,
 }
 
 impl F80 {
     pub fn new() -> Self {
-        F80 {
-            st: 0
-        }
+        F80 { st: 0 }
     }
 
     pub fn PI() -> Self {
-        F80 {
-            st: F80_PI
-        }
+        F80 { st: F80_PI }
     }
 
     pub fn QNaN() -> Self {
-        F80 {
-            st: QNAN
-        }
+        F80 { st: QNAN }
     }
 
     pub fn set_PI(&mut self) {
@@ -56,7 +50,6 @@ impl F80 {
     pub fn set_real_indefinite(&mut self) {
         self.st = REAL_INDEFINITE;
     }
-
 
     pub fn is_invalid(&self) -> bool {
         let exp = self.get_exponent();
@@ -81,13 +74,11 @@ impl F80 {
         let mut bytes = [0u8; 10];
         for i in 0..10 {
             bytes[i] = ((self.st >> (8 * i)) & 0xFF) as u8;
-            
         }
         bytes
     }
 
     pub fn get_round_f64(&self, decimals: u32) -> f64 {
-
         let value = self.get_f64();
         let factor = 10f64.powi(decimals as i32);
         (value * factor).round() / factor
@@ -97,7 +88,7 @@ impl F80 {
         self.st & FPU_80_BITS_MAX
     }
 
-    pub fn set(&mut self, value:u128) {
+    pub fn set(&mut self, value: u128) {
         self.st = value & FPU_80_BITS_MAX;
     }
 
@@ -155,7 +146,7 @@ impl F80 {
     pub fn set_mantissa(&mut self, mantissa: u64) {
         let int_bit = (mantissa >> 63) as u128;
         let fraction = (mantissa & 0x7FFF_FFFF_FFFF_FFFF) as u128;
-        self.st &= !( (1u128 << INT_BIT_SHIFT) | ((1u128 << 63) -1)); 
+        self.st &= !((1u128 << INT_BIT_SHIFT) | ((1u128 << 63) - 1));
         self.st |= (int_bit << INT_BIT_SHIFT) | fraction;
 
         /*
@@ -298,8 +289,6 @@ impl F80 {
         (mant, exp)
     }
 
-
-
     pub fn is_integer(&self) -> bool {
         self.get_mantissa() == 0
     }
@@ -310,7 +299,7 @@ impl F80 {
     }
 
     pub fn bit_integer(&self) -> bool {
-       (self.st & INT_BIT_MASK) & 1 == 1
+        (self.st & INT_BIT_MASK) & 1 == 1
     }
 
     pub fn is_denormal(&self) -> bool {

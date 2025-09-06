@@ -8,7 +8,7 @@ pub fn stack32_test() {
     let mut emu = emu32();
     emu.cfg.maps_folder = "../../maps/maps32/".to_string();
     emu.init(false, false);
-    
+
     let stack_check = emu.maps.get_map_by_name("stack");
     assert!(stack_check.is_some());
     let stack = stack_check.unwrap();

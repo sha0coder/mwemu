@@ -20,11 +20,7 @@ pub fn GetFullPathNameW(emu: &mut emu::Emu) {
 
     let filename = emu.maps.read_wide_string(file_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!GetFullPathNameW file: {}",
-        filename
-    );
+    log_red!(emu, "kernel32!GetFullPathNameW file: {}", filename);
 
     for _ in 0..4 {
         emu.stack_pop32(false);

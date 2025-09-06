@@ -7,10 +7,10 @@ use crate::serialization::minidump_converter::MinidumpConverter;
 mod emu;
 mod fpu;
 mod instant;
-mod pe32;
-mod pe64;
 mod maps;
 mod minidump_converter;
+mod pe32;
+mod pe64;
 mod thread_context;
 
 pub struct Serialization {}

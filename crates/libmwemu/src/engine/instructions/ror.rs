@@ -1,6 +1,6 @@
+use crate::color;
 use crate::emu::Emu;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Green"), ins);
@@ -18,7 +18,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         result = emu.flags_mut().ror(value0, 1, sz);
-
     } else {
         // 2 params
         let value0 = match emu.get_operand_value(ins, 0, true) {

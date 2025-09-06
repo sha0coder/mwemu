@@ -7,7 +7,19 @@ use crate::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
+use crate::maps::mem64::Permission;
 use scan_fmt::scan_fmt_some;
+
+const PAGE_NOACCESS: u32 = 0x01;
+const PAGE_READONLY: u32 = 0x02;
+const PAGE_READWRITE: u32 = 0x04;
+const PAGE_WRITECOPY: u32 = 0x08;
+const PAGE_EXECUTE: u32 = 0x10;
+const PAGE_EXECUTE_READ: u32 = 0x20;
+const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+const PAGE_EXECUTE_WRITECOPY: u32 = 0x80;
+const PAGE_GUARD: u32 = 0x100;
+const PAGE_NOCACHE: u32 = 0x200;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
@@ -97,6 +109,30 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
         .read_dword(size_ptr)
         .expect("bad NtAllocateVirtualMemory size parameter") as u64;
 
+    let protection_offset = 20;
+    let protection_addr = emu.regs().rsp + protection_offset;
+    let protect_value = emu
+        .maps
+        .read_dword(protection_addr)
+        .expect("Failed to read Protection argument at NtAllocateVirtualMemory");
+
+    let can_read = (protect_value
+        & (PAGE_READONLY
+            | PAGE_READWRITE
+            | PAGE_WRITECOPY
+            | PAGE_EXECUTE_READ
+            | PAGE_EXECUTE_READWRITE
+            | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
+    let can_write = (protect_value
+        & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
+    let can_execute = (protect_value
+        & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
     let do_alloc: bool = if addr == 0 {
         true
     } else {
@@ -131,6 +167,7 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
             format!("valloc_{:x}", alloc_addr).as_str(),
             alloc_addr,
             size,
+            Permission::from_flags(can_read, can_write, can_execute),
         )
         .expect("ntdll!NtAllocateVirtualMemory cannot create map");
 
@@ -157,12 +194,7 @@ fn stricmp(emu: &mut emu::Emu) {
     let str1 = emu.maps.read_string(str1ptr);
     let str2 = emu.maps.read_string(str2ptr);
 
-    log_red!(
-        emu,
-        "ntdll!stricmp  '{}'=='{}'?",
-        str1,
-        str2
-    );
+    log_red!(emu, "ntdll!stricmp  '{}'=='{}'?", str1, str2);
 
     if str1 == str2 {
         emu.regs_mut().rax = 0;
@@ -185,11 +217,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("ntdll!NtQueryVirtualMemory: error reading address") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryVirtualMemory addr: 0x{:x}",
-        addr
-    );
+    log_red!(emu, "ntdll!NtQueryVirtualMemory addr: 0x{:x}", addr);
 
     if handle != 0xffffffff {
         log::info!("\tusing handle of remote process {:x}", handle);
@@ -248,11 +276,7 @@ fn LdrLoadDll(emu: &mut emu::Emu) {
         .expect("LdrLoadDll: error reading lib base") as u64;
 
     let libname = emu.maps.read_wide_string(libname_ptr);
-    log_red!(
-        emu,
-        "ntdll!LdrLoadDll   lib: {}",
-        libname
-    );
+    log_red!(emu, "ntdll!LdrLoadDll   lib: {}", libname);
 
     let base = kernel32::load_library(emu, &libname);
     emu.maps.write_dword(libname_ptr, base as u32);
@@ -291,12 +315,17 @@ fn LdrLoadDll_gul(emu: &mut emu::Emu) {
     if libname == "user32.dll" {
         let user32 = emu
             .maps
-            .create_map("user32", 0x773b0000, 0x1000)
+            .create_map("user32", 0x773b0000, 0x1000, Permission::READ_WRITE)
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32.load("maps32/user32.bin");
         let user32_text = emu
             .maps
-            .create_map("user32_text", 0x773b1000, 0x1000)
+            .create_map(
+                "user32_text",
+                0x773b1000,
+                0x1000,
+                Permission::READ_WRITE_EXECUTE,
+            )
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32_text.load("maps32/user32_text.bin");
 
@@ -324,7 +353,8 @@ fn LdrLoadDll_gul(emu: &mut emu::Emu) {
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 
-    emu.maps.write_dword(emu.regs().get_ebp() + 0x168, 0x77570000);
+    emu.maps
+        .write_dword(emu.regs().get_ebp() + 0x168, 0x77570000);
     emu.regs_mut().rip = 0x682e5e2;
 }
 
@@ -366,10 +396,7 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
         .read_dword(ctx_ptr)
         .expect("ntdll_NtGetContextThread: error reading context ptr") as u64;
 
-    log_red!(
-        emu,
-        "ntdll_NtGetContextThread   ctx"
-    );
+    log_red!(emu, "ntdll_NtGetContextThread   ctx");
 
     let ctx = Context32::new(&emu.regs());
     ctx.save(ctx_ptr2 as u32, &mut emu.maps);
@@ -380,10 +407,7 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
 }
 
 fn RtlExitUserThread(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ntdll!RtlExitUserThread"
-    );
+    log_red!(emu, "ntdll!RtlExitUserThread");
     Console::spawn_console(emu);
     std::process::exit(1);
 }
@@ -405,12 +429,7 @@ fn sscanf(emu: &mut emu::Emu) {
     let buffer = emu.maps.read_string(buffer_ptr);
     let fmt = emu.maps.read_string(fmt_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!sscanf out_buff: `{}` fmt: `{}`",
-        buffer,
-        fmt
-    );
+    log_red!(emu, "ntdll!sscanf out_buff: `{}` fmt: `{}`", buffer, fmt);
 
     let rust_fmt = fmt
         .replace("%x", "{x}")
@@ -436,10 +455,7 @@ fn sscanf(emu: &mut emu::Emu) {
 }
 
 fn NtGetTickCount(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ntdll!NtGetTickCount"
-    );
+    log_red!(emu, "ntdll!NtGetTickCount");
     emu.regs_mut().rax = emu.tick as u64;
 }
 
@@ -454,10 +470,7 @@ fn NtQueryPerformanceCounter(emu: &mut emu::Emu) {
             .read_dword(emu.regs().get_esp() + 4)
             .expect("ntdll!NtQueryPerformanceCounter error reading perf_freq_ptr") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryPerformanceCounter"
-    );
+    log_red!(emu, "ntdll!NtQueryPerformanceCounter");
 
     emu.maps.write_dword(perf_counter_ptr, 0);
 
@@ -474,10 +487,7 @@ fn RtlGetProcessHeaps(emu: &mut emu::Emu) {
     let hndl = emu.maps.read_dword(emu.regs().get_esp()+4)
         .expect("ntdll!RtlGetProcessHeaps error reading handle param");
     */
-    log_red!(
-        emu,
-        "ntdll!RtlGetProcessHeaps"
-    );
+    log_red!(emu, "ntdll!RtlGetProcessHeaps");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -513,11 +523,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
     let dos_path_name = emu.maps.read_wide_string(dos_path_name_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!RtlDosPathNameToNtPathName_U {}",
-        dos_path_name
-    );
+    log_red!(emu, "ntdll!RtlDosPathNameToNtPathName_U {}", dos_path_name);
 
     //TODO: si la variable destino apunta a pila no hacer memcpy, solo si es un alloc_
 
@@ -571,7 +577,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
             match emu.maps.alloc(255) {
                 Some(a) => {
                     emu.maps
-                        .create_map("nt_alloc", a, 255)
+                        .create_map("nt_alloc", a, 255, Permission::READ_WRITE)
                         .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
                     emu.maps.write_dword(nt_path_name_ptr, a as u32);
                     emu.maps.memcpy(
@@ -672,11 +678,7 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         .expect("ntdll!NtCreateFile error reading oattrib +8") as u64;
     let filename = emu.maps.read_wide_string(obj_name_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!NtCreateFile {}",
-        filename
-    );
+    log_red!(emu, "ntdll!NtCreateFile {}", filename);
 
     if out_handle_ptr > 0 {
         emu.maps
@@ -704,11 +706,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("ntdll!RtlFreeHeap error reading base_addr param") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!RtlFreeHeap 0x{}",
-        base_addr
-    );
+    log_red!(emu, "ntdll!RtlFreeHeap 0x{}", base_addr);
 
     helper::handler_close(handle);
 
@@ -716,11 +714,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.stack_pop32(false);
 
-    let name = emu
-        .maps
-        .get_addr_name(base_addr)
-        .unwrap_or("")
-        .to_string();
+    let name = emu.maps.get_addr_name(base_addr).unwrap_or("").to_string();
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
             log::info!("map not allocated, so cannot free it.");
@@ -762,10 +756,7 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("ntdll!NtQueryInformationFile error reading fileinfocls param");
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryInformationFile"
-    );
+    log_red!(emu, "ntdll!NtQueryInformationFile");
 
     for _ in 0..5 {
         emu.stack_pop32(false);
@@ -793,15 +784,15 @@ fn RtlAllocateHeap(emu: &mut emu::Emu) {
         .alloc(size)
         .expect("ntdll!RtlAllocateHeap out of memory");
     emu.maps
-        .create_map(format!("alloc_{:x}", base).as_str(), base, size)
+        .create_map(
+            format!("alloc_{:x}", base).as_str(),
+            base,
+            size,
+            Permission::READ_WRITE,
+        )
         .expect("ntdll!RtlAllocateHeap cannot create map");
 
-    log_red!(
-        emu,
-        "ntdll!RtlAllocateHeap sz: {} addr: 0x{:x}",
-        size,
-        base
-    );
+    log_red!(emu, "ntdll!RtlAllocateHeap sz: {} addr: 0x{:x}", size, base);
 
     emu.regs_mut().rax = base;
 
@@ -888,12 +879,7 @@ fn NtClose(emu: &mut emu::Emu) {
 
     let uri = helper::handler_get_uri(hndl);
 
-    log_red!(
-        emu,
-        "ntdll!NtClose hndl: 0x{:x} uri: {}",
-        hndl,
-        uri
-    );
+    log_red!(emu, "ntdll!NtClose hndl: 0x{:x} uri: {}", hndl, uri);
 
     emu.stack_pop32(false);
 
@@ -914,10 +900,7 @@ fn RtlInitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("ntdll!RtlInitializeCriticalSectionAndSpinCount error reading spin_count param");
 
-    log_red!(
-        emu,
-        "ntdll!RtlInitializeCriticalSectionAndSpinCount"
-    );
+    log_red!(emu, "ntdll!RtlInitializeCriticalSectionAndSpinCount");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -947,11 +930,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
             .read_dword(emu.regs().get_esp() + 16)
             .expect("ntdll!NtProtectVirtualMemory error reading old prot param") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!NtProtectVirtualMemory sz: {}",
-        sz
-    );
+    log_red!(emu, "ntdll!NtProtectVirtualMemory sz: {}", sz);
 
     for _ in 0..5 {
         emu.stack_pop32(false);
@@ -970,10 +949,7 @@ fn CheckRemoteDebuggerPresent(emu: &mut emu::Emu) {
             .read_dword(emu.regs().get_esp() + 4)
             .expect("ntdll!CheckRemoteDebuggerPresent reading bool ptr param") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!CheckRemoteDebuggerPresent"
-    );
+    log_red!(emu, "ntdll!CheckRemoteDebuggerPresent");
 
     emu.maps.write_dword(bool_ptr, 0);
     emu.stack_pop32(false);
@@ -988,10 +964,7 @@ fn RtlEnterCriticalSection(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("ntdll!RtlEnterCriticalSection error reading hndl param") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!RtlEnterCriticalSection"
-    );
+    log_red!(emu, "ntdll!RtlEnterCriticalSection");
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;
@@ -1003,10 +976,7 @@ fn RtlLeaveCriticalSection(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("ntdll!RtlLeaveCriticalSection error reading hndl param") as u64;
 
-    log_red!(
-        emu,
-        "ntdll!RtlLeaveCriticalSection"
-    );
+    log_red!(emu, "ntdll!RtlLeaveCriticalSection");
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;
@@ -1019,10 +989,7 @@ fn RtlGetVersion(emu: &mut emu::Emu) {
         .expect("ntdll!RtlLeaveCriticalSection error reading versioninfo_ptr param")
         as u64;
 
-    log_red!(
-        emu,
-        "ntdll!RtlGetVersion"
-    );
+    log_red!(emu, "ntdll!RtlGetVersion");
 
     let versioninfo = structures::OsVersionInfoExA::new(); // TODO: should this be Ex?
     versioninfo.save(versioninfo_ptr, &mut emu.maps);
@@ -1046,10 +1013,7 @@ fn RtlInitializeCriticalSectionEx(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("ntdll!RtlInitializeCriticalSectionEx error reading flags");
 
-    log_red!(
-        emu,
-        "ntdll!RtlInitializeCriticalSectionEx"
-    );
+    log_red!(emu, "ntdll!RtlInitializeCriticalSectionEx");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -1114,22 +1078,14 @@ fn strlen(emu: &mut emu::Emu) {
     let s = emu.maps.read_string(s_ptr);
     let l = s.len();
 
-    log_red!(
-        emu,
-        "ntdll!strlen: `{}` {}",
-        s,
-        l
-    );
+    log_red!(emu, "ntdll!strlen: `{}` {}", s, l);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = l as u32 as u64;
 }
 
 fn VerSetConditionMask(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ntdll!strlen:"
-    );
+    log_red!(emu, "ntdll!strlen:");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -1150,12 +1106,7 @@ fn strcat(emu: &mut emu::Emu) {
     let dst = emu.maps.read_string(dst_ptr);
     let src = emu.maps.read_string(src_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!strcat: `{}`+`{}`",
-        src,
-        dst
-    );
+    log_red!(emu, "ntdll!strcat: `{}`+`{}`", src, dst);
 
     let dst_cont_ptr = dst_ptr + dst.len() as u64;
     emu.maps.write_string(dst_cont_ptr, &src);

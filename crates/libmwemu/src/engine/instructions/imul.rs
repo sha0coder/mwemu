@@ -1,7 +1,7 @@
+use crate::color;
 use crate::emu::Emu;
 use crate::engine::logic;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Cyan"), ins);
@@ -27,7 +27,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             8 => logic::imul8p1(emu, value0),
             _ => unimplemented!("wrong size"),
         }
-
     } else if ins.op_count() == 2 {
         // 2 params
 

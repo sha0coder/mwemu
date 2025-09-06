@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn UnhandledExceptionFilter(emu: &mut emu::Emu) {

@@ -12,10 +12,7 @@ pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
 
     emu.maps.write_string(buff_ptr, "c:\\\x00");
 
-    log_red!(
-        emu,
-        "kernel32!GetCurrentDirectoryA"
-    );
+    log_red!(emu, "kernel32!GetCurrentDirectoryA");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

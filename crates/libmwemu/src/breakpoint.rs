@@ -22,7 +22,6 @@ impl Default for Breakpoints {
     }
 }
 
-
 impl Breakpoints {
     // TODO: implementing clearing breakpoint for console
     pub fn new() -> Self {
@@ -109,10 +108,18 @@ impl Breakpoints {
         let instruction_str: Vec<String> = self.addr.iter().map(|a| format!("0x{:x}", a)).collect();
         log::info!("break on instruction: [{}]", instruction_str.join(", ")); // Uses Debug formatting for the whole vector
 
-        let mem_read_str: Vec<String> = self.mem_read_addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        let mem_read_str: Vec<String> = self
+            .mem_read_addr
+            .iter()
+            .map(|a| format!("0x{:x}", a))
+            .collect();
         log::info!("break on memory read: [{}]", mem_read_str.join(", "));
 
-        let mem_write_str: Vec<String> = self.mem_write_addr.iter().map(|a| format!("0x{:x}", a)).collect();
+        let mem_write_str: Vec<String> = self
+            .mem_write_addr
+            .iter()
+            .map(|a| format!("0x{:x}", a))
+            .collect();
         log::info!("break on memory write: [{}]", mem_write_str.join(", "));
     }
 }

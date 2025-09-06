@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn GetComputerNameA(emu: &mut emu::Emu) {
     let buff_ptr = emu
@@ -23,11 +23,7 @@ pub fn GetComputerNameA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 1;
     }
 
-    log_red!(
-        emu,
-        "kernel32!GetComputerName '{}'",
-        constants::HOST_NAME
-    );
+    log_red!(emu, "kernel32!GetComputerName '{}'", constants::HOST_NAME);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

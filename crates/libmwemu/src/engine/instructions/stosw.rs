@@ -1,12 +1,13 @@
+use crate::color;
 use crate::emu::Emu;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("LightCyan"), ins);
 
     if emu.cfg.is_64bits {
-        emu.maps.write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
+        emu.maps
+            .write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
 
         if emu.flags().f_df {
             emu.regs_mut().rdi -= 2;

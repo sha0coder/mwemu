@@ -17,10 +17,7 @@ pub fn GetTempPathW(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 0;
     }
 
-    log_red!(
-        emu,
-        "kernel32!GetTempPathW"
-    );
+    log_red!(emu, "kernel32!GetTempPathW");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

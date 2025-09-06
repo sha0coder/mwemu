@@ -1,4 +1,7 @@
-use crate::{tests::helpers::{self, critical_values, shift_counts}, *};
+use crate::{
+    tests::helpers::{self, critical_values, shift_counts},
+    *,
+};
 
 #[test]
 pub fn stress_shl2p_all() {

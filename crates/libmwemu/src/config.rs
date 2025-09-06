@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use crate::{constants, definitions::Definition};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub filename: String, // filename with full path included
-    pub trace_mem: bool,  // show memory operations in every step.
+    pub filename: String,  // filename with full path included
+    pub trace_mem: bool,   // show memory operations in every step.
     pub trace_calls: bool, // trace every call
-    pub trace_regs: bool, // show all the regs in every step.
-    pub trace_reg: bool,  // show value and content of a reg in every step.
+    pub trace_regs: bool,  // show all the regs in every step.
+    pub trace_reg: bool,   // show value and content of a reg in every step.
     pub trace_filename: Option<String>,
     pub trace_start: u64,
     pub trace_string: bool,
@@ -39,7 +39,7 @@ pub struct Config {
     pub skip_unimplemented: bool,
     pub stack_addr: u64,
     pub arguments: String,
-    pub enable_threading: bool,  // Enable multi-threading support
+    pub enable_threading: bool, // Enable multi-threading support
     pub verbose_at: Option<u64>,
     pub command: Option<String>,
     pub definitions: HashMap<u64, Definition>,
@@ -89,7 +89,7 @@ impl Config {
             skip_unimplemented: false,
             stack_addr: 0,
             arguments: "".to_string(),
-            enable_threading: false,  // Default to single-threaded for backward compatibility
+            enable_threading: false, // Default to single-threaded for backward compatibility
             verbose_at: None,
             command: None,
             definitions: HashMap::new(),

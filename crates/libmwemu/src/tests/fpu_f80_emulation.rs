@@ -10,7 +10,6 @@ pub fn fpu_f80_emulation() {
     f80.set_f64(1.0);
     assert_eq!(f80.get(), 0x3fff8000000000000000);
 
-
     // Test zero
     f80.set_f64(0.0);
     assert!(f80.is_zero());
@@ -35,7 +34,14 @@ pub fn fpu_f80_emulation() {
     assert!(f80.get_f64().is_nan());
 
     // Test normal numbers roundtrip with tolerance
-    let test_values = [1.0, -1.0, 3.141592653589793, -2.718281828459045, 1e10, -1e-10];
+    let test_values = [
+        1.0,
+        -1.0,
+        3.141592653589793,
+        -2.718281828459045,
+        1e10,
+        -1e-10,
+    ];
 
     for &val in &test_values {
         f80.set_f64(val);
@@ -75,7 +81,11 @@ pub fn fpu_f80_emulation() {
             "BCD roundtrip: valor entero no coincide para valor {}",
             val
         );
-        assert!((f80.get_f64() - f80_2.get_f64()).abs() < 1e-10, "BCD roundtrip no coincide para valor {}", val);
+        assert!(
+            (f80.get_f64() - f80_2.get_f64()).abs() < 1e-10,
+            "BCD roundtrip no coincide para valor {}",
+            val
+        );
     }
 
     f80.set_f64(259.0);
@@ -92,7 +102,7 @@ pub fn fpu_f80_emulation() {
     assert_eq!(bcd[1], 0x02);
 
     let mut f80 = F80::new();
-    let val:u128 = 256;
+    let val: u128 = 256;
     f80.set(val);
 
     let bytes = f80.get_bytes();
@@ -100,16 +110,20 @@ pub fn fpu_f80_emulation() {
     f80_2.set_bytes(&bytes);
 
     assert_eq!(f80.get(), f80_2.get(), "Error en get() para valor {}", val);
-    assert_eq!(f80.to_integer_u128(), f80_2.to_integer_u128(), "Error en to_integer_u128 para valor {}", val);
+    assert_eq!(
+        f80.to_integer_u128(),
+        f80_2.to_integer_u128(),
+        "Error en to_integer_u128 para valor {}",
+        val
+    );
 
     let bcd1 = f80.to_bcd_packed();
     let bcd2 = f80_2.to_bcd_packed();
     assert_eq!(bcd1, bcd2, "Error en BCD packed para valor {}", val);
 
-
     // test a.add(b)
-    
-    let mut b:F80 = F80::new();
+
+    let mut b: F80 = F80::new();
     f80.set_f64(-1.1);
     b.set_f64(1.9);
     f80.add(b);

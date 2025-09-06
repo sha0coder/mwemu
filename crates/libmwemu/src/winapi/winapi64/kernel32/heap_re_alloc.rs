@@ -1,4 +1,4 @@
-
+use crate::maps::mem64::Permission;
 use crate::{constants, emu};
 
 pub fn HeapReAlloc(emu: &mut emu::Emu) {
@@ -30,6 +30,7 @@ pub fn HeapReAlloc(emu: &mut emu::Emu) {
                 format!("alloc_{:x}", new_addr).as_str(),
                 new_addr,
                 new_size,
+                Permission::READ_WRITE,
             ) {
                 emu.regs_mut().rax = 0;
                 return;
@@ -38,8 +39,7 @@ pub fn HeapReAlloc(emu: &mut emu::Emu) {
             // Copy old content to new location if HEAP_REALLOC_IN_PLACE_ONLY is not set
             if (flags & constants::HEAP_REALLOC_IN_PLACE_ONLY) == 0 {
                 // Get the size of the old allocation to know how much to copy
-                let old_size = emu.maps.get_mem_size(old_mem)
-                    .unwrap_or(new_size as usize);
+                let old_size = emu.maps.get_mem_size(old_mem).unwrap_or(new_size as usize);
                 let copy_size = std::cmp::min(old_size, new_size as usize);
 
                 // Copy the data

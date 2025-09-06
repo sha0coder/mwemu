@@ -11,11 +11,7 @@ pub fn CreateToolhelp32Snapshot(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!CreateToolhelp32Snapshot cannot read pid");
 
-    log_red!(
-        emu,
-        "kernel32!CreateToolhelp32Snapshot pid: {}",
-        pid
-    );
+    log_red!(emu, "kernel32!CreateToolhelp32Snapshot pid: {}", pid);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

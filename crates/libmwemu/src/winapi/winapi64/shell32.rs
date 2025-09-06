@@ -47,12 +47,7 @@ fn RealShellExecuteA(emu: &mut emu::Emu) {
     let file = emu.maps.read_string(file_ptr);
     let params = emu.maps.read_string(params_ptr);
 
-    log_red!(
-        emu,
-        "shell32!RealShellExecuteA {} {}",
-        file,
-        params
-    );
+    log_red!(emu, "shell32!RealShellExecuteA {} {}", file, params);
 
     emu.regs_mut().rax = 34;
 }

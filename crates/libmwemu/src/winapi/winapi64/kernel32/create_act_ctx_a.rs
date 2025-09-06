@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn CreateActCtxA(emu: &mut emu::Emu) {

@@ -1,4 +1,3 @@
-
 use crate::{emu, structures};
 
 pub fn SystemTimeToFileTime(emu: &mut emu::Emu) {
@@ -8,8 +7,5 @@ pub fn SystemTimeToFileTime(emu: &mut emu::Emu) {
     let now = structures::SystemTime::now();
     now.save(out_ptr, &mut emu.maps);
 
-    log_red!(
-        emu,
-        "kernel32!SystemTimeToFileTime"
-    );
+    log_red!(emu, "kernel32!SystemTimeToFileTime");
 }

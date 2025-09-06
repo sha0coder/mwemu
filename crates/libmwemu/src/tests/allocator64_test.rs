@@ -1,6 +1,6 @@
-use crate::*;
-use crate::winapi::winapi64;
 use crate::tests::helpers;
+use crate::winapi::winapi64;
+use crate::*;
 
 #[test]
 // test 64bits allocators
@@ -24,7 +24,6 @@ pub fn allocator64_test() {
     assert_eq!(emu.maps.mem_test(), true);
 
     emu.maps.clear();
-
 
     emu.regs_mut().rcx = 0; // addr
     emu.regs_mut().rdx = 1024; // sz

@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn FlsGetValue(emu: &mut emu::Emu) {

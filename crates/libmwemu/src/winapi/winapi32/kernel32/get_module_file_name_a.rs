@@ -18,11 +18,7 @@ pub fn GetModuleFileNameA(emu: &mut emu::Emu) {
         emu.maps.write_string(fname_ptr, "c:\\test.exe");
     }
 
-    log_red!(
-        emu,
-        "kernel32!GetModuleFileNameA 0x{:x}",
-        hmod
-    );
+    log_red!(emu, "kernel32!GetModuleFileNameA 0x{:x}", hmod);
 
     for _ in 0..3 {
         emu.stack_pop32(false);

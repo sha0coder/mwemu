@@ -1,6 +1,6 @@
+use crate::color;
 use crate::emu::Emu;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Cyan"), ins);
@@ -32,12 +32,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             f_cf,
             false,
         ),
-        8 => emu.flags_mut().add8(
-            (value0 & 0xff) as u8,
-            (value1 & 0xff) as u8,
-            f_cf,
-            false,
-        ),
+        8 => emu
+            .flags_mut()
+            .add8((value0 & 0xff) as u8, (value1 & 0xff) as u8, f_cf, false),
         _ => unreachable!("weird size"),
     };
 

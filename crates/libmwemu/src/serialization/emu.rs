@@ -9,7 +9,7 @@ use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
 use crate::banzai::Banzai;
-use crate::breakpoint::{Breakpoints};
+use crate::breakpoint::Breakpoints;
 use crate::colors::Colors;
 use crate::config::Config;
 use crate::eflags::Eflags;
@@ -25,6 +25,8 @@ use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
 use crate::serialization::thread_context::SerializableThreadContext;
 use crate::structures::MemoryOperation;
+
+use crate::emu::disassemble::InstructionCache;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableEmu {
@@ -160,6 +162,7 @@ impl From<SerializableEmu> for Emu {
         };
 
         Emu {
+            instruction_cache: InstructionCache::new(),
             maps: serialized.maps.into(),
             hooks: Hooks::default(), // not possible
             exp: serialized.exp,

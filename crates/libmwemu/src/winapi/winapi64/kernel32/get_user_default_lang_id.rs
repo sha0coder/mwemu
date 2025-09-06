@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn GetUserDefaultLangId(emu: &mut emu::Emu) {

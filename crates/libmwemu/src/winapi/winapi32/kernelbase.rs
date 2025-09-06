@@ -4,8 +4,8 @@ use crate::emu;
 //use crate::context32;
 //use crate::peb32;
 //use crate::structures;
-use crate::winapi::helper;
 use crate::serialization;
+use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
 use lazy_static::lazy_static;
@@ -78,15 +78,10 @@ fn GetModuleHandleW(emu: &mut emu::Emu) {
         emu.regs_mut().rax = mod_mem.get_base();
     }
 
-    log_red!(
-        emu,
-        "kernel32!GetModuleHandleW '{}'",
-        mod_name
-    );
+    log_red!(emu, "kernel32!GetModuleHandleW '{}'", mod_name);
 
     emu.stack_pop32(false);
 }
-
 
 fn LoadStringW(emu: &mut emu::Emu) {
     let hndl = emu
@@ -106,12 +101,7 @@ fn LoadStringW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 12)
         .expect("kernelbase!LoadStringW error reading param");
 
-    log_red!(
-        emu,
-        "kernelbase!LoadStringW {} 0x{}",
-        id,
-        buff
-    );
+    log_red!(emu, "kernelbase!LoadStringW {} 0x{}", id, buff);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -129,12 +119,7 @@ fn _initterm(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm error reading param");
-    log_red!(
-        emu,
-        "kernelbase!_initterm 0x{:x} 0x{:x}",
-        ptr1,
-        ptr2
-    );
+    log_red!(emu, "kernelbase!_initterm 0x{:x} 0x{:x}", ptr1, ptr2);
     emu.stack_pop32(false);
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0;
@@ -149,14 +134,9 @@ fn _initterm_e(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().rsp + 4)
         .expect("kernelbase!_initterm_e error reading param");
-    log_red!(
-        emu,
-        "kernelbase!_initterm_e 0x{:x} 0x{:x}",
-        ptr1,
-        ptr2
-    );
+    log_red!(emu, "kernelbase!_initterm_e 0x{:x} 0x{:x}", ptr1, ptr2);
     emu.stack_pop32(false);
-emu.stack_pop32(false);
+    emu.stack_pop32(false);
     emu.regs_mut().rax = 0;
 }
 
@@ -166,15 +146,10 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp)
         .expect("kernelbase!SetUnhandledExceptionFilter error reading param");
 
-    log_red!(
-        emu,
-        "kernelbase!SetUnhandledExceptionFilter 0x{:x}",
-        ptr1
-    );
+    log_red!(emu, "kernelbase!SetUnhandledExceptionFilter 0x{:x}", ptr1);
 
     emu.set_uef(ptr1 as u64);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0;
 }
-

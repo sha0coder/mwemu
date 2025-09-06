@@ -1,11 +1,12 @@
 use crate::constants;
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::structures::LdrDataTableEntry64;
 use crate::structures::OrdinalTable;
 use crate::structures::PebLdrData64;
+use crate::structures::RtlUserProcessParameters64;
 use crate::structures::PEB64;
 use crate::structures::TEB64;
-use crate::structures::RtlUserProcessParameters64;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     let ldr_sz = PebLdrData64::size() + 100;
@@ -14,7 +15,7 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
         .lib64_alloc(ldr_sz as u64)
         .expect("cannot alloc the LDR");
     emu.maps
-        .create_map("ldr", ldr_addr, ldr_sz as u64)
+        .create_map("ldr", ldr_addr, ldr_sz as u64, Permission::READ_WRITE)
         .expect("cannot create ldr map");
     let module_entry = create_ldr_entry(emu, 0, 0, constants::EXE_NAME, 0, 0);
     let mut ldr = PebLdrData64::new();
@@ -33,14 +34,22 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
 }
 
 pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
-    let addr = emu.maps.map("RtlUserProcessParameters64", RtlUserProcessParameters64::size() as u64);
+    let addr = emu.maps.map(
+        "RtlUserProcessParameters64",
+        RtlUserProcessParameters64::size() as u64,
+        Permission::READ_WRITE_EXECUTE,
+    );
     let mut params_struct = RtlUserProcessParameters64::new();
 
     let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
     let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
 
-    let filename = emu.maps.map("file_name", filename_len);
-    let cmdline = emu.maps.map("command_line", cmdline_len);
+    let filename = emu
+        .maps
+        .map("file_name", filename_len, Permission::READ_WRITE);
+    let cmdline = emu
+        .maps
+        .map("command_line", cmdline_len, Permission::READ_WRITE);
 
     params_struct.image_path_name.length = filename_len as u16;
     params_struct.image_path_name.maximum_length = filename_len as u16;
@@ -71,23 +80,31 @@ pub fn init_peb(emu: &mut emu::Emu) {
         .expect("cannot alloc the PEB64");
     let peb_map = emu
         .maps
-        .create_map("peb", peb_addr, PEB64::size() as u64)
+        .create_map(
+            "peb",
+            peb_addr,
+            PEB64::size() as u64,
+            Permission::READ_WRITE,
+        )
         .expect("cannot create peb map");
     // Create KuserSharedData map
-
-
 
     let peb = PEB64::new(0, ldr, params_addr);
     peb.save(peb_map);
     emu.maps.write_byte(peb_addr + 2, 0); // not being_debugged
-    
+
     let teb_addr = emu
         .maps
         .lib64_alloc(TEB64::size() as u64)
         .expect("cannot alloc the TEB64");
     let teb_map = emu
         .maps
-        .create_map("teb", teb_addr, TEB64::size() as u64)
+        .create_map(
+            "teb",
+            teb_addr,
+            TEB64::size() as u64,
+            Permission::READ_WRITE,
+        )
         .expect("cannot create teb map");
     let teb = TEB64::new(peb_addr);
     teb.save(teb_map);
@@ -470,7 +487,7 @@ pub fn create_ldr_entry(
     }
     let mem = emu
         .maps
-        .create_map(lib.as_str(), space_addr, sz)
+        .create_map(lib.as_str(), space_addr, sz, Permission::READ_WRITE)
         .expect("cannot create ldr entry map");
     mem.write_byte(space_addr + sz - 1, 0x61);
 

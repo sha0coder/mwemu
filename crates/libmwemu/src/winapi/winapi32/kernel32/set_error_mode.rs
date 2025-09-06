@@ -6,11 +6,7 @@ pub fn SetErrorMode(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!SetErrorMode cannot read mode param");
 
-    log_red!(
-        emu,
-        "kernel32!SetErrorMode 0x{:x}",
-        mode
-    );
+    log_red!(emu, "kernel32!SetErrorMode 0x{:x}", mode);
 
     emu.stack_pop32(false);
 

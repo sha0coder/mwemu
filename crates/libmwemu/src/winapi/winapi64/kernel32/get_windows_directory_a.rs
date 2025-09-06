@@ -1,10 +1,11 @@
-
 use crate::{constants, emu};
 
 pub fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
     let lp_buffer = emu.regs().rcx as usize;
     let u_size = emu.regs().rdx as usize;
-    log_red!(emu, "** {} kernel32!GetWindowsDirectoryA lp_buffer: 0x{:x} u_size: {}",
+    log_red!(
+        emu,
+        "** {} kernel32!GetWindowsDirectoryA lp_buffer: 0x{:x} u_size: {}",
         emu.pos,
         lp_buffer,
         u_size

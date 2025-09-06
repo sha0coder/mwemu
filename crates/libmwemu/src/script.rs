@@ -5,6 +5,7 @@ use std::vec::Vec;
 
 use crate::console::Console;
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 use crate::peb::peb32;
 use crate::peb::peb64;
 use crate::structures;
@@ -419,7 +420,8 @@ impl Script {
                             return;
                         }
                     };
-                    emu.maps.create_map(args[1], addr, sz);
+                    emu.maps
+                        .create_map(args[1], addr, sz, Permission::READ_WRITE_EXECUTE);
                     log::info!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
                     self.result = addr;
                 }
@@ -437,7 +439,8 @@ impl Script {
                             return;
                         }
                     };
-                    emu.maps.create_map(args[1], addr, sz);
+                    emu.maps
+                        .create_map(args[1], addr, sz, Permission::READ_WRITE_EXECUTE);
                     log::info!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
                 }
                 "ml" => {
@@ -465,7 +468,10 @@ impl Script {
                         }
                     };
 
-                    let mem = emu.maps.get_mem_by_addr(addr).expect("address not found on any map");
+                    let mem = emu
+                        .maps
+                        .get_mem_by_addr(addr)
+                        .expect("address not found on any map");
                     if emu.cfg.is_64bits {
                         log::info!(
                             "map: {} 0x{:x}-0x{:x} ({})",

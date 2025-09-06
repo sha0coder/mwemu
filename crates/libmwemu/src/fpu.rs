@@ -2,9 +2,9 @@ pub mod f80;
 pub mod fpu_stack;
 
 use crate::emu;
-use iced_x86::Register;
 use f80::F80;
 use fpu_stack::FPUStack;
+use iced_x86::Register;
 
 pub struct FPUState {
     pub fpu_control_word: u16, // Control Word
@@ -16,7 +16,7 @@ pub struct FPUState {
     pub rdp: u64,        // Data Pointer
     pub mxcsr: u32,      // SSE Control and Status
     pub mxcsr_mask: u32,
-    pub st: FPUStack,        // FPU registers
+    pub st: FPUStack,         // FPU registers
     pub xmm: [u128; 16],      // XMM registers
     pub reserved2: [u8; 224], // Reserved
 }
@@ -288,7 +288,6 @@ impl FPU {
         self.peek_st_u80(idx)
     }
 
-
     pub fn get_st_u80(&mut self, i: usize) -> u128 {
         return self.st.get(i).get();
     }
@@ -390,7 +389,6 @@ impl FPU {
 
     pub fn check_pending_exceptions(self) {}
 
-
     pub fn move_reg_to_st0(&mut self, reg: Register) {
         match reg {
             Register::ST0 => self.move_to_st0(0),
@@ -432,7 +430,6 @@ impl FPU {
             _ => unreachable!(),
         }
     }
-
 
     pub fn set_streg_f80(&mut self, reg: Register, value: u128) {
         //println!("{:?} {}", reg, value);
@@ -479,7 +476,6 @@ impl FPU {
 
         result
     }
-
 
     pub fn fxsave(&self) -> FPUState {
         let mut state = FPUState::new();

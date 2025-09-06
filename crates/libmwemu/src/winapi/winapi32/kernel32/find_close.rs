@@ -7,10 +7,7 @@ pub fn FindClose(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!FindClose cannot read the handle") as u64;
 
-    log_red!(
-        emu,
-        "kernel32!FindClose"
-    );
+    log_red!(emu, "kernel32!FindClose");
 
     emu.stack_pop32(false);
 

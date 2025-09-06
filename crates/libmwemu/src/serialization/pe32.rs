@@ -10,9 +10,9 @@ pub struct SerializablePE32 {
 
 impl From<PE32> for SerializablePE32 {
     fn from(pe32: PE32) -> Self {
-        SerializablePE32 { 
-            filename: pe32.filename, 
-            raw: pe32.raw
+        SerializablePE32 {
+            filename: pe32.filename,
+            raw: pe32.raw,
         }
     }
 }

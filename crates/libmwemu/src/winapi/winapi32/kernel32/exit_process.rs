@@ -6,11 +6,7 @@ pub fn ExitProcess(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!ExitProcess cannot read the exit code");
 
-    log_red!(
-        emu,
-        "kernel32!ExitProcess code: {}",
-        code
-    );
+    log_red!(emu, "kernel32!ExitProcess code: {}", code);
     emu.stack_pop32(false);
 
     std::process::exit(1);

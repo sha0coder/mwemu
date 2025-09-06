@@ -33,5 +33,4 @@ impl Emu {
         }
         self.cfg.verbose = n;
     }
-
 }

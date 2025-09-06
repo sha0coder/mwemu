@@ -1,4 +1,9 @@
-use crate::{emu::Emu, exception_type::ExceptionType, peb::{peb32, peb64}, winapi::{winapi32, winapi64}};
+use crate::{
+    emu::Emu,
+    exception_type::ExceptionType,
+    peb::{peb32, peb64},
+    winapi::{winapi32, winapi64},
+};
 
 impl Emu {
     //TODO: check this, this is used only on pyscemu
@@ -30,7 +35,6 @@ impl Emu {
             winapi32::gateway(addr as u32, name.to_string().as_str(), self);
         }
     }
-
 
     /// For an existing linked DLL, this funcion allows to modify the base address on LDR entry.
     pub fn update_ldr_entry_base(&mut self, libname: &str, base: u64) {

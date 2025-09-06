@@ -4,6 +4,7 @@ use std::sync::{atomic, Arc};
 use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemonic};
 
 use crate::console::Console;
+use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::err::MwemuError;
 use crate::{constants, engine, serialization};
@@ -109,8 +110,6 @@ impl Emu {
         }
     }
 
-
-
     pub fn update_entropy(&mut self) {
         let prev_entropy = self.entropy;
 
@@ -119,7 +118,13 @@ impl Emu {
             None => {
                 self.entropy = 0.0;
                 if self.entropy != prev_entropy {
-                    log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+                    log::info!(
+                        "{}:0x{:x} entropy changed {} ->  {}",
+                        self.pos,
+                        self.regs().rip,
+                        prev_entropy,
+                        self.entropy
+                    );
                 }
                 return;
             }
@@ -130,7 +135,13 @@ impl Emu {
         if data.is_empty() {
             self.entropy = 0.0;
             if self.entropy != prev_entropy {
-                log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+                log::info!(
+                    "{}:0x{:x} entropy changed {} ->  {}",
+                    self.pos,
+                    self.regs().rip,
+                    prev_entropy,
+                    self.entropy
+                );
             }
             return;
         }
@@ -140,28 +151,39 @@ impl Emu {
             counts[b as usize] += 1;
         }
         let len = data.len() as f64;
-        self.entropy = round_to!(counts
-            .iter()
-            .filter(|&&c| c > 0)
-            .map(|&c| {
-                let p = c as f64 / len;
-                -p * p.log2()
-            })
-            .sum::<f64>(), 3);
+        self.entropy = round_to!(
+            counts
+                .iter()
+                .filter(|&&c| c > 0)
+                .map(|&c| {
+                    let p = c as f64 / len;
+                    -p * p.log2()
+                })
+                .sum::<f64>(),
+            3
+        );
 
         if self.entropy != prev_entropy {
-            log::info!("{}:0x{:x} entropy changed {} ->  {}", self.pos, self.regs().rip, prev_entropy, self.entropy);
+            log::info!(
+                "{}:0x{:x} entropy changed {} ->  {}",
+                self.pos,
+                self.regs().rip,
+                prev_entropy,
+                self.entropy
+            );
         }
     }
 
-
     /// Emulate a single step from the current point (single-threaded implementation).
     /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
-    /// the current emulation moment. 
+    /// the current emulation moment.
     /// If you do a loop with emu.step() will have more control of the emulator but it will be
     /// slow.
     /// Is more convinient using run and run_to or even setting breakpoints.
-    #[deprecated(since = "0.1.0", note = "Use step() instead, which automatically handles threading")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use step() instead, which automatically handles threading"
+    )]
     pub fn step_single_threaded(&mut self) -> bool {
         self.pos += 1;
 
@@ -265,11 +287,14 @@ impl Emu {
 
     /// Emulate a single step from the current point (multi-threaded implementation).
     /// this don't reset the emu.pos, that mark the number of emulated instructions and point to
-    /// the current emulation moment. 
+    /// the current emulation moment.
     /// If you do a loop with emu.step() will have more control of the emulator but it will be
     /// slow.
     /// Is more convinient using run and run_to or even setting breakpoints.
-    #[deprecated(since = "0.1.0", note = "Use step() instead, which automatically handles threading")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use step() instead, which automatically handles threading"
+    )]
     pub fn step_multi_threaded(&mut self) -> bool {
         self.pos += 1;
 
@@ -298,13 +323,13 @@ impl Emu {
         // Thread scheduling - find next runnable thread
         let num_threads = self.threads.len();
         let current_tick = self.tick;
-        
+
         // Debug logging for threading
         if num_threads > 1 {
             /*log::info!("=== THREAD SCHEDULER DEBUG ===");
-            log::info!("Step {}: {} threads, current_thread_id={}, tick={}", 
+            log::info!("Step {}: {} threads, current_thread_id={}, tick={}",
                     self.pos, num_threads, self.current_thread_id, current_tick);
-            
+
             for (i, thread) in self.threads.iter().enumerate() {
                 let status = if thread.suspended {
                     "SUSPENDED".to_string()
@@ -315,57 +340,63 @@ impl Emu {
                 } else {
                     "RUNNABLE".to_string()
                 };
-                
+
                 let marker = if i == self.current_thread_id { ">>> " } else { "    " };
-                log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}", 
+                log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
                         marker, i, thread.id, thread.regs.rip, status);
             }*/
         }
-        
+
         // Check if current thread can run
         let current_can_run = !self.threads[self.current_thread_id].suspended
             && self.threads[self.current_thread_id].wake_tick <= current_tick
             && self.threads[self.current_thread_id].blocked_on_cs.is_none();
-        
+
         if num_threads > 1 {
             //log::debug!("Current thread {} can run: {}", self.current_thread_id, current_can_run);
-            
+
             // Round-robin scheduling: try each thread starting from next one
             for i in 0..num_threads {
                 let thread_idx = (self.current_thread_id + i + 1) % num_threads;
                 let thread = &self.threads[thread_idx];
-                
-                /*log::debug!("Checking thread {}: suspended={}, wake_tick={}, blocked={}", 
-                        thread_idx, thread.suspended, thread.wake_tick, 
-                        thread.blocked_on_cs.is_some());*/
-                
+
+                /*log::debug!("Checking thread {}: suspended={}, wake_tick={}, blocked={}",
+                thread_idx, thread.suspended, thread.wake_tick,
+                thread.blocked_on_cs.is_some());*/
+
                 // Check if thread is runnable
-                if !thread.suspended 
+                if !thread.suspended
                     && thread.wake_tick <= current_tick
-                    && thread.blocked_on_cs.is_none() {
+                    && thread.blocked_on_cs.is_none()
+                {
                     // Found a runnable thread, execute it
                     if thread_idx != self.current_thread_id {
-                        /*log::info!("🔄 THREAD SWITCH: {} -> {} (step {})", 
+                        /*log::info!("🔄 THREAD SWITCH: {} -> {} (step {})",
                                 self.current_thread_id, thread_idx, self.pos);
-                        log::info!("   From RIP: 0x{:x} -> To RIP: 0x{:x}", 
+                        log::info!("   From RIP: 0x{:x} -> To RIP: 0x{:x}",
                                 self.threads[self.current_thread_id].regs.rip,
                                 thread.regs.rip);*/
                     }
-                    return crate::threading::ThreadScheduler::execute_thread_instruction(self, thread_idx);
+                    return crate::threading::ThreadScheduler::execute_thread_instruction(
+                        self, thread_idx,
+                    );
                 }
             }
-            
+
             log::debug!("No other threads runnable, checking current thread");
         }
-        
+
         // If no other threads are runnable, try current thread
         if current_can_run {
             /*if num_threads > 1 {
                 log::debug!("Continuing with current thread {}", self.current_thread_id);
             }*/
-            return crate::threading::ThreadScheduler::execute_thread_instruction(self, self.current_thread_id);
+            return crate::threading::ThreadScheduler::execute_thread_instruction(
+                self,
+                self.current_thread_id,
+            );
         }
-        
+
         // All threads are blocked or suspended - advance time to next wake point
         let mut next_wake = usize::MAX;
         for thread in &self.threads {
@@ -373,32 +404,41 @@ impl Emu {
                 next_wake = next_wake.min(thread.wake_tick);
             }
         }
-        
+
         if next_wake != usize::MAX && next_wake > current_tick {
             // Advance time to next wake point
             self.tick = next_wake;
-            log::info!("⏰ All threads blocked, advancing tick from {} to {}", current_tick, next_wake);
+            log::info!(
+                "⏰ All threads blocked, advancing tick from {} to {}",
+                current_tick,
+                next_wake
+            );
             // Try scheduling again
             return self.step();
         }
-        
+
         // All threads are permanently blocked or suspended
         log::info!("💀 All threads are blocked/suspended, cannot continue execution");
         if num_threads > 1 {
             log::info!("Final thread states:");
             for (i, thread) in self.threads.iter().enumerate() {
-                log::info!("  Thread[{}]: ID=0x{:x}, suspended={}, wake_tick={}, blocked={}", 
-                        i, thread.id, thread.suspended, thread.wake_tick, 
-                        thread.blocked_on_cs.is_some());
+                log::info!(
+                    "  Thread[{}]: ID=0x{:x}, suspended={}, wake_tick={}, blocked={}",
+                    i,
+                    thread.id,
+                    thread.suspended,
+                    thread.wake_tick,
+                    thread.blocked_on_cs.is_some()
+                );
             }
         }
         false
     }
 
     /// Run until a specific position (emu.pos)
-    /// This don't reset the emu.pos, will meulate from current position to 
+    /// This don't reset the emu.pos, will meulate from current position to
     /// selected end_pos included.
-    pub fn run_to(&mut self, end_pos:u64) -> Result<u64, MwemuError> {
+    pub fn run_to(&mut self, end_pos: u64) -> Result<u64, MwemuError> {
         self.max_pos = Some(end_pos);
         let r = self.run(None);
         self.max_pos = None;
@@ -412,6 +452,8 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
+        let instruction_cache = InstructionCache::new();
+        self.instruction_cache = instruction_cache;
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.run_multi_threaded(end_addr)
         } else {
@@ -423,7 +465,10 @@ impl Emu {
     /// For emulating forever: run(None)
     /// For emulating until an address: run(Some(0x11223344))
     /// self.pos is not set to zero, can be used to continue emulation.
-    #[deprecated(since = "0.1.0", note = "Use run() instead, which automatically handles threading")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use run() instead, which automatically handles threading"
+    )]
     pub fn run_multi_threaded(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
         todo!()
     } // end run
@@ -432,18 +477,22 @@ impl Emu {
     /// For emulating forever: run(None)
     /// For emulating until an address: run(Some(0x11223344))
     /// self.pos is not set to zero, can be used to continue emulation.
-    #[deprecated(since = "0.1.0", note = "Use run() instead, which automatically handles threading")]
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use run() instead, which automatically handles threading"
+    )]
     pub fn run_single_threaded(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
         //self.stack_lvl.clear();
         //self.stack_lvl_idx = 0;
         //self.stack_lvl.push(0);
-        
+
         match self.maps.get_mem_by_addr(self.regs().rip) {
-            Some(mem) =>  {
-            }
+            Some(mem) => {}
             None => {
                 log::info!("Cannot start emulation, pc pointing to unmapped area");
-                return Err(MwemuError::new("program counter pointing to unmapped memory"))
+                return Err(MwemuError::new(
+                    "program counter pointing to unmapped memory",
+                ));
             }
         };
 
@@ -479,6 +528,7 @@ impl Emu {
         // the need of Reallocate everytime
         let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
         block.resize(constants::BLOCK_LEN, 0x0);
+        self.instruction_cache = InstructionCache::new();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::info!("reloading rip 0x{:x}", self.regs().rip);
@@ -487,37 +537,43 @@ impl Emu {
                 let code = match self.maps.get_mem_by_addr(rip) {
                     Some(c) => c,
                     None => {
-                        log::info!(
-                            "redirecting code flow to non mapped address 0x{:x}",
-                            rip
-                        );
+                        log::info!("redirecting code flow to non mapped address 0x{:x}", rip);
                         Console::spawn_console(self);
                         return Err(MwemuError::new("cannot read program counter"));
                     }
                 };
 
-                // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
-                // reading anymore would be a waste of time
-                let block_sz = constants::BLOCK_LEN;
-                let block_temp = code.read_bytes(rip, block_sz);
-                let block_temp_len = block_temp.len();
-                if block_temp_len != block.len() {
-                    block.resize(block_temp_len, 0);
-                }
-                block.clone_from_slice(block_temp);
-                if block.len() == 0 {
-                     return Err(MwemuError::new("cannot read code block, weird address."));
-                } 
-                let mut decoder =
-                    Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
-                let mut sz: usize = 0;
-                let mut addr: u64 = 0;
+                if !self.instruction_cache.lookup_entry(rip, 0) {
+                    // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
+                    // reading anymore would be a waste of time
+                    let block_sz = constants::BLOCK_LEN;
+                    let block_temp = code.read_bytes(rip, block_sz);
+                    let block_temp_len = block_temp.len();
+                    if block_temp_len != block.len() {
+                        block.resize(block_temp_len, 0);
+                    }
+                    block.clone_from_slice(block_temp);
+                    if block.len() == 0 {
+                        return Err(MwemuError::new("cannot read code block, weird address."));
+                    }
+                    let mut decoder =
+                        Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
 
-                self.rep = None;
-                let addition = if block_temp_len < 16 {block_temp_len} else {16};
-                while decoder.can_decode() && (decoder.position() + addition <= decoder.max_position()) {
+                    self.rep = None;
+                    let addition = if block_temp_len < 16 {
+                        block_temp_len
+                    } else {
+                        16
+                    };
+                    self.instruction_cache
+                        .insert_from_decoder(&mut decoder, addition, rip);
+                }
+
+                let mut sz = 0;
+                let mut addr = 0;
+                while self.instruction_cache.can_decode() {
                     if self.rep.is_none() {
-                        decoder.decode_out(&mut ins);
+                        self.instruction_cache.decode_out(&mut ins);
                         sz = ins.len();
                         addr = ins.ip();
 
@@ -531,7 +587,7 @@ impl Emu {
                     }
 
                     self.instruction = Some(ins);
-                    self.decoder_position = decoder.position();
+                    self.decoder_position = self.instruction_cache.current_instruction_slot;
                     self.memory_operations.clear();
                     self.pos += 1;
 
@@ -624,7 +680,10 @@ impl Emu {
                         }
                     }
 
-                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs
+                        && self.cfg.trace_filename.is_some()
+                        && self.pos >= self.cfg.trace_start
+                    {
                         self.capture_pre_op();
                     }
 
@@ -660,10 +719,12 @@ impl Emu {
 
                     let is_ret = match ins.code() {
                         Code::Retnw | Code::Retnd | Code::Retnq => true,
-                        _ => false
+                        _ => false,
                     };
 
-                    if !is_ret && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix()) {
+                    if !is_ret
+                        && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix())
+                    {
                         if self.rep.is_none() {
                             self.rep = Some(0);
                         }
@@ -687,7 +748,6 @@ impl Emu {
                         }
                     }
 
-                    
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
                     //tracing::trace_instruction(self, self.pos);
@@ -756,7 +816,10 @@ impl Emu {
                         self.trace_memory_inspection();
                     }
 
-                    if self.cfg.trace_regs && self.cfg.trace_filename.is_some() && self.pos >= self.cfg.trace_start {
+                    if self.cfg.trace_regs
+                        && self.cfg.trace_filename.is_some()
+                        && self.pos >= self.cfg.trace_start
+                    {
                         self.capture_post_op();
                         self.write_to_trace_file();
                     }
@@ -770,7 +833,8 @@ impl Emu {
                             } else {
                                 return Err(MwemuError::new(&format!(
                                     "emulation error at pos = {} rip = 0x{:x}",
-                                    self.pos, self.regs().rip
+                                    self.pos,
+                                    self.regs().rip
                                 )));
                             }
                         }
@@ -795,12 +859,10 @@ impl Emu {
                         break;
                     }
                 } // end decoder loop
-
             } // end running loop
-            
+
             self.is_running.store(1, atomic::Ordering::Relaxed);
             Console::spawn_console(self);
         } // end infinite loop
     } // end run {
-    
 }

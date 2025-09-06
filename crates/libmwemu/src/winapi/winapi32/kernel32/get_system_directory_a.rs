@@ -12,10 +12,7 @@ pub fn GetSystemDirectoryA(emu: &mut emu::Emu) {
 
     emu.maps.write_string(out_buff_ptr, "C:\\Windows\\\x00");
 
-    log_red!(
-        emu,
-        "kernel32!GetSystemDirectoryA"
-    );
+    log_red!(emu, "kernel32!GetSystemDirectoryA");
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

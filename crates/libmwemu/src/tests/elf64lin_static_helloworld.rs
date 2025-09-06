@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // this tests a linux 64bits static ELF binary.
@@ -13,5 +13,5 @@ pub fn elf64lin_static_helloworld() {
     emu.run(Some(0x44ab87));
 
     assert_eq!(emu.regs().rcx, 0x4cc2d0);
-    assert_eq!(emu.pos, 11111); 
+    assert_eq!(emu.pos, 11111);
 }

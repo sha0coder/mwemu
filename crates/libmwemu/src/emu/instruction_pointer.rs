@@ -1,4 +1,7 @@
-use crate::{console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi::winapi32, winapi::winapi64};
+use crate::{
+    console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi::winapi32,
+    winapi::winapi64,
+};
 
 impl Emu {
     /// Redirect execution flow on 64bits.
@@ -28,7 +31,11 @@ impl Emu {
                     self.force_break = true;
                     return true;
                 } else {
-                    log::error!("/!\\ set_rip setting rip to non mapped addr 0x{:x} {}", addr, self.filename);
+                    log::error!(
+                        "/!\\ set_rip setting rip to non mapped addr 0x{:x} {}",
+                        addr,
+                        self.filename
+                    );
                     self.exception(ExceptionType::SettingRipToNonMappedAddr);
                     return false;
                 }
@@ -76,7 +83,10 @@ impl Emu {
             };
 
             if handle_winapi {
-                let name = self.maps.get_addr_name(addr).expect("/!\\ changing RIP to non mapped addr 0x");
+                let name = self
+                    .maps
+                    .get_addr_name(addr)
+                    .expect("/!\\ changing RIP to non mapped addr 0x");
                 winapi64::gateway(addr, name.to_string().as_str(), self);
             }
             self.force_break = true;
@@ -136,7 +146,6 @@ impl Emu {
                     log::info!("{}:0x{:x} map change  {} -> {}", self.pos, eip, prev, name);
                 }
             }
-            
 
             self.regs_mut().set_eip(addr);
         } else {

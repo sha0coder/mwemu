@@ -4,10 +4,7 @@ pub fn FindNextFileA(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
     let find_data = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "kernel32!FindNextFileA"
-    );
+    log_red!(emu, "kernel32!FindNextFileA");
 
     // TODO: implement
 

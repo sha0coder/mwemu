@@ -36,7 +36,7 @@ impl Emu {
         self.regs().show_r14(&self.maps, 0);
         self.regs().show_r15(&self.maps, 0);
     }
-    
+
     #[inline]
     pub fn show_instruction_comment(&mut self, color: &str, ins: &Instruction, comment: &str) {
         if self.cfg.verbose < 2 {
@@ -46,13 +46,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {} ; {}",
-                    self.pos,
-                    ins.ip(),
-                    out,
-                    comment
-                );
+                log::info!("{} 0x{:x}: {} ; {}", self.pos, ins.ip(), out, comment);
             } else {
                 log::info!(
                     "{}{} 0x{:x}: {} ; {}{}",
@@ -77,12 +71,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {}",
-                    self.pos,
-                    ins.ip(),
-                    out
-                );
+                log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), out);
             } else {
                 log::info!(
                     "{}{} 0x{:x}: {}{}",
@@ -139,13 +128,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {} ;0x{:x}",
-                    self.pos,
-                    ins.ip(),
-                    out,
-                    value
-                );
+                log::info!("{} 0x{:x}: {} ;0x{:x}", self.pos, ins.ip(), out, value);
             } else {
                 log::info!(
                     "{}{} 0x{:x}: {} ;0x{:x} {}",
@@ -170,12 +153,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {} taken",
-                    self.pos,
-                    ins.ip(),
-                    out
-                );
+                log::info!("{} 0x{:x}: {} taken", self.pos, ins.ip(), out);
             } else {
                 log::info!(
                     "{}{} 0x{:x}: {} taken {}",
@@ -198,12 +176,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
-                    "{} 0x{:x}: {} not taken",
-                    self.pos,
-                    ins.ip(),
-                    out
-                );
+                log::info!("{} 0x{:x}: {} not taken", self.pos, ins.ip(), out);
             } else {
                 log::info!(
                     "{}{} 0x{:x}: {} not taken {}",

@@ -6,11 +6,7 @@ pub fn TlsFree(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!TlsFree cannot read idx");
 
-    log_red!(
-        emu,
-        "kernel32!TlsFree idx: {}",
-        idx
-    );
+    log_red!(emu, "kernel32!TlsFree idx: {}", idx);
 
     emu.stack_pop32(false);
     emu.regs_mut().set_eax(1);

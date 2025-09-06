@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn InitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {

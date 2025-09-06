@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn RegCreateKeyExA(emu: &mut emu::Emu) {
     let hKey = emu
@@ -33,12 +33,7 @@ pub fn RegCreateKeyExA(emu: &mut emu::Emu) {
         class_name = emu.maps.read_string(class_ptr);
     }
 
-    log_red!(
-        emu,
-        "kernel32!RegCreateKeyExA {} {}",
-        subkey,
-        class_name
-    );
+    log_red!(emu, "kernel32!RegCreateKeyExA {} {}", subkey, class_name);
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 
     for _ in 0..9 {

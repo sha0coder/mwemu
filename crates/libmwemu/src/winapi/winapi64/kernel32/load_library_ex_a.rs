@@ -1,4 +1,3 @@
-
 use crate::emu;
 use crate::winapi::winapi64::kernel32::load_library;
 

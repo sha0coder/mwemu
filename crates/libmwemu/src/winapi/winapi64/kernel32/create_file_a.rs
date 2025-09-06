@@ -14,6 +14,11 @@ pub fn CreateFileA(emu: &mut emu::Emu) {
     if lp_file_name > 0 {
         name = emu.maps.read_string(lp_file_name as u64);
     }
-    log_red!(emu, "** {} kernel32!CreateFileA name = {name} {}", emu.pos, emu.colors.nc);
+    log_red!(
+        emu,
+        "** {} kernel32!CreateFileA name = {name} {}",
+        emu.pos,
+        emu.colors.nc
+    );
     emu.regs_mut().rax = helper::handler_create(&name);
 }

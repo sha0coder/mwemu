@@ -17,11 +17,7 @@ pub fn LoadLibraryExW(emu: &mut emu::Emu) {
 
     let libname = emu.maps.read_wide_string(libname_ptr);
 
-    log_red!(
-        emu,
-        "LoadLibraryExW '{}'",
-        libname
-    );
+    log_red!(emu, "LoadLibraryExW '{}'", libname);
 
     emu.regs_mut().rax = load_library(emu, &libname);
 
