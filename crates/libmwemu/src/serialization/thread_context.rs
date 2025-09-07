@@ -29,7 +29,7 @@ pub struct SerializableThreadContext {
     pub tls64: Vec<u64>,
     pub fls: Vec<u32>,
     pub fs: BTreeMap<u64, u64>,
-    pub call_stack: Vec<String>,
+    pub call_stack: Vec<(u64, u64)>, // the first address is the source of the call location and the second address is the destination of the call
 }
 
 impl From<&ThreadContext> for SerializableThreadContext {

@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 
 // about 10 mb should be on l3 cache
 // 8192 cache lines,
-// 32 instructions for each one,
+// 64 instructions for each one,
 // 40 for the struct (I think we can make it smaller)
-const INSTRUCTION_ARRAY_SIZE: usize = 8192 * 32;
+const INSTRUCTION_ARRAY_SIZE: usize = 8192 * 64;
 
-// we want the cache size to be store in L1 cache which is lower than 40kb
-const CACHE_SIZE: usize = 2048 * 16;
+// we want the cache size to be store in L1 cache or L2 cache which is lower than 40kb
+const CACHE_SIZE: usize = 2048 * MAX_CACHE_PER_LINE;
 const CACHE_MASK: usize = CACHE_SIZE - 1; // Assumes power of 2
-const MAX_CACHE_PER_LINE: usize = 16;
+const MAX_CACHE_PER_LINE: usize = 32;
 
 // we need INVALID_KEY and INVALID_LEN to be the same as INVALID_LPF_ADDR to optimize for memset
 pub const INVALID_LPF_ADDR: u64 = 0xffffffffffffffff;
@@ -146,6 +146,7 @@ impl InstructionCache {
             self.flush_cache();
         }
 
+        // we just need to decode until the  call or jump instruction but not the entire one
         while decoder.can_decode() && decoder.position() + addition <= max_position {
             decoder.decode_out(&mut self.instructions[slot + count]);
             let temp = self.instructions[slot + count];

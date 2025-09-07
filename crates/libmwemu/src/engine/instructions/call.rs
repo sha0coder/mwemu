@@ -35,10 +35,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
           emu.stack_lvl.push(0);
           emu.stack_lvl_idx += 1;
       }*/
-
-    let call_stack_label = format!("{:x}:call:{:x}", emu.regs().rip, addr);
-
-    emu.call_stack_mut().push(call_stack_label);
+    
+    let rip = emu.regs().rip;
+    emu.call_stack_mut().push((rip, addr));
 
     if emu.cfg.is_64bits {
         if !emu.stack_push64(emu.regs().rip + instruction_sz as u64) {

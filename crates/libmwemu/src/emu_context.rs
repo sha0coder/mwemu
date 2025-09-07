@@ -127,7 +127,7 @@ pub fn log_emu_state(emu: &mut Emu) {
             emu.call_stack().len().min(10)
         );
         for (i, entry) in emu.call_stack().iter().rev().take(10).enumerate() {
-            log::error!("  {}: {}", i, entry);
+            log::error!("  {}: {:x}:call:{:x}", i, entry.0, entry.1);
         }
     }
 

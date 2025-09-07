@@ -82,7 +82,7 @@ pub struct SerializableEmu {
     pub rep: Option<u64>,
     pub tick: usize,
     pub base: u64,
-    pub call_stack: Vec<String>,
+    pub call_stack: Vec<(u64, u64)>,
     pub heap_addr: u64,
     pub threads: Vec<SerializableThreadContext>,
     pub current_thread_id: usize,
