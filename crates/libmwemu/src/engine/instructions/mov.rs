@@ -12,7 +12,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             return false;
         }
     };
-    emu.show_instruction_comment(color!("LightCyan"), ins, &format!("0x{:x}", value1));
+    if emu.cfg.verbose >= 2 {
+        emu.show_instruction_comment(color!("LightCyan"), ins, &format!("0x{:x}", value1));
+    }
+
 
     /*
     if emu.pos == 189464541 {
