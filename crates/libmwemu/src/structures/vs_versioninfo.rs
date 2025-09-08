@@ -58,31 +58,31 @@ impl VS_VERSIONINFO {
 
     pub fn write(&self, emu: &mut emu::Emu, addr: u64) {
         let mut offset = addr;
-        
+
         emu.maps.write_word(offset, self.w_length);
         offset += 2;
-        
+
         emu.maps.write_word(offset, self.w_value_length);
         offset += 2;
-        
+
         emu.maps.write_word(offset, self.w_type);
         offset += 2;
-        
+
         // Write szKey
         for i in 0..16 {
             emu.maps.write_word(offset, self.sz_key[i]);
             offset += 2;
         }
-        
+
         emu.maps.write_word(offset, self.padding1);
         offset += 2;
-        
+
         self.value.write(emu, offset);
         offset += VS_FIXEDFILEINFO::size() as u64;
-        
+
         emu.maps.write_word(offset, self.padding2);
         offset += 2;
-        
+
         emu.maps.write_word(offset, self.children);
     }
 }

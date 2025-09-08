@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn lstrcpyn(emu: &mut emu::Emu) {
@@ -13,11 +12,7 @@ pub fn lstrcpyn(emu: &mut emu::Emu) {
     emu.maps.memset(out_str1, 0, len);
     emu.maps.write_string(out_str1, &s);
 
-    log_red!(
-        emu,
-        "kernel32!lstrcpyn {}",
-        s
-    );
+    log_red!(emu, "kernel32!lstrcpyn {}", s);
 
     emu.regs_mut().rax = out_str1;
 }

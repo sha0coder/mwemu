@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::winapi64;
 
@@ -54,10 +55,7 @@ fn _initialize_onexit_table(emu: &mut emu::Emu) {
     139
      */
 
-    log_red!(
-        emu,
-        "wincrt!_initialize_onexit_table"
-    );
+    log_red!(emu, "wincrt!_initialize_onexit_table");
 
     emu.regs_mut().rax = 0;
 }
@@ -107,10 +105,7 @@ fn _get_initial_narrow_environment(emu: &mut emu::Emu) {
 
 // char*** CDECL __p___argv(void) { return &MSVCRT___argv; }
 fn __p___argv(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "wincrt!__p___argv"
-    );
+    log_red!(emu, "wincrt!__p___argv");
 
     // First, allocate space for argv array (pointer array)
     // We'll allocate space for 2 pointers - one for program name and null terminator
@@ -118,8 +113,12 @@ fn __p___argv(emu: &mut emu::Emu) {
         .maps
         .alloc(16) // 2 * sizeof(pointer) on x64
         .expect("wincrt!__p___argv cannot allocate argv array");
-    emu.maps
-        .create_map(&format!("alloc_{:x}", argv_array_addr), argv_array_addr, 16);
+    emu.maps.create_map(
+        &format!("alloc_{:x}", argv_array_addr),
+        argv_array_addr,
+        16,
+        Permission::READ_WRITE,
+    );
 
     // Allocate space for program name string (using a dummy name)
     let prog_name = "program.exe\0";
@@ -127,8 +126,12 @@ fn __p___argv(emu: &mut emu::Emu) {
         .maps
         .alloc(prog_name.len() as u64)
         .expect("wincrt!__p___argv cannot allocate program name");
-    emu.maps
-        .create_map(&format!("alloc_{:x}", prog_name_addr), prog_name_addr, 16);
+    emu.maps.create_map(
+        &format!("alloc_{:x}", prog_name_addr),
+        prog_name_addr,
+        16,
+        Permission::READ_WRITE,
+    );
 
     // Write program name string
     emu.maps.write_string(prog_name_addr, prog_name);
@@ -144,8 +147,12 @@ fn __p___argv(emu: &mut emu::Emu) {
         .maps
         .alloc(8) // sizeof(pointer) on x64
         .expect("wincrt!__p___argv cannot allocate p_argv");
-    emu.maps
-        .create_map(&format!("alloc_{:x}", p_argv_addr), p_argv_addr, 8);
+    emu.maps.create_map(
+        &format!("alloc_{:x}", p_argv_addr),
+        p_argv_addr,
+        8,
+        Permission::READ_WRITE,
+    );
 
     // Write pointer to argv array
     emu.maps.write_qword(p_argv_addr, argv_array_addr);
@@ -158,18 +165,18 @@ fn __p___argv(emu: &mut emu::Emu) {
 fn __p___argc(emu: &mut emu::Emu) {
     let argc = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "wincrt!__p___argc argc: 0x{:x}",
-        argc
-    );
+    log_red!(emu, "wincrt!__p___argc argc: 0x{:x}", argc);
 
     let argc_addr = emu
         .maps
         .alloc(4)
         .expect("wincrt!__p___argc cannot allocate");
-    emu.maps
-        .create_map(&format!("alloc_{:x}", argc_addr), argc_addr, 4);
+    emu.maps.create_map(
+        &format!("alloc_{:x}", argc_addr),
+        argc_addr,
+        4,
+        Permission::READ_WRITE,
+    );
     emu.maps.write_dword(argc_addr, 1);
     emu.regs_mut().rax = argc_addr;
 }
@@ -184,11 +191,7 @@ FILE * CDECL __acrt_iob_func(int index)
 fn __acrt_iob_func(emu: &mut emu::Emu) {
     let index = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "wincrt!__acrt_iob_func index: 0x{:x}",
-        index
-    );
+    log_red!(emu, "wincrt!__acrt_iob_func index: 0x{:x}", index);
 
     // TODO: Implement this
     emu.regs_mut().rax = 0;
@@ -284,22 +287,23 @@ fn realloc(emu: &mut emu::Emu) {
 
     if addr == 0 {
         if size == 0 {
+            emu.maps.dealloc(addr);
             emu.regs_mut().rax = 0;
             return;
         } else {
             let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
+            // normally malloc region is permission read write
             emu.maps
-                .create_map(&format!("alloc_{:x}", base), base, size)
+                .create_map(
+                    &format!("alloc_{:x}", base),
+                    base,
+                    size,
+                    Permission::READ_WRITE,
+                )
                 .expect("msvcrt!malloc cannot create map");
 
-            log_red!(
-        emu,
-        "msvcrt!realloc 0x{:x} {} =0x{:x}",
-        addr,
-        size,
-        base
-    );
+            log_red!(emu, "msvcrt!realloc 0x{:x} {} =0x{:x}", addr, size, base);
 
             emu.regs_mut().rax = base;
             return;
@@ -307,27 +311,27 @@ fn realloc(emu: &mut emu::Emu) {
     }
 
     if size == 0 {
-        log_red!(
-        emu,
-        "msvcrt!realloc 0x{:x} {} =0x1337",
-        addr,
-        size
-    );
+        log_red!(emu, "msvcrt!realloc 0x{:x} {} =0x1337", addr, size);
 
         emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
         return;
     }
 
+    let new_addr = emu.maps.alloc(size).expect("msvcrt!realloc out of memory");
     let mem = emu
         .maps
         .get_mem_by_addr_mut(addr)
         .expect("msvcrt!realloc error getting mem");
+    let old_permission = mem.permission();
     let prev_size = mem.size();
 
-    let new_addr = emu.maps.alloc(size).expect("msvcrt!realloc out of memory");
-
     emu.maps
-        .create_map(&format!("alloc_{:x}", new_addr), new_addr, size)
+        .create_map(
+            &format!("alloc_{:x}", new_addr),
+            new_addr,
+            size,
+            old_permission,
+        )
         .expect("msvcrt!realloc cannot create map");
 
     emu.maps.memcpy(new_addr, addr, prev_size);
@@ -345,10 +349,7 @@ fn realloc(emu: &mut emu::Emu) {
 }
 
 fn set_invalid_parameter_handler(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "wincrt!_set_invalid_parameter_handler"
-    );
+    log_red!(emu, "wincrt!_set_invalid_parameter_handler");
     emu.regs_mut().rax = 0;
 }
 
@@ -363,15 +364,15 @@ fn malloc(emu: &mut emu::Emu) {
     let base = emu.maps.alloc(size).expect("msvcrt!malloc out of memory");
 
     emu.maps
-        .create_map(&format!("alloc_{:x}", base), base, size)
+        .create_map(
+            &format!("alloc_{:x}", base),
+            base,
+            size,
+            Permission::READ_WRITE,
+        )
         .expect("msvcrt!malloc cannot create map");
 
-    log_red!(
-        emu,
-        "msvcrt!malloc {} =0x{:x}",
-        size,
-        base
-    );
+    log_red!(emu, "msvcrt!malloc {} =0x{:x}", size, base);
 
     emu.regs_mut().rax = base;
 }
@@ -384,11 +385,7 @@ int _crt_atexit(
 fn _crt_atexit(emu: &mut emu::Emu) {
     let function = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "wincrt!_crt_atexit function: 0x{:x}",
-        function
-    );
+    log_red!(emu, "wincrt!_crt_atexit function: 0x{:x}", function);
     // TODO: Implement this
     emu.regs_mut().rax = 0;
 }

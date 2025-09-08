@@ -1,6 +1,5 @@
-
-use crate::{constants, emu};
 use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
+use crate::{constants, emu};
 
 pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx as u64;
@@ -76,7 +75,12 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     // 5. Check output buffer size
     if cb_multi_byte < input_len as u64 {
         // Set last error to ERROR_INSUFFICIENT_BUFFER
-        log::warn!("{} buffer too small for result cb_multi_byte: {} input_len: {}", emu.pos, cb_multi_byte, input_len);
+        log::warn!(
+            "{} buffer too small for result cb_multi_byte: {} input_len: {}",
+            emu.pos,
+            cb_multi_byte,
+            input_len
+        );
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs_mut().rax = 0;
@@ -85,7 +89,9 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
 
     // 6. Perform the actual conversion
     if lp_multi_byte_str > 0 && !s.is_empty() {
-        if lp_multi_byte_str < emu.cfg.stack_addr || lp_multi_byte_str > emu.cfg.stack_addr + 0x030000 {
+        if lp_multi_byte_str < emu.cfg.stack_addr
+            || lp_multi_byte_str > emu.cfg.stack_addr + 0x030000
+        {
             emu.maps.write_string(lp_multi_byte_str, &s);
         }
 
@@ -107,11 +113,11 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     // LOG THE INPUT WIDE STRING
     if lp_wide_char_str > 0 && !s.is_empty() {
         log_red!(
-        emu,
-        "Input wide string: \"{}\" (length: {} characters)",
-        s.escape_debug(),
-        // This will show escape sequences for non-printable chars
+            emu,
+            "Input wide string: \"{}\" (length: {} characters)",
+            s.escape_debug(),
+            // This will show escape sequences for non-printable chars
             input_len
-    );
+        );
     }
 }

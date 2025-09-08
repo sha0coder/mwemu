@@ -61,10 +61,7 @@ fn StartServiceCtrlDispatcherA(emu: &mut emu::Emu) {
     let service_name = emu.maps.read_dword((service_table_entry_ptr+4) as u64)
         .expect("advapi32!StartServiceCtrlDispatcherA error reading service_name");*/
 
-    log_red!(
-        emu,
-        "advapi321!StartServiceCtrlDispatcherA"
-    );
+    log_red!(emu, "advapi321!StartServiceCtrlDispatcherA");
 
     emu.stack_pop32(false);
     emu.regs_mut().set_eax(1);
@@ -76,10 +73,7 @@ fn StartServiceCtrlDispatcherW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("advapi32!StartServiceCtrlDispatcherW error reading service_table_entry pointer");
 
-    log_red!(
-        emu,
-        "advapi321!StartServiceCtrlDispatcherW"
-    );
+    log_red!(emu, "advapi321!StartServiceCtrlDispatcherW");
 
     emu.stack_pop32(false);
     emu.regs_mut().set_eax(1);
@@ -268,10 +262,7 @@ fn CryptEncrypt(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 24)
         .expect("advapi32!CryptEncrypt error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptEncrypt"
-    );
+    log_red!(emu, "advapi32!CryptEncrypt");
 
     for _ in 0..7 {
         emu.stack_pop32(false);
@@ -310,10 +301,7 @@ fn CryptDecrypt(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 24)
         .expect("advapi32!CryptDecrypt error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptDecrypt"
-    );
+    log_red!(emu, "advapi32!CryptDecrypt");
 
     for _ in 0..7 {
         emu.stack_pop32(false);
@@ -332,10 +320,7 @@ fn CryptReleaseContext(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!CryptReleaseContext error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptReleaseContext"
-    );
+    log_red!(emu, "advapi32!CryptReleaseContext");
 
     helper::handler_close(hndl);
 
@@ -434,10 +419,7 @@ fn CryptGetHashParam(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptGetHashParam error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptGetHashParam"
-    );
+    log_red!(emu, "advapi32!CryptGetHashParam");
 
     for _ in 0..5 {
         emu.stack_pop32(false);
@@ -467,10 +449,7 @@ fn CryptGetKeyParam(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptGetKeyParam error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptGetKeyParam"
-    );
+    log_red!(emu, "advapi32!CryptGetKeyParam");
 
     for _ in 0..5 {
         emu.stack_pop32(false);
@@ -504,10 +483,7 @@ fn CryptImportKey(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptImportKey error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptImportKey"
-    );
+    log_red!(emu, "advapi32!CryptImportKey");
 
     for _ in 0..6 {
         emu.stack_pop32(false);
@@ -541,10 +517,7 @@ fn CryptSignHashA(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashA error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptSignHashA"
-    );
+    log_red!(emu, "advapi32!CryptSignHashA");
 
     for _ in 0..6 {
         emu.stack_pop32(false);
@@ -578,10 +551,7 @@ fn CryptSignHashW(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("advapi32!CryptSignHashW error reading param") as u64;
 
-    log_red!(
-        emu,
-        "advapi32!CryptSignHashW"
-    );
+    log_red!(emu, "advapi32!CryptSignHashW");
 
     for _ in 0..6 {
         emu.stack_pop32(false);
@@ -620,11 +590,7 @@ fn CryptHashData(emu: &mut emu::Emu) {
         helper::handler_put_bytes(hhash, b"deadcafebabe");
     }
 
-    log_red!(
-        emu,
-        "advapi32!CryptHashData {}",
-        hex_hash
-    );
+    log_red!(emu, "advapi32!CryptHashData {}", hex_hash);
 
     for _ in 0..4 {
         emu.stack_pop32(false);
@@ -663,11 +629,7 @@ fn CryptDeriveKey(emu: &mut emu::Emu) {
     }
     helper::handler_put_bytes(handle, &vec![0x41u8; alg_len]);
 
-    log_red!(
-        emu,
-        "advapi32!CryptDeriveKey {}",
-        alg
-    );
+    log_red!(emu, "advapi32!CryptDeriveKey {}", alg);
 
     for _ in 0..5 {
         emu.stack_pop32(false);

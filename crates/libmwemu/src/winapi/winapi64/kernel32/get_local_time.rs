@@ -22,8 +22,5 @@ pub fn GetLocalTime(emu: &mut emu::Emu) {
 
     emu.maps.write_bytes(ptr, buffer.to_vec());
 
-    log_red!(
-        emu,
-        "kernel32!GetLocalTime"
-    );
+    log_red!(emu, "kernel32!GetLocalTime");
 }

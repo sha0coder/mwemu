@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
-use crate::thread_context::ThreadContext;
 use crate::eflags::Eflags;
 use crate::flags::Flags;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
+use crate::thread_context::ThreadContext;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableThreadContext {
@@ -29,7 +29,7 @@ pub struct SerializableThreadContext {
     pub tls64: Vec<u64>,
     pub fls: Vec<u32>,
     pub fs: BTreeMap<u64, u64>,
-    pub call_stack: Vec<String>,
+    pub call_stack: Vec<(u64, u64)>, // the first address is the source of the call location and the second address is the destination of the call
 }
 
 impl From<&ThreadContext> for SerializableThreadContext {

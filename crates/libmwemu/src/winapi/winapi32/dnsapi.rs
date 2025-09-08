@@ -64,11 +64,7 @@ fn DnsQuery_A(emu: &mut emu::Emu) {
 
     let name = emu.maps.read_string(name_ptr);
 
-    log_red!(
-        emu,
-        "dnsapi!DnsQuery_A '{}'",
-        name
-    );
+    log_red!(emu, "dnsapi!DnsQuery_A '{}'", name);
 
     emu.regs_mut().rax = 1;
 }
@@ -101,11 +97,7 @@ fn DnsQuery_W(emu: &mut emu::Emu) {
 
     let name = emu.maps.read_wide_string(name_ptr);
 
-    log_red!(
-        emu,
-        "dnsapi!DnsQuery_W '{}'",
-        name
-    );
+    log_red!(emu, "dnsapi!DnsQuery_W '{}'", name);
 
     emu.regs_mut().rax = 1;
 }

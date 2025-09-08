@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 //use crate::constants::*;
 //use crate::winapi::helper;
 use crate::serialization;
@@ -44,18 +45,13 @@ fn __register_frame_info(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("advapi32!__register_frame_info error reading param");
 
-    log_red!(
-        emu,
-        "libgcc!__register_frame_info {:x} {:x}",
-        p1,
-        p2
-    );
+    log_red!(emu, "libgcc!__register_frame_info {:x} {:x}", p1, p2);
 
     let mem = match emu.maps.get_mem_by_addr_mut(0x40E198) {
         Some(m) => m,
         None => emu
             .maps
-            .create_map("glob1", 0x40E198, 100)
+            .create_map("glob1", 0x40E198, 100, Permission::READ_WRITE_EXECUTE)
             .expect("cannot create glob1 map"),
     };
 
@@ -73,11 +69,7 @@ fn __deregister_frame_info(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("advapi32!__deregister_frame_info error reading param");
 
-    log_red!(
-        emu,
-        "libgcc!__deregister_frame_info {:x}",
-        p1
-    );
+    log_red!(emu, "libgcc!__deregister_frame_info {:x}", p1);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;

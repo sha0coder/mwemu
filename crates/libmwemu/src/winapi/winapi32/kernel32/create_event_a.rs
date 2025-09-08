@@ -20,11 +20,7 @@ pub fn CreateEventA(emu: &mut emu::Emu) {
 
     let name = emu.maps.read_string(name_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!CreateEventA `{}`",
-        name
-    );
+    log_red!(emu, "kernel32!CreateEventA `{}`", name);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

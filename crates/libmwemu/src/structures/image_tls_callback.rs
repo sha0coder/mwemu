@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub struct ImageTlsCallback {
     // every tls callback has this structure

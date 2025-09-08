@@ -625,16 +625,10 @@ fn HttpSendRequestA(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 16)
         .expect("wininet!HttpSendRequestA cannot read opt_len");
 
-
     let hdrs = emu.maps.read_string(hdrs_ptr);
     let opt = emu.maps.read_string(opt_ptr);
 
-    log_red!(
-        emu,
-        "wininet!HttpSendRequestA hdrs: {} opt: {}",
-        hdrs,
-        opt
-    );
+    log_red!(emu, "wininet!HttpSendRequestA hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
         log::info!("\tinvalid handle.");
@@ -678,12 +672,7 @@ fn HttpSendRequestW(emu: &mut emu::Emu) {
     let hdrs = emu.maps.read_wide_string(hdrs_ptr);
     let opt = emu.maps.read_wide_string(opt_ptr);
 
-    log_red!(
-        emu,
-        "wininet!HttpSendRequestW hdrs: {} opt: {}",
-        hdrs,
-        opt
-    );
+    log_red!(emu, "wininet!HttpSendRequestW hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
         log::info!("\tinvalid handle.");
@@ -708,11 +697,7 @@ fn InternetErrorDlg(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 8)
         .expect("wininet!InternetErrorDlg cannot read error");
 
-    log_red!(
-        emu,
-        "wininet!InternetErrorDlg err: {}",
-        err
-    );
+    log_red!(emu, "wininet!InternetErrorDlg err: {}", err);
 
     for _ in 0..5 {
         emu.stack_pop32(false);
@@ -816,11 +801,7 @@ fn InternetCloseHandle(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("wininet!InternetCloseHandle cannot read handle") as u64;
 
-    log_red!(
-        emu,
-        "wininet!InternetCloseHandle handle: {:x}",
-        handle
-    );
+    log_red!(emu, "wininet!InternetCloseHandle handle: {:x}", handle);
 
     helper::handler_close(handle);
     emu.stack_pop32(false);
@@ -847,11 +828,7 @@ fn InternetCrackUrlA(emu: &mut emu::Emu) {
 
     let url = emu.maps.read_string(url_ptr);
 
-    log_red!(
-        emu,
-        "wininet!InternetCrackUrlA url: `{}`",
-        url
-    );
+    log_red!(emu, "wininet!InternetCrackUrlA url: `{}`", url);
 
     for _ in 0..4 {
         emu.stack_pop32(false);
@@ -879,11 +856,7 @@ fn InternetCrackUrlW(emu: &mut emu::Emu) {
 
     let url = emu.maps.read_wide_string(url_ptr);
 
-    log_red!(
-        emu,
-        "wininet!InternetCrackUrlW url: `{}`",
-        url
-    );
+    log_red!(emu, "wininet!InternetCrackUrlW url: `{}`", url);
 
     for _ in 0..4 {
         emu.stack_pop32(false);

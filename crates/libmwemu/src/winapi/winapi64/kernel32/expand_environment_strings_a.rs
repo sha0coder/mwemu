@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
@@ -8,11 +7,7 @@ pub fn ExpandEnvironmentStringsA(emu: &mut emu::Emu) {
 
     let src = emu.maps.read_string(src_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!ExpandEnvironmentStringsA `{}`",
-        src
-    );
+    log_red!(emu, "kernel32!ExpandEnvironmentStringsA `{}`", src);
     // TODO: expand typical environment varsl.
     emu.regs_mut().rax = 1;
 }

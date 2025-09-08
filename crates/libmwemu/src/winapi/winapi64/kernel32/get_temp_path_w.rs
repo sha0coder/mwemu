@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn GetTempPathW(emu: &mut emu::Emu) {

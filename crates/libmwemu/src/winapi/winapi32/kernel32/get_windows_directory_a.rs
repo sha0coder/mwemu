@@ -10,10 +10,7 @@ pub fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!GetWindowsDirectoryA: error reading param") as u64;
 
-    log_red!(
-        emu,
-        "kernel32!GetWindowsDirectoryA"
-    );
+    log_red!(emu, "kernel32!GetWindowsDirectoryA");
 
     emu.maps.write_string(ptr, "C:\\Windows");
     emu.regs_mut().rax = size;

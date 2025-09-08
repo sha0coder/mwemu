@@ -7,10 +7,22 @@ use crate::console::Console;
 use crate::constants;
 use crate::context::context64::Context64;
 use crate::emu;
+use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi64::kernel32;
+
+const PAGE_NOACCESS: u32 = 0x01;
+const PAGE_READONLY: u32 = 0x02;
+const PAGE_READWRITE: u32 = 0x04;
+const PAGE_WRITECOPY: u32 = 0x08;
+const PAGE_EXECUTE: u32 = 0x10;
+const PAGE_EXECUTE_READ: u32 = 0x20;
+const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+const PAGE_EXECUTE_WRITECOPY: u32 = 0x80;
+const PAGE_GUARD: u32 = 0x100;
+const PAGE_NOCACHE: u32 = 0x200;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
@@ -93,6 +105,34 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
 
     let addr_ptr = emu.regs().rcx;
     let size_ptr = emu.regs().rdx;
+    let protection_offset = 0x30;
+    let protection_addr = emu.regs().rsp + protection_offset;
+    let protect_value = emu
+        .maps
+        .read_dword(protection_addr)
+        .expect("Failed to read Protection argument at NtAllocateVirtualMemory");
+
+    let can_read = (protect_value
+        & (PAGE_READONLY
+            | PAGE_READWRITE
+            | PAGE_WRITECOPY
+            | PAGE_EXECUTE_READ
+            | PAGE_EXECUTE_READWRITE
+            | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
+    let can_write = (protect_value
+        & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
+    let can_execute = (protect_value
+        & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        != 0;
+
+    // Special cases
+    let no_access = (protect_value & PAGE_NOACCESS) != 0;
+    let guard_page = (protect_value & PAGE_GUARD) != 0;
+    let no_cache = (protect_value & PAGE_NOCACHE) != 0;
 
     let addr = emu
         .maps
@@ -135,6 +175,7 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
             format!("valloc_{:x}", alloc_addr).as_str(),
             alloc_addr,
             size,
+            Permission::from_flags(can_read, can_write, can_execute),
         )
         .expect("ntdll!NtAllocateVirtualMemory cannot create map");
 
@@ -151,12 +192,7 @@ fn stricmp(emu: &mut emu::Emu) {
     let str1 = emu.maps.read_string(str1ptr);
     let str2 = emu.maps.read_string(str2ptr);
 
-    log_red!(
-        emu,
-        "ntdll!stricmp  '{}'=='{}'?",
-        str1,
-        str2
-    );
+    log_red!(emu, "ntdll!stricmp  '{}'=='{}'?", str1, str2);
 
     if str1 == str2 {
         emu.regs_mut().rax = 0;
@@ -169,11 +205,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
     let handle = emu.regs().rcx;
     let addr = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryVirtualMemory addr: 0x{:x}",
-        addr
-    );
+    log_red!(emu, "ntdll!NtQueryVirtualMemory addr: 0x{:x}", addr);
 
     if handle != 0xffffffff {
         log::info!("\tusing handle of remote process {:x}", handle);
@@ -219,21 +251,22 @@ fn LdrLoadDll(emu: &mut emu::Emu) {
     let libaddr_ptr = emu.regs().r9;
 
     let libname = emu.maps.read_wide_string(libname_ptr);
-    log_red!(
-        emu,
-        "ntdll!LdrLoadDll   lib: {}",
-        libname
-    );
+    log_red!(emu, "ntdll!LdrLoadDll   lib: {}", libname);
 
     if libname == "user32.dll" {
         let user32 = emu
             .maps
-            .create_map("user32", 0x773b0000, 0x1000)
+            .create_map("user32", 0x773b0000, 0x1000, Permission::READ_WRITE)
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32.load("maps32/user32.bin");
         let user32_text = emu
             .maps
-            .create_map("user32_text", 0x773b1000, 0x1000)
+            .create_map(
+                "user32_text",
+                0x773b1000,
+                0x1000,
+                Permission::READ_WRITE_EXECUTE,
+            )
             .expect("ntdll!LdrLoadDll_gul cannot create map");
         user32_text.load("maps32/user32_text.bin");
 
@@ -283,10 +316,7 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
         .read_qword(ctx_ptr)
         .expect("ntdll_NtGetContextThread: error reading context ptr");
 
-    log_red!(
-        emu,
-        "ntdll_NtGetContextThread   ctx:"
-    );
+    log_red!(emu, "ntdll_NtGetContextThread   ctx:");
 
     let ctx = Context64::new(&emu.regs());
     ctx.save(ctx_ptr2, &mut emu.maps);
@@ -295,10 +325,7 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
 }
 
 fn RtlExitUserThread(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ntdll!RtlExitUserThread"
-    );
+    log_red!(emu, "ntdll!RtlExitUserThread");
     Console::spawn_console(emu);
     std::process::exit(1);
 }
@@ -349,9 +376,11 @@ fn RtlAllocateHeap(emu: &mut emu::Emu) {
         Some(a) => a,
         None => panic!("/!\\ out of memory cannot allocate ntdll!RtlAllocateHeap"),
     };
+
+    // TODO: fix this from READ_WRITE_EXECUTE to maybe READ_WRITE
     let map_name = format!("valloc_{:x}", alloc_addr);
     emu.maps
-        .create_map(&map_name, alloc_addr, size)
+        .create_map(&map_name, alloc_addr, size, Permission::READ_WRITE)
         .expect("ntdll!RtlAllocateHeap cannot create map");
     //}
 
@@ -410,12 +439,7 @@ fn sscanf(emu: &mut emu::Emu) {
     let buffer = emu.maps.read_string(buffer_ptr);
     let fmt = emu.maps.read_string(fmt_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!sscanf out_buff: `{}` fmt: `{}`",
-        buffer,
-        fmt
-    );
+    log_red!(emu, "ntdll!sscanf out_buff: `{}` fmt: `{}`", buffer, fmt);
 
     let rust_fmt = fmt
         .replace("%x", "{x}")
@@ -431,10 +455,7 @@ fn sscanf(emu: &mut emu::Emu) {
 }
 
 fn NtGetTickCount(emu: &mut emu::Emu) {
-    log_red!(
-        emu,
-        "ntdll!NtGetTickCount"
-    );
+    log_red!(emu, "ntdll!NtGetTickCount");
     emu.regs_mut().rax = emu.tick as u64;
 }
 
@@ -442,10 +463,7 @@ fn NtQueryPerformanceCounter(emu: &mut emu::Emu) {
     let perf_counter_ptr = emu.regs().rcx;
     let perf_freq_ptr = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryPerformanceCounter"
-    );
+    log_red!(emu, "ntdll!NtQueryPerformanceCounter");
 
     emu.maps.write_dword(perf_counter_ptr, 0);
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
@@ -481,7 +499,7 @@ RtlDosPathNameToNtPathName_U(IN PCWSTR DosName,
 
 fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
     let dos_path_name_ptr = emu.regs().rcx;
-    let nt_path_name_ptr = emu.regs().rdx;  // This should point to a UNICODE_STRING structure
+    let nt_path_name_ptr = emu.regs().rdx; // This should point to a UNICODE_STRING structure
     let nt_file_name_part_ptr = emu.regs().r8;
     let curdir_ptr = emu.regs().r9;
 
@@ -505,50 +523,76 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
         format!("\\??\\{}", dos_path_name)
     };
 
-    log_red!(emu, "Converted DOS path '{}' to NT path '{}'", dos_path_name, nt_path);
+    log_red!(
+        emu,
+        "Converted DOS path '{}' to NT path '{}'",
+        dos_path_name,
+        nt_path
+    );
 
     if nt_path_name_ptr > 0 {
         // nt_path_name_ptr points to a UNICODE_STRING structure that we need to populate
-        
+
         // Calculate string length in bytes (UTF-16, so chars * 2)
         let string_length_bytes = nt_path.encode_utf16().count() * 2;
-        
+
         // Allocate buffer for the NT path string
-        match emu.maps.alloc((string_length_bytes + 2) as u64) { // +2 for null terminator
+        match emu.maps.alloc((string_length_bytes + 2) as u64) {
+            // +2 for null terminator
             Some(string_buffer_addr) => {
                 // TODO: only create if it does not already exist
                 // Create the string buffer map
-                emu.maps.create_map(&format!("nt_path_string_{:x}", string_buffer_addr), string_buffer_addr, (string_length_bytes + 2) as u64)
+                emu.maps
+                    .create_map(
+                        &format!("nt_path_string_{:x}", string_buffer_addr),
+                        string_buffer_addr,
+                        (string_length_bytes + 2) as u64,
+                        Permission::READ_WRITE,
+                    )
                     .expect("Failed to create nt_path_string map");
-                
+
                 // Write the NT path string to the allocated buffer
                 emu.maps.write_wide_string(string_buffer_addr, &nt_path);
-                
+
                 // Now populate the UNICODE_STRING structure at nt_path_name_ptr
                 // typedef struct _UNICODE_STRING {
                 //     USHORT Length;        // +0x00
-                //     USHORT MaximumLength; // +0x02  
+                //     USHORT MaximumLength; // +0x02
                 //     PWSTR  Buffer;        // +0x08
                 // } UNICODE_STRING;
-                
-                emu.maps.write_word(nt_path_name_ptr, string_length_bytes as u16);           // Length
-                emu.maps.write_word(nt_path_name_ptr + 2, (string_length_bytes + 2) as u16); // MaximumLength
-                emu.maps.write_qword(nt_path_name_ptr + 8, string_buffer_addr);              // Buffer
-                
-                log_red!(emu, "Created UNICODE_STRING: Length={}, MaxLength={}, Buffer=0x{:x}", 
-                         string_length_bytes, string_length_bytes + 2, string_buffer_addr);
-                
+
+                emu.maps
+                    .write_word(nt_path_name_ptr, string_length_bytes as u16); // Length
+                emu.maps
+                    .write_word(nt_path_name_ptr + 2, (string_length_bytes + 2) as u16); // MaximumLength
+                emu.maps
+                    .write_qword(nt_path_name_ptr + 8, string_buffer_addr); // Buffer
+
+                log_red!(
+                    emu,
+                    "Created UNICODE_STRING: Length={}, MaxLength={}, Buffer=0x{:x}",
+                    string_length_bytes,
+                    string_length_bytes + 2,
+                    string_buffer_addr
+                );
+
                 // Set nt_file_name_part_ptr if requested
                 if nt_file_name_part_ptr > 0 {
                     // Find the last backslash to get filename part
                     if let Some(last_backslash_pos) = nt_path.rfind('\\') {
                         let filename_offset = (last_backslash_pos + 1) * 2; // Convert to byte offset
                         let filename_part_addr = string_buffer_addr + filename_offset as u64;
-                        emu.maps.write_qword(nt_file_name_part_ptr, filename_part_addr);
-                        log_red!(emu, "Set filename part pointer to 0x{:x}", filename_part_addr);
+                        emu.maps
+                            .write_qword(nt_file_name_part_ptr, filename_part_addr);
+                        log_red!(
+                            emu,
+                            "Set filename part pointer to 0x{:x}",
+                            filename_part_addr
+                        );
                     } else {
                         // No backslash found, filename part is the whole string
-                        emu.maps.write_qword(nt_file_name_part_ptr, string_buffer_addr);
+                        emu.maps
+                            .write_qword(nt_file_name_part_ptr, string_buffer_addr);
                     }
                 }
             }
@@ -589,13 +633,34 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let access_mask = emu.regs().rdx;
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
-    let alloc_sz = emu.maps.read_qword(emu.regs().rsp + 0x20).expect("ntdll!NtCreateFile error reading alloc_sz param");
-    let fattrib = emu.maps.read_dword(emu.regs().rsp + 0x28).expect("ntdll!NtCreateFile error reading fattrib param");
-    let share_access = emu.maps.read_dword(emu.regs().rsp + 0x30).expect("ntdll!NtCreateFile error reading share_access param");
-    let create_disp = emu.maps.read_dword(emu.regs().rsp + 0x38).expect("ntdll!NtCreateFile error reading create_disp param");
-    let create_opt = emu.maps.read_dword(emu.regs().rsp + 0x40).expect("ntdll!NtCreateFile error reading create_opt param");
-    let ea_buff = emu.maps.read_qword(emu.regs().rsp + 0x48).expect("ntdll!NtCreateFile error reading ea_buff param");
-    let ea_len = emu.maps.read_dword(emu.regs().rsp + 0x50).expect("ntdll!NtCreateFile error reading ea_len param");
+    let alloc_sz = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x20)
+        .expect("ntdll!NtCreateFile error reading alloc_sz param");
+    let fattrib = emu
+        .maps
+        .read_dword(emu.regs().rsp + 0x28)
+        .expect("ntdll!NtCreateFile error reading fattrib param");
+    let share_access = emu
+        .maps
+        .read_dword(emu.regs().rsp + 0x30)
+        .expect("ntdll!NtCreateFile error reading share_access param");
+    let create_disp = emu
+        .maps
+        .read_dword(emu.regs().rsp + 0x38)
+        .expect("ntdll!NtCreateFile error reading create_disp param");
+    let create_opt = emu
+        .maps
+        .read_dword(emu.regs().rsp + 0x40)
+        .expect("ntdll!NtCreateFile error reading create_opt param");
+    let ea_buff = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x48)
+        .expect("ntdll!NtCreateFile error reading ea_buff param");
+    let ea_len = emu
+        .maps
+        .read_dword(emu.regs().rsp + 0x50)
+        .expect("ntdll!NtCreateFile error reading ea_len param");
 
     log_red!(emu, "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
         emu.pos,
@@ -623,8 +688,13 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     } OBJECT_ATTRIBUTES;
     */
     let filename = if oattrib != 0 {
-        log_red!(emu, "** {} Reading OBJECT_ATTRIBUTES at 0x{:x}", emu.pos, oattrib);
-        
+        log_red!(
+            emu,
+            "** {} Reading OBJECT_ATTRIBUTES at 0x{:x}",
+            emu.pos,
+            oattrib
+        );
+
         // Dump the OBJECT_ATTRIBUTES structure first
         log_red!(emu, "** {} OBJECT_ATTRIBUTES structure dump:", emu.pos);
         for i in (0..0x30).step_by(8) {
@@ -632,19 +702,28 @@ fn NtCreateFile(emu: &mut emu::Emu) {
                 log_red!(emu, "** {}   +0x{:02x}: 0x{:016x}", emu.pos, i, qword_val);
             }
         }
-        
+
         // Read RootDirectory and ObjectName fields
         let root_directory = emu.maps.read_qword(oattrib + 0x08).unwrap_or(0);
         let obj_name_ptr = emu.maps.read_qword(oattrib + 0x10).unwrap_or(0);
-        
-        log_red!(emu, "** {} RootDirectory: 0x{:x}, ObjectName pointer: 0x{:x}", 
-                 emu.pos, root_directory, obj_name_ptr);
-        
+
+        log_red!(
+            emu,
+            "** {} RootDirectory: 0x{:x}, ObjectName pointer: 0x{:x}",
+            emu.pos,
+            root_directory,
+            obj_name_ptr
+        );
+
         // Handle different scenarios
         if obj_name_ptr == 0 {
             // Case 1: ObjectName is NULL - unnamed object
-            log_red!(emu, "** {} ObjectName is NULL - creating unnamed object", emu.pos);
-            
+            log_red!(
+                emu,
+                "** {} ObjectName is NULL - creating unnamed object",
+                emu.pos
+            );
+
             if root_directory != 0 {
                 // Creating unnamed object relative to root directory
                 String::from("<unnamed_object_with_root>")
@@ -654,30 +733,52 @@ fn NtCreateFile(emu: &mut emu::Emu) {
             }
         } else if !emu.maps.is_mapped(obj_name_ptr) {
             // Case 2: ObjectName pointer is invalid
-            log_red!(emu, "** {} ObjectName pointer 0x{:x} is not mapped", emu.pos, obj_name_ptr);
+            log_red!(
+                emu,
+                "** {} ObjectName pointer 0x{:x} is not mapped",
+                emu.pos,
+                obj_name_ptr
+            );
             String::from("<invalid_objname_ptr>")
         } else {
             // Case 3: ObjectName pointer is valid - read UNICODE_STRING
-            log_red!(emu, "** {} Reading UNICODE_STRING at 0x{:x}", emu.pos, obj_name_ptr);
-            
+            log_red!(
+                emu,
+                "** {} Reading UNICODE_STRING at 0x{:x}",
+                emu.pos,
+                obj_name_ptr
+            );
+
             // Debug: dump UNICODE_STRING structure
             for i in (0..16).step_by(8) {
                 if let Some(qword_val) = emu.maps.read_qword(obj_name_ptr + i) {
-                    log_red!(emu, "** {} UNICODE_STRING +0x{:02x}: 0x{:016x}", emu.pos, i, qword_val);
+                    log_red!(
+                        emu,
+                        "** {} UNICODE_STRING +0x{:02x}: 0x{:016x}",
+                        emu.pos,
+                        i,
+                        qword_val
+                    );
                 }
             }
-            
+
             let length = emu.maps.read_word(obj_name_ptr).unwrap_or(0);
             let max_length = emu.maps.read_word(obj_name_ptr + 2).unwrap_or(0);
             let buffer_ptr = emu.maps.read_qword(obj_name_ptr + 8).unwrap_or(0);
-            
-            log_red!(emu, "** {} UNICODE_STRING: Length={} MaxLength={} Buffer=0x{:x}", 
-                     emu.pos, length, max_length, buffer_ptr);
-            
+
+            log_red!(
+                emu,
+                "** {} UNICODE_STRING: Length={} MaxLength={} Buffer=0x{:x}",
+                emu.pos,
+                length,
+                max_length,
+                buffer_ptr
+            );
+
             if buffer_ptr == 0 {
                 // Case 4: UNICODE_STRING.Buffer is NULL
                 log_red!(emu, "** {} UNICODE_STRING Buffer is NULL", emu.pos);
-                
+
                 if root_directory != 0 {
                     String::from("<null_buffer_with_root>")
                 } else {
@@ -685,8 +786,12 @@ fn NtCreateFile(emu: &mut emu::Emu) {
                 }
             } else if length == 0 {
                 // Case 5: UNICODE_STRING.Length is 0 (empty string)
-                log_red!(emu, "** {} UNICODE_STRING Length is 0 (empty string)", emu.pos);
-                
+                log_red!(
+                    emu,
+                    "** {} UNICODE_STRING Length is 0 (empty string)",
+                    emu.pos
+                );
+
                 if root_directory != 0 {
                     String::from("<empty_string_with_root>")
                 } else {
@@ -694,15 +799,20 @@ fn NtCreateFile(emu: &mut emu::Emu) {
                 }
             } else if !emu.maps.is_mapped(buffer_ptr) {
                 // Case 6: UNICODE_STRING.Buffer pointer is invalid
-                log_red!(emu, "** {} UNICODE_STRING Buffer 0x{:x} is not mapped", emu.pos, buffer_ptr);
+                log_red!(
+                    emu,
+                    "** {} UNICODE_STRING Buffer 0x{:x} is not mapped",
+                    emu.pos,
+                    buffer_ptr
+                );
                 String::from("<invalid_buffer_ptr>")
             } else {
                 // Case 7: Valid UNICODE_STRING with valid buffer - read the string
                 let char_count = (length / 2) as usize;
                 let filename_str = emu.maps.read_wide_string_n(buffer_ptr, char_count);
-                
+
                 log_red!(emu, "** {} Filename: '{}'", emu.pos, filename_str);
-                
+
                 if root_directory != 0 {
                     // Relative path to root directory
                     format!("<root_0x{:x}>\\{}", root_directory, filename_str)
@@ -717,7 +827,12 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         String::from("<null_oattrib>")
     };
 
-    log_red!(emu, "** {} ntdll!NtCreateFile resolved filename: '{}'", emu.pos, filename);
+    log_red!(
+        emu,
+        "** {} ntdll!NtCreateFile resolved filename: '{}'",
+        emu.pos,
+        filename
+    );
 
     if out_hndl_ptr > 0 {
         emu.maps
@@ -732,18 +847,10 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     let flags = emu.regs().rdx;
     let base_addr = emu.regs().r8;
 
-    log_red!(
-        emu,
-        "ntdll!RtlFreeHeap 0x{}",
-        base_addr
-    );
+    log_red!(emu, "ntdll!RtlFreeHeap 0x{}", base_addr);
 
     helper::handler_close(hndl);
-    let name = emu
-        .maps
-        .get_addr_name(base_addr)
-        .unwrap_or("")
-        .to_string();
+    let name = emu.maps.get_addr_name(base_addr).unwrap_or("").to_string();
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
             log::info!("map not allocated, so cannot free it.");
@@ -766,11 +873,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
 fn RtlFreeAnsiString(emu: &mut emu::Emu) {
     let ptr = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "ntdll!RtlFreeAnsiString 0x{}",
-        ptr
-    );
+    log_red!(emu, "ntdll!RtlFreeAnsiString 0x{}", ptr);
 
     // TODO: no-op?
 }
@@ -785,10 +888,7 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtQueryInformationFile cannot read fileinfoctls param");
 
-    log_red!(
-        emu,
-        "ntdll!NtQueryInformationFile"
-    );
+    log_red!(emu, "ntdll!NtQueryInformationFile");
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
@@ -874,7 +974,15 @@ fn NtReadFile(emu: &mut emu::Emu) {
     // filename from handle
     let filename = helper::handler_get_uri(file_hndl);
 
-    log_red!(emu, "ntdll!NtReadFile {} hndl: 0x{:x} buff: 0x{:x} sz: {} off_var: 0x{:x}", filename, file_hndl, buff, len, off);
+    log_red!(
+        emu,
+        "ntdll!NtReadFile {} hndl: 0x{:x} buff: 0x{:x} sz: {} off_var: 0x{:x}",
+        filename,
+        file_hndl,
+        buff,
+        len,
+        off
+    );
 
     emu.maps.memset(buff, 0x90, len);
 
@@ -904,7 +1012,7 @@ fn NtReadFile(emu: &mut emu::Emu) {
     } else {
         panic!("TODO: read {}", filename);
     }
-    
+
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }
 
@@ -913,12 +1021,7 @@ fn NtClose(emu: &mut emu::Emu) {
 
     let uri = helper::handler_get_uri(hndl);
 
-    log_red!(
-        emu,
-        "ntdll!NtClose hndl: 0x{:x} uri: {}",
-        hndl,
-        uri
-    );
+    log_red!(emu, "ntdll!NtClose hndl: 0x{:x} uri: {}", hndl, uri);
 
     if uri.is_empty() {
         emu.regs_mut().rax = constants::STATUS_INVALID_HANDLE;
@@ -931,10 +1034,7 @@ fn RtlInitializeCriticalSectionAndSpinCount(emu: &mut emu::Emu) {
     let crit_sect = emu.regs().rcx;
     let spin_count = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "ntdll!RtlInitializeCriticalSectionAndSpinCount"
-    );
+    log_red!(emu, "ntdll!RtlInitializeCriticalSectionAndSpinCount");
 
     emu.regs_mut().rax = 1;
 }
@@ -949,12 +1049,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("ntdll!NtProtectVirtualMemory error reading old prot param");
 
-    log_red!(
-        emu,
-        "ntdll!NtProtectVirtualMemory sz: {} {}",
-        sz,
-        prot
-    );
+    log_red!(emu, "ntdll!NtProtectVirtualMemory sz: {} {}", sz, prot);
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS
 }
@@ -962,10 +1057,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
 fn RtlEnterCriticalSection(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "ntdll!RtlEnterCriticalSection"
-    );
+    log_red!(emu, "ntdll!RtlEnterCriticalSection");
 
     emu.regs_mut().rax = 1;
 }
@@ -973,10 +1065,7 @@ fn RtlEnterCriticalSection(emu: &mut emu::Emu) {
 fn RtlGetVersion(emu: &mut emu::Emu) {
     let versioninfo_ptr = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "ntdll!RtlGetVersion"
-    );
+    log_red!(emu, "ntdll!RtlGetVersion");
 
     let versioninfo = structures::OsVersionInfoExA::new(); // TODO: should this be Ex?
     versioninfo.save(versioninfo_ptr, &mut emu.maps);
@@ -989,10 +1078,7 @@ fn RtlInitializeCriticalSectionEx(emu: &mut emu::Emu) {
     let spin_count = emu.regs().rdx;
     let flags = emu.regs().r8;
 
-    log_red!(
-        emu,
-        "ntdll!RtlInitializeCriticalSectionEx"
-    );
+    log_red!(emu, "ntdll!RtlInitializeCriticalSectionEx");
 
     emu.regs_mut().rax = 1;
 }
@@ -1067,12 +1153,7 @@ fn RtlReAllocateHeap(emu: &mut emu::Emu) {
         None => 0,
     };
 
-    log_red!(
-        emu,
-        "ntdll!RtlReAllocateHeap hndl: {:x} sz: {}",
-        hndl,
-        sz
-    );
+    log_red!(emu, "ntdll!RtlReAllocateHeap hndl: {:x} sz: {}", hndl, sz);
 }
 
 fn NtFlushInstructionCache(emu: &mut emu::Emu) {
@@ -1104,11 +1185,7 @@ fn LdrGetDllHandleEx(emu: &mut emu::Emu) {
 
     let dll_name = emu.maps.read_wide_string(dll_name_ptr);
 
-    log_red!(
-        emu,
-        "ntdll!LdrGetDllHandleEx {}",
-        dll_name
-    );
+    log_red!(emu, "ntdll!LdrGetDllHandleEx {}", dll_name);
 
     let result = emu.maps.memcpy(path_ptr, dll_name_ptr, dll_name.len());
     if result == false {
@@ -1125,12 +1202,7 @@ fn NtTerminateThread(emu: &mut emu::Emu) {
     let handle = emu.regs().rcx;
     let exit_status = emu.regs().rdx;
 
-    log_red!(
-        emu,
-        "ntdll!NtTerminateThread {:x} {}",
-        handle,
-        exit_status
-    );
+    log_red!(emu, "ntdll!NtTerminateThread {:x} {}", handle, exit_status);
 
     emu.regs_mut().rax = 0;
 }
@@ -1147,10 +1219,7 @@ fn RtlAddFunctionTable(emu: &mut emu::Emu) {
     let entry_count = emu.regs().rdx;
     let base_address = emu.regs().r8;
 
-    log_red!(
-        emu,
-        "ntdll!RtlAddFunctionTable"
-    );
+    log_red!(emu, "ntdll!RtlAddFunctionTable");
 
     // TODO: do something with it
 
@@ -1208,38 +1277,33 @@ fn strlen(emu: &mut emu::Emu) {
     let s = emu.maps.read_string(s_ptr as u64);
     let l = s.len();
 
-    log_red!(
-        emu,
-        "ntdll!strlen: `{}` {}",
-        s,
-        l
-    );
+    log_red!(emu, "ntdll!strlen: `{}` {}", s, l);
 
     emu.regs_mut().rax = l as u32 as u64;
 }
 
 fn NtSetInformationThread(emu: &mut emu::Emu) {
-   let thread_handle = emu.regs().rcx;
-   let thread_info_class = emu.regs().rdx;
-   let thread_info_ptr = emu.regs().r8;
-   let thread_info_length = emu.regs().r9;
-   
-   // TODO: Parse ThreadInformationClass values:
-   //   - ThreadHideFromDebugger = 17 (common anti-debug technique)
-   //   - ThreadBreakOnTermination = 18
-   //   - ThreadPriority = 0
-   //   - ThreadBasePriority = 3
-   //   - ThreadAffinityMask = 4
-   //   - ThreadImpersonationToken = 5
-   //   - ThreadQuerySetWin32StartAddress = 9
-   //   - ThreadZeroTlsCell = 16
-   
-   // TODO: Read ThreadInformation data based on class and length
-   // TODO: Handle ThreadHideFromDebugger (sets thread to not be debugged)
-   // TODO: Handle other thread information classes as needed
-   // TODO: Validate thread_handle (GetCurrentThread() = -2, real handles > 0)
-   
-   log_red!(
+    let thread_handle = emu.regs().rcx;
+    let thread_info_class = emu.regs().rdx;
+    let thread_info_ptr = emu.regs().r8;
+    let thread_info_length = emu.regs().r9;
+
+    // TODO: Parse ThreadInformationClass values:
+    //   - ThreadHideFromDebugger = 17 (common anti-debug technique)
+    //   - ThreadBreakOnTermination = 18
+    //   - ThreadPriority = 0
+    //   - ThreadBasePriority = 3
+    //   - ThreadAffinityMask = 4
+    //   - ThreadImpersonationToken = 5
+    //   - ThreadQuerySetWin32StartAddress = 9
+    //   - ThreadZeroTlsCell = 16
+
+    // TODO: Read ThreadInformation data based on class and length
+    // TODO: Handle ThreadHideFromDebugger (sets thread to not be debugged)
+    // TODO: Handle other thread information classes as needed
+    // TODO: Validate thread_handle (GetCurrentThread() = -2, real handles > 0)
+
+    log_red!(
         emu,
         "ntdll!NtSetInformationThread handle: 0x{:x} class: {} info_ptr: 0x{:x} length: {}",
         thread_handle,
@@ -1248,10 +1312,10 @@ fn NtSetInformationThread(emu: &mut emu::Emu) {
         thread_info_length
     );
 
-   // TODO: Return appropriate NTSTATUS:
-   //   - STATUS_SUCCESS = 0x00000000
-   //   - STATUS_INVALID_HANDLE = 0xC0000008
-   //   - STATUS_INVALID_PARAMETER = 0xC000000D
-   //   - STATUS_INFO_LENGTH_MISMATCH = 0xC0000004
-   emu.regs_mut().rax = 0x00000000; // STATUS_SUCCESS for now
+    // TODO: Return appropriate NTSTATUS:
+    //   - STATUS_SUCCESS = 0x00000000
+    //   - STATUS_INVALID_HANDLE = 0xC0000008
+    //   - STATUS_INVALID_PARAMETER = 0xC000000D
+    //   - STATUS_INFO_LENGTH_MISMATCH = 0xC0000004
+    emu.regs_mut().rax = 0x00000000; // STATUS_SUCCESS for now
 }

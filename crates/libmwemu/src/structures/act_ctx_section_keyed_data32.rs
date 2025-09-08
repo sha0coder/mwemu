@@ -48,4 +48,3 @@ impl ActCtxSectionKeyedData32 {
         maps.write_bytes(addr + 44, self.assembly_metadata.to_vec());
     }
 }
-

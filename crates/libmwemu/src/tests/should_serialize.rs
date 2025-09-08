@@ -5,16 +5,14 @@ use crate::{serialization::Serialization, tests::helpers, *};
 pub fn should_serialize() {
     helpers::setup();
 
-        let handle = std::thread::Builder::new()
+    let handle = std::thread::Builder::new()
         .stack_size(1024 * 29055)
         .spawn(|| {
-
             // init
             let mut emu = emu64();
 
             // load maps
             emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-            
 
             // load binary
             emu.load_code("../../test/exe64win_msgbox.bin");
@@ -29,8 +27,8 @@ pub fn should_serialize() {
             let emu: Emu = Serialization::deserialize(&serialized);
             // assert
             assert_eq!(emu.regs().rdx, 0x1);
-            
-    }).unwrap();
+        })
+        .unwrap();
 
     handle.join().unwrap();
 }

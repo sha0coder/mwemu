@@ -26,14 +26,22 @@ pub fn peb_teb_ldr_structures_test() {
     let teb_struct = structures::TEB::load(teb_addr, &mut emu.maps);
     let ldr_struct = structures::PebLdrData::load(ldr_addr, &mut emu.maps);
 
-
-    assert_eq!(ldr_struct.in_load_order_module_list.flink, ldr_struct.in_memory_order_module_list.flink - 0x8);
-    assert_eq!(ldr_struct.in_initialization_order_module_list.flink, ldr_struct.in_memory_order_module_list.flink + 0x8);
+    assert_eq!(
+        ldr_struct.in_load_order_module_list.flink,
+        ldr_struct.in_memory_order_module_list.flink - 0x8
+    );
+    assert_eq!(
+        ldr_struct.in_initialization_order_module_list.flink,
+        ldr_struct.in_memory_order_module_list.flink + 0x8
+    );
     assert_eq!(ldr_addr, peb_struct.ldr as u64);
 
-    let mut ldr_entry = structures::LdrDataTableEntry::load(ldr_struct.in_load_order_module_list.flink as u64, &mut emu.maps);
+    let mut ldr_entry = structures::LdrDataTableEntry::load(
+        ldr_struct.in_load_order_module_list.flink as u64,
+        &mut emu.maps,
+    );
     let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
-    
+
     assert_eq!(peb_struct.image_base_addr, ntdll_addr as u32);
     assert_eq!(peb_struct.ldr, ldr_addr as u32);
     assert_eq!(peb_struct.being_debugged, 0);
@@ -44,18 +52,29 @@ pub fn peb_teb_ldr_structures_test() {
     assert_eq!(teb_struct.process_environment_block, peb_addr as u32);
     assert_eq!(teb_struct.last_error_value, 0);
     //assert!(teb_struct.environment_pointer > 0);
-    
+
     let main_pe_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
     assert!(main_pe_w.is_some());
     let main_pe = main_pe_w.unwrap();
     assert_eq!(main_pe, "exe32win_minecraft.pe");
 
+    assert_eq!(
+        ldr_entry.in_memory_order_links.flink,
+        ldr_entry.in_load_order_links.flink + 0x8
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.flink,
+        ldr_entry.in_memory_order_links.flink + 0x8
+    );
 
-    assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x8);
-    assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x8);
-
-    assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x8);
-    assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x8);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.blink,
+        ldr_entry.in_load_order_links.blink + 0x8
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.blink,
+        ldr_entry.in_memory_order_links.blink + 0x8
+    );
 
     let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
     assert!(sample_w.is_some());
@@ -63,13 +82,28 @@ pub fn peb_teb_ldr_structures_test() {
     assert_eq!(sample, "exe32win_minecraft.pe");
 
     // follow to next flink
-    ldr_entry = structures::LdrDataTableEntry::load(ldr_entry.in_load_order_links.flink as u64, &mut emu.maps);
+    ldr_entry = structures::LdrDataTableEntry::load(
+        ldr_entry.in_load_order_links.flink as u64,
+        &mut emu.maps,
+    );
 
-    assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x8);
-    assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x8);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.flink,
+        ldr_entry.in_load_order_links.flink + 0x8
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.flink,
+        ldr_entry.in_memory_order_links.flink + 0x8
+    );
 
-    assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x8);
-    assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x8);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.blink,
+        ldr_entry.in_load_order_links.blink + 0x8
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.blink,
+        ldr_entry.in_memory_order_links.blink + 0x8
+    );
 
     let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base as u64);
     assert!(sample_w.is_some());
@@ -107,7 +141,6 @@ pub fn peb_teb_ldr_structures_test() {
     assert!(ldr_addr > 0x1000);
     assert!(emu.maps.is_allocated(ldr_addr));
 
-
     let peb_struct = structures::PEB64::load(peb_addr, &mut emu.maps);
     let teb_struct = structures::TEB64::load(teb_addr, &mut emu.maps);
 
@@ -128,14 +161,24 @@ pub fn peb_teb_ldr_structures_test() {
     let mut ldr_entry = structures::LdrDataTableEntry64::load(entry_addr, &mut emu.maps);
 
     //let ntdll_addr = emu.maps.get_mem("ntdll.pe").get_base();
-    
 
+    assert_eq!(
+        ldr_entry.in_memory_order_links.flink,
+        ldr_entry.in_load_order_links.flink + 0x10
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.flink,
+        ldr_entry.in_memory_order_links.flink + 0x10
+    );
 
-    assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x10);
-    assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x10);
-
-    assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x10);
-    assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x10);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.blink,
+        ldr_entry.in_load_order_links.blink + 0x10
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.blink,
+        ldr_entry.in_memory_order_links.blink + 0x10
+    );
 
     let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base);
     assert!(sample_w.is_some());
@@ -143,13 +186,26 @@ pub fn peb_teb_ldr_structures_test() {
     assert_eq!(sample, "exe64win_msgbox.pe");
 
     // follow to next flink
-    ldr_entry = structures::LdrDataTableEntry64::load(ldr_entry.in_load_order_links.flink, &mut emu.maps);
+    ldr_entry =
+        structures::LdrDataTableEntry64::load(ldr_entry.in_load_order_links.flink, &mut emu.maps);
 
-    assert_eq!(ldr_entry.in_memory_order_links.flink, ldr_entry.in_load_order_links.flink + 0x10);
-    assert_eq!(ldr_entry.in_initialization_order_links.flink, ldr_entry.in_memory_order_links.flink + 0x10);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.flink,
+        ldr_entry.in_load_order_links.flink + 0x10
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.flink,
+        ldr_entry.in_memory_order_links.flink + 0x10
+    );
 
-    assert_eq!(ldr_entry.in_memory_order_links.blink, ldr_entry.in_load_order_links.blink + 0x10);
-    assert_eq!(ldr_entry.in_initialization_order_links.blink, ldr_entry.in_memory_order_links.blink + 0x10);
+    assert_eq!(
+        ldr_entry.in_memory_order_links.blink,
+        ldr_entry.in_load_order_links.blink + 0x10
+    );
+    assert_eq!(
+        ldr_entry.in_initialization_order_links.blink,
+        ldr_entry.in_memory_order_links.blink + 0x10
+    );
 
     let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base);
     assert!(sample_w.is_some());

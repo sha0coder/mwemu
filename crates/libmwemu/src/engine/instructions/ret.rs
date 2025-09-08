@@ -1,7 +1,7 @@
-use crate::emu::Emu;
 use crate::console::Console;
+use crate::emu::Emu;
 use crate::{color, exception};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     let ret_addr: u64 = if emu.cfg.is_64bits {

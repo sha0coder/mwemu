@@ -1,5 +1,5 @@
-use std::sync::Once;
 use std::io::Write as _;
+use std::sync::Once;
 
 static INIT: Once = Once::new();
 
@@ -29,12 +29,21 @@ pub fn critical_values(bits: u32) -> Vec<u64> {
         sign_bit,
         sign_bit - 1,
         sign_bit + 1,
-        0x55,     // 01010101
-        0xAA,     // 10101010
+        0x55,                                 // 01010101
+        0xAA,                                 // 10101010
         0xFFFFFFFFFFFFFFFFu64 >> (64 - bits), // all 1s for the width
     ]
 }
 
 pub fn shift_counts(bits: u32) -> Vec<u64> {
-    vec![0, 1, bits as u64 - 1, bits as u64, bits as u64 + 1, 63, 64, 127]
+    vec![
+        0,
+        1,
+        bits as u64 - 1,
+        bits as u64,
+        bits as u64 + 1,
+        63,
+        64,
+        127,
+    ]
 }

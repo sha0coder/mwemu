@@ -6,11 +6,7 @@ pub fn Sleep(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!Sleep cannot read millis");
 
-    log_red!(
-        emu,
-        "kernel32!Sleep millis: {}",
-        millis
-    );
+    log_red!(emu, "kernel32!Sleep millis: {}", millis);
 
     emu.tick += millis as usize;
 

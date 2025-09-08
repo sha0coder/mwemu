@@ -1,7 +1,7 @@
 use crate::{emu::Emu, structures::MemoryOperation};
 
 impl Emu {
-     /// Push a dword to the stack and dec the esp
+    /// Push a dword to the stack and dec the esp
     /// This will return false if stack pointer is pointing to non allocated place.
     pub fn stack_push32(&mut self, value: u32) -> bool {
         if self.cfg.stack_trace {
@@ -10,7 +10,10 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = self.maps.get_addr_name(self.regs().get_esp()).unwrap_or_else(|| "not mapped");
+            let name = self
+                .maps
+                .get_addr_name(self.regs().get_esp())
+                .unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs().rip,
@@ -59,7 +62,10 @@ impl Emu {
         if self.maps.write_dword(self.regs().get_esp(), value) {
             true
         } else {
-            log::info!("/!\\ pushing in non mapped mem 0x{:x}", self.regs().get_esp());
+            log::info!(
+                "/!\\ pushing in non mapped mem 0x{:x}",
+                self.regs().get_esp()
+            );
             false
         }
     }
@@ -73,7 +79,10 @@ impl Emu {
         }
 
         if self.cfg.trace_mem {
-            let name = self.maps.get_addr_name(self.regs().rsp).unwrap_or_else(|| "not mapped");
+            let name = self
+                .maps
+                .get_addr_name(self.regs().rsp)
+                .unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs().rip,
@@ -179,7 +188,10 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self.maps.get_addr_name(self.regs().get_esp()).unwrap_or_else(|| "not mapped");
+            let name = self
+                .maps
+                .get_addr_name(self.regs().get_esp())
+                .unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs().rip,
@@ -260,7 +272,10 @@ impl Emu {
 
         if self.cfg.trace_mem {
             // Record the read from stack memory
-            let name = self.maps.get_addr_name(self.regs().rsp).unwrap_or_else(|| "not mapped");
+            let name = self
+                .maps
+                .get_addr_name(self.regs().rsp)
+                .unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: self.regs().rip,
@@ -296,5 +311,4 @@ impl Emu {
         //log::info!("0x{:x} pop64 stack level is {} deep {}", self.regs().rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
         Some(value)
     }
-
 }

@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // this tests a windows 32bits executable, that require iat binding of multiple libs.

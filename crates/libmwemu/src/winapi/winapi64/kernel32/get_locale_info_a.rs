@@ -1,6 +1,5 @@
-
-use crate::{constants, emu};
 use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
+use crate::{constants, emu};
 
 pub fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let locale = emu.regs().rcx as usize;
@@ -20,7 +19,12 @@ pub fn GetLocaleInfoA(emu: &mut emu::Emu) {
 
     // Check if buffer is too small
     if cch_data < required_size {
-        log::warn!("{} buffer too small for result cch_data: {} required_size: {}", emu.pos, cch_data, required_size);
+        log::warn!(
+            "{} buffer too small for result cch_data: {} required_size: {}",
+            emu.pos,
+            cch_data,
+            required_size
+        );
         let mut err = LAST_ERROR.lock().unwrap();
         *err = constants::ERROR_INSUFFICIENT_BUFFER;
         emu.regs_mut().rax = 0;

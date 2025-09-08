@@ -13,7 +13,7 @@ pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
 
     let current_dir = constants::CWD_PATH;
     let dir_byte_count = current_dir.len(); // Use len() for byte count in ANSI strings
-    
+
     // When buffer length is 0 or buffer is null, return required size INCLUDING null terminator
     if buff_len == 0 || buff_ptr == 0 {
         set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);

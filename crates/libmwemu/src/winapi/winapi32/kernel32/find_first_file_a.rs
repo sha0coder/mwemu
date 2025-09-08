@@ -12,11 +12,7 @@ pub fn FindFirstFileA(emu: &mut emu::Emu) {
 
     let file = emu.maps.read_string(file_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!FindFirstFileA file: {}",
-        file
-    );
+    log_red!(emu, "kernel32!FindFirstFileA file: {}", file);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

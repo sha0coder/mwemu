@@ -74,11 +74,7 @@ fn RegOpenKeyExA(emu: &mut emu::Emu) {
 
     let subkey = emu.maps.read_string(subkey_ptr);
 
-    log_red!(
-        emu,
-        "advapi32!RegOpenKeyExA {}",
-        subkey
-    );
+    log_red!(emu, "advapi32!RegOpenKeyExA {}", subkey);
 
     emu.maps
         .write_qword(result, helper::handler_create(&subkey));
@@ -88,10 +84,7 @@ fn RegOpenKeyExA(emu: &mut emu::Emu) {
 fn RegCloseKey(emu: &mut emu::Emu) {
     let hkey = emu.regs().rcx;
 
-    log_red!(
-        emu,
-        "advapi32!RegCloseKey"
-    );
+    log_red!(emu, "advapi32!RegCloseKey");
 
     helper::handler_close(hkey);
 
@@ -117,11 +110,7 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
         value = emu.maps.read_string(value_ptr);
     }
 
-    log_red!(
-        emu,
-        "advapi32!RegQueryValueExA {}",
-        value
-    );
+    log_red!(emu, "advapi32!RegQueryValueExA {}", value);
 
     if data_out > 0 {
         emu.maps.write_string(data_out, "some_random_reg_contents");
@@ -133,8 +122,8 @@ fn RegQueryValueExA(emu: &mut emu::Emu) {
 }
 
 fn GetUserNameA(emu: &mut emu::Emu) {
-    let out_username = emu.regs().rcx;     // LPSTR lpBuffer
-    let in_out_sz = emu.regs().rdx;        // LP64WORD pcbBuffer (your 64-bit variant)
+    let out_username = emu.regs().rcx; // LPSTR lpBuffer
+    let in_out_sz = emu.regs().rdx; // LP64WORD pcbBuffer (your 64-bit variant)
 
     log_red!(
         emu,
@@ -145,17 +134,17 @@ fn GetUserNameA(emu: &mut emu::Emu) {
 
     // Check if size pointer is valid
     if in_out_sz == 0 || !emu.maps.is_mapped(in_out_sz) {
-        log_red!(
-        emu,
-        "GetUserNameA: Invalid pcbBuffer pointer"
-    );
+        log_red!(emu, "GetUserNameA: Invalid pcbBuffer pointer");
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
     // Read current buffer size (in bytes)
-    let buffer_size = emu.maps.read_qword(in_out_sz).expect("Cannot read buffer size") as usize;
-    
+    let buffer_size = emu
+        .maps
+        .read_qword(in_out_sz)
+        .expect("Cannot read buffer size") as usize;
+
     // Calculate required size in bytes (including null terminator)
     let required_size = constants::USER_NAME.len() + 1; // +1 for null terminator
 
@@ -164,10 +153,7 @@ fn GetUserNameA(emu: &mut emu::Emu) {
 
     // Check if output buffer is valid
     if out_username == 0 || !emu.maps.is_mapped(out_username) {
-        log_red!(
-        emu,
-        "GetUserNameA: Invalid lpBuffer pointer"
-    );
+        log_red!(emu, "GetUserNameA: Invalid lpBuffer pointer");
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -175,11 +161,11 @@ fn GetUserNameA(emu: &mut emu::Emu) {
     // Check if buffer is large enough
     if buffer_size < required_size {
         log_red!(
-        emu,
-        "GetUserNameA: Buffer too small. Required: {}, Provided: {}",
-        required_size,
-        buffer_size
-    );
+            emu,
+            "GetUserNameA: Buffer too small. Required: {}, Provided: {}",
+            required_size,
+            buffer_size
+        );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -198,8 +184,8 @@ fn GetUserNameA(emu: &mut emu::Emu) {
 }
 
 fn GetUserNameW(emu: &mut emu::Emu) {
-    let out_username = emu.regs().rcx;     // LPWSTR lpBuffer
-    let in_out_sz = emu.regs().rdx;        // LPDWORD pcbBuffer
+    let out_username = emu.regs().rcx; // LPWSTR lpBuffer
+    let in_out_sz = emu.regs().rdx; // LPDWORD pcbBuffer
 
     log_red!(
         emu,
@@ -210,17 +196,17 @@ fn GetUserNameW(emu: &mut emu::Emu) {
 
     // Check if size pointer is valid
     if in_out_sz == 0 || !emu.maps.is_mapped(in_out_sz) {
-        log_red!(
-        emu,
-        "GetUserNameW: Invalid pcbBuffer pointer"
-    );
+        log_red!(emu, "GetUserNameW: Invalid pcbBuffer pointer");
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
     // Read current buffer size (in characters)
-    let buffer_size = emu.maps.read_dword(in_out_sz).expect("Cannot read buffer size") as usize;
-    
+    let buffer_size = emu
+        .maps
+        .read_dword(in_out_sz)
+        .expect("Cannot read buffer size") as usize;
+
     // Calculate required size in characters (including null terminator)
     let username_chars = constants::USER_NAME.chars().count();
     let required_size = username_chars + 1; // +1 for null terminator
@@ -230,10 +216,7 @@ fn GetUserNameW(emu: &mut emu::Emu) {
 
     // Check if output buffer is valid
     if out_username == 0 || !emu.maps.is_mapped(out_username) {
-        log_red!(
-        emu,
-        "GetUserNameW: Invalid lpBuffer pointer"
-    );
+        log_red!(emu, "GetUserNameW: Invalid lpBuffer pointer");
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
@@ -241,17 +224,18 @@ fn GetUserNameW(emu: &mut emu::Emu) {
     // Check if buffer is large enough
     if buffer_size < required_size {
         log_red!(
-        emu,
-        "GetUserNameW: Buffer too small. Required: {}, Provided: {}",
-        required_size,
-        buffer_size
-    );
+            emu,
+            "GetUserNameW: Buffer too small. Required: {}, Provided: {}",
+            required_size,
+            buffer_size
+        );
         emu.regs_mut().rax = constants::FALSE;
         return;
     }
 
     // Buffer is large enough, write the username
-    emu.maps.write_wide_string(out_username, constants::USER_NAME);
+    emu.maps
+        .write_wide_string(out_username, constants::USER_NAME);
 
     log_red!(
         emu,

@@ -4,6 +4,7 @@ use crate::constants;
 use crate::elf::elf32::Elf32;
 use crate::elf::elf64::Elf64;
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 use crate::pe::pe32::PE32;
 use crate::pe::pe64::PE64;
 use crate::peb::{peb32, peb64};
@@ -74,7 +75,6 @@ impl Emu {
             }
         }
 
-
         if set_entry {
             // 2. pe binding
             if !is_maps {
@@ -82,7 +82,6 @@ impl Emu {
                 pe32.delay_load_binding(self);
                 self.base = base as u64;
             }
-
 
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
@@ -100,7 +99,6 @@ impl Emu {
             log::info!("base: 0x{:x}", base);
         }
 
-
         // 4. map pe and then sections
         log::info!("mapeando PE de {}", filename2);
         let pemap = self
@@ -109,6 +107,7 @@ impl Emu {
                 &format!("{}.pe", filename2),
                 base.into(),
                 pe32.opt.size_of_headers.into(),
+                Permission::READ_WRITE,
             )
             .expect("cannot create pe map");
         pemap.memcpy(pe32.get_headers(), pe32.opt.size_of_headers as usize);
@@ -116,6 +115,11 @@ impl Emu {
         for i in 0..pe32.num_of_sections() {
             let ptr = pe32.get_section_ptr(i);
             let sect = pe32.get_section(i);
+            let charactis = sect.characteristics;
+            let is_exec = charactis & 0x20000000 != 0x0;
+            let is_read = charactis & 0x40000000 != 0x0;
+            let is_write = charactis & 0x80000000 != 0x0;
+            let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
                 sect.virtual_size as u64
@@ -143,6 +147,7 @@ impl Emu {
                 &format!("{}{}", filename2, sect_name),
                 base as u64 + sect.virtual_address as u64,
                 sz,
+                permission,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -171,8 +176,14 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            let space_addr =
-                peb32::create_ldr_entry(self, base, self.regs().rip as u32, &filename2.clone(), 0, 0x2c1950);
+            let space_addr = peb32::create_ldr_entry(
+                self,
+                base,
+                self.regs().rip as u32,
+                &filename2.clone(),
+                0,
+                0x2c1950,
+            );
             peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
         }
 
@@ -251,23 +262,27 @@ impl Emu {
         }
 
         // 4. map pe and then sections
-        let pemap = match self
-            .maps
-            .create_map(
-                &format!("{}.pe", filename2),
-                base,
-                pe64.opt.size_of_headers.into(),
-            ) {
-                Ok(m) => m,
-                Err(e) => {
-                    panic!("annot create pe64 map: {}", e);
-                }
+        let pemap = match self.maps.create_map(
+            &format!("{}.pe", filename2),
+            base,
+            pe64.opt.size_of_headers.into(),
+            Permission::READ_WRITE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                panic!("annot create pe64 map: {}", e);
+            }
         };
         pemap.memcpy(pe64.get_headers(), pe64.opt.size_of_headers as usize);
 
         for i in 0..pe64.num_of_sections() {
             let ptr = pe64.get_section_ptr(i);
             let sect = pe64.get_section(i);
+            let charistic = sect.characteristics;
+            let is_exec = charistic & 0x20000000 != 0x0;
+            let is_read = charistic & 0x40000000 != 0x0;
+            let is_write = charistic & 0x80000000 != 0x0;
+            let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
                 sect.virtual_size as u64
@@ -295,6 +310,7 @@ impl Emu {
                 &format!("{}{}", filename2, sect_name),
                 base + sect.virtual_address as u64,
                 sz,
+                permission,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -324,8 +340,14 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            let space_addr =
-                peb64::create_ldr_entry(self, base, self.regs().rip, &filename2.clone(), 0, 0x2c1950);
+            let space_addr = peb64::create_ldr_entry(
+                self,
+                base,
+                self.regs().rip,
+                &filename2.clone(),
+                0,
+                0x2c1950,
+            );
             peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
         }
 
@@ -357,7 +379,7 @@ impl Emu {
         self.init_linux64(dyn_link);
 
         // Get .text addr and size
-        let mut text_addr:u64 = 0;
+        let mut text_addr: u64 = 0;
         let mut text_sz = 0;
         for i in 0..elf64.elf_shdr.len() {
             let sname = elf64.get_section_name(elf64.elf_shdr[i].sh_name as usize);
@@ -380,20 +402,30 @@ impl Emu {
             self.regs_mut().rip = self.cfg.entry_point;
 
         // 2. Entry point pointing inside .text
-        } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr+text_sz {
-            log::info!("Entry point pointing to .text 0x{:x}", elf64.elf_hdr.e_entry);
+        } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr + text_sz
+        {
+            log::info!(
+                "Entry point pointing to .text 0x{:x}",
+                elf64.elf_hdr.e_entry
+            );
             self.regs_mut().rip = elf64.elf_hdr.e_entry;
 
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
             self.regs_mut().rip = elf64.elf_hdr.e_entry + elf64.base; //text_addr;
-            log::info!("relative entry point: 0x{:x}  fixed: 0x{:x}",  elf64.elf_hdr.e_entry, self.regs().rip);
+            log::info!(
+                "relative entry point: 0x{:x}  fixed: 0x{:x}",
+                elf64.elf_hdr.e_entry,
+                self.regs().rip
+            );
 
         // 4. Entry point points below .text, weird case.
         } else {
-            panic!("Entry points is pointing below .text 0x{:x}", elf64.elf_hdr.e_entry);
+            panic!(
+                "Entry points is pointing below .text 0x{:x}",
+                elf64.elf_hdr.e_entry
+            );
         }
-
 
         /*
         if dyn_link {
@@ -405,7 +437,7 @@ impl Emu {
 
             //TODO: emulate the linker
             //self.regs_mut().rip = ld.elf_hdr.e_entry + elf64::LD_BASE;
-            //self.run(None); 
+            //self.run(None);
         } else {
             self.regs_mut().rip = elf64.elf_hdr.e_entry;
         }*/
@@ -434,7 +466,7 @@ impl Emu {
 
     /// Load a sample. It can be PE32, PE64, ELF32, ELF64 or shellcode.
     /// If its a shellcode cannot be known if is for windows or linux, it triggers also init() to
-    /// setup windows simulator. 
+    /// setup windows simulator.
     /// For now mwemu also don't know if shellcode is for 32bits or 64bits, in commandline -6 has
     /// to be selected for indicating 64bits, and from python or rust the emu32() or emu64()
     /// construtor dtermines the engine.
@@ -454,7 +486,7 @@ impl Emu {
             elf32.load(&mut self.maps);
             self.regs_mut().rip = elf32.elf_hdr.e_entry.into();
             let stack_sz = 0x30000;
-            let stack = self.alloc("stack", stack_sz);
+            let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
         } else if Elf64::is_elf64(filename) {
@@ -463,8 +495,6 @@ impl Emu {
             self.maps.clear();
 
             let base = self.load_elf64(filename);
-
-
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) {
             log::info!("PE32 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
@@ -500,7 +530,7 @@ impl Emu {
                         self.regs_mut().set_reg(Register::R8L, 0);
                     }
                 }
-                _ =>  {
+                _ => {
                     log::error!("No Pe64 found inside self");
                 }
             }
@@ -538,7 +568,12 @@ impl Emu {
 
             if !self
                 .maps
-                .create_map("code", self.cfg.code_base_addr, 0)
+                .create_map(
+                    "code",
+                    self.cfg.code_base_addr,
+                    0,
+                    Permission::READ_WRITE_EXECUTE,
+                )
                 .expect("cannot create code map")
                 .load(filename)
             {
@@ -570,7 +605,15 @@ impl Emu {
 
         self.init_cpu();
 
-        let code = self.maps.create_map("code", self.cfg.code_base_addr, bytes.len() as u64).expect("cannot create code map");
+        let code = self
+            .maps
+            .create_map(
+                "code",
+                self.cfg.code_base_addr,
+                bytes.len() as u64,
+                Permission::READ_WRITE_EXECUTE,
+            )
+            .expect("cannot create code map");
         let base = code.get_base();
         code.write_bytes(base, bytes);
         self.regs_mut().rip = code.get_base();

@@ -23,7 +23,7 @@ pub fn sc32win_veryobfus() {
     let name = match emu.maps.get_addr_name(eax) {
         Some(n) => n,
         None => {
-            return assert_eq!(1,2);
+            return assert_eq!(1, 2);
         }
     };
 

@@ -1,6 +1,6 @@
-use crate::{console, emu};
-use crate::winapi::helper;
 use crate::constants;
+use crate::winapi::helper;
+use crate::{console, emu};
 
 pub fn CreateThread(emu: &mut emu::Emu) {
     let sec_attr = emu
@@ -32,11 +32,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
         emu.maps.write_dword(tid_ptr, 0x123);
     }
 
-    log_red!(
-        emu,
-        "kernel32!CreateThread code: 0x{:x}",
-        code
-    );
+    log_red!(emu, "kernel32!CreateThread code: 0x{:x}", code);
 
     for _ in 0..6 {
         emu.stack_pop32(false);

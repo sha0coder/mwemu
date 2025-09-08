@@ -6,11 +6,7 @@ pub fn ResumeThread(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("kernel32!ResumeThread cannot read the handle");
 
-    log_red!(
-        emu,
-        "kernel32!ResumeThread hndl: {}",
-        hndl
-    );
+    log_red!(emu, "kernel32!ResumeThread hndl: {}", hndl);
 
     emu.stack_pop32(false);
 

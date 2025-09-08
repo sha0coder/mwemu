@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn WaitForSingleObject(emu: &mut emu::Emu) {
     let handle = emu

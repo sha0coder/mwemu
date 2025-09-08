@@ -1,6 +1,6 @@
+use crate::constants;
 use crate::emu;
 use crate::winapi::helper;
-use crate::constants;
 
 pub fn RegOpenKeyW(emu: &mut emu::Emu) {
     let hKey = emu
@@ -22,11 +22,7 @@ pub fn RegOpenKeyW(emu: &mut emu::Emu) {
         helper::handler_create(&format!("key://{}", subkey)) as u32,
     );
 
-    log_red!(
-        emu,
-        "kernel32!RegOpenKeyW `{}`",
-        subkey
-    );
+    log_red!(emu, "kernel32!RegOpenKeyW `{}`", subkey);
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 
     for _ in 0..3 {

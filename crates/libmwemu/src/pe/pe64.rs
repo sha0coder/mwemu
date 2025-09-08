@@ -396,19 +396,19 @@ impl PE64 {
         for sect in sections {
             if vaddr >= sect.virtual_address && vaddr < sect.virtual_address + sect.virtual_size {
                 let offset_within_section = vaddr - sect.virtual_address;
-                
+
                 // Check if the offset is within the raw data size (not just virtual size)
                 if offset_within_section >= sect.size_of_raw_data {
                     log::warn!("Virtual address 0x{:x} maps to uninitialized data in section '{}' (offset {} >= raw_size {})", 
                             vaddr, sect.get_name(), offset_within_section, sect.size_of_raw_data);
                     return 0; // or handle this case differently
                 }
-                
+
                 let file_offset = sect.pointer_to_raw_data + offset_within_section;
-                
+
                 /*log::debug!("vaddr_to_off: 0x{:x} -> file_offset 0x{:x} (section: '{}', sect_vaddr: 0x{:x}, sect_raw_ptr: 0x{:x})",
-                        vaddr, file_offset, sect.get_name(), sect.virtual_address, sect.pointer_to_raw_data);*/
-                
+                vaddr, file_offset, sect.get_name(), sect.virtual_address, sect.pointer_to_raw_data);*/
+
                 return file_offset;
             }
         }
@@ -744,7 +744,11 @@ impl PE64 {
 
         // Bounds check for reading the directory header
         if off + 16 > rsrc.len() {
-            log::warn!("Resource directory at offset {} is out of bounds (rsrc size: {})", off, rsrc.len());
+            log::warn!(
+                "Resource directory at offset {} is out of bounds (rsrc size: {})",
+                off,
+                rsrc.len()
+            );
             return None;
         }
 
@@ -757,16 +761,24 @@ impl PE64 {
         dir.number_of_id_entries = read_u16_le!(rsrc, off + 14);
 
         let entries = dir.number_of_named_entries + dir.number_of_id_entries;
-        
-        log::debug!("Resource directory level {}: {} named entries, {} ID entries", 
-                level, dir.number_of_named_entries, dir.number_of_id_entries);
+
+        log::debug!(
+            "Resource directory level {}: {} named entries, {} ID entries",
+            level,
+            dir.number_of_named_entries,
+            dir.number_of_id_entries
+        );
 
         for i in 0..entries {
             let entry_off = off + (i as usize * 8) + 16; // 16 = sizeof(ImageResourceDirectory)
-            
+
             // Bounds check for reading directory entry
             if entry_off + 8 > rsrc.len() {
-                log::warn!("Resource directory entry {} at offset {} is out of bounds", i, entry_off);
+                log::warn!(
+                    "Resource directory entry {} at offset {} is out of bounds",
+                    i,
+                    entry_off
+                );
                 continue;
             }
 
@@ -774,8 +786,14 @@ impl PE64 {
             entry.name_or_id = read_u32_le!(rsrc, entry_off);
             entry.data_or_directory = read_u32_le!(rsrc, entry_off + 4);
 
-            log::debug!("Entry {}: name_or_id=0x{:x}, data_or_directory=0x{:x}, is_id={}, is_directory={}", 
-                    i, entry.name_or_id, entry.data_or_directory, entry.is_id(), entry.is_directory());
+            log::debug!(
+                "Entry {}: name_or_id=0x{:x}, data_or_directory=0x{:x}, is_id={}, is_directory={}",
+                i,
+                entry.name_or_id,
+                entry.data_or_directory,
+                entry.is_id(),
+                entry.is_directory()
+            );
 
             let matched: bool;
 
@@ -797,22 +815,26 @@ impl PE64 {
             } else {
                 // Named entry - need to read the name string
                 let name_offset = entry.get_name_or_id() & 0x7FFFFFFF; // Remove the high bit
-                
+
                 // The name_offset is relative to the start of the resource section
                 let rsrc_section = self.get_section_ptr_by_name(".rsrc");
                 if rsrc_section.is_none() {
                     log::warn!("No .rsrc section found");
                     continue;
                 }
-                
+
                 // Check if name_offset is within the resource section
                 if name_offset as usize >= rsrc.len() {
-                    log::warn!("Resource name offset 0x{:x} is out of bounds (rsrc size: {})", name_offset, rsrc.len());
+                    log::warn!(
+                        "Resource name offset 0x{:x} is out of bounds (rsrc size: {})",
+                        name_offset,
+                        rsrc.len()
+                    );
                     continue;
                 }
-                
+
                 let resource_name = self.read_resource_name_from_rsrc(rsrc, name_offset as usize);
-                
+
                 if level == 0 && type_name.is_some() && type_name.unwrap() == resource_name {
                     log::debug!("type_name '{}' matched at level {}", resource_name, level);
                     matched = true;
@@ -828,7 +850,7 @@ impl PE64 {
                 if entry.is_directory() {
                     let next_dir_offset = entry.get_offset() & 0x7FFFFFFF; // Remove the high bit
                     log::debug!("Following directory at offset 0x{:x}", next_dir_offset);
-                    
+
                     return self.locate_resource_data_entry(
                         rsrc,
                         next_dir_offset as usize,
@@ -841,19 +863,28 @@ impl PE64 {
                 } else {
                     // This is a data entry
                     let data_entry_offset = entry.get_offset();
-                    
+
                     if data_entry_offset as usize + 16 > rsrc.len() {
-                        log::warn!("Resource data entry at offset 0x{:x} is out of bounds", data_entry_offset);
+                        log::warn!(
+                            "Resource data entry at offset 0x{:x} is out of bounds",
+                            data_entry_offset
+                        );
                         return None;
                     }
-                    
-                    log::debug!("Found resource data entry at offset 0x{:x}", data_entry_offset);
-                    
+
+                    log::debug!(
+                        "Found resource data entry at offset 0x{:x}",
+                        data_entry_offset
+                    );
+
                     let mut data_entry = structures::ImageResourceDataEntry64::new();
-                    data_entry.offset_to_data = read_u32_le!(rsrc, data_entry_offset as usize) as u64;
+                    data_entry.offset_to_data =
+                        read_u32_le!(rsrc, data_entry_offset as usize) as u64;
                     data_entry.size = read_u32_le!(rsrc, data_entry_offset as usize + 4) as u64;
-                    data_entry.code_page = read_u32_le!(rsrc, data_entry_offset as usize + 8) as u64;
-                    data_entry.reserved = read_u32_le!(rsrc, data_entry_offset as usize + 12) as u64;
+                    data_entry.code_page =
+                        read_u32_le!(rsrc, data_entry_offset as usize + 8) as u64;
+                    data_entry.reserved =
+                        read_u32_le!(rsrc, data_entry_offset as usize + 12) as u64;
 
                     return Some(data_entry);
                 }
@@ -866,20 +897,26 @@ impl PE64 {
     // Helper function to safely read resource names from the .rsrc section
     pub fn read_resource_name_from_rsrc(&self, rsrc: &[u8], offset: usize) -> String {
         if offset + 1 >= rsrc.len() {
-            log::warn!("Cannot read resource name length at offset {}: out of bounds", offset);
+            log::warn!(
+                "Cannot read resource name length at offset {}: out of bounds",
+                offset
+            );
             return String::new();
         }
-        
+
         let length = u16::from_le_bytes([rsrc[offset], rsrc[offset + 1]]) as usize;
         let string_start = offset + 2;
-        
+
         let required_bytes = string_start + (length * 2);
         if required_bytes > rsrc.len() {
-            log::warn!("Cannot read resource name: need {} bytes but only {} available in rsrc section", 
-                    required_bytes, rsrc.len());
+            log::warn!(
+                "Cannot read resource name: need {} bytes but only {} available in rsrc section",
+                required_bytes,
+                rsrc.len()
+            );
             return String::new();
         }
-        
+
         let utf16_data: Vec<u16> = (0..length)
             .map(|i| {
                 let idx = string_start + i * 2;
@@ -924,10 +961,10 @@ impl PE64 {
         if rsrc.is_none() {
             return String::new();
         }
-        
+
         let rsrc = rsrc.unwrap();
         let name_offset = (entry.get_name_or_id() & 0x7FFFFFFF) as usize; // Remove high bit
-        
+
         self.read_resource_name_from_rsrc(rsrc, name_offset)
     }
 }

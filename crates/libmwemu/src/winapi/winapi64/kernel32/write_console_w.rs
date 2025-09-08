@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn WriteConsoleW(emu: &mut emu::Emu) {
@@ -14,7 +13,10 @@ pub fn WriteConsoleW(emu: &mut emu::Emu) {
     // Read the UTF-16 buffer
     let mut wide_chars = Vec::new();
     for i in 0..n_number_of_chars_to_write {
-        let wchar = emu.maps.read_word(lp_buffer as u64 + (i * 2) as u64).unwrap();
+        let wchar = emu
+            .maps
+            .read_word(lp_buffer as u64 + (i * 2) as u64)
+            .unwrap();
         wide_chars.push(wchar);
     }
 
@@ -26,6 +28,9 @@ pub fn WriteConsoleW(emu: &mut emu::Emu) {
         lp_number_of_chars_written, lp_reserved, s1);
 
     // Write back the number of characters written
-    emu.maps.write_dword(lp_number_of_chars_written as u64, n_number_of_chars_to_write);
+    emu.maps.write_dword(
+        lp_number_of_chars_written as u64,
+        n_number_of_chars_to_write,
+    );
     emu.regs_mut().rax = 1;
 }

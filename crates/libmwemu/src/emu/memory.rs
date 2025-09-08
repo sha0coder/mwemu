@@ -203,7 +203,10 @@ impl Emu {
             32 => match self.maps.read_dword(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
+                        let name = self
+                            .maps
+                            .get_addr_name(addr)
+                            .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs().rip,
@@ -224,7 +227,10 @@ impl Emu {
             16 => match self.maps.read_word(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
+                        let name = self
+                            .maps
+                            .get_addr_name(addr)
+                            .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs().rip,
@@ -245,7 +251,10 @@ impl Emu {
             8 => match self.maps.read_byte(addr) {
                 Some(v) => {
                     if self.cfg.trace_mem {
-                        let name = self.maps.get_addr_name(addr).unwrap_or_else(|| "not mapped");
+                        let name = self
+                            .maps
+                            .get_addr_name(addr)
+                            .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
                             rip: self.regs().rip,

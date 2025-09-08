@@ -17,12 +17,7 @@ pub fn CreateProcessA(emu: &mut emu::Emu) {
     let appname = emu.maps.read_string(appname_ptr);
     let cmdline = emu.maps.read_string(cmdline_ptr);
 
-    log_red!(
-        emu,
-        "kernel32!CreateProcessA  {} {}",
-        appname,
-        cmdline
-    );
+    log_red!(emu, "kernel32!CreateProcessA  {} {}", appname, cmdline);
 
     for _ in 0..10 {
         emu.stack_pop32(false);

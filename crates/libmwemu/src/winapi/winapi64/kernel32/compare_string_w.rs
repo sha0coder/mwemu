@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 /*
@@ -16,14 +15,14 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
     let locale = emu.regs().rcx;
     let dw_cmp_flags = emu.regs().rdx;
     let lp_string1 = emu.regs().r8;
-    let cch_count1 = emu.regs().r9 as i32;  // ✅ Fixed: no multiplication
-    
+    let cch_count1 = emu.regs().r9 as i32; // ✅ Fixed: no multiplication
+
     // Get stack parameters
     let lp_string2_addr = emu.regs().rsp + 0x20;
     let cch_count2_addr = emu.regs().rsp + 0x28;
-    
+
     let lp_string2 = emu.maps.read_qword(lp_string2_addr).unwrap_or(0);
-    let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32;  // ✅ Fixed: no multiplication
+    let cch_count2 = emu.maps.read_dword(cch_count2_addr).unwrap_or(0) as i32; // ✅ Fixed: no multiplication
 
     log_red!(
         emu,
@@ -35,7 +34,7 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
         lp_string2,
         cch_count2
     );
-    
+
     // Read the strings - handle null/empty cases
     let s1 = if lp_string1 == 0 {
         String::new()
@@ -46,7 +45,7 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
     } else {
         emu.maps.read_wide_string_n(lp_string1, cch_count1 as usize)
     };
-    
+
     let s2 = if lp_string2 == 0 {
         String::new()
     } else if cch_count2 == -1 {
@@ -77,6 +76,6 @@ pub fn CompareStringW(emu: &mut emu::Emu) {
     };
 
     log::info!("\t\t'{}' == '{}'  ={}", s1, s2, result);
-    
+
     emu.regs_mut().rax = result as u64;
 }

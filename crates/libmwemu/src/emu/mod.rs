@@ -1,34 +1,53 @@
-use std::{cell::RefCell, collections::HashMap, fs::File, sync::{atomic::AtomicU32, Arc}, time::Instant};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fs::File,
+    sync::{atomic::AtomicU32, Arc},
+    time::Instant,
+};
 
 use iced_x86::{Instruction, IntelFormatter};
 
-use crate::{banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config, definitions::{Definition, StoredContext}, global_locks::GlobalLocks, hooks::Hooks, maps::Maps, pe::{pe32::PE32, pe64::PE64}, structures::MemoryOperation, thread_context::ThreadContext};
+use crate::emu::disassemble::InstructionCache;
+use crate::{
+    banzai::Banzai,
+    breakpoint::Breakpoints,
+    colors::Colors,
+    config::Config,
+    definitions::{Definition, StoredContext},
+    global_locks::GlobalLocks,
+    hooks::Hooks,
+    maps::Maps,
+    pe::{pe32::PE32, pe64::PE64},
+    structures::MemoryOperation,
+    thread_context::ThreadContext,
+};
 
-mod operands;
-mod display;
-mod flags;
-mod exception_handlers;
-mod loaders;
-mod thread_context;
-mod config;
-mod execution;
-mod memory;
-mod call_stack;
 mod banzai;
-mod instruction_pointer;
-mod trace;
-mod registers;
+mod call_stack;
+mod config;
 mod console;
+pub mod disassemble;
+mod display;
+mod exception_handlers;
+mod execution;
+mod flags;
 mod fls;
 mod fpu;
-mod stack;
 mod fs;
-mod disassemble;
 mod initialization;
-mod tls;
-mod threading;
-mod winapi;
+mod instruction_pointer;
+mod loaders;
 mod maps;
+mod memory;
+mod operands;
+mod registers;
+mod stack;
+mod thread_context;
+mod threading;
+mod tls;
+mod trace;
+mod winapi;
 #[macro_use]
 mod utils;
 
@@ -77,7 +96,8 @@ pub struct Emu {
     // Thread management
     pub threads: Vec<ThreadContext>,
     pub current_thread_id: usize,  // Index into threads vec
-    pub global_locks: GlobalLocks,  // Critical section lock tracking
+    pub global_locks: GlobalLocks, // Critical section lock tracking
+    pub instruction_cache: InstructionCache,
     pub definitions: HashMap<u64, Definition>,
     pub stored_contexts: HashMap<String, StoredContext>,
     pub entropy: f64,

@@ -24,7 +24,10 @@ pub mod fpu;
 pub mod hooks;
 #[macro_use]
 pub mod macros;
+pub mod crit_state;
 pub mod exception_type;
+pub mod global_locks;
+pub mod kuser_shared;
 pub mod maps;
 pub mod ntapi;
 pub mod pe;
@@ -34,13 +37,10 @@ pub mod script;
 pub mod serialization;
 pub mod structures;
 pub mod syscall;
-pub mod winapi;
-pub mod kuser_shared;
-pub mod crit_state;
-pub mod global_locks;
 pub mod thread_context;
 pub mod threading;
 pub mod tracing;
+pub mod winapi;
 
 #[cfg(test)]
 mod tests;

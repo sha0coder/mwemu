@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn VirtualProtect(emu: &mut emu::Emu) {

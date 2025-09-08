@@ -1,6 +1,6 @@
+use crate::color;
 use crate::emu::Emu;
-use crate::{color};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Green"), ins);
@@ -24,36 +24,32 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if sz == 64 {
         result = ((value0 & 0xffff) as u16 + (value1 & 0xffff) as u16) as u128;
-        result |= ((((value0 & 0xffff0000) >> 16) as u16
-            + ((value1 & 0xffff0000) >> 16) as u16) as u128)
+        result |= ((((value0 & 0xffff0000) >> 16) as u16 + ((value1 & 0xffff0000) >> 16) as u16)
+            as u128)
             << 16;
         result |= ((((value0 & 0xffff00000000) >> 32) as u16
             + ((value1 & 0xffff00000000) >> 32) as u16) as u128)
             << 32;
         result |= ((((value0 & 0xffff000000000000) >> 48) as u16
-            + ((value1 & 0xffff000000000000) >> 48) as u16)
-            as u128)
+            + ((value1 & 0xffff000000000000) >> 48) as u16) as u128)
             << 48;
     } else if sz == 128 {
         result = ((value0 & 0xffff) as u16 + (value1 & 0xffff) as u16) as u128;
-        result |= ((((value0 & 0xffff0000) >> 16) as u16
-            + ((value1 & 0xffff0000) >> 16) as u16) as u128)
+        result |= ((((value0 & 0xffff0000) >> 16) as u16 + ((value1 & 0xffff0000) >> 16) as u16)
+            as u128)
             << 16;
         result |= ((((value0 & 0xffff00000000) >> 32) as u16
             + ((value1 & 0xffff00000000) >> 32) as u16) as u128)
             << 32;
         result |= ((((value0 & 0xffff000000000000) >> 48) as u16
-            + ((value1 & 0xffff000000000000) >> 48) as u16)
-            as u128)
+            + ((value1 & 0xffff000000000000) >> 48) as u16) as u128)
             << 48;
 
         result |= ((((value0 & 0xffff_0000000000000000) >> 64) as u16
-            + ((value1 & 0xffff_0000000000000000) >> 64) as u16)
-            as u128)
+            + ((value1 & 0xffff_0000000000000000) >> 64) as u16) as u128)
             << 64;
         result |= ((((value0 & 0xffff0000_0000000000000000) >> 80) as u16
-            + ((value1 & 0xffff0000_0000000000000000) >> 80) as u16)
-            as u128)
+            + ((value1 & 0xffff0000_0000000000000000) >> 80) as u16) as u128)
             << 80;
         result |= ((((value0 & 0xffff00000000_0000000000000000) >> 96) as u16
             + ((value1 & 0xffff00000000_0000000000000000) >> 96) as u16)

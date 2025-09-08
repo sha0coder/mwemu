@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // enigma packer should be emulated at least 102,302,404 insturctions.

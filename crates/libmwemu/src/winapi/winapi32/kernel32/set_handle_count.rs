@@ -6,11 +6,7 @@ pub fn SetHandleCount(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp)
         .expect("kernel32!SetHandleCount error getting num param");
 
-    log_red!(
-        emu,
-        "kernel32!SetHandleCount {}",
-        num
-    );
+    log_red!(emu, "kernel32!SetHandleCount {}", num);
 
     emu.stack_pop32(false);
     emu.regs_mut().rax = num as u64;

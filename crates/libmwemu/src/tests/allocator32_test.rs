@@ -1,6 +1,6 @@
-use crate::*;
-use crate::winapi::winapi32;
 use crate::tests::helpers;
+use crate::winapi::winapi32;
+use crate::*;
 
 #[test]
 // test 32bits allocators

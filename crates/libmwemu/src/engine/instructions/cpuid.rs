@@ -1,6 +1,6 @@
 use crate::emu::Emu;
 use crate::{color, set_bit};
-use iced_x86::{Instruction};
+use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Red"), ins);
@@ -29,11 +29,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rbx = 0x5100800;
             emu.regs_mut().rcx = 0x7ffafbbf;
             emu.regs_mut().rdx = 0xbfebfbff; // feature
-            set_bit!(emu.regs_mut().rdx, 0, 1);  // FPU = true
-                set_bit!(emu.regs_mut().rdx, 23, 1); // MMX = true
+            set_bit!(emu.regs_mut().rdx, 0, 1); // FPU = true
+            set_bit!(emu.regs_mut().rdx, 23, 1); // MMX = true
             set_bit!(emu.regs_mut().rdx, 25, 1); // SSE = true
             set_bit!(emu.regs_mut().rdx, 26, 1); // SSE2 = true
-            }
+        }
         0x02 => {
             emu.regs_mut().rax = 0x76036301;
             emu.regs_mut().rbx = 0xf0b5ff;

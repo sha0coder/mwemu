@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::maps::mem64::Permission;
 
 pub fn LocalAlloc(emu: &mut emu::Emu) {
     let flags = emu
@@ -17,6 +18,7 @@ pub fn LocalAlloc(emu: &mut emu::Emu) {
             format!("alloc_{:x}", emu.regs().get_eax() as u32).as_str(),
             emu.regs().get_eax(),
             size,
+            Permission::READ_WRITE,
         )
         .expect("kernel32!LocalAlloc out of memory");
 

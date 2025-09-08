@@ -9,7 +9,7 @@ members = [
 [profile.release]
 debug = 0
 strip = true
-opt-level = 2
+opt-level = 3
 panic = 'unwind'
 
 [profile.dev]

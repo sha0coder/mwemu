@@ -1,4 +1,3 @@
-
 use crate::emu;
 
 pub fn TerminateProcess(emu: &mut emu::Emu) {

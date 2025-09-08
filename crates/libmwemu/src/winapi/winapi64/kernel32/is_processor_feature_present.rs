@@ -1,4 +1,3 @@
-
 use crate::{constants, emu};
 
 pub fn IsProcessorFeaturePresent(emu: &mut emu::Emu) {

@@ -1,4 +1,7 @@
-use crate::{maps::Maps, structures::{list_entry::ListEntry, unicode_string::UnicodeString}};
+use crate::{
+    maps::Maps,
+    structures::{list_entry::ListEntry, unicode_string::UnicodeString},
+};
 
 #[derive(Debug)]
 pub struct LdrDataTableEntry {
@@ -48,38 +51,37 @@ impl LdrDataTableEntry {
 
     pub fn load(addr: u64, maps: &Maps) -> LdrDataTableEntry {
         LdrDataTableEntry {
-            in_load_order_links: ListEntry::load(addr, maps),            // +0x00
-            in_memory_order_links: ListEntry::load(addr + 8, maps),      // +0x08
+            in_load_order_links: ListEntry::load(addr, maps), // +0x00
+            in_memory_order_links: ListEntry::load(addr + 8, maps), // +0x08
             in_initialization_order_links: ListEntry::load(addr + 16, maps), // +0x10
-            dll_base: maps.read_dword(addr + 24).unwrap(),               // +0x18
-            entry_point: maps.read_dword(addr + 28).unwrap(),            // +0x1C
-            size_of_image: maps.read_dword(addr + 32).unwrap(),          // +0x20
-            full_dll_name: UnicodeString::load(addr + 36, maps),         // +0x24
-            base_dll_name: UnicodeString::load(addr + 44, maps),         // +0x2C
-            flags: maps.read_dword(addr + 52).unwrap(),                  // +0x34
-            load_count: maps.read_word(addr + 56).unwrap(),              // +0x38
-            tls_index: maps.read_word(addr + 58).unwrap(),               // +0x3A
-            hash_links: ListEntry::load(addr + 60, maps),                // +0x3C
-            time_date_stamp: maps.read_dword(addr + 68).unwrap(),        // +0x44
+            dll_base: maps.read_dword(addr + 24).unwrap(),    // +0x18
+            entry_point: maps.read_dword(addr + 28).unwrap(), // +0x1C
+            size_of_image: maps.read_dword(addr + 32).unwrap(), // +0x20
+            full_dll_name: UnicodeString::load(addr + 36, maps), // +0x24
+            base_dll_name: UnicodeString::load(addr + 44, maps), // +0x2C
+            flags: maps.read_dword(addr + 52).unwrap(),       // +0x34
+            load_count: maps.read_word(addr + 56).unwrap(),   // +0x38
+            tls_index: maps.read_word(addr + 58).unwrap(),    // +0x3A
+            hash_links: ListEntry::load(addr + 60, maps),     // +0x3C
+            time_date_stamp: maps.read_dword(addr + 68).unwrap(), // +0x44
         }
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        self.in_load_order_links.save(addr, maps);               // +0x00
-        self.in_memory_order_links.save(addr + 8, maps);         // +0x08
+        self.in_load_order_links.save(addr, maps); // +0x00
+        self.in_memory_order_links.save(addr + 8, maps); // +0x08
         self.in_initialization_order_links.save(addr + 16, maps); // +0x10
-        maps.write_dword(addr + 24, self.dll_base);             // +0x18
-        maps.write_dword(addr + 28, self.entry_point);          // +0x1C
-        maps.write_dword(addr + 32, self.size_of_image);       // +0x20
-        self.full_dll_name.save(addr + 36, maps);               // +0x24
-        self.base_dll_name.save(addr + 44, maps);               // +0x2C
-        maps.write_dword(addr + 52, self.flags);               // +0x34
-        maps.write_word(addr + 56, self.load_count);           // +0x38
-        maps.write_word(addr + 58, self.tls_index);            // +0x3A
-        self.hash_links.save(addr + 60, maps);                  // +0x3C
-        maps.write_dword(addr + 68, self.time_date_stamp);     // +0x44
+        maps.write_dword(addr + 24, self.dll_base); // +0x18
+        maps.write_dword(addr + 28, self.entry_point); // +0x1C
+        maps.write_dword(addr + 32, self.size_of_image); // +0x20
+        self.full_dll_name.save(addr + 36, maps); // +0x24
+        self.base_dll_name.save(addr + 44, maps); // +0x2C
+        maps.write_dword(addr + 52, self.flags); // +0x34
+        maps.write_word(addr + 56, self.load_count); // +0x38
+        maps.write_word(addr + 58, self.tls_index); // +0x3A
+        self.hash_links.save(addr + 60, maps); // +0x3C
+        maps.write_dword(addr + 68, self.time_date_stamp); // +0x44
     }
-
 
     pub fn print(&self) {
         log::info!("{:#x?}", self);

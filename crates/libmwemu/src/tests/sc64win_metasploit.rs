@@ -25,5 +25,5 @@ pub fn sc64win_metasploit() {
     let sockaddr_ptr = emu.maps.read_qword(stack + 8).unwrap();
     let sockaddr = emu.maps.read_qword(sockaddr_ptr).unwrap();
 
-    assert_eq!(sockaddr,  0x12c190a5c110002);
+    assert_eq!(sockaddr, 0x12c190a5c110002);
 }

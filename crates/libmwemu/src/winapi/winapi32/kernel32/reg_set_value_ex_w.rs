@@ -1,5 +1,5 @@
-use crate::emu;
 use crate::constants;
+use crate::emu;
 
 pub fn RegSetValueExW(emu: &mut emu::Emu) {
     let hKey = emu

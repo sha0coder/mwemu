@@ -1,5 +1,5 @@
-use crate::*;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // this tests the fpu unit.
@@ -9,7 +9,6 @@ pub fn elf64lin_fpu() {
     let mut emu = emu64();
 
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-    
 
     let sample = "../../test/elf64lin_fpu.bin";
     emu.load_code(sample);
@@ -40,10 +39,10 @@ pub fn elf64lin_fpu() {
     assert_eq!(emu.fpu_mut().peek_st_f64(6), 2.141592653589793);
     emu.step(); // 8 fsqrt
     assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffbb51491ea66b7000); // should end in 6ea4,
-                                                                // its comupted as f64
+                                                                      // its comupted as f64
     assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.4634181403788165);
 
-    emu.step(); //  9 fxch   st(1) 
+    emu.step(); //  9 fxch   st(1)
     assert_eq!(emu.fpu_mut().peek_st_u80(7), 0x3fffbb51491ea66b7000); // should end in 6ea4
     assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fff8000000000000000);
     assert_eq!(emu.fpu_mut().peek_st_f64(7), 1.4634181403788165);
@@ -68,7 +67,7 @@ pub fn elf64lin_fpu() {
     assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3fffc75922e5f71d3000); // should end in 2dc6
     assert_eq!(emu.fpu_mut().peek_st_u80(5), 0x3fff8000000000000000);
     assert_eq!(emu.fpu_mut().peek_st_f64(7), 0.9396499819615878);
-    assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.5574077246549023); 
+    assert_eq!(emu.fpu_mut().peek_st_f64(6), 1.5574077246549023);
     emu.step(); // 13 fsubp  st(1),st
     assert_eq!(emu.fpu_mut().peek_st_u80(0), 0xffffc000000000000000);
     emu.step(); // 14 f2xm1
@@ -82,7 +81,7 @@ pub fn elf64lin_fpu() {
     assert_eq!(emu.fpu_mut().st.get_top(), 6);
     assert_eq!(emu.fpu_mut().st.get_depth(), 2);
     assert_eq!(emu.fpu_mut().peek_st_u80(6), 0x3ffd9a209a84fbcff800); // 799);
-    assert_eq!(emu.fpu_mut().peek_st_f64(6), 0.3010299956639812); 
+    assert_eq!(emu.fpu_mut().peek_st_f64(6), 0.3010299956639812);
     emu.step(); // 17 fyl2x
     assert_eq!(emu.fpu_mut().peek_st_u80(7), 0xbfffddb2dbec0456f800); //46);
     assert_eq!(emu.fpu_mut().peek_st_f64(7), -1.7320208456446193);

@@ -1,6 +1,8 @@
 /*
     Little endian 64 bits and inferior bits memory.
 */
+use crate::emu_context;
+use bytemuck::cast_slice;
 use md5;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -10,14 +12,138 @@ use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Write;
-use bytemuck::cast_slice;
-use crate::emu_context;
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub struct Permission(u8);
+
+// Bit flags for permissions
+impl Permission {
+    pub const NONE: Permission = Permission(0b000);
+    pub const READ: Permission = Permission(0b001);
+    pub const WRITE: Permission = Permission(0b010);
+    pub const EXECUTE: Permission = Permission(0b100);
+
+    // Common combinations
+    pub const READ_WRITE: Permission = Permission(0b011);
+    pub const READ_EXECUTE: Permission = Permission(0b101);
+    pub const WRITE_EXECUTE: Permission = Permission(0b110);
+    pub const READ_WRITE_EXECUTE: Permission = Permission(0b111);
+
+    /// Create a new Permission from raw bits
+    #[inline]
+    pub const fn from_bits(bits: u8) -> Self {
+        Permission(bits & 0b111) // Only use the lower 3 bits
+    }
+
+    /// Get the raw bits
+    #[inline]
+    pub const fn bits(&self) -> u8 {
+        self.0
+    }
+
+    /// Create permission from individual flags
+    #[inline]
+    pub fn from_flags(read: bool, write: bool, execute: bool) -> Self {
+        let mut bits = 0;
+        if read {
+            bits |= 0b001;
+        }
+        if write {
+            bits |= 0b010;
+        }
+        if execute {
+            bits |= 0b100;
+        }
+        Permission(bits)
+    }
+
+    /// Check if read access is allowed
+    #[inline]
+    pub const fn can_read(&self) -> bool {
+        (self.0 & 0b001) != 0
+    }
+
+    /// Check if write access is allowed
+    #[inline]
+    pub const fn can_write(&self) -> bool {
+        (self.0 & 0b010) != 0
+    }
+
+    /// Check if execute access is allowed
+    #[inline]
+    pub const fn can_execute(&self) -> bool {
+        (self.0 & 0b100) != 0
+    }
+
+    /// Check if any access is allowed
+    #[inline]
+    pub const fn is_accessible(&self) -> bool {
+        self.0 != 0
+    }
+
+    /// Add a permission (union)
+    #[inline]
+    pub const fn add(&self, other: Permission) -> Self {
+        Permission(self.0 | other.0)
+    }
+
+    /// Remove a permission
+    pub const fn remove(&self, other: Permission) -> Self {
+        Permission(self.0 & !other.0)
+    }
+
+    /// Check if this permission contains another permission
+    #[inline]
+    pub const fn contains(&self, other: Permission) -> bool {
+        (self.0 & other.0) == other.0
+    }
+
+    /// Get individual permission flags
+    #[inline]
+    pub const fn to_flags(&self) -> (bool, bool, bool) {
+        (self.can_read(), self.can_write(), self.can_execute())
+    }
+}
+
+// Implement bitwise operations for Permission
+impl std::ops::BitOr for Permission {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Permission(self.0 | rhs.0)
+    }
+}
+
+impl std::ops::BitAnd for Permission {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Permission(self.0 & rhs.0)
+    }
+}
+
+impl std::ops::BitXor for Permission {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self {
+        Permission(self.0 ^ rhs.0)
+    }
+}
+
+impl std::ops::Not for Permission {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        Permission(!self.0 & 0b111)
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
     mem_name: String,
     base_addr: u64,
     bottom_addr: u64,
+    permission: Permission,
     mem: Vec<u8>,
 }
 
@@ -27,19 +153,61 @@ impl Default for Mem64 {
             mem_name: "".to_string(),
             base_addr: 0,
             bottom_addr: 0,
+            permission: Permission::from_flags(true, true, false),
             mem: Vec::new(),
         }
     }
 }
 
 impl Mem64 {
-    pub fn new(mem_name: String, base_addr: u64, bottom_addr: u64, mem: Vec<u8>) -> Mem64 {
+    pub fn new(
+        mem_name: String,
+        base_addr: u64,
+        bottom_addr: u64,
+        mem: Vec<u8>,
+        permission: Permission,
+    ) -> Mem64 {
         Mem64 {
             mem_name,
             base_addr,
             bottom_addr,
-            mem
+            permission,
+            mem,
         }
+    }
+
+    pub fn permission(&self) -> Permission {
+        self.permission
+    }
+
+    /// Set new permissions
+    pub fn set_permission(&mut self, permission: Permission) {
+        self.permission = permission;
+    }
+
+    /// Add permissions
+    pub fn add_permission(&mut self, permission: Permission) {
+        self.permission = self.permission.add(permission);
+    }
+
+    /// Remove permissions
+    pub fn remove_permission(&mut self, permission: Permission) {
+        self.permission = self.permission.remove(permission);
+    }
+
+    /// Check if read access is allowed for this memory region
+    pub fn can_read(&self) -> bool {
+        self.permission.can_read()
+    }
+
+    /// Check if write access is allowed for this memory region
+    pub fn can_write(&self) -> bool {
+        self.permission.can_write()
+    }
+
+    /// Check if execute access is allowed for this memory region
+    pub fn can_execute(&self) -> bool {
+        self.permission.can_execute()
     }
 
     pub fn clear(&mut self) {
@@ -147,6 +315,20 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn read_from(&self, addr: u64) -> &[u8] {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let max_sz = (self.bottom_addr - self.base_addr) as usize;
         /*
@@ -165,26 +347,31 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
     pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
+        if !self.can_read() {
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         if addr >= self.base_addr + self.mem.len() as u64 {
             // TODO: log trace?
             return &[0; 0];
         }
         if addr < self.base_addr {
-            // TODO: log trace?            
+            // TODO: log trace?
             return &[0; 0];
         }
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            // TODO: log trace?            
-            let addr =  self.mem.get(idx..self.mem.len()).unwrap();
+            // TODO: log trace?
+            let addr = self.mem.get(idx..self.mem.len()).unwrap();
             return addr;
         }
         let r = self.mem.get(idx..sz2).unwrap();
@@ -198,7 +385,8 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
@@ -209,7 +397,7 @@ impl Mem64 {
         let sz2 = self.size();
         if sz2 > self.mem.len() {
             // TODO: log trace?
-            let bytes =  self.mem.get(idx..self.mem.len()).unwrap();
+            let bytes = self.mem.get(idx..self.mem.len()).unwrap();
             return bytes;
         }
         let r = self.mem.get(idx..sz2).unwrap();
@@ -223,13 +411,28 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
     pub fn read_byte(&self, addr: u64) -> u8 {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let r = self.mem[idx];
         if cfg!(feature = "log_mem_read") {
@@ -242,13 +445,28 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
     pub fn read_word(&self, addr: u64) -> u16 {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let r = (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8);
         let r = u16::from_le_bytes(self.mem[idx..idx + 2].try_into().expect("incorrect length"));
@@ -262,13 +480,28 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
     pub fn read_dword(&self, addr: u64) -> u32 {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let r = u32::from_le_bytes(self.mem[idx..idx + 4].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem_read") {
@@ -281,13 +514,28 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
     pub fn read_qword(&self, addr: u64) -> u64 {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let r = u64::from_le_bytes(self.mem[idx..idx + 8].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem_read") {
@@ -300,12 +548,27 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     pub fn read_oword(&self, addr: u64) -> u128 {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         let r = u128::from_le_bytes(
             self.mem[idx..idx + 16]
@@ -322,13 +585,157 @@ impl Mem64 {
                         r
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         r
     }
 
     #[inline(always)]
+    pub fn force_write_byte(&mut self, addr: u64, value: u8) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx] = value;
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_byte: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 1),
+                        value
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_bytes(&mut self, addr: u64, bs: &[u8]) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_bytes: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, bs.len()),
+                        bs
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_word(&mut self, addr: u64, value: u16) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_word: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 2),
+                        value
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_dword(&mut self, addr: u64, value: u32) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_dword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 4),
+                        value
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_qword(&mut self, addr: u64, value: u64) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_qword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 8),
+                        value
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_oword(&mut self, addr: u64, value: u128) {
+        let idx = (addr - self.base_addr) as usize;
+        self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_oword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 16),
+                        value
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
+    pub fn force_write_string(&mut self, addr: u64, s: &str) {
+        let mut v = s.as_bytes().to_vec();
+        v.push(0);
+        self.force_write_bytes(addr, &v);
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: force_write_string: 0x{:x?} = {:?}",
+                        self.build_addresses(addr, s.len() + 1),
+                        s
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    #[inline(always)]
     pub fn write_byte(&mut self, addr: u64, value: u8) {
+        if !self.can_write() {
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx] = value;
         if cfg!(feature = "log_mem_write") {
@@ -341,12 +748,17 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_bytes(&mut self, addr: u64, bs: &[u8]) {
+        if !self.can_write() {
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..(bs.len() + idx)].copy_from_slice(bs.as_ref());
         if cfg!(feature = "log_mem_write") {
@@ -359,12 +771,27 @@ impl Mem64 {
                         bs
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_word(&mut self, addr: u64, value: u16) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
@@ -378,12 +805,27 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_dword(&mut self, addr: u64, value: u32) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
@@ -397,12 +839,27 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_qword(&mut self, addr: u64, value: u64) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
@@ -416,12 +873,27 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_oword(&mut self, addr: u64, value: u128) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let idx = (addr - self.base_addr) as usize;
         self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
 
@@ -435,12 +907,27 @@ impl Mem64 {
                         value
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn write_string(&mut self, addr: u64, s: &str) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let mut v = s.as_bytes().to_vec();
         if v.last() != Some(&0) {
             v.push(0);
@@ -458,16 +945,31 @@ impl Mem64 {
                         v
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline(always)]
     pub fn read_string(&self, addr: u64) -> String {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let MAX_SIZE_STR = 1_000_000;
         let mut s: Vec<u8> = Vec::new();
         let mut idx = addr;
-        while idx < addr+MAX_SIZE_STR {
+        while idx < addr + MAX_SIZE_STR {
             let b = self.read_byte(idx);
             if b == 0 {
                 break;
@@ -485,13 +987,28 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         String::from_utf8(s).expect("invalid utf-8")
     }
 
     #[inline(always)]
     pub fn write_wide_string(&mut self, addr: u64, s: &str) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
         let mut wide_string: Vec<u16> = s.encode_utf16().collect();
         if wide_string.last() != Some(&0) {
             wide_string.push(0);
@@ -510,16 +1027,31 @@ impl Mem64 {
                         wide_string_byte_slice
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[inline]
     pub fn read_wide_string(&self, addr: u64) -> String {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let MAX_SIZE_STR = 1_000_000;
         let mut s: Vec<u16> = Vec::new();
         let mut idx = addr;
-        while idx < addr+MAX_SIZE_STR {
+        while idx < addr + MAX_SIZE_STR {
             let b = self.read_word(idx);
             if b == 0 {
                 break;
@@ -537,16 +1069,35 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
-        
+
         match String::from_utf16(&s) {
-            Ok(s) => { return s; }
-            Err(_) => { return "".to_string(); }
+            Ok(s) => {
+                return s;
+            }
+            Err(_) => {
+                return "".to_string();
+            }
         }
     }
 
     pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
         let mut s: Vec<u16> = Vec::new();
         let mut idx = addr;
         for _ in 0..max_chars {
@@ -567,7 +1118,8 @@ impl Mem64 {
                         s
                     );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
         String::from_utf16_lossy(&s)
     }

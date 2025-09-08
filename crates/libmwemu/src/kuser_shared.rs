@@ -1,7 +1,9 @@
-use std::mem::MaybeUninit;
-use bitfield::bitfield;
 use crate::emu;
+use crate::maps::mem64::Permission;
+use bitfield::bitfield;
+use std::mem::MaybeUninit;
 use std::ptr;
+
 const USER_KUSER_SHARED_ADDR: u64 = 0x7FFE0000;
 
 #[repr(u32)]
@@ -90,7 +92,6 @@ pub union KusdSharedDataFlagsUnion {
     pub bits: KusdSharedDataFlagsBits,
 }
 
-
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct OverlayStruct {
@@ -149,7 +150,6 @@ pub union ControlFlagsUnion {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct XstateConfiguration {
-
     pub EnabledFeatures: u64,
     pub EnabledVolatileFeatures: u64,
     pub Size: u32,
@@ -258,11 +258,16 @@ pub struct KuserSharedData {
 
 pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     emu.maps
-        .create_map("KuserSharedData", USER_KUSER_SHARED_ADDR, 0x1000)
+        .create_map(
+            "KuserSharedData",
+            USER_KUSER_SHARED_ADDR,
+            0x1000,
+            Permission::READ_WRITE,
+        )
         .expect("cannot create KuserSharedData map");
 
     // The KUSER_SHARED_DATA is getting from: https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
-    let mut kusd: KuserSharedData = unsafe {MaybeUninit::zeroed().assume_init()};
+    let mut kusd: KuserSharedData = unsafe { MaybeUninit::zeroed().assume_init() };
     kusd.TickCountMultiplier = 0x0fa00000;
     kusd.InterruptTime.LowPart = 0x17bd9547;
     kusd.InterruptTime.High1Time = 0x0000004b;
@@ -288,7 +293,9 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.MitigationPolicies.MitigationPolicies = 0x0a;
     unsafe {
         kusd.MitigationPolicies.Anonymous.set_nx_support_policy(0x2);
-        kusd.MitigationPolicies.Anonymous.set_seh_validation_policy(0x2);
+        kusd.MitigationPolicies
+            .Anonymous
+            .set_seh_validation_policy(0x2);
     }
     kusd.CyclesPerYield = 0x0064;
     kusd.DismountCount = 0x00000006;
@@ -319,19 +326,25 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.XState.EnabledVolatileFeatures = 0x000000000000000f;
     kusd.XState.Size = 0x000003c0;
     kusd.QpcData.QpcData = 0x0083;
-    kusd.QpcData.anonymous.QpcBypassEnabled= 0x83;
+    kusd.QpcData.anonymous.QpcBypassEnabled = 0x83;
     kusd.QpcBias = 0x000000159530c4af;
 
-    let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] = [0; std::mem::size_of::<KuserSharedData>()];
+    let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] =
+        [0; std::mem::size_of::<KuserSharedData>()];
 
     unsafe {
         // Copy the struct into the allocated memory
         let struct_ptr = &kusd as *const KuserSharedData as *const u8;
         let memory_ptr = memory.as_mut_ptr();
-        ptr::copy_nonoverlapping(struct_ptr, memory_ptr, std::mem::size_of::<KuserSharedData>());
+        ptr::copy_nonoverlapping(
+            struct_ptr,
+            memory_ptr,
+            std::mem::size_of::<KuserSharedData>(),
+        );
     }
 
-    emu.maps.write_bytes(USER_KUSER_SHARED_ADDR, memory.to_vec());
+    emu.maps
+        .write_bytes(USER_KUSER_SHARED_ADDR, memory.to_vec());
 
     USER_KUSER_SHARED_ADDR
 }

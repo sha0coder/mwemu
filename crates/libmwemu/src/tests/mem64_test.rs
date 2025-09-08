@@ -1,3 +1,4 @@
+use crate::maps::mem64::Permission;
 use crate::{maps::mem64::Mem64, tests::helpers};
 
 #[test]
@@ -6,6 +7,7 @@ pub fn mem64_test() {
     helpers::setup();
 
     let mut mem = Mem64::default();
+    mem.set_permission(Permission::READ_WRITE);
     mem.set_name("memtest");
     assert_eq!(mem.get_name(), "memtest");
 
@@ -42,9 +44,8 @@ pub fn mem64_test() {
     mem.write_string(0x400010 + 7, "world!");
     assert_eq!(mem.read_string(0x400010), "Hello, world!");
 
-
     assert_eq!(mem.inside(0x4000ab), true);
-    assert_eq!(mem.inside(0x400000+1024), false);
+    assert_eq!(mem.inside(0x400000 + 1024), false);
 
     mem.clear();
 
@@ -53,6 +54,6 @@ pub fn mem64_test() {
     mem2.set_size(16);
     mem2.load("../../test/sc32win_donut.bin");
     let md5 = format!("{:x}", mem2.md5());
-    assert!(md5 == "66d6376c2dd0b8d4d35461844e5b0e6c" || md5 == "4ae71336e44bf9bf79d2752e234818a5"); 
+    assert!(md5 == "66d6376c2dd0b8d4d35461844e5b0e6c" || md5 == "4ae71336e44bf9bf79d2752e234818a5");
     // its weird but in windows CI the md5 changes to 4ae... prolly defender patches it
 }

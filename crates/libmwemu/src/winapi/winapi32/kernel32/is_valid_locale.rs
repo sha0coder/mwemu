@@ -10,10 +10,7 @@ pub fn IsValidLocale(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!IsValidLocale cannot read flags");
 
-    log_red!(
-        emu,
-        "kernel32!IsValidLocale"
-    );
+    log_red!(emu, "kernel32!IsValidLocale");
 
     emu.regs_mut().rax = 1;
     emu.stack_pop32(false);
