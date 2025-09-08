@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::ops::Deref;
+use minidump::format::MemoryProtection;
 
 use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::tlb::TLB;
@@ -14,6 +15,7 @@ use crate::serialization::emu::SerializableEmu;
 use crate::serialization::maps::SerializableMaps;
 use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
+
 
 pub struct MinidumpConverter;
 
@@ -91,13 +93,13 @@ impl MinidumpConverter {
             for info in memory_info.iter() {
                 let base_addr = info.raw.base_address;
                 let size = info.raw.region_size;
-                let permission = match info.protection {
-                    PAGE_NOACCESS => Permission::NONE,
-                    PAGE_READWRITE => Permission::READ_WRITE,
-                    PAGE_READONLY => Permission::READ,
-                    PAGE_EXECUTE => Permission::EXECUTE,
-                    PAGE_EXECUTE_READ => Permission::READ_EXECUTE,
-                    PAGE_EXECUTE_READWRITE => Permission::READ_WRITE_EXECUTE,
+                let permission = match info.protection.bits() & MemoryProtection::ACCESS_MASK.bits() {
+                    x if x == MemoryProtection::PAGE_NOACCESS.bits() => Permission::NONE,
+                    x if x == MemoryProtection::PAGE_READONLY.bits() => Permission::READ,
+                    x if x == MemoryProtection::PAGE_READWRITE.bits() => Permission::READ_WRITE,
+                    x if x == MemoryProtection::PAGE_EXECUTE.bits() => Permission::EXECUTE,
+                    x if x == MemoryProtection::PAGE_EXECUTE_READ.bits() => Permission::READ_EXECUTE,
+                    x if x == MemoryProtection::PAGE_EXECUTE_READWRITE.bits() => Permission::READ_WRITE_EXECUTE,
                     _ => Permission::READ_WRITE_EXECUTE,
                 };
 
