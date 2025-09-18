@@ -106,13 +106,14 @@ impl Emu {
             log::info!("base: 0x{:x}", base);
         }
 
+        let sec_allign = pe32.opt.section_alignment;
         // 4. map pe and then sections
         let pemap = self
             .maps
             .create_map(
                 &format!("{}.pe", filename2),
                 base.into(),
-                pe32.opt.size_of_headers.into(),
+                align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
                 Permission::READ_WRITE,
             )
             .expect("cannot create pe map");
@@ -152,7 +153,7 @@ impl Emu {
             let map = match self.maps.create_map(
                 &format!("{}{}", filename2, sect_name),
                 base as u64 + sect.virtual_address as u64,
-                sz,
+                align_up!(sz, sec_allign as u64),
                 permission,
             ) {
                 Ok(m) => m,
