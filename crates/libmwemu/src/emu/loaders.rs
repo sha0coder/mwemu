@@ -9,6 +9,13 @@ use crate::pe::pe32::PE32;
 use crate::pe::pe64::PE64;
 use crate::peb::{peb32, peb64};
 
+macro_rules! align_up {
+    ($size:expr, $align:expr) => {{
+        // Ensure alignment is a power of two at compile time if possible
+        ($size + $align - 1) & !($align - 1)
+    }};
+}
+
 impl Emu {
     /// Complex funtion called from many places and with multiple purposes.
     /// This is called from load_code() if sample is PE32, but also from load_library etc.
@@ -260,11 +267,12 @@ impl Emu {
             log::info!("base: 0x{:x}", base);
         }
 
+        let sec_allign = pe64.opt.section_alignment;
         // 4. map pe and then sections
         let pemap = match self.maps.create_map(
             &format!("{}.pe", filename2),
             base,
-            pe64.opt.size_of_headers.into(),
+            align_up!(pe64.opt.size_of_headers, sec_allign) as u64,
             Permission::READ_WRITE,
         ) {
             Ok(m) => m,
@@ -308,7 +316,7 @@ impl Emu {
             let map = match self.maps.create_map(
                 &format!("{}{}", filename2, sect_name),
                 base + sect.virtual_address as u64,
-                sz,
+                align_up!(sz, sec_allign as u64),
                 permission,
             ) {
                 Ok(m) => m,

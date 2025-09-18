@@ -35,7 +35,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
           emu.stack_lvl.push(0);
           emu.stack_lvl_idx += 1;
       }*/
-    
+
     let rip = emu.regs().rip;
     emu.call_stack_mut().push((rip, addr));
 
