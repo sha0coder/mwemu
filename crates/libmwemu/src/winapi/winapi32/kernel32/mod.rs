@@ -714,7 +714,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
         return 0;
     }
 
-    if !dll.ends_with(".dll") {
+    if !dll.ends_with(".dll") && !dll.ends_with(".exe") {
         dll.push_str(".dll");
     }
 

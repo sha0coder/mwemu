@@ -6,7 +6,7 @@ use crate::{
 };
 
 impl Emu {
-    //TODO: check this, this is used only on pyscemu
+    //TODO: check this, this is used only on pymwemu
     /// Call a winapi by addess.
     pub fn handle_winapi(&mut self, addr: u64) {
         if self.cfg.is_64bits {

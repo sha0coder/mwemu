@@ -100,7 +100,6 @@ impl Emu {
         }
 
         // 4. map pe and then sections
-        log::info!("mapeando PE de {}", filename2);
         let pemap = self
             .maps
             .create_map(

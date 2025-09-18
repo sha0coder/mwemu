@@ -44,6 +44,8 @@ mod unicode_string;
 mod unicode_string64;
 mod vs_fixedfileinfo;
 mod vs_versioninfo;
+mod kernel32;
+mod kernel64;
 
 pub use act_ctx_section_keyed_data32::*;
 pub use act_ctx_section_keyed_data64::*;
