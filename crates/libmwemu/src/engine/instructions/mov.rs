@@ -16,7 +16,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.show_instruction_comment(color!("LightCyan"), ins, &format!("0x{:x}", value1));
     }
 
-
     /*
     if emu.pos == 189464541 {
         let addr = emu.get_operand_value(ins, 1, false).unwrap();
