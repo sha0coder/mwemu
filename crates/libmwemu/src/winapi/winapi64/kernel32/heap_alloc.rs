@@ -22,7 +22,7 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
         allocation
     };
 
-    emu.regs_mut().rax = heap_addr;
+    emu.regs_mut().rax = heap_addr;  
 
     log_red!(
         emu,

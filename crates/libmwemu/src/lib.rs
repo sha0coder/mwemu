@@ -1,4 +1,3 @@
-#![feature(likely_unlikely)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -45,6 +44,7 @@ pub mod winapi;
 
 #[cfg(test)]
 mod tests;
+mod utils;
 
 use config::Config;
 use emu::Emu;

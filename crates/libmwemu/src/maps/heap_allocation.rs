@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_char;
 use std::rc::{Rc, Weak};
-use std::{cmp, hint};
+use std::{cmp};
+use crate::utils::{likely, unlikely};
 
 type PRFrag = Option<Rc<RefCell<Fragment>>>;
 type PWFrag = Option<Weak<RefCell<Fragment>>>;
@@ -163,12 +164,12 @@ impl O1Heap {
     /// * `Some(usize)` - An offset into the heap's memory arena if successful
     /// * `None` - If there is insufficient memory or the request is invalid
     pub fn allocate(&mut self, amount: usize) -> Option<u64> {
-        if hint::unlikely(amount == 0) {
+        if unlikely(amount == 0) {
             return None;
         }
 
         // Update peak request size
-        if hint::likely(self.diagnostics.peak_request_size < amount) {
+        if likely(self.diagnostics.peak_request_size < amount) {
             self.diagnostics.peak_request_size = amount;
         }
 
@@ -185,7 +186,7 @@ impl O1Heap {
         let suitable_bins = self.nonempty_bin_mask & candidate_bin_mask;
 
         // Find smallest suitable bin
-        if hint::likely(suitable_bins != 0) {
+        if likely(suitable_bins != 0) {
             let smallest_bin_index = suitable_bins.trailing_zeros() as usize;
 
             if smallest_bin_index < NUM_BINS_MAX {
@@ -198,7 +199,7 @@ impl O1Heap {
                 frag_rc.borrow_mut().size = fragment_size as u32;
                 // Split if necessary
                 let leftover = frag_size - fragment_size as u32;
-                if hint::likely(leftover >= FRAGMENT_SIZE_MIN as u32) {
+                if likely(leftover >= FRAGMENT_SIZE_MIN as u32) {
                     let new_frag = Rc::new(RefCell::new(Fragment::new(frag_offset + fragment_size as u32, leftover)));
                     // Link the new fragment in the chain
                     let next_rc = frag_rc.borrow().next.clone();
@@ -236,12 +237,12 @@ impl O1Heap {
     // remove fragment from the bin
     fn unbin(&mut self, fragment: &Rc<RefCell<Fragment>>) {
         let size = fragment.borrow().size;
-        if hint::unlikely(size < FRAGMENT_SIZE_MIN as u32) {
+        if unlikely(size < FRAGMENT_SIZE_MIN as u32) {
             return;
         }
 
         let idx = self.log2_floor(size as usize / FRAGMENT_SIZE_MIN);
-        if hint::unlikely(idx >= NUM_BINS_MAX) {
+        if unlikely(idx >= NUM_BINS_MAX) {
             return;
         }
 

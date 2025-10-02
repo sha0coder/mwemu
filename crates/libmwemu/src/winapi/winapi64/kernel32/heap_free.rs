@@ -1,4 +1,4 @@
-use std::hint::likely;
+use crate::utils::likely;
 use crate::emu;
 
 pub fn HeapFree(emu: &mut emu::Emu) {
