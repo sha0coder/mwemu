@@ -13,8 +13,8 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
         let allocation = emu.maps.alloc(size).unwrap_or_default();
         emu.maps
             .create_map(
-                format!("alloc_{:x}", emu.regs().rax).as_str(),
-                emu.regs().rax,
+                format!("alloc_{:x}", allocation).as_str(),
+                allocation,
                 size,
                 Permission::READ_WRITE,
             )
