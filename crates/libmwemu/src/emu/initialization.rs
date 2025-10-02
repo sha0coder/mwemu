@@ -526,5 +526,14 @@ impl Emu {
         let stack_size = 0x100000;
         teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
         teb.save(teb_map);
+
+        let heap_sz = 0x885900 - 0x4b5000;
+        self.heap_addr = self.maps.alloc(heap_sz).expect("cannot allocate heap");
+        let heap = self
+            .maps
+            .create_map(".heap", self.heap_addr, heap_sz, Permission::READ_WRITE)
+            .expect("cannot create heap map");
+
+        self.heap_management = Some(Box::new(O1Heap::new(self.heap_addr, heap_sz as u32).expect("Expect new heap_management but failed")));
     }
 }
