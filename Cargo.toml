@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/pymwemu",
+ #   "crates/pymwemu",
     "crates/libmwemu",
     "crates/mwemu",
 ]
