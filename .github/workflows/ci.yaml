@@ -88,7 +88,7 @@ jobs:
       - name: Run coverage
         if: runner.os == 'Linux'
         run: |
-          cargo tarpaulin --features test-with-python --out Xml --timeout 200
+          cargo tarpaulin --features "extension-module" --out Xml --timeout 200
 
       - name: Upload coverage reports to Codecov
         if: runner.os == 'Linux'
