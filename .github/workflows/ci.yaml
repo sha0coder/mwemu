@@ -88,7 +88,8 @@ jobs:
       - name: Run coverage
         if: runner.os == 'Linux'
         run: |
-          cargo tarpaulin --out Xml --timeout 200
+          cd crates/libmwemu
+          cargo tarpaulin --output-dir ../../ --out Xml --timeout 200
 
       - name: Upload coverage reports to Codecov
         if: runner.os == 'Linux'
