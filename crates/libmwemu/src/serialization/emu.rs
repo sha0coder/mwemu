@@ -209,6 +209,7 @@ impl From<SerializableEmu> for Emu {
             definitions: HashMap::new(),
             stored_contexts: HashMap::new(),
             entropy: 0.0,
+            heap_management: None,
         }
     }
 }

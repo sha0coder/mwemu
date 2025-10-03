@@ -9,9 +9,17 @@ description = "x86 32/64bits and system internals emulator, for securely emulati
 name = "pymwemu"
 crate-type = ["cdylib", "rlib"]
 
+[dependencies.pyo3]
+version = "0.26.0"
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
+
 [dependencies]
-pyo3 = "0.26.0"
 env_logger = "0.11.6"
 libmwemu = { path = "../libmwemu" }
 log = "0.4.22"
 iced-x86 = "1.21.0"
+
+

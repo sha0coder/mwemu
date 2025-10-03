@@ -1,5 +1,6 @@
 pub mod mem64;
 pub mod tlb;
+pub mod heap_allocation;
 
 use crate::constants;
 use crate::maps::mem64::Permission;
@@ -1227,7 +1228,6 @@ impl Maps {
         }
 
         // Here we assume that we go from the bottom to the most
-
         for (_, mem_key) in self.maps.iter() {
             let mem = self.mem_slab.get(*mem_key).unwrap();
             let base = mem.get_base();

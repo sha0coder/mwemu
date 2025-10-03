@@ -22,6 +22,7 @@ use crate::{
     structures::MemoryOperation,
     thread_context::ThreadContext,
 };
+use crate::maps::heap_allocation::O1Heap;
 
 mod banzai;
 mod call_stack;
@@ -101,4 +102,5 @@ pub struct Emu {
     pub definitions: HashMap<u64, Definition>,
     pub stored_contexts: HashMap<String, StoredContext>,
     pub entropy: f64,
+    pub heap_management: Option<Box<O1Heap>>,
 }

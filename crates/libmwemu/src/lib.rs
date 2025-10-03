@@ -44,6 +44,7 @@ pub mod winapi;
 
 #[cfg(test)]
 mod tests;
+mod utils;
 
 use config::Config;
 use emu::Emu;

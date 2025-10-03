@@ -864,7 +864,7 @@ fn init64() -> PyResult<Emu> {
 }
 
 #[pymodule]
-fn pymwemu(_py: Python, m: &PyModule) -> PyResult<()> {
+fn pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
