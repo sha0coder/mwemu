@@ -178,6 +178,7 @@ pub mod win_exec;
 pub mod write_console_w;
 pub mod write_file;
 pub mod write_process_memory;
+pub mod device_io_control;
 mod local_free;
 
 // Re-export all functions
@@ -354,6 +355,7 @@ pub use write_console_w::WriteConsoleW;
 pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
 pub use local_free::LocalFree;
+pub use device_io_control::api_DeviceIoControl;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
@@ -539,6 +541,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "WriteConsoleW" => WriteConsoleW(emu),
         "WriteFile" => WriteFile(emu),
         "WriteProcessMemory" => WriteProcessMemory(emu),
+        "DeviceIoControl" => api_DeviceIoControl(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
