@@ -9,6 +9,8 @@ use crate::winapi::winapi32::kernel32;
 
 use crate::maps::mem64::Permission;
 use scan_fmt::scan_fmt_some;
+use crate::emu::Emu;
+use crate::winapi::winapi64::kernel32::InitializeCriticalSection;
 
 const PAGE_NOACCESS: u32 = 0x01;
 const PAGE_READONLY: u32 = 0x02;
@@ -36,6 +38,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "NtQueryPerformanceCounter" => NtQueryPerformanceCounter(emu),
         "RtlGetProcessHeaps" => RtlGetProcessHeaps(emu),
         "RtlDosPathNameToNtPathName_U" => RtlDosPathNameToNtPathName_U(emu),
+        "RtlInitializeCriticalSection" => InitializeCriticalSection(emu),
+        "RtlZeroMemory" => RtlZeroMemory(emu),
         "NtCreateFile" => NtCreateFile(emu),
         "RtlFreeHeap" => RtlFreeHeap(emu),
         "NtQueryInformationFile" => NtQueryInformationFile(emu),
@@ -78,6 +82,26 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn RtlZeroMemory(emu: &mut Emu) {
+    let dest = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 4)
+        .expect("bad RtlZeroMemory address pointer parameter") as u64;
+    let length = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 8)
+        .expect("bad RtlZeroMemory address length parameter") as u64;
+
+    log_red!(
+        emu,
+        "ntdll!RtlZeroMemory dest: 0x{:x} length: {}",
+        dest,
+        length
+    );
+
+    emu.maps.memset(dest, 0, length as usize);
 }
 
 fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {

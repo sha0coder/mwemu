@@ -354,7 +354,7 @@ pub use write_console_w::WriteConsoleW;
 pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
 pub use local_free::LocalFree;
-
+use crate::emu::Emu;
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
 pub fn clear_last_error(emu: &mut emu::Emu) {
@@ -447,6 +447,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetStartupInfoA" => GetStartupInfoA(emu),
         "GetStartupInfoW" => GetStartupInfoW(emu),
         "GetStdHandle" => GetStdHandle(emu),
+        "GetThreadId" => GetThreadId(emu),
         "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
         "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
         "GetSystemFirmwareTable" => GetSystemFirmwareTable(emu),
@@ -561,6 +562,11 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn GetThreadId(emu: &mut Emu) {
+    let hThread = emu.regs().rcx;
+    emu.regs_mut().rax = 0x2c2878;
 }
 
 lazy_static! {
