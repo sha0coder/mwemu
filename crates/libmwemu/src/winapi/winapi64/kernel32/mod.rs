@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 use crate::constants;
 use crate::emu;
+use crate::emu::Emu;
 use crate::peb::peb64;
 use crate::serialization;
 
@@ -449,6 +450,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetStartupInfoA" => GetStartupInfoA(emu),
         "GetStartupInfoW" => GetStartupInfoW(emu),
         "GetStdHandle" => GetStdHandle(emu),
+        "GetThreadId" => GetThreadId(emu),
         "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
         "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
         "GetSystemFirmwareTable" => GetSystemFirmwareTable(emu),
@@ -564,6 +566,11 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn GetThreadId(emu: &mut Emu) {
+    let hThread = emu.regs().rcx;
+    emu.regs_mut().rax = 0x2c2878;
 }
 
 lazy_static! {

@@ -345,6 +345,7 @@ pub use wide_char_to_multi_byte::*;
 pub use win_exec::*;
 pub use write_file::*;
 pub use write_process_memory::*;
+use crate::emu::Emu;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
@@ -390,6 +391,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "FreeLibrary" => FreeLibrary(emu),
         "FreeResource" => FreeResource(emu),
         "GetACP" => GetACP(emu),
+        "GetThreadId" => GetThreadId(emu),
         "GetCommandLineA" => GetCommandLineA(emu),
         "GetCommandLineW" => GetCommandLineW(emu),
         "GetComputerNameA" => GetComputerNameA(emu),
@@ -543,6 +545,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn GetThreadId(emu: &mut Emu) {
+    emu.stack_pop32(false);
+    emu.regs_mut().rax = 0x2c2878;
 }
 
 lazy_static! {

@@ -12,6 +12,7 @@ use crate::serialization;
 use crate::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi64::kernel32;
+use crate::winapi::winapi64::kernel32::InitializeCriticalSection;
 
 const PAGE_NOACCESS: u32 = 0x01;
 const PAGE_READONLY: u32 = 0x02;
@@ -44,6 +45,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "NtQueryPerformanceCounter" => NtQueryPerformanceCounter(emu),
         "RtlGetProcessHeaps" => RtlGetProcessHeaps(emu),
         "RtlDosPathNameToNtPathName_U" => RtlDosPathNameToNtPathName_U(emu),
+        "RtlInitializeCriticalSection" => InitializeCriticalSection(emu),
         "NtCreateFile" => NtCreateFile(emu),
         "RtlFreeHeap" => RtlFreeHeap(emu),
         "NtQueryInformationFile" => NtQueryInformationFile(emu),
@@ -65,6 +67,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "NtTerminateThread" => NtTerminateThread(emu),
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
         "RtlCaptureContext" => RtlCaptureContext(emu),
+        "RtlMoveMemory" => RtlMoveMemory(emu),
+        "RtlZeroMemory" => RtlZeroMemory(emu),
         "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
         "strlen" => strlen(emu),
         "NtSetInformationThread" => NtSetInformationThread(emu),
@@ -90,6 +94,40 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+fn RtlZeroMemory(emu: &mut emu::Emu) {
+    let dest = emu.regs().rcx;
+    let length = emu.regs().rdx;
+
+    log_red!(
+    emu,
+    "ntdll!RtlZeroMemory dest: 0x{:x} length: {}",
+    dest,
+    length
+    );
+
+    emu.maps.memset(dest, 0, length as usize);
+}
+
+
+fn RtlMoveMemory(emu: &mut emu::Emu) {
+    let dst = emu.regs().rcx;
+    let src = emu.regs().rdx;
+    let sz = emu.regs().r8 as usize;
+
+    let result = emu.maps.memcpy(dst, src, sz);
+    if result == false {
+        panic!("RtlMoveMemory failed to copy");
+    }
+
+    log_red!(
+        emu,
+        "** {} ntdll!RtlMoveMemory dst = {:x} src = {:x} sz = {}",
+        emu.pos,
+        dst,
+        src,
+        sz
+    );
 }
 
 fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
