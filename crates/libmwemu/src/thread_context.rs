@@ -25,6 +25,7 @@ pub struct ThreadContext {
     pub fls: Vec<u32>,
     pub fs: BTreeMap<u64, u64>,
     pub call_stack: Vec<(u64, u64)>,
+    pub handle: u64,
 }
 
 impl ThreadContext {
@@ -51,6 +52,7 @@ impl ThreadContext {
             fls: Vec::new(),
             fs: BTreeMap::new(),
             call_stack: Vec::with_capacity(10000),
+            handle: 0
         }
     }
 }
