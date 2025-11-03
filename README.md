@@ -12,9 +12,9 @@ x86 32/64bits emulator and windows/linux simulator, for securely emulating malwa
 
 ## Some Videos
 
-https://www.youtube.com/@JesusOlmos-wm8ch/videos
+[r2con2025](https://www.youtube.com/watch?v=-TFL-_-nIqA)
 
-https://www.youtube.com/watch?v=yJ3Bgv3maq0
+[some use cases](https://www.youtube.com/@JesusOlmos-wm8ch/videos)
 
 ## Automation
 
