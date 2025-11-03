@@ -7,7 +7,6 @@ use crate::console::Console;
 use crate::constants;
 use crate::context::context64::Context64;
 use crate::emu;
-use crate::emu::Emu;
 use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::structures;
@@ -1025,10 +1024,8 @@ fn NtReadFile(emu: &mut emu::Emu) {
 
     emu.maps.memset(buff, 0x90, len);
 
-    // TODO: fix path duplication!!!!
-    if filename == "\\??\\c:\\cwd\\c:\\cwd\\version.dll" {
-        let local_path = "/tmp/version2.dll";
-        let mut file = File::open(local_path).unwrap();
+    if filename == "\\??\\c:\\cwd" {
+        let mut file = File::open(&emu.filename).unwrap();
         file.seek(SeekFrom::Start(file_offset));
         let mut file_buffer = vec![0u8; len];
         let bytes_read = file.read(&mut file_buffer).unwrap();
@@ -1051,6 +1048,8 @@ fn NtReadFile(emu: &mut emu::Emu) {
     } else {
         panic!("TODO: read {}", filename);
     }
+
+
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }

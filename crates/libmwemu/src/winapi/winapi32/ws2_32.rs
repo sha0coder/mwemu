@@ -82,13 +82,13 @@ fn getaddrinfo(emu: &mut emu::Emu) {
         .expect("ws2_32!getaddrinfo cannot read result_ptr_ptr");
 
     let node_name = if node_name_ptr != 0 {
-        emu.maps.read_string(node_name_ptr)
+        emu.maps.read_string(node_name_ptr as u64)
     } else {
         "NULL".to_string()
     };
 
     let service_name = if service_name_ptr != 0 {
-        emu.maps.read_string(service_name_ptr)
+        emu.maps.read_string(service_name_ptr as u64)
     } else {
         "NULL".to_string()
     };
@@ -102,10 +102,10 @@ fn getaddrinfo(emu: &mut emu::Emu) {
     let mut hints_protocol = 0;
 
     if hints_ptr != 0 {
-        hints_flags = emu.maps.read_dword(hints_ptr).unwrap_or(0) as i32;
-        hints_family = emu.maps.read_dword(hints_ptr + 4).unwrap_or(0) as i32;
-        hints_socktype = emu.maps.read_dword(hints_ptr + 8).unwrap_or(0) as i32;
-        hints_protocol = emu.maps.read_dword(hints_ptr + 12).unwrap_or(0) as i32;
+        hints_flags = emu.maps.read_dword(hints_ptr as u64).unwrap_or(0) as i32;
+        hints_family = emu.maps.read_dword((hints_ptr + 4) as u64).unwrap_or(0) as i32;
+        hints_socktype = emu.maps.read_dword((hints_ptr + 8) as u64).unwrap_or(0) as i32;
+        hints_protocol = emu.maps.read_dword((hints_ptr + 12) as u64).unwrap_or(0) as i32;
     }
 
     // Create a dummy ADDRINFO structure
@@ -167,7 +167,7 @@ fn getaddrinfo(emu: &mut emu::Emu) {
     emu.maps.write_qword(addrinfo_addr + 40, 0);
 
     // Store the result pointer in the ppResult parameter
-    emu.maps.write_qword(result_ptr_ptr, addrinfo_addr);
+    emu.maps.write_qword(result_ptr_ptr as u64, addrinfo_addr);
 
     log::info!("\tcreated dummy ADDRINFO for {}:{} at 0x{:x}", node_name, service_name, addrinfo_addr);
     log::info!("\tsockaddr at 0x{:x}, canonname at 0x{:x}", sockaddr_addr, canonname_addr);
