@@ -33,7 +33,7 @@ The project was renamed from scemu to mwemu.
 
 ## Some Videos
 
-[r2con2025](https://www.youtube.com/watch?v=-TFL-_-nIqA)
+[r2con2025](https://www.youtube.com/watch?v=-TFL-_-nIqA) using radare2 from mwemu for doing static analisys and visualization inside an emulation moment.
 
 [some demos](https://www.youtube.com/@JesusOlmos-wm8ch/videos)
 
@@ -94,6 +94,12 @@ The project was renamed from scemu to mwemu.
 - bugsleep unpack
 - gozi bss decrypt and dga predictor.
 
+
+## Capture an emulation moment
+
+During the emulation you can see the numer of cpu insturctions emulated, that's an unique ID for an emulation moment.
+
+With -c flag you stop the emulation in a specific moment and inspect what is going on with the console.
 
 ## Usage
 
