@@ -43,6 +43,15 @@ pub const ERROR_BUFFER_OVERFLOW: u64 = 0x6f;
 pub const ERROR_INVALID_PARAMETER: u64 = 0x57;
 pub const ERROR_INSUFFICIENT_BUFFER: u64 = 0x7a;
 
+
+pub const HRESULT_E_INVALID_ARG: u64 = 0x80070057;
+/*
+ * HRESULT STRUCTURE:
+ * 0x8 -> severity: error
+ * 0x007 -> facility: FACILITY_WIN32
+ * 0x0057 -> ERROR_INVALID_PARAMETER
+*/
+
 pub const CP_UTF7: u64 = 65000;
 pub const CP_UTF8: u64 = 65001;
 

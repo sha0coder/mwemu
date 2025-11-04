@@ -6,21 +6,36 @@
 [![Docs.rs](https://docs.rs/libmwemu/badge.svg)](https://docs.rs/libmwemu)
 [![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
 
-x86 32/64bits emulator and windows/linux simulator, for securely emulating malware and other stuff. 
+
+## What is this?
+
+It's a hardware emulator + OS process simulator implemented in pure rust.
+
+This approach is very conviniento to malware analysis and other stuff (PE, shellcode etc)
+
+The OS is mainly windows, it emulates a windows process, some very basic support for linux.
+
+The hardware is x86 32/64bits it's fast and reliable.
+
 
 ![MWEMU Logo](./docs/pics/mwemu_logo.png)
 
+## Three ways of using the software
+
+- mwemu commandline https://github.com/sha0coder/mwemu
+- libmwemu crate https://crates.io/crates/libmwemu
+- pymwemu https://pypi.org/project/pymwemu/
+
+
+## note about scemu
+
+The project was renamed from scemu to mwemu.
+
 ## Some Videos
 
-https://www.youtube.com/@JesusOlmos-wm8ch/videos
+[r2con2025](https://www.youtube.com/watch?v=-TFL-_-nIqA) using radare2 from mwemu for doing static analisys and visualization inside an emulation moment.
 
-https://www.youtube.com/watch?v=yJ3Bgv3maq0
-
-## Automation
-
-Python apps https://pypi.org/search/?q=pymwemu
-
-Rust apps https://crates.io/crates/libmwemu
+[some demos](https://www.youtube.com/@JesusOlmos-wm8ch/videos)
 
 ## Features
 
@@ -79,6 +94,12 @@ Rust apps https://crates.io/crates/libmwemu
 - bugsleep unpack
 - gozi bss decrypt and dga predictor.
 
+
+## Capture an emulation moment
+
+During the emulation you can see the numer of cpu insturctions emulated, that's an unique ID for an emulation moment.
+
+With -c flag you stop the emulation in a specific moment and inspect what is going on with the console.
 
 ## Usage
 

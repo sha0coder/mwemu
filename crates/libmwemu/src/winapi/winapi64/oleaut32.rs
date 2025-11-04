@@ -298,7 +298,7 @@ fn VariantClear(emu: &mut emu::Emu) {
     // Basic validation
     if pvarg == 0 || !emu.maps.is_mapped(pvarg) {
         log_red!(emu, "VariantClear: Invalid pvarg pointer");
-        emu.regs_mut().rax = 0x80070057; // E_INVALIDARG
+        emu.regs_mut().rax = constants::HRESULT_E_INVALID_ARG; 
         return;
     }
 

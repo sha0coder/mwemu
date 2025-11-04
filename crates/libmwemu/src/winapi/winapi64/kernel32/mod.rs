@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 use crate::constants;
 use crate::emu;
+use crate::emu::Emu;
 use crate::peb::peb64;
 use crate::serialization;
 
@@ -178,6 +179,7 @@ pub mod win_exec;
 pub mod write_console_w;
 pub mod write_file;
 pub mod write_process_memory;
+pub mod device_io_control;
 mod local_free;
 
 // Re-export all functions
@@ -354,6 +356,7 @@ pub use write_console_w::WriteConsoleW;
 pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
 pub use local_free::LocalFree;
+pub use device_io_control::api_DeviceIoControl;
 
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
@@ -447,6 +450,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetStartupInfoA" => GetStartupInfoA(emu),
         "GetStartupInfoW" => GetStartupInfoW(emu),
         "GetStdHandle" => GetStdHandle(emu),
+        "GetThreadId" => GetThreadId(emu),
         "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
         "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
         "GetSystemFirmwareTable" => GetSystemFirmwareTable(emu),
@@ -539,6 +543,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "WriteConsoleW" => WriteConsoleW(emu),
         "WriteFile" => WriteFile(emu),
         "WriteProcessMemory" => WriteProcessMemory(emu),
+        "DeviceIoControl" => api_DeviceIoControl(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -562,6 +567,24 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
 
     String::new()
 }
+
+
+fn GetThreadId(emu: &mut Emu) {
+    let hndl = emu.regs().rcx;
+
+    for i in 0..emu.threads.len() {
+        if emu.threads[i].handle == hndl {
+            emu.regs_mut().rax = emu.threads[i].id;
+            log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})", hndl, emu.threads[i].id);
+            return;
+        }
+    }
+    log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle doesn't exist, returning a fake handle for now but should return zero.)", hndl);
+    emu.regs_mut().rax = 0x2c2878; // if handle not found should return zero.
+}
+
+
+
 
 lazy_static! {
     pub static ref COUNT_READ: Mutex<u32> = Mutex::new(0);

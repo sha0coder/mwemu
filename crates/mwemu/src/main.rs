@@ -135,6 +135,7 @@ fn main() {
         .arg(clap_arg!("call", "", "call", "enable call tracer"))
         .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
         .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
+        .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -338,6 +339,10 @@ fn main() {
         )
         .expect("invalid address");
         emu.fpu_mut().mxcsr = value as u32;
+    }
+
+    if matches.is_present("multithread") {
+        emu.cfg.enable_threading = true;
     }
 
     // endpoint

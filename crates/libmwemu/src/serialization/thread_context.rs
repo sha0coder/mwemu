@@ -30,6 +30,7 @@ pub struct SerializableThreadContext {
     pub fls: Vec<u32>,
     pub fs: BTreeMap<u64, u64>,
     pub call_stack: Vec<(u64, u64)>, // the first address is the source of the call location and the second address is the destination of the call
+    pub handle: u64
 }
 
 impl From<&ThreadContext> for SerializableThreadContext {
@@ -56,6 +57,7 @@ impl From<&ThreadContext> for SerializableThreadContext {
             fls: thread.fls.clone(),
             fs: thread.fs.clone(),
             call_stack: thread.call_stack.clone(),
+            handle: thread.handle
         }
     }
 }
@@ -84,6 +86,7 @@ impl From<SerializableThreadContext> for ThreadContext {
             fls: serialized.fls,
             fs: serialized.fs,
             call_stack: serialized.call_stack,
+            handle: serialized.handle,
         }
     }
 }

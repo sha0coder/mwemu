@@ -345,6 +345,7 @@ pub use wide_char_to_multi_byte::*;
 pub use win_exec::*;
 pub use write_file::*;
 pub use write_process_memory::*;
+use crate::emu::Emu;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
@@ -390,6 +391,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "FreeLibrary" => FreeLibrary(emu),
         "FreeResource" => FreeResource(emu),
         "GetACP" => GetACP(emu),
+        "GetThreadId" => GetThreadId(emu),
         "GetCommandLineA" => GetCommandLineA(emu),
         "GetCommandLineW" => GetCommandLineW(emu),
         "GetComputerNameA" => GetComputerNameA(emu),
@@ -543,6 +545,26 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn GetThreadId(emu: &mut Emu) {
+    let hndl = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 4)
+        .expect("kernel32!GetThreadId bad handle parameter") as u64;
+
+    emu.stack_pop32(false);
+
+
+    for i in 0..emu.threads.len() {
+        if emu.threads[i].handle == hndl {
+            emu.regs_mut().rax = emu.threads[i].id;
+            log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})", hndl, emu.threads[i].id);
+            return;
+        }
+    }
+    log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle doesn't exist, returning a fake handle for now but should return zero.)", hndl);
+    emu.regs_mut().rax = 0x2c2878; // if handle not found should return zero.
 }
 
 lazy_static! {
