@@ -1,0 +1,18 @@
+use crate::tests::helpers;
+use crate::*;
+
+#[test]
+// this tests a linux 64bits flags
+pub fn call32() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let opcodes: Vec<u8> = vec![
+        0x55, 0x48, 0x89, 0xe5, 0x89, 0x7d, 0xfc, 0x89,
+        0x75, 0xf8, 0x8b, 0x55, 0xfc, 0x8b, 0x45, 0xf8,
+        0x01, 0xd0, 0x5d, 0xc3,
+    ];
+E   emu.load_bytes(opcodes);  
+
+
+}
