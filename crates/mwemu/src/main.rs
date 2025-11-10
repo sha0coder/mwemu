@@ -91,7 +91,7 @@ fn main() {
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
         .arg(clap_arg!("trace_registers", "r", "trace_registers", "print the register values in every step."))
-        .arg(clap_arg!("trace_register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
+        .arg(clap_arg!("register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
         .arg(clap_arg!("console", "c", "console", "select in which moment will spawn the console to inspect.", "NUMBER"))
         .arg(clap_arg!("loops", "l", "loops", "show loop interations, it is slow."))
         .arg(clap_arg!("nocolors", "n", "nocolors", "print without colors for redirecting to a file >out"))
@@ -187,6 +187,7 @@ fn main() {
             .to_string();
         emu.cfg.reg_names = regs.split(',').map(|x| x.to_string()).collect();
     }
+
     if matches.is_present("string") {
         emu.cfg.trace_string = true;
         emu.cfg.string_addr = u64::from_str_radix(
