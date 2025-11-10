@@ -94,7 +94,7 @@ fn main() {
         .arg(clap_arg!("trace_register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
         .arg(clap_arg!("console", "c", "console", "select in which moment will spawn the console to inspect.", "NUMBER"))
         .arg(clap_arg!("loops", "l", "loops", "show loop interations, it is slow."))
-        .arg(clap_arg!("nocolors", "n", "nocolors", "print without colors for redirectin to a file >out"))
+        .arg(clap_arg!("nocolors", "n", "nocolors", "print without colors for redirecting to a file >out"))
         .arg(clap_arg!("string", "s", "string", "monitor string on a specific address", "ADDRESS"))
         .arg(clap_arg!("inspect", "i", "inspect", "monitor memory like: -i 'dword ptr [ebp + 0x24]", "DIRECTION"))
         //.arg(clap_arg!("endpoint", "e", "endpoint", "perform communications with the endpoint, use tor or vpn!"))
