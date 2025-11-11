@@ -6,6 +6,11 @@
 [![Docs.rs](https://docs.rs/libmwemu/badge.svg)](https://docs.rs/libmwemu)
 [![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
 
+## Official documentation
+
+I'm working in the official documentation, note that it isn't finished yet.
+
+[mwemu.github.io](https://mwemu.github.io)
 
 ## What is this?
 
@@ -19,6 +24,7 @@ The hardware is x86 32/64bits it's fast and reliable.
 
 
 ![MWEMU Logo](./docs/pics/mwemu_logo.png)
+
 
 ## Three ways of using the software
 
