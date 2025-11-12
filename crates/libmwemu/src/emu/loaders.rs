@@ -485,7 +485,7 @@ impl Emu {
         //let map_name = self.filename_to_mapname(filename);
         //self.cfg.filename = map_name;
 
-        if Elf32::is_elf32(filename) {
+        if Elf32::is_elf32(filename) && !self.cfg.shellcode {
             self.linux = true;
             self.cfg.is_64bits = false;
 
@@ -497,13 +497,13 @@ impl Emu {
             let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
-        } else if Elf64::is_elf64(filename) {
+        } else if Elf64::is_elf64(filename) && !self.cfg.shellcode {
             self.linux = true;
             self.cfg.is_64bits = true;
             self.maps.clear();
 
             let base = self.load_elf64(filename);
-        } else if !self.cfg.is_64bits && PE32::is_pe32(filename) {
+        } else if !self.cfg.is_64bits && PE32::is_pe32(filename) && !self.cfg.shellcode {
             log::info!("PE32 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
@@ -521,7 +521,7 @@ impl Emu {
             }*/
 
             self.regs_mut().rip = ep;
-        } else if self.cfg.is_64bits && PE64::is_pe64(filename) {
+        } else if self.cfg.is_64bits && PE64::is_pe64(filename) && !self.cfg.shellcode {
             log::info!("PE64 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not

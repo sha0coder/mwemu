@@ -136,6 +136,7 @@ fn main() {
         .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
         .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
+        .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -397,22 +398,22 @@ fn main() {
 
     // stack trace
     if matches.is_present("stack_trace") {
-        emu.cfg.stack_trace = true;
+        emu.cfg.stack_trace = false;
     }
 
     // test mode
     if matches.is_present("test_mode") {
-        emu.cfg.test_mode = true;
+        emu.cfg.test_mode = false;
     }
 
     // trace fpu
     if matches.is_present("fpu") {
-        emu.fpu_mut().trace = true;
+        emu.fpu_mut().trace = false;
     }
 
     // trace flags
     if matches.is_present("flags") {
-        emu.cfg.trace_flags = true;
+        emu.cfg.trace_flags = false;
     }
 
     // cmd
@@ -423,6 +424,10 @@ fn main() {
                 .expect("specify the console command")
                 .to_string(),
         );
+    }
+
+    if matches.is_present("is_shellcode") {
+        emu.cfg.shellcode = true;
     }
 
     // args
@@ -449,16 +454,14 @@ fn main() {
                 .format(CustomLogFormat::new())
                 .file(filename)
                 .chan_len(Some(100000)),
-        )
-        .unwrap();
+        ).unwrap();
     } else {
         fast_log::init(
             Config::new()
                 .format(CustomLogFormat::new())
                 .console()
                 .chan_len(Some(100000)),
-        )
-        .unwrap();
+        ).unwrap();
     }
 
     // definitions

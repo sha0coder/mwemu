@@ -44,6 +44,7 @@ pub struct Config {
     pub command: Option<String>,
     pub definitions: HashMap<u64, Definition>,
     pub entropy: bool,
+    pub shellcode: bool
 }
 
 impl Default for Config {
@@ -79,7 +80,7 @@ impl Config {
             console_addr: 0,
             entry_point: constants::CFG_DEFAULT_BASE,
             exit_position: 0,
-            dump_on_exit: true, // TODO: a way to make it false/set it through cli + lib
+            dump_on_exit: false, // TODO: a way to make it false/set it through cli + lib
             dump_filename: Some("dumps/emu.bin".to_string()), // TODO: a way to set it through cli + lib
             code_base_addr: constants::CFG_DEFAULT_BASE,
             is_64bits: false,
@@ -94,6 +95,7 @@ impl Config {
             command: None,
             definitions: HashMap::new(),
             entropy: false,
+            shellcode: false,
         }
     }
 }

@@ -42,10 +42,12 @@ pub mod threading;
 pub mod tracing;
 pub mod winapi;
 
+// re-export the helper so the macro can reach it
+pub use utils::color_enabled;
+
 #[cfg(test)]
 mod tests;
 mod utils;
-
 use config::Config;
 use emu::Emu;
 
