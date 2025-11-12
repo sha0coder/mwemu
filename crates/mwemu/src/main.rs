@@ -136,6 +136,7 @@ fn main() {
         .arg(clap_arg!("cmd", "", "cmd", "launch a console command", "COMMAND"))
         .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
+        .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -422,6 +423,10 @@ fn main() {
                 .expect("specify the console command")
                 .to_string(),
         );
+    }
+
+    if matches.is_present("is_shellcode") {
+        emu.cfg.shellcode = true;
     }
 
     // args
