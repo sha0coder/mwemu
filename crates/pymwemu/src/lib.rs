@@ -409,7 +409,7 @@ impl Emu {
     }
 
     /// call a 32bits function, internally pushes params in reverse order.
-    fn call32(&mut self, address: u64, params: Vec<u64>) -> PyResult<u32> {
+    fn call32(&mut self, address: u64, params: Vec<u32>) -> PyResult<u32> {
         match self.emu.call32(address, &params) {
             Ok(pc) => Ok(pc),
             Err(e) => Err(PyValueError::new_err(e.message)),

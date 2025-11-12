@@ -45,3 +45,6 @@ mod stress_shl2p_all;
 mod stress_shl2p_trigger;
 mod stress_shr2p_all;
 mod test_unified_step_and_run_methods;
+mod call32;
+mod call64;
+mod linux_call64;
