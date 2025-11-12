@@ -227,7 +227,10 @@ impl Emu {
         .unwrap();
     }
 
+
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
+    /// This require having the map files in place, otherwise use just init_cpu() but emu32() and
+    /// emu64() already call init_cpu()
     /// This is called from load_code if the code is a PE or shellcode.
     /// load_code_bytes() and other loading ways don't call this, if you need windows simulation call this.
     pub fn init(&mut self, clear_registers: bool, clear_flags: bool) {
@@ -381,6 +384,8 @@ impl Emu {
     pub fn init_mem32(&mut self) {
         log::info!("loading memory maps");
 
+        self.maps.is_64bits = false;
+
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
 
@@ -487,6 +492,7 @@ impl Emu {
     /// This is called from init(), this setup the 64bits windows memory simulation.
     pub fn init_mem64(&mut self) {
         log::info!("loading memory maps");
+        self.maps.is_64bits = true;
 
         /*
         let orig_path = std::env::current_dir().unwrap();
