@@ -49,6 +49,7 @@ mod threading;
 mod tls;
 mod trace;
 mod winapi;
+mod object_handle;
 
 pub struct Emu {
     // Global/shared state
