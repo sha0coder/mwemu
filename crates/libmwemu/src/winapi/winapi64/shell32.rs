@@ -7,6 +7,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     match api.as_str() {
         "RealShellExecuteA" => RealShellExecuteA(emu),
         "SHGetFolderPathW" => SHGetFolderPathW(emu),
+        "ShellExecuteA" => ShellExecuteA(emu),
+        "ShellExecuteW" => ShellExecuteW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -28,6 +30,80 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         }
     }
     String::new()
+}
+
+fn ShellExecuteA(emu: &mut emu::Emu) {
+    let hwnd = emu.regs().rcx;
+    let lp_operation = emu.regs().rdx;
+    let lp_file = emu.regs().r8;
+    let lp_parameters = emu.regs().r9;
+    let lp_directory = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x20)
+        .expect("shell32!ShellExecuteA error reading lp_directory");
+    let n_show_cmd = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x28)
+        .expect("shell32!ShellExecuteA error reading n_show_cmd");
+
+    let operation = if lp_operation != 0 {
+        emu.maps.read_string(lp_operation)
+    } else {
+        "open".to_string()
+    };
+    let file = emu.maps.read_string(lp_file);
+    let params = if lp_parameters != 0 {
+        emu.maps.read_string(lp_parameters)
+    } else {
+        "".to_string()
+    };
+
+    log_red!(
+        emu,
+        "shell32!ShellExecuteA op: {} file: {} params: {}",
+        operation,
+        file,
+        params
+    );
+
+    emu.regs_mut().rax = 42; // > 32 means success
+}
+
+fn ShellExecuteW(emu: &mut emu::Emu) {
+    let hwnd = emu.regs().rcx;
+    let lp_operation = emu.regs().rdx;
+    let lp_file = emu.regs().r8;
+    let lp_parameters = emu.regs().r9;
+    let lp_directory = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x20)
+        .expect("shell32!ShellExecuteW error reading lp_directory");
+    let n_show_cmd = emu
+        .maps
+        .read_qword(emu.regs().rsp + 0x28)
+        .expect("shell32!ShellExecuteW error reading n_show_cmd");
+
+    let operation = if lp_operation != 0 {
+        emu.maps.read_wide_string(lp_operation)
+    } else {
+        "open".to_string()
+    };
+    let file = emu.maps.read_wide_string(lp_file);
+    let params = if lp_parameters != 0 {
+        emu.maps.read_wide_string(lp_parameters)
+    } else {
+        "".to_string()
+    };
+
+    log_red!(
+        emu,
+        "shell32!ShellExecuteW op: {} file: {} params: {}",
+        operation,
+        file,
+        params
+    );
+
+    emu.regs_mut().rax = 42; // > 32 means success
 }
 
 fn RealShellExecuteA(emu: &mut emu::Emu) {

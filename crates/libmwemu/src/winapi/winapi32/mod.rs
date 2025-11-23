@@ -9,7 +9,9 @@ mod mscoree;
 mod msvcrt;
 mod ntdll;
 mod oleaut32;
+mod shell32;
 mod shlwapi;
+mod urlmon;
 mod user32;
 mod wincrt;
 mod wininet;
@@ -32,7 +34,9 @@ pub fn gateway(addr: u32, name: &str, emu: &mut emu::Emu) {
         "dnsapi.text" => dnsapi::gateway(addr, emu),
         "mscoree.text" => mscoree::gateway(addr, emu),
         "msvcrt.text" => msvcrt::gateway(addr, emu),
+        "shell32.text" => shell32::gateway(addr, emu),
         "shlwapi.text" => shlwapi::gateway(addr, emu),
+        "urlmon.text" => urlmon::gateway(addr, emu),
         "oleaut32.text" => oleaut32::gateway(addr, emu),
         "kernelbase.text" => kernelbase::gateway(addr, emu),
         "iphlpapi.text" => iphlpapi::gateway(addr, emu),

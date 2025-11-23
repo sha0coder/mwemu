@@ -9,6 +9,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     match api.as_str() {
         "PathIsContentTypeW" => PathIsContentTypeW(emu),
         "PathFindSuffixArrayA" => PathFindSuffixArrayA(emu),
+        "PathFileExistsA" => PathFileExistsA(emu),
+        "PathFileExistsW" => PathFileExistsW(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -80,4 +82,22 @@ pub fn PathFindSuffixArrayA(emu: &mut emu::Emu) {
     );
 
     emu.regs_mut().rax = emu.regs().rdx;
+}
+
+fn PathFileExistsA(emu: &mut emu::Emu) {
+    let ptr_path = emu.regs().rcx;
+    let path = emu.maps.read_string(ptr_path);
+
+    log_red!(emu, "shlwapi!PathFileExistsA path: {}", path);
+
+    emu.regs_mut().rax = 1; // True
+}
+
+fn PathFileExistsW(emu: &mut emu::Emu) {
+    let ptr_path = emu.regs().rcx;
+    let path = emu.maps.read_wide_string(ptr_path);
+
+    log_red!(emu, "shlwapi!PathFileExistsW path: {}", path);
+
+    emu.regs_mut().rax = 1; // True
 }
