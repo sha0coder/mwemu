@@ -433,7 +433,7 @@ impl Emu {
             OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
             OpKind::Memory => self
                 .handle_memory_get_operand(ins, noperand, do_derref)
-                .unwrap(),
+                .expect(&format!("handle_memory_get_operand failed for {:?} op {}", ins.mnemonic(), noperand)),
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         Some(value)
