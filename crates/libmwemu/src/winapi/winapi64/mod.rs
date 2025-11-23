@@ -44,10 +44,13 @@ pub fn gateway(addr: u64, name: &str, emu: &mut emu::Emu) {
         "gdi32.text" => gdi32::gateway(addr, emu),
         "ole32.text" => ole32::gateway(addr, emu),
         "msvcrt.text" => msvcrt::gateway(addr, emu),
+        "api-ms-win-crt-runtime-l1-1-0.rdata" => wincrt::gateway(addr, emu),
+        "api-ms-win-crt-stdio-l1-1-0.rdata" => wincrt::gateway(addr, emu),
+        "api-ms-win-crt-heap-l1-1-0.rdata" => wincrt::gateway(addr, emu),
         "api-ms-win-crt-runtime-l1-1-0.text" => wincrt::gateway(addr, emu),
         "not_loaded" => {
             // TODO: banzai check?
-            emu.pe32.as_ref().unwrap().import_addr_to_name(addr as u32)
+            emu.pe64.as_ref().unwrap().import_addr_to_name(addr)
         }
         _ => panic!("/!\\ winapi64 gateway: trying to execute on {} at 0x{:x}", name, addr),
     };
