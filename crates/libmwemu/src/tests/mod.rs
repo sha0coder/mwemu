@@ -49,3 +49,4 @@ mod call32;
 mod call64;
 mod linux_call64;
 mod sc64win_strgen;
+mod cmpxchg_tests;
