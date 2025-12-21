@@ -614,6 +614,10 @@ impl Regs64 {
         self.rip &= mask;
     }
 
+    pub fn sanitize64(&mut self) {
+        // nothing to do
+    }
+
     pub fn print<const B: usize>(&self) {
         log::info!("regs:");
 

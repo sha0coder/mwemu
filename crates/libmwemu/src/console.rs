@@ -110,7 +110,7 @@ impl Console {
         log::info!("bmr .................... breakpoint on read memory");
         log::info!("bmw .................... breakpoint on write memory");
         log::info!("bmx .................... breakpoint on execute memory");
-        log::info!("bcmp ................... break on next cmp or test");
+        log::info!("bcmp ................... break on next cmp or test instruction");
         log::info!("bc ..................... clear breakpoint");
         log::info!("n ...................... next instruction");
         log::info!("eip .................... change eip");
@@ -141,8 +141,8 @@ impl Console {
         log::info!("mdda ................... memory dump all allocations to disk");
         log::info!("mt ..................... memory test");
         log::info!("r2 [addr] .............. spawn radare2 console if it's isntalled");
-        log::info!("ss ..................... search string");
-        log::info!("sb ..................... search bytes");
+        log::info!("ss ..................... search string in a specific map");
+        log::info!("sb ..................... search bytes in a specific map");
         log::info!("sba .................... search bytes in all the maps");
         log::info!("ssa .................... search string in all the maps");
         log::info!("ll ..................... linked list walk");
@@ -178,20 +178,29 @@ impl Console {
         let base = format!("0x{:x}", mem.get_base());
         let seek = format!("0x{:x}", addr);
         let bits;
+        let precmd: String;
         if emu.cfg.is_64bits {
-            bits = "64"
+            bits = "64";
+            precmd = format!(
+                "dr rax={}; dr rbx={}; dr rcx={}; dr rdx={}; dr rsi={};
+                                  dr rdi={}; dr rbp={}; dr rsp={}; dr rip={}; dr r8={}
+                                  dr r9={}; dr r10={}; dr r11={}; dr r12={}; dr r13={}; 
+                                  dr r14={}; dr r15={}; decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
+                                  emu.regs().rax, emu.regs().rbx, emu.regs().rcx, emu.regs().rdx,
+                                  emu.regs().rsi, emu.regs().rdi, emu.regs().rbp, emu.regs().rsp,
+                                  emu.regs().rip, emu.regs().r8, emu.regs().r9, emu.regs().r10,
+                                  emu.regs().r11, emu.regs().r12, emu.regs().r13, emu.regs().r14,
+                                  emu.regs().r15);
         } else {
-            bits = "32"
+            bits = "32";
+            precmd = format!(
+                "dr eax={}; dr ebx={}; dr ecx={}; dr edx={}; dr esi={}; \
+                dr edi={}; dr ebp={}; dr esp={}; dr eip={}; \
+                decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
+                emu.regs().get_eax(), emu.regs().get_ebx(), emu.regs().get_ecx(), emu.regs().get_edx(),
+                emu.regs().get_esi(), emu.regs().get_edi(), emu.regs().get_ebp(), emu.regs().get_esp(),
+                emu.regs().get_eip());
         }
-        let precmd = format!("dr rax={}?; dr rbx={}?; dr rcx={}?; dr rdx={}?; dr rsi={}?;
-                              dr rdi={}?; dr rbp={}?; dr rsp={}?; dr rip={}?; dr r8={}?
-                              dr r9={}?; dr r10={}?; dr r11={}?; dr r12={}?; dr r13={}?; 
-                              dr r14={}?; dr r15={}?; decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
-                              emu.regs().rax, emu.regs().rbx, emu.regs().rcx, emu.regs().rdx,
-                              emu.regs().rsi, emu.regs().rdi, emu.regs().rbp, emu.regs().rsp,
-                              emu.regs().rip, emu.regs().r8, emu.regs().r9, emu.regs().r10,
-                              emu.regs().r11, emu.regs().r12, emu.regs().r13, emu.regs().r14,
-                              emu.regs().r15);
         let r2args = vec![
             "-n", "-a", "x86", "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,
         ];
@@ -486,6 +495,7 @@ impl Console {
                     log::info!("pos = 0x{:x}", emu.pos);
                 }
                 "c" => {
+                    emu.exp += 1;
                     emu.is_running.store(1, atomic::Ordering::Relaxed);
                     return;
                 }

@@ -26,6 +26,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "setsockopt" => setsockopt(emu),
         "getsockopt" => getsockopt(emu),
         "WsaAccept" => WsaAccept(emu),
+        "getaddrinfo" => getaddrinfo(emu),
 
         /*
         0x774834b5 => sendto(emu),
