@@ -7,6 +7,8 @@ use crate::winapi::winapi32::kernel32;
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
     match api.as_str() {
+        "PathFileExistsA" => PathFileExistsA(emu),
+        "PathFileExistsW" => PathFileExistsW(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -27,4 +29,34 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
             return api;
         }
     }
+
+    String::new()
+}
+
+fn PathFileExistsA(emu: &mut emu::Emu) {
+    let ptr_path = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("shlwapi!PathFileExistsA error reading path") as u64;
+
+    let path = emu.maps.read_string(ptr_path);
+
+    log_red!(emu, "shlwapi!PathFileExistsA path: {}", path);
+
+    emu.stack_pop32(false);
+    emu.regs_mut().rax = 1; // True
+}
+
+fn PathFileExistsW(emu: &mut emu::Emu) {
+    let ptr_path = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("shlwapi!PathFileExistsW error reading path") as u64;
+
+    let path = emu.maps.read_wide_string(ptr_path);
+
+    log_red!(emu, "shlwapi!PathFileExistsW path: {}", path);
+
+    emu.stack_pop32(false);
+    emu.regs_mut().rax = 1; // True
 }
