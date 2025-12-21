@@ -87,6 +87,7 @@ pub struct SerializableEmu {
     pub threads: Vec<SerializableThreadContext>,
     pub current_thread_id: usize,
     pub entropy: f64,
+    pub last_error: u32,
 }
 
 impl<'a> From<&'a Emu> for SerializableEmu {
@@ -148,6 +149,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
             entropy: emu.entropy,
+            last_error: emu.last_error,
         }
     }
 }
@@ -210,6 +212,7 @@ impl From<SerializableEmu> for Emu {
             stored_contexts: HashMap::new(),
             entropy: 0.0,
             heap_management: None,
+            last_error: 0,
         }
     }
 }
@@ -274,6 +277,7 @@ impl Default for SerializableEmu {
             threads: emu.threads.iter().map(|t| t.into()).collect(),
             current_thread_id: emu.current_thread_id,
             entropy: emu.entropy,
+            last_error: emu.last_error,
         }
     }
 }

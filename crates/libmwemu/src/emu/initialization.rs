@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU32;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use atty::Stream;
@@ -96,6 +96,7 @@ impl Emu {
             stored_contexts: HashMap::new(),
             entropy: 0.0,
             heap_management: None,
+            last_error: 0,
         }
     }
 
@@ -282,7 +283,7 @@ impl Emu {
                 self.banzai.add(api, params);
             }
         }
-
+        
         //self.init_tests();
     }
 

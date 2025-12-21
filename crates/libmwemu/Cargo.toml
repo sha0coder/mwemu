@@ -36,6 +36,11 @@ minidump = "0.26.0"
 serde_yaml = "0.9"
 fast_log = { version = "1.7" }
 nohash-hasher = "0.2.0"
+memmap2 = "0.9.7"
+byteorder = "1.5.0"
+thiserror = "2.0.12"
+tempfile = "3.23.0"
+tempdir = "0.3.7"
 
 [dev-dependencies]
 env_logger = "0.11.8"

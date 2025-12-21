@@ -49,7 +49,8 @@ mod threading;
 mod tls;
 mod trace;
 mod winapi;
-mod object_handle;
+
+pub mod object_handle;
 
 pub struct Emu {
     // Global/shared state
@@ -102,4 +103,5 @@ pub struct Emu {
     pub stored_contexts: HashMap<String, StoredContext>,
     pub entropy: f64,
     pub heap_management: Option<Box<O1Heap>>,
+    pub last_error: u32,
 }
