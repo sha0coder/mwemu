@@ -272,6 +272,10 @@ impl Emu {
     /// The maps can be downloaded from the https://github.com/sha0coder/mwemu
     fn load_maps(&mut self, folder: &str) {
         self.emu.cfg.maps_folder = folder.to_string();
+    }
+
+    /// load_binary() already triggers init(), if you dont use load_binary you must use init()
+    fn init(&mut self) {
         self.emu.init(false, false);
     }
 

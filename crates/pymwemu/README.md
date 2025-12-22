@@ -6,11 +6,8 @@ https://github.com/sha0coder/mwemu/tree/main/pymwemu/examples
 
 ## Documentation
 
-https://github.com/sha0coder/mwemu/blob/main/pymwemu/DOCUMENTATION.md
+https://mwemu.github.io/#pymwemu
 
-## Gpt Assistant
-
-https://chat.openai.com/g/g-sfrh5tzEM-pymwemu-helper
 
 ## Install
 ```bash
