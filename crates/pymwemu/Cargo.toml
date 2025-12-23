@@ -1,6 +1,6 @@
 [package]
 name = "pymwemu"
-version = "0.10.4"
+version = "0.10.5"
 edition = "2021"
 description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
 
