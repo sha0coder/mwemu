@@ -952,7 +952,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.23.2"
+version = "0.23.3"
 dependencies = [
  "ahash",
  "atty",
@@ -965,6 +965,38 @@ dependencies = [
  "env_logger",
  "fast_log",
  "hex",
+ "iced-x86",
+ "lazy_static",
+ "log",
+ "md5",
+ "minidump",
+ "nohash-hasher",
+ "rand",
+ "scan_fmt",
+ "serde",
+ "serde_arrays",
+ "serde_yaml",
+ "slab",
+ "uint",
+ "ureq",
+ "zip",
+]
+
+[[package]]
+name = "libmwemu"
+version = "0.23.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb4d998ca2eafacccd668d017615e642bf1ba3f20cadf65ab51a163171141c05"
+dependencies = [
+ "ahash",
+ "atty",
+ "bitcode",
+ "bitfield",
+ "bytemuck",
+ "chrono",
+ "csv",
+ "ctrlc",
+ "fast_log",
  "iced-x86",
  "lazy_static",
  "log",
@@ -1081,12 +1113,12 @@ dependencies = [
 
 [[package]]
 name = "mwemu"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "clap",
  "env_logger",
  "fast_log",
- "libmwemu",
+ "libmwemu 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
 ]
 
@@ -1287,11 +1319,11 @@ dependencies = [
 
 [[package]]
 name = "pymwemu"
-version = "0.10.1"
+version = "0.10.4"
 dependencies = [
  "env_logger",
  "iced-x86",
- "libmwemu",
+ "libmwemu 0.23.3",
  "log",
  "pyo3",
 ]

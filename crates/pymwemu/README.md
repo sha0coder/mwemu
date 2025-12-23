@@ -2,7 +2,7 @@
 
 ## Examples
 
-https://github.com/sha0coder/mwemu/tree/main/pymwemu/examples
+https://github.com/sha0coder/mwemu/tree/main/crates/pymwemu/examples/scripts
 
 ## Documentation
 
