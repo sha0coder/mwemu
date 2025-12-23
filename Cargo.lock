@@ -983,38 +983,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libmwemu"
-version = "0.23.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb4d998ca2eafacccd668d017615e642bf1ba3f20cadf65ab51a163171141c05"
-dependencies = [
- "ahash",
- "atty",
- "bitcode",
- "bitfield",
- "bytemuck",
- "chrono",
- "csv",
- "ctrlc",
- "fast_log",
- "iced-x86",
- "lazy_static",
- "log",
- "md5",
- "minidump",
- "nohash-hasher",
- "rand",
- "scan_fmt",
- "serde",
- "serde_arrays",
- "serde_yaml",
- "slab",
- "uint",
- "ureq",
- "zip",
-]
-
-[[package]]
 name = "litemap"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1118,7 +1086,7 @@ dependencies = [
  "clap",
  "env_logger",
  "fast_log",
- "libmwemu 0.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libmwemu",
  "log",
 ]
 
@@ -1323,7 +1291,7 @@ version = "0.10.4"
 dependencies = [
  "env_logger",
  "iced-x86",
- "libmwemu 0.23.3",
+ "libmwemu",
  "log",
  "pyo3",
 ]
