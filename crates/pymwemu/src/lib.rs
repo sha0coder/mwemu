@@ -437,6 +437,13 @@ impl Emu {
         }
     }
 
+    fn linux_call64(&mut self, address: u64, params: Vec<u64>) -> PyResult<u64> {
+        match self.emu.linux_call64(address, &params) {
+            Ok(pc) => Ok(pc),
+            Err(e) => Err(PyValueError::new_err(e.message)),
+        }
+    }
+
     // registers
 
     /// read register value ie get_reg('rax')

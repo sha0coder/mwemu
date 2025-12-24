@@ -797,7 +797,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 peb32::dynamic_link_module(base as u64, pe_off, &dll, emu);
                 base as u64
             } else {
-                panic!("dll {} not found.", dll_path);
+                panic!("dll {} not found, have you loaded maps?", dll_path);
             }
         }
     }
