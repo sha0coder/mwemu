@@ -8,8 +8,6 @@
 
 ## Official documentation
 
-I'm working in the official documentation, note that it isn't finished yet.
-
 [mwemu.github.io](https://mwemu.github.io)
 
 ## What is this?
