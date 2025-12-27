@@ -506,6 +506,7 @@ impl Emu {
             self.cfg.is_64bits = true;
             self.maps.clear();
 
+            log::info!("elf64 detected.");
             let base = self.load_elf64(filename);
 
         // PE32

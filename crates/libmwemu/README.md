@@ -1,6 +1,19 @@
 
-# MWEMU the lib
+# LIBMWEMU the core of MWEMU emulator
 
+## Documentation
+
+Check the official documentation, here there are explanations, examples, and links to docs.rs:
+
+https://mwemu.github.io/#libmwemu
+
+The docs.rs automatic documentation:
+
+https://docs.rs/libmwemu/0.23.5/libmwemu/
+
+## Crate
+
+https://crates.io/crates/libmwemu
 
 ## Usage
 
