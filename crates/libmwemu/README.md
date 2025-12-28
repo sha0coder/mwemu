@@ -1,26 +1,28 @@
 
-# LIBMWEMU the core of MWEMU emulator
+# LIBMWEMU x86 emulation + win32 simulation 
 
 ## Documentation
 
 Check the official documentation, here there are explanations, examples, and links to docs.rs:
 
-https://mwemu.github.io/#libmwemu
+- https://mwemu.github.io/#libmwemu
 
 The docs.rs automatic documentation:
 
-https://docs.rs/libmwemu/0.23.5/libmwemu/
+- https://docs.rs/libmwemu/0.23.5/libmwemu/
 
 ## Crate
 
 https://crates.io/crates/libmwemu
 
+## Github
+
+https://github.com/sha0coder/mwemu
+
 ## Usage
 
 Download the maps32 or maps64 from:
 https://github.com/sha0coder/mwemu
-
-In the example it's on /tmp/ but dont use tmp.
 
 Create an emu32 or emu64 and it's important to set the maps folder.
 
@@ -53,7 +55,7 @@ let crypto_key_gen = 0x40112233;
 let ret_addr = 0x40110000; // any place safe to return.
 
 let param1 = 0x33;
-let param2_out_buff = emu.alloc("buffer", 1024);
+let param2_out_buff = emu.alloc("buffer", 1024, Permission::READ_WRITE_EXECUTE);
 
 emu.maps.memset(param2_out_buff, 0, 1024); // non necesary, by default alloc create zeros.
 emu.maps.write_spaced_bytes(param2_out_buff, 
