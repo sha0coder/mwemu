@@ -9,7 +9,7 @@ pub fn allocator64_test() {
 
     let mut emu = emu64();
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
-    emu.init(false, false);
+    emu.init_win32(false, false);
 
     assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
     assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);

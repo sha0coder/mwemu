@@ -234,7 +234,7 @@ impl Emu {
     /// emu64() already call init_cpu()
     /// This is called from load_code if the code is a PE or shellcode.
     /// load_code_bytes() and other loading ways don't call this, if you need windows simulation call this.
-    pub fn init(&mut self, clear_registers: bool, clear_flags: bool) {
+    pub fn init_win32(&mut self, clear_registers: bool, clear_flags: bool) {
         self.pos = 0;
 
         if !atty::is(Stream::Stdout) {
@@ -257,7 +257,7 @@ impl Emu {
         if self.cfg.is_64bits {
             self.maps.is_64bits = true;
             //self.init_regs_tests(); // TODO: not sure why this was on
-            self.init_mem64();
+            self.init_win32_mem64();
             self.init_stack64();
             //self.init_stack64_tests();
             //self.init_flags_tests();
@@ -265,7 +265,7 @@ impl Emu {
             // 32bits
             self.maps.is_64bits = false;
             self.regs_mut().sanitize32();
-            self.init_mem32();
+            self.init_win32_mem32();
             self.init_stack32();
         }
 
@@ -382,7 +382,7 @@ impl Emu {
     }
 
     /// This is called from init(), this setup the 32bits windows memory simulation.
-    pub fn init_mem32(&mut self) {
+    pub fn init_win32_mem32(&mut self) {
         log::info!("loading memory maps");
 
         self.maps.is_64bits = false;
@@ -491,7 +491,7 @@ impl Emu {
     }
 
     /// This is called from init(), this setup the 64bits windows memory simulation.
-    pub fn init_mem64(&mut self) {
+    pub fn init_win32_mem64(&mut self) {
         log::info!("loading memory maps");
         self.maps.is_64bits = true;
 

@@ -604,6 +604,43 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
     }
 }
 
+pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) -> u64 {
+    let mut flink = peb32::Flink::new(emu);
+    flink.load(emu);
+    let first_ptr = flink.get_ptr();
+
+    loop {
+        if flink
+            .mod_name
+            .to_lowercase()
+            .contains(&module.to_lowercase())
+        {
+            if flink.export_table_rva > 0 {
+                for i in 0..flink.num_of_funcs {
+                    if flink.pe_hdr == 0 {
+                        continue;
+                    }
+
+                    let ordinal = flink.get_function_ordinal(emu, i);
+                    if ordinal.func_name == name {
+                        //if ordinal.func_name.contains(name) {
+                        return ordinal.func_va;
+                    }
+                }
+            }
+        }
+        flink.next(emu);
+
+        //log::info!("flink: 0x{:x} first_ptr: 0x{:x} num_of_funcs: {}", flink.get_ptr(), first_ptr, flink.num_of_funcs);
+
+        if flink.get_ptr() == first_ptr {
+            break;
+        }
+    }
+
+    0 //TODO: use Option<>
+}
+
 pub fn resolve_api_addr_to_name(emu: &mut emu::Emu, addr: u64) -> String {
     let mut flink = peb32::Flink::new(emu);
     flink.load(emu);
@@ -760,7 +797,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 peb32::dynamic_link_module(base as u64, pe_off, &dll, emu);
                 base as u64
             } else {
-                panic!("dll {} not found.", dll_path);
+                panic!("dll {} not found, have you loaded maps?", dll_path);
             }
         }
     }

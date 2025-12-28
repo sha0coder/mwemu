@@ -485,6 +485,7 @@ impl Emu {
         //let map_name = self.filename_to_mapname(filename);
         //self.cfg.filename = map_name;
 
+        // ELF32
         if Elf32::is_elf32(filename) && !self.cfg.shellcode {
             self.linux = true;
             self.cfg.is_64bits = false;
@@ -497,17 +498,23 @@ impl Emu {
             let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
+
+
+        // ELF64
         } else if Elf64::is_elf64(filename) && !self.cfg.shellcode {
             self.linux = true;
             self.cfg.is_64bits = true;
             self.maps.clear();
 
+            log::info!("elf64 detected.");
             let base = self.load_elf64(filename);
+
+        // PE32
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) && !self.cfg.shellcode {
             log::info!("PE32 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
-            self.init(clear_registers, clear_flags);
+            self.init_win32(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe32(filename, true, 0);
             let ep = self.regs().rip;
             // emulating tls callbacks
@@ -521,11 +528,13 @@ impl Emu {
             }*/
 
             self.regs_mut().rip = ep;
+
+        // PE64
         } else if self.cfg.is_64bits && PE64::is_pe64(filename) && !self.cfg.shellcode {
             log::info!("PE64 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
-            self.init(clear_registers, clear_flags);
+            self.init_win32(clear_registers, clear_flags);
             let (base, pe_off) = self.load_pe64(filename, true, 0);
             let ep = self.regs().rip;
 
@@ -552,12 +561,13 @@ impl Emu {
             }*/
 
             self.regs_mut().rip = ep;
+
+        // Shellcode
         } else {
-            // shellcode
             log::info!("shellcode detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
-            self.init(clear_registers, clear_flags);
+            self.init_win32(clear_registers, clear_flags);
             if self.cfg.is_64bits {
                 let (base, pe_off) = self.load_pe64(
                     &format!("{}/{}", self.cfg.maps_folder, constants::EXE_NAME),

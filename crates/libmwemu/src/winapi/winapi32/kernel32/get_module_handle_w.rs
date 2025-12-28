@@ -14,7 +14,7 @@ pub fn GetModuleHandleW(emu: &mut emu::Emu) {
 
     if mod_name_ptr == 0 {
         mod_name = constants::EXE_NAME.to_string();
-        base = match peb::peb64::get_module_base(&mod_name, emu) {
+        base = match peb::peb32::get_module_base(&mod_name, emu) {
             Some(b) => b,
             None => helper::handler_create(&mod_name),
         };

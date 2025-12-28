@@ -1089,7 +1089,7 @@ impl PE32 {
     }
 
     pub fn iat_binding(&mut self, emu: &mut emu::Emu) {
-        let dbg = false;
+        let dbg = false; 
 
         // https://docs.microsoft.com/en-us/archive/msdn-magazine/2002/march/inside-windows-an-in-depth-look-into-the-win32-portable-executable-file-format-part-2#Binding
 
@@ -1097,6 +1097,8 @@ impl PE32 {
             "IAT binding started image_import_descriptor.len() = {} ...",
             self.image_import_descriptor.len()
         );
+
+        println!("-----> {}", self.image_import_descriptor.len());
 
         for i in 0..self.image_import_descriptor.len() {
             let iim = &self.image_import_descriptor[i];
@@ -1134,11 +1136,19 @@ impl PE32 {
                     continue;
                 }
                 let func_name = PE32::read_string(&self.raw, off2 + 2);
+                let real_addr = winapi32::kernel32::resolve_api_name_in_module(emu, &iim.name, &func_name);
                 if dbg {
-                    log::info!("0x{:x} {}!{}", addr, iim.name, func_name);
+                    let real_addr1 = winapi32::kernel32::resolve_api_name(emu, &func_name);
+                    if real_addr1 != real_addr {
+                        log::info!("--------------------------");
+                        let (va,modm,func) = winapi32::kernel32::search_api_name(emu, &func_name);
+                        log::info!("inport: {}!{}  ldr: {}!{}", &iim.name, &func_name, modm, func); 
+                        log::info!("0x{:x} {}!{}  0x{:x}-> 0x{:x}", addr, iim.name, func_name, off_addr, real_addr);
+                        log::info!("*********** prev:0x{:x} == new:0x{:x}", real_addr1, real_addr);
+                        println!("0x{:x} {} {}", va, modm, func);
+                        log::info!("--------------------------");
+                    }
                 }
-
-                let real_addr = winapi32::kernel32::resolve_api_name(emu, &func_name);
                 if real_addr == 0 {
                     break;
                 }

@@ -19,6 +19,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
         "_initterm" => _initterm(emu),
         "_initterm_e" => _initterm_e(emu),
+        "LocalAlloc" => LocalAlloc(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -153,3 +154,28 @@ fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0;
 }
+
+fn LocalAlloc(emu: &mut emu::Emu) {
+    let flags = emu
+        .maps
+        .read_dword(emu.regs().rsp)
+        .expect("kernelbase!LocalAlloc error reading param");
+    let size = emu
+        .maps
+        .read_dword(emu.regs().rsp + 4)
+        .expect("kernelbase!LocalAlloc error reading param") as u64;
+
+    let addr = emu.maps.alloc(size).unwrap_or_default();
+
+    log_red!(emu, "kernelbase!LocalAlloc {} =0x{:x}", size, addr);
+
+    emu.stack_pop32(false);
+    emu.stack_pop32(false);
+    emu.regs_mut().rax = addr;
+}
+
+
+
+
+
+

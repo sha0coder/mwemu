@@ -1,6 +1,6 @@
 [package]
 name = "libmwemu"
-version = "0.23.0"
+version = "0.23.8"
 edition = "2018"
 authors = ["sha0coder"]
 license = "MIT"
@@ -8,6 +8,7 @@ rust-version = "1.80.1"
 description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
 #email = "sha0 at badchecksum.net"
 documentation = "https://docs.rs/libmwemu"
+homepage = "https://mwemu.github.io/"
 repository = "https://github.com/sha0coder/mwemu"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

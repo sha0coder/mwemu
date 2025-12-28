@@ -573,6 +573,14 @@ impl Regs64 {
                 self.set_esp(0);
                 self.set_ebp(0);
                 self.set_eip(0);
+                self.set_r8d(0);
+                self.set_r9d(0);
+                self.set_r10d(0);
+                self.set_r11d(0);
+                self.set_r12d(0);
+                self.set_r13d(0);
+                self.set_r14d(0);
+                self.set_r15d(0);
             }
             16 => {
                 self.set_ax(0);
@@ -584,6 +592,31 @@ impl Regs64 {
                 self.set_sp(0);
                 self.set_bp(0);
                 self.set_ip(0);
+                self.set_r8w(0);
+                self.set_r9w(0);
+                self.set_r10w(0);
+                self.set_r11w(0);
+                self.set_r12w(0);
+                self.set_r13w(0);
+                self.set_r14w(0);
+                self.set_r15w(0);
+
+            }
+            8 => {
+                self.set_al(0);
+                self.set_bl(0);
+                self.set_cl(0);
+                self.set_dl(0);
+                self.set_sil(0);
+                self.set_dil(0);
+                self.set_r8l(0);
+                self.set_r9l(0);
+                self.set_r10l(0);
+                self.set_r11l(0);
+                self.set_r12l(0);
+                self.set_r13l(0);
+                self.set_r14l(0);
+                self.set_r15l(0);
             }
             _ => unimplemented!(),
         }

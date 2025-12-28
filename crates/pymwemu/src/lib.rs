@@ -272,7 +272,20 @@ impl Emu {
     /// The maps can be downloaded from the https://github.com/sha0coder/mwemu
     fn load_maps(&mut self, folder: &str) {
         self.emu.cfg.maps_folder = folder.to_string();
-        self.emu.init(false, false);
+    }
+
+    /// load_binary() already calls init_win32() if its PE or shellcode.
+    /// if you dont use load_binary and need the windows simulation
+    /// then call this to have peb/teb/ldr/dlls loaded.
+    fn init_win32(&mut self) {
+        self.emu.init_win32(false, false);
+    }
+
+    /// load_binary() already calls init_linux64() if its ELF
+    /// if you dont use load_binary and need the linux simulation
+    /// then call this to have libc etc loaded.
+    fn init_linux64(&mut self, dynamic: bool) {
+        self.emu.init_linux64(dynamic);
     }
 
     /// Load the binary to be emulated.
@@ -419,6 +432,13 @@ impl Emu {
     /// call a 64bits function, internally pushes params in reverse order.
     fn call64(&mut self, address: u64, params: Vec<u64>) -> PyResult<u64> {
         match self.emu.call64(address, &params) {
+            Ok(pc) => Ok(pc),
+            Err(e) => Err(PyValueError::new_err(e.message)),
+        }
+    }
+
+    fn linux_call64(&mut self, address: u64, params: Vec<u64>) -> PyResult<u64> {
+        match self.emu.linux_call64(address, &params) {
             Ok(pc) => Ok(pc),
             Err(e) => Err(PyValueError::new_err(e.message)),
         }

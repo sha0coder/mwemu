@@ -1,6 +1,6 @@
 [package]
 name = "pymwemu"
-version = "0.9.12"
+version = "0.10.5"
 edition = "2021"
 description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
 
@@ -18,6 +18,7 @@ default = ["extension-module"]
 
 [dependencies]
 env_logger = "0.11.6"
+#libmwemu = "0.23.5"
 libmwemu = { path = "../libmwemu" }
 log = "0.4.22"
 iced-x86 = "1.21.0"

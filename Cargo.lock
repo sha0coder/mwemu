@@ -974,7 +974,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.23.0"
+version = "0.23.8"
 dependencies = [
  "ahash",
  "atty",
@@ -1114,7 +1114,7 @@ dependencies = [
 
 [[package]]
 name = "mwemu"
-version = "0.7.12"
+version = "0.8.1"
 dependencies = [
  "clap",
  "env_logger",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "pymwemu"
-version = "0.9.12"
+version = "0.10.5"
 dependencies = [
  "env_logger",
  "iced-x86",
