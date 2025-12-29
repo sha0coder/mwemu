@@ -427,9 +427,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "GetFullPathNameA" => GetFullPathNameA(emu),
         "GetFullPathNameW" => GetFullPathNameW(emu),
         "GetLastError" => GetLastError(emu),
+        "GetLogicalDrives" => GetLogicalDrives(emu),
         "GetLocalTime" => GetLocalTime(emu),
-
-
         "GetLongPathNameW" => GetLongPathNameW(emu),
         "GetModuleFileNameA" => GetModuleFileNameA(emu),
         "GetModuleFileNameW" => GetModuleFileNameW(emu),
@@ -487,6 +486,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "LocalAlloc" => LocalAlloc(emu),
         "LockResource" => LockResource(emu),
         "lstrcat" => lstrcat(emu),
+        "lstrcmpA" => lstrcmpA(emu),
         "lstrcmp" => lstrcmpA(emu),
 
         "lstrcmpW" => lstrcmpW(emu),
