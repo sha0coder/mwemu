@@ -49,5 +49,6 @@ hex = "0.4.3"
 
 [features]
 default = []
+rax_x86_tests = []
 log_mem_read = []
 log_mem_write = []
