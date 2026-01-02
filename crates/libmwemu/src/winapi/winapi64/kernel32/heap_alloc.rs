@@ -8,7 +8,9 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
 
     let heap_addr: u64 = if size < 0x8000 {
         let heap_manage = emu.heap_management.as_mut().unwrap();
-        heap_manage.allocate(size as usize).expect("failed to allocate heap")
+        heap_manage
+            .allocate(size as usize)
+            .expect("failed to allocate heap")
     } else {
         let allocation = emu.maps.alloc(size).unwrap_or_default();
         emu.maps
@@ -22,7 +24,7 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
         allocation
     };
 
-    emu.regs_mut().rax = heap_addr;  
+    emu.regs_mut().rax = heap_addr;
 
     log_red!(
         emu,

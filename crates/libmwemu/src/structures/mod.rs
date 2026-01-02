@@ -11,6 +11,8 @@ mod image_resource_data_entry64;
 mod image_resource_directory;
 mod image_resource_directory_entry;
 mod image_tls_callback;
+mod kernel32;
+mod kernel64;
 mod ldr_data_table_entry;
 mod ldr_data_table_entry64;
 mod list_entry;
@@ -44,8 +46,6 @@ mod unicode_string;
 mod unicode_string64;
 mod vs_fixedfileinfo;
 mod vs_versioninfo;
-mod kernel32;
-mod kernel64;
 
 pub use act_ctx_section_keyed_data32::*;
 pub use act_ctx_section_keyed_data64::*;

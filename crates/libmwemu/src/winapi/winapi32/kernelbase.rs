@@ -173,9 +173,3 @@ fn LocalAlloc(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.regs_mut().rax = addr;
 }
-
-
-
-
-
-

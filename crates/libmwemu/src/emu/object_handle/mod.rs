@@ -1,22 +1,27 @@
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use slab::Slab;
 pub(crate) use file_handle::FileHandle;
 pub(crate) use mapping_handle::MappingHandle;
+use slab::Slab;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub mod file_handle;
-pub mod mapping_handle;
 mod hive_parser;
+pub mod mapping_handle;
 mod registry_handle;
 // TODO: support more handle: registry, thread, heap, etc
 /*
- Here the handle management is control by Slab and return a number, that number can be used as
- handle id to get the right handle. In the document, it doesn't specific that the handle need to be divided by 4.
+Here the handle management is control by Slab and return a number, that number can be used as
+handle id to get the right handle. In the document, it doesn't specific that the handle need to be divided by 4.
 
- */
+*/
 
-pub static HANDLE_MANGEMENT: std::sync::LazyLock<Arc<Mutex<crate::emu::object_handle::HandleManagement>>> =
-    std::sync::LazyLock::new(|| Arc::new(Mutex::new(crate::emu::object_handle::HandleManagement::new())));
+pub static HANDLE_MANGEMENT: std::sync::LazyLock<
+    Arc<Mutex<crate::emu::object_handle::HandleManagement>>,
+> = std::sync::LazyLock::new(|| {
+    Arc::new(Mutex::new(
+        crate::emu::object_handle::HandleManagement::new(),
+    ))
+});
 enum HandleType {
     FileHandle(FileHandle),
     MappingHandle(MappingHandle),
@@ -36,13 +41,17 @@ impl HandleManagement {
     }
 
     pub fn insert_file_handle(&mut self, file_handle: FileHandle) -> u32 {
-        let key = self.handle_types.insert(HandleType::FileHandle(file_handle));
+        let key = self
+            .handle_types
+            .insert(HandleType::FileHandle(file_handle));
         self.number_of_handle += 1;
         key as u32 // Assuming u32 is sufficient for slab keys in your context
     }
 
     pub fn insert_mapping_handle(&mut self, mapping_handle: MappingHandle) -> u32 {
-        let key = self.handle_types.insert(HandleType::MappingHandle(mapping_handle));
+        let key = self
+            .handle_types
+            .insert(HandleType::MappingHandle(mapping_handle));
         self.number_of_handle += 1;
         key as u32
     }
@@ -78,7 +87,7 @@ impl HandleManagement {
                 HandleType::FileHandle(fh) => {
                     self.number_of_handle -= 1;
                     Some(fh)
-                },
+                }
                 _ => {
                     // Put it back if it wasn't a FileHandle, though this indicates a logic error
                     self.handle_types.insert(handle_type);

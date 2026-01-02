@@ -9,10 +9,10 @@ pub fn SetFilePointer(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!SetFilePointer cannot read lDistanceToMove") as i32;
-    let dist_high_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("kernel32!SetFilePointer cannot read lpDistanceToMoveHigh") as u64;
+    let dist_high_ptr =
+        emu.maps
+            .read_dword(emu.regs().get_esp() + 8)
+            .expect("kernel32!SetFilePointer cannot read lpDistanceToMoveHigh") as u64;
     let method = emu
         .maps
         .read_dword(emu.regs().get_esp() + 12)

@@ -44,7 +44,7 @@ pub struct Config {
     pub command: Option<String>,
     pub definitions: HashMap<u64, Definition>,
     pub entropy: bool,
-    pub shellcode: bool
+    pub shellcode: bool,
 }
 
 impl Default for Config {

@@ -10,9 +10,12 @@ fn test_color_enabled_by_default() {
 fn test_disable_color() {
     enable_color(); // Ensure it's enabled first
     disable_color();
-    
-    assert!(!color_enabled(), "Color should be disabled after disable_color()");
-    
+
+    assert!(
+        !color_enabled(),
+        "Color should be disabled after disable_color()"
+    );
+
     // Reset for other tests
     enable_color();
 }
@@ -21,8 +24,11 @@ fn test_disable_color() {
 fn test_enable_color() {
     disable_color(); // Ensure it's disabled first
     enable_color();
-    
-    assert!(color_enabled(), "Color should be enabled after enable_color()");
+
+    assert!(
+        color_enabled(),
+        "Color should be enabled after enable_color()"
+    );
 }
 
 #[test]
@@ -30,16 +36,16 @@ fn test_color_toggle() {
     // Test multiple toggles
     enable_color();
     assert!(color_enabled());
-    
+
     disable_color();
     assert!(!color_enabled());
-    
+
     enable_color();
     assert!(color_enabled());
-    
+
     disable_color();
     assert!(!color_enabled());
-    
+
     // Reset for other tests
     enable_color();
 }
@@ -80,7 +86,11 @@ fn test_likely_preserves_value() {
 fn test_unlikely_preserves_value() {
     // unlikely() should preserve the boolean value even though it's a hint
     for val in [true, false] {
-        assert_eq!(unlikely(val), val, "unlikely() should preserve boolean value");
+        assert_eq!(
+            unlikely(val),
+            val,
+            "unlikely() should preserve boolean value"
+        );
     }
 }
 
@@ -89,10 +99,10 @@ fn test_color_state_persistence() {
     // Test that color state persists
     enable_color();
     assert!(color_enabled());
-    
+
     disable_color();
     assert!(!color_enabled());
-    
+
     // Reset for other tests
     enable_color();
 }
@@ -102,7 +112,7 @@ fn test_color_idempotent_enable() {
     enable_color();
     enable_color();
     enable_color();
-    
+
     assert!(color_enabled(), "Multiple enable calls should work");
 }
 
@@ -111,9 +121,9 @@ fn test_color_idempotent_disable() {
     disable_color();
     disable_color();
     disable_color();
-    
+
     assert!(!color_enabled(), "Multiple disable calls should work");
-    
+
     // Reset for other tests
     enable_color();
 }

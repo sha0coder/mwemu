@@ -8,7 +8,6 @@ mod add_vectored_exception_handler;
 mod are_file_apis_ansi;
 mod close_handle;
 mod connect_named_pipe;
-mod delete_file_a;
 mod copy_file_a;
 mod copy_file_w;
 mod create_event_a;
@@ -24,6 +23,7 @@ mod create_thread;
 mod create_toolhelp32_snapshot;
 mod crypt_create_hash;
 mod decode_pointer;
+mod delete_file_a;
 mod disconnect_named_pipe;
 mod encode_pointer;
 mod enter_critical_section;
@@ -55,8 +55,8 @@ mod get_current_directory_w;
 mod get_current_process;
 mod get_current_process_id;
 mod get_current_thread_id;
-mod get_environment_strings;
 mod get_disk_free_space_a;
+mod get_environment_strings;
 mod get_environment_strings_w;
 mod get_file_attributes_a;
 mod get_file_attributes_w;
@@ -170,8 +170,8 @@ mod verify_version_info_w;
 mod virtual_alloc;
 mod virtual_alloc_ex;
 mod virtual_alloc_ex_numa;
-mod virtual_lock;
 mod virtual_free;
+mod virtual_lock;
 
 mod virtual_protect;
 mod virtual_protect_ex;
@@ -187,7 +187,6 @@ pub use add_vectored_exception_handler::*;
 pub use are_file_apis_ansi::*;
 pub use close_handle::*;
 pub use connect_named_pipe::*;
-pub use delete_file_a::*;
 pub use copy_file_a::*;
 pub use copy_file_w::*;
 pub use create_event_a::*;
@@ -203,6 +202,7 @@ pub use create_thread::*;
 pub use create_toolhelp32_snapshot::*;
 pub use crypt_create_hash::*;
 pub use decode_pointer::*;
+pub use delete_file_a::*;
 pub use disconnect_named_pipe::*;
 pub use encode_pointer::*;
 pub use enter_critical_section::*;
@@ -234,9 +234,9 @@ pub use get_current_directory_w::*;
 pub use get_current_process::*;
 pub use get_current_process_id::*;
 pub use get_current_thread_id::*;
+pub use get_disk_free_space_a::*;
 pub use get_environment_strings::*;
 pub use get_environment_strings_w::*;
-pub use get_disk_free_space_a::*;
 pub use get_file_attributes_a::*;
 pub use get_file_attributes_w::*;
 pub use get_file_type::*;
@@ -349,9 +349,10 @@ pub use verify_version_info_w::*;
 pub use virtual_alloc::*;
 pub use virtual_alloc_ex::*;
 pub use virtual_alloc_ex_numa::*;
-pub use virtual_lock::*;
 pub use virtual_free::*;
+pub use virtual_lock::*;
 
+use crate::emu::Emu;
 pub use virtual_protect::*;
 pub use virtual_protect_ex::*;
 pub use virtual_query::*;
@@ -361,7 +362,6 @@ pub use wide_char_to_multi_byte::*;
 pub use win_exec::*;
 pub use write_file::*;
 pub use write_process_memory::*;
-use crate::emu::Emu;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
@@ -579,11 +579,15 @@ fn GetThreadId(emu: &mut Emu) {
 
     emu.stack_pop32(false);
 
-
     for i in 0..emu.threads.len() {
         if emu.threads[i].handle == hndl {
             emu.regs_mut().rax = emu.threads[i].id;
-            log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})", hndl, emu.threads[i].id);
+            log_red!(
+                emu,
+                "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})",
+                hndl,
+                emu.threads[i].id
+            );
             return;
         }
     }

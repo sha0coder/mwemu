@@ -1,4 +1,6 @@
 use crate::emu::disassemble::InstructionCache;
+use crate::emu::object_handle::windows_to_emulate_path;
+use crate::maps::heap_allocation::O1Heap;
 use crate::{
     banzai::Banzai,
     breakpoint::Breakpoints,
@@ -12,14 +14,12 @@ use crate::{
     structures::MemoryOperation,
     thread_context::ThreadContext,
 };
-use crate::maps::heap_allocation::O1Heap;
+use ahash::HashMap;
+use std::fs;
 use std::fs::File;
 use std::fs::ReadDir;
-use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use ahash::HashMap;
-use crate::emu::object_handle::windows_to_emulate_path;
 
 // --- WinAPI Constants (Commonly Used) ---
 pub const INVALID_HANDLE_VALUE: usize = !0; // -1 as usize
@@ -64,25 +64,25 @@ struct FileHandleManagement {
 // Represents the state and metadata associated with a Windows file handle
 pub struct FileHandle {
     // --- Core File/Directory Info ---
-    name: String,              // Original name used to open the handle
-    path: PathBuf,             // Resolved path
-    is_dir: bool,              // Whether this handle represents a directory
+    name: String,  // Original name used to open the handle
+    path: PathBuf, // Resolved path
+    is_dir: bool,  // Whether this handle represents a directory
     // --- Rust File/ReadDir Objects ---
-    file: Option<File>,        // Actual Rust file handle (for files)
-    dir: Option<ReadDir>,      // Actual Rust directory iterator handle (for directories opened for enumeration)
+    file: Option<File>,   // Actual Rust file handle (for files)
+    dir: Option<ReadDir>, // Actual Rust directory iterator handle (for directories opened for enumeration)
     // --- WinAPI Handle State ---
     access_mode: u32,          // Access flags (e.g., GENERIC_READ, GENERIC_WRITE)
     creation_disposition: u32, // How the file was opened (CREATE_ALWAYS, OPEN_EXISTING, etc.)
     flags_and_attributes: u32, // File attributes and flags (FILE_ATTRIBUTE_HIDDEN, FILE_FLAG_SEQUENTIAL_SCAN, etc.)
     // --- File Position and State ---
-    file_position: u64,        // Current position in the file (for seeking/reading/writing)
+    file_position: u64, // Current position in the file (for seeking/reading/writing)
     // --- Sharing and Security (Simplified for Emulation) ---
-    sharing_mode: u32,         // Sharing flags (FILE_SHARE_READ, FILE_SHARE_WRITE, etc.)
+    sharing_mode: u32, // Sharing flags (FILE_SHARE_READ, FILE_SHARE_WRITE, etc.)
     // --- Additional State ---
-    is_valid: bool,            // Whether the handle is considered valid (e.g., not closed)
-    is_eof: bool,              // End-of-file flag
-    // --- Example: Potential for caching or other emulation-specific data ---
-    // cache: Option<SomeCacheType>,
+    is_valid: bool, // Whether the handle is considered valid (e.g., not closed)
+    is_eof: bool,   // End-of-file flag
+                    // --- Example: Potential for caching or other emulation-specific data ---
+                    // cache: Option<SomeCacheType>,
 }
 
 // Corrected function signature and implementation
@@ -96,10 +96,14 @@ impl FileHandle {
         creation_disposition: u32,
         flags_and_attributes: u32,
         sharing_mode: u32,
-    ) -> Result<FileHandle, Box<dyn std::error::Error>> { // Return Result for better error handling
+    ) -> Result<FileHandle, Box<dyn std::error::Error>> {
+        // Return Result for better error handling
 
         let resolved_path = windows_to_emulate_path(&name);
-        println!("Attempting to resolve path: {} -> {:?}", name, resolved_path);
+        println!(
+            "Attempting to resolve path: {} -> {:?}",
+            name, resolved_path
+        );
 
         // Check if the target is a directory first
         let metadata_result = fs::metadata(&resolved_path);
@@ -122,7 +126,9 @@ impl FileHandle {
         };
 
         // Determine if it's a directory *after* potential creation logic (simplified here)
-        let is_dir = fs::metadata(&resolved_path).map(|m| m.is_dir()).unwrap_or(false);
+        let is_dir = fs::metadata(&resolved_path)
+            .map(|m| m.is_dir())
+            .unwrap_or(false);
 
         let (file, dir) = if is_dir {
             // If it's a directory, we might open it for enumeration (ReadDir) depending on access_mode
@@ -133,12 +139,16 @@ impl FileHandle {
         } else {
             // It's a file, attempt to open/create based on creation_disposition and access_mode
             let file_result = match creation_disposition {
-                1 => File::create(&resolved_path),        // CREATE_NEW
-                2 => File::create(&resolved_path),        // CREATE_ALWAYS
-                3 => File::open(&resolved_path),          // OPEN_EXISTING
+                1 => File::create(&resolved_path), // CREATE_NEW
+                2 => File::create(&resolved_path), // CREATE_ALWAYS
+                3 => File::open(&resolved_path),   // OPEN_EXISTING
                 4 => File::options().read(true).write(true).open(&resolved_path), // TRUNCATE_EXISTING
-                5 => File::options().read(true).open(&resolved_path), // OPEN_ALWAYS
-                _ => File::options().read(true).write(true).create(true).open(&resolved_path), // Default or unknown, try open with create
+                5 => File::options().read(true).open(&resolved_path),             // OPEN_ALWAYS
+                _ => File::options()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(&resolved_path), // Default or unknown, try open with create
             };
             (Some(file_result?), None)
         };
@@ -162,7 +172,10 @@ impl FileHandle {
     // Example methods that might be called by emulated WinAPI functions
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize, std::io::Error> {
         if !self.is_valid || self.is_dir {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid handle or operation for directory"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid handle or operation for directory",
+            ));
         }
         if let Some(ref mut f) = self.file {
             let bytes_read = f.read(buffer)?;
@@ -178,13 +191,19 @@ impl FileHandle {
             }
             Ok(bytes_read)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No file object associated"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "No file object associated",
+            ))
         }
     }
 
     pub fn write(&mut self, buffer: &[u8]) -> Result<usize, std::io::Error> {
         if !self.is_valid || self.is_dir {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid handle or operation for directory"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid handle or operation for directory",
+            ));
         }
         if let Some(ref mut f) = self.file {
             let bytes_written = f.write(buffer)?;
@@ -192,13 +211,19 @@ impl FileHandle {
             self.is_eof = false; // Writing typically means not at EOF
             Ok(bytes_written)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No file object associated"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "No file object associated",
+            ))
         }
     }
 
     pub fn seek(&mut self, pos: SeekFrom) -> Result<u64, std::io::Error> {
         if !self.is_valid || self.is_dir {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid handle or operation for directory"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid handle or operation for directory",
+            ));
         }
         if let Some(ref mut f) = self.file {
             let new_pos = f.seek(pos)?;
@@ -206,24 +231,37 @@ impl FileHandle {
             self.is_eof = false; // Seeking usually means not at EOF
             Ok(new_pos)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "No file object associated"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "No file object associated",
+            ))
         }
     }
 
     pub fn close(&mut self) {
         // Release resources
         self.file.take(); // Drops the File, closing it
-        self.dir.take();  // Drops the ReadDir
+        self.dir.take(); // Drops the ReadDir
         self.is_valid = false;
         // Other cleanup if necessary
     }
 
     // Getter methods
-    pub fn is_valid(&self) -> bool { self.is_valid }
-    pub fn is_dir(&self) -> bool { self.is_dir }
-    pub fn get_path(&self) -> &Path { &self.path }
-    pub fn get_position(&self) -> u64 { self.file_position }
-    pub fn is_eof(&self) -> bool { self.is_eof }
+    pub fn is_valid(&self) -> bool {
+        self.is_valid
+    }
+    pub fn is_dir(&self) -> bool {
+        self.is_dir
+    }
+    pub fn get_path(&self) -> &Path {
+        &self.path
+    }
+    pub fn get_position(&self) -> u64 {
+        self.file_position
+    }
+    pub fn is_eof(&self) -> bool {
+        self.is_eof
+    }
 
     // Setter for file_position (e.g., from SetFilePointer)
     pub fn set_position(&mut self, pos: u64) {
@@ -238,20 +276,26 @@ impl FileHandle {
 
 #[cfg(test)]
 mod tests {
-    use crate::emu::object_handle::{emulate_path_to_windows_path, DEFAULT_PATH};
     use super::*;
+    use crate::emu::object_handle::{emulate_path_to_windows_path, DEFAULT_PATH};
 
     #[test]
     fn test_windows_to_emulate_path_absolute() {
         let result = windows_to_emulate_path("C:\\Windows\\System32");
-        let expected = Path::new(DEFAULT_PATH).join("C:").join("Windows").join("System32");
+        let expected = Path::new(DEFAULT_PATH)
+            .join("C:")
+            .join("Windows")
+            .join("System32");
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_windows_to_emulate_path_relative() {
         let result = windows_to_emulate_path("some\\relative\\path");
-        let expected = Path::new(DEFAULT_PATH).join("some").join("relative").join("path");
+        let expected = Path::new(DEFAULT_PATH)
+            .join("some")
+            .join("relative")
+            .join("path");
         assert_eq!(result, expected);
     }
 
@@ -280,7 +324,10 @@ mod tests {
 
     #[test]
     fn test_emulate_to_windows_path_drive_d() {
-        let emulated = Path::new(DEFAULT_PATH).join("D:").join("another").join("dir");
+        let emulated = Path::new(DEFAULT_PATH)
+            .join("D:")
+            .join("another")
+            .join("dir");
         let result = emulate_path_to_windows_path(emulated).unwrap();
         let expected = Path::new("D:\\another\\dir");
         assert_eq!(result, expected);
@@ -289,7 +336,10 @@ mod tests {
     #[test]
     fn test_emulate_to_windows_path_invalid_no_drive() {
         // Path under DEFAULT_PATH that doesn't start with a drive letter (e.g., from a relative path input)
-        let emulated = Path::new(DEFAULT_PATH).join("some").join("relative").join("path");
+        let emulated = Path::new(DEFAULT_PATH)
+            .join("some")
+            .join("relative")
+            .join("path");
         let result = emulate_path_to_windows_path(emulated);
         // Expect None because the first component after DEFAULT_PATH is not a drive letter
         assert!(result.is_none());

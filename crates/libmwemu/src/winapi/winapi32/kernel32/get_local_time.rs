@@ -19,7 +19,7 @@ pub fn GetLocalTime(emu: &mut emu::Emu) {
     // However, emulating full date calc manually is tedious.
     // For now, let's write zeros or minimal data to satisfy basic checks.
     // Or just replicate the behavior of finding *some* time.
-    
+
     // Structure SYSTEMTIME:
     // WORD wYear;
     // WORD wMonth;
@@ -29,10 +29,10 @@ pub fn GetLocalTime(emu: &mut emu::Emu) {
     // WORD wMinute;
     // WORD wSecond;
     // WORD wMilliseconds;
-    
+
     let in_secs = since_the_epoch.as_secs();
     let _in_nano = since_the_epoch.subsec_nanos();
-    
+
     // Minimal mock values
     let w_year: u16 = 2024;
     let w_month: u16 = 1;
@@ -43,13 +43,20 @@ pub fn GetLocalTime(emu: &mut emu::Emu) {
     let w_millis: u16 = 0;
 
     let mut offset = 0;
-    emu.maps.write_word(lp_system_time + offset, w_year); offset += 2;
-    emu.maps.write_word(lp_system_time + offset, w_month); offset += 2;
-    emu.maps.write_word(lp_system_time + offset, 0); offset += 2; // DayOfWeek
-    emu.maps.write_word(lp_system_time + offset, w_day); offset += 2;
-    emu.maps.write_word(lp_system_time + offset, w_hour); offset += 2;
-    emu.maps.write_word(lp_system_time + offset, w_minute); offset += 2;
-    emu.maps.write_word(lp_system_time + offset, w_second); offset += 2;
+    emu.maps.write_word(lp_system_time + offset, w_year);
+    offset += 2;
+    emu.maps.write_word(lp_system_time + offset, w_month);
+    offset += 2;
+    emu.maps.write_word(lp_system_time + offset, 0);
+    offset += 2; // DayOfWeek
+    emu.maps.write_word(lp_system_time + offset, w_day);
+    offset += 2;
+    emu.maps.write_word(lp_system_time + offset, w_hour);
+    offset += 2;
+    emu.maps.write_word(lp_system_time + offset, w_minute);
+    offset += 2;
+    emu.maps.write_word(lp_system_time + offset, w_second);
+    offset += 2;
     emu.maps.write_word(lp_system_time + offset, w_millis);
 
     emu.stack_pop32(false);

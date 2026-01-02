@@ -14,7 +14,6 @@ pub mod begin_update_resource_a;
 pub mod close_handle;
 pub mod compare_string_w;
 pub mod connect_named_pipe;
-pub mod delete_file_a;
 pub mod copy_file_a;
 pub mod copy_file_w;
 pub mod create_act_ctx_a;
@@ -33,6 +32,7 @@ pub mod create_remote_thread;
 pub mod create_thread;
 pub mod create_toolhelp32_snapshot;
 pub mod decode_pointer;
+pub mod delete_file_a;
 pub mod disconnect_named_pipe;
 pub mod encode_pointer;
 pub mod enter_critical_section;
@@ -58,7 +58,6 @@ pub mod get_command_line_a;
 pub mod get_command_line_w;
 pub mod get_computer_name_a;
 pub mod get_computer_name_w;
-pub mod get_disk_free_space_a;
 pub mod get_console_cp;
 pub mod get_console_mode;
 pub mod get_console_output_cp;
@@ -69,6 +68,7 @@ pub mod get_current_process;
 pub mod get_current_process_id;
 pub mod get_current_thread;
 pub mod get_current_thread_id;
+pub mod get_disk_free_space_a;
 pub mod get_environment_strings_w;
 pub mod get_environment_variable_w;
 pub mod get_file_attributes_a;
@@ -161,6 +161,8 @@ pub mod reg_set_value_ex_a;
 pub mod reg_set_value_ex_w;
 pub mod reset_event;
 
+pub mod device_io_control;
+mod local_free;
 pub mod resume_thread;
 pub mod set_current_directory_a;
 pub mod set_error_mode;
@@ -194,8 +196,6 @@ pub mod win_exec;
 pub mod write_console_w;
 pub mod write_file;
 pub mod write_process_memory;
-pub mod device_io_control;
-mod local_free;
 
 // Re-export all functions
 pub use activate_act_ctx::ActivateActCtx;
@@ -205,7 +205,6 @@ pub use begin_update_resource_a::BeginUpdateResourceA;
 pub use close_handle::CloseHandle;
 pub use compare_string_w::CompareStringW;
 pub use connect_named_pipe::ConnectNamedPipe;
-pub use delete_file_a::DeleteFileA;
 pub use copy_file_a::CopyFileA;
 pub use copy_file_w::CopyFileW;
 pub use create_act_ctx_a::CreateActCtxA;
@@ -224,6 +223,7 @@ pub use create_remote_thread::CreateRemoteThread;
 pub use create_thread::CreateThread;
 pub use create_toolhelp32_snapshot::CreateToolhelp32Snapshot;
 pub use decode_pointer::DecodePointer;
+pub use delete_file_a::DeleteFileA;
 pub use disconnect_named_pipe::DisconnectNamedPipe;
 pub use encode_pointer::EncodePointer;
 pub use enter_critical_section::EnterCriticalSection;
@@ -249,7 +249,6 @@ pub use get_command_line_a::GetCommandLineA;
 pub use get_command_line_w::GetCommandLineW;
 pub use get_computer_name_a::GetComputerNameA;
 pub use get_computer_name_w::GetComputerNameW;
-pub use get_disk_free_space_a::GetDiskFreeSpaceA;
 pub use get_console_cp::GetConsoleCP;
 pub use get_console_mode::GetConsoleMode;
 pub use get_console_output_cp::GetConsoleOutputCP;
@@ -260,6 +259,7 @@ pub use get_current_process::GetCurrentProcess;
 pub use get_current_process_id::GetCurrentProcessId;
 pub use get_current_thread::GetCurrentThread;
 pub use get_current_thread_id::GetCurrentThreadId;
+pub use get_disk_free_space_a::GetDiskFreeSpaceA;
 pub use get_environment_strings_w::GetEnvironmentStringsW;
 pub use get_environment_variable_w::GetEnvironmentVariableW;
 pub use get_file_attributes_a::GetFileAttributesA;
@@ -352,6 +352,8 @@ pub use reg_set_value_ex_a::RegSetValueExA;
 pub use reg_set_value_ex_w::RegSetValueExW;
 pub use reset_event::ResetEvent;
 
+pub use device_io_control::api_DeviceIoControl;
+pub use local_free::LocalFree;
 pub use resume_thread::ResumeThread;
 pub use set_current_directory_a::SetCurrentDirectoryA;
 pub use set_error_mode::SetErrorMode;
@@ -385,8 +387,6 @@ pub use win_exec::WinExec;
 pub use write_console_w::WriteConsoleW;
 pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
-pub use local_free::LocalFree;
-pub use device_io_control::api_DeviceIoControl;
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
 pub fn clear_last_error(emu: &mut emu::Emu) {
@@ -612,23 +612,24 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     String::new()
 }
 
-
 fn GetThreadId(emu: &mut Emu) {
     let hndl = emu.regs().rcx;
 
     for i in 0..emu.threads.len() {
         if emu.threads[i].handle == hndl {
             emu.regs_mut().rax = emu.threads[i].id;
-            log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})", hndl, emu.threads[i].id);
+            log_red!(
+                emu,
+                "kernel32!GetThreadId hndl:{} (requested handle exists and its tid {})",
+                hndl,
+                emu.threads[i].id
+            );
             return;
         }
     }
     log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle doesn't exist, returning a fake handle for now but should return zero.)", hndl);
     emu.regs_mut().rax = 0x2c2878; // if handle not found should return zero.
 }
-
-
-
 
 lazy_static! {
     pub static ref COUNT_READ: Mutex<u32> = Mutex::new(0);

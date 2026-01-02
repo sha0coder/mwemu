@@ -7,7 +7,7 @@ pub fn RegCreateKeyExA(emu: &mut emu::Emu) {
     let subkey_ptr = emu.regs().rdx;
     let _reserved = emu.regs().r8;
     let class_ptr = emu.regs().r9;
-    
+
     // Stack params (shadow space is 32 bytes, so 4 * 8)
     // RSP points to shadow space start (after we popped ret addr in handler)
     // So arguments start at RSP + 32
@@ -29,8 +29,13 @@ pub fn RegCreateKeyExA(emu: &mut emu::Emu) {
         class_name = emu.maps.read_string(class_ptr);
     }
 
-    log_red!(emu, "kernel32!RegCreateKeyExA {} class:{}", subkey, class_name);
-    
+    log_red!(
+        emu,
+        "kernel32!RegCreateKeyExA {} class:{}",
+        subkey,
+        class_name
+    );
+
     // Write a dummy handle to phkResult
     if result_ptr != 0 {
         emu.maps.write_qword(

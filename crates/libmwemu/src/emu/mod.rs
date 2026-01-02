@@ -9,6 +9,7 @@ use std::{
 use iced_x86::{Instruction, IntelFormatter};
 
 use crate::emu::disassemble::InstructionCache;
+use crate::maps::heap_allocation::O1Heap;
 use crate::{
     banzai::Banzai,
     breakpoint::Breakpoints,
@@ -22,7 +23,6 @@ use crate::{
     structures::MemoryOperation,
     thread_context::ThreadContext,
 };
-use crate::maps::heap_allocation::O1Heap;
 
 mod banzai;
 mod call_stack;

@@ -1,7 +1,6 @@
 use crate::maps::Maps;
-use std::convert::TryInto;
 use crate::structures::ListEntry64;
-
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct KSystemTime {
@@ -215,7 +214,6 @@ impl StringStruct {
         maps.write_qword(addr + 4, self.buffer);
     }
 }
-
 
 #[derive(Debug)]
 pub struct SystemModule {
@@ -468,7 +466,7 @@ impl Default for SystemThreadInformation {
 
 impl SystemThreadInformation {
     pub fn size() -> u32 {
-        60 // 3*8 + 4 + 8 + 8 + 5*4 = 60 
+        60 // 3*8 + 4 + 8 + 8 + 5*4 = 60
     }
 
     pub fn new() -> SystemThreadInformation {
@@ -678,11 +676,19 @@ pub struct EThread {
     pub data: [u8; 4096],
 }
 
-impl Default for EThread { fn default() -> Self { Self::new() } }
+impl Default for EThread {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl EThread {
-    pub fn size() -> u32 { 4096 }
-    pub fn new() -> EThread { EThread { data: [0; 4096] } }
+    pub fn size() -> u32 {
+        4096
+    }
+    pub fn new() -> EThread {
+        EThread { data: [0; 4096] }
+    }
 
     pub fn load(addr: u64, maps: &Maps) -> EThread {
         let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
@@ -699,11 +705,19 @@ pub struct EProcess {
     pub data: [u8; 4096],
 }
 
-impl Default for EProcess { fn default() -> Self { Self::new() } }
+impl Default for EProcess {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl EProcess {
-    pub fn size() -> u32 { 4096 }
-    pub fn new() -> EProcess { EProcess { data: [0; 4096] } }
+    pub fn size() -> u32 {
+        4096
+    }
+    pub fn new() -> EProcess {
+        EProcess { data: [0; 4096] }
+    }
 
     pub fn load(addr: u64, maps: &Maps) -> EProcess {
         let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
@@ -720,11 +734,19 @@ pub struct KEVent {
     pub data: [u8; 4096],
 }
 
-impl Default for KEVent { fn default() -> Self { Self::new() } }
+impl Default for KEVent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KEVent {
-    pub fn size() -> u32 { 4096 }
-    pub fn new() -> KEVent { KEVent { data: [0; 4096] } }
+    pub fn size() -> u32 {
+        4096
+    }
+    pub fn new() -> KEVent {
+        KEVent { data: [0; 4096] }
+    }
 
     pub fn load(addr: u64, maps: &Maps) -> KEVent {
         let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
@@ -741,11 +763,19 @@ pub struct Mutant {
     pub data: [u8; 4096],
 }
 
-impl Default for Mutant { fn default() -> Self { Self::new() } }
+impl Default for Mutant {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Mutant {
-    pub fn size() -> u32 { 4096 }
-    pub fn new() -> Mutant { Mutant { data: [0; 4096] } }
+    pub fn size() -> u32 {
+        4096
+    }
+    pub fn new() -> Mutant {
+        Mutant { data: [0; 4096] }
+    }
 
     pub fn load(addr: u64, maps: &Maps) -> Mutant {
         let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
@@ -756,8 +786,6 @@ impl Mutant {
         maps.write_bytes(addr, self.data.to_vec());
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct RtlOsVersionInfoW {
@@ -770,11 +798,15 @@ pub struct RtlOsVersionInfoW {
 }
 
 impl Default for RtlOsVersionInfoW {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RtlOsVersionInfoW {
-    pub fn size() -> u32 { 276 } // 5*4 + 256
+    pub fn size() -> u32 {
+        276
+    } // 5*4 + 256
     pub fn new() -> RtlOsVersionInfoW {
         RtlOsVersionInfoW {
             dw_os_version_info_size: 0,
@@ -824,11 +856,15 @@ pub struct RtlOsVersionInfoExW {
 }
 
 impl Default for RtlOsVersionInfoExW {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RtlOsVersionInfoExW {
-    pub fn size() -> u32 { 284 } // 276 + 2 + 2 + 2 + 1 + 1
+    pub fn size() -> u32 {
+        284
+    } // 276 + 2 + 2 + 2 + 1 + 1
     pub fn new() -> RtlOsVersionInfoExW {
         RtlOsVersionInfoExW {
             dw_os_version_info_size: 0,
@@ -883,11 +919,22 @@ pub struct IDT {
     pub descriptors: u64,
 }
 
-impl Default for IDT { fn default() -> Self { Self::new() } }
+impl Default for IDT {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IDT {
-    pub fn size() -> u32 { 10 } // 2 + 8
-    pub fn new() -> IDT { IDT { limit: 0, descriptors: 0 } }
+    pub fn size() -> u32 {
+        10
+    } // 2 + 8
+    pub fn new() -> IDT {
+        IDT {
+            limit: 0,
+            descriptors: 0,
+        }
+    }
 
     pub fn load(addr: u64, maps: &Maps) -> IDT {
         IDT {
@@ -922,10 +969,16 @@ pub struct KAPC {
     pub inserted: u8,
 }
 
-impl Default for KAPC { fn default() -> Self { Self::new() } }
+impl Default for KAPC {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KAPC {
-    pub fn size() -> u32 { 72 } // aprox
+    pub fn size() -> u32 {
+        72
+    } // aprox
     pub fn new() -> KAPC {
         KAPC {
             type_: 0,
@@ -958,10 +1011,16 @@ pub struct ObjectAttributes {
     pub security_quality_of_service: u64,
 }
 
-impl Default for ObjectAttributes { fn default() -> Self { Self::new() } }
+impl Default for ObjectAttributes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ObjectAttributes {
-    pub fn size() -> u32 { 40 } // 4 + 8 + 8 + 4 + 8 + 8
+    pub fn size() -> u32 {
+        40
+    } // 4 + 8 + 8 + 4 + 8 + 8
     pub fn new() -> ObjectAttributes {
         ObjectAttributes {
             length: 0,
@@ -983,10 +1042,16 @@ pub struct FileStandardInformation {
     pub directory: u8,
 }
 
-impl Default for FileStandardInformation { fn default() -> Self { Self::new() } }
+impl Default for FileStandardInformation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl FileStandardInformation {
-    pub fn size() -> u32 { 18 } // 8 + 8 + 4 + 1 + 1
+    pub fn size() -> u32 {
+        18
+    } // 8 + 8 + 4 + 1 + 1
     pub fn new() -> FileStandardInformation {
         FileStandardInformation {
             allocation_size: 0,
@@ -1003,12 +1068,20 @@ pub struct DescriptorTable {
     pub table: [KIDTEntry64; 256],
 }
 
-impl Default for DescriptorTable { fn default() -> Self { Self::new() } }
+impl Default for DescriptorTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DescriptorTable {
-    pub fn size() -> u32 { 16 * 256 } // each KIDTEntry64 = 16 bytes
+    pub fn size() -> u32 {
+        16 * 256
+    } // each KIDTEntry64 = 16 bytes
     pub fn new() -> DescriptorTable {
-        DescriptorTable { table: [KIDTEntry64::new(); 256] }
+        DescriptorTable {
+            table: [KIDTEntry64::new(); 256],
+        }
     }
 }
 
@@ -1031,10 +1104,16 @@ pub struct DriverObject {
     pub major_function: [u64; 28],
 }
 
-impl Default for DriverObject { fn default() -> Self { Self::new() } }
+impl Default for DriverObject {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DriverObject {
-    pub fn size() -> u32 { 0 } 
+    pub fn size() -> u32 {
+        0
+    }
     pub fn new() -> DriverObject {
         DriverObject {
             type_: 0,
@@ -1065,12 +1144,16 @@ pub struct KDeviceQueue {
     pub busy: u8,
 }
 
-impl Default for KDeviceQueue { fn default() -> Self { Self::new() } }
+impl Default for KDeviceQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KDeviceQueue {
-    pub fn size() -> u32 { 
-        2+2+8+1+0x10
-    } 
+    pub fn size() -> u32 {
+        2 + 2 + 8 + 1 + 0x10
+    }
     pub fn new() -> KDeviceQueue {
         KDeviceQueue {
             type_: 0,
@@ -1095,10 +1178,16 @@ pub struct KDPC {
     pub dpc_data: u64,
 }
 
-impl Default for KDPC { fn default() -> Self { Self::new() } }
+impl Default for KDPC {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KDPC {
-    pub fn size() -> u32 { 1+1+2+0x10+8+8+8+8+8 } 
+    pub fn size() -> u32 {
+        1 + 1 + 2 + 0x10 + 8 + 8 + 8 + 8 + 8
+    }
     pub fn new() -> KDPC {
         KDPC {
             type_: 0,
@@ -1143,7 +1232,11 @@ pub struct DeviceObject {
     pub reserved: u64,
 }
 
-impl Default for DeviceObject { fn default() -> Self { Self::new() } }
+impl Default for DeviceObject {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DeviceObject {
     pub fn new() -> DeviceObject {
@@ -1211,7 +1304,11 @@ pub struct FileObject {
     pub file_object_extension: u64,
 }
 
-impl Default for FileObject { fn default() -> Self { Self::new() } }
+impl Default for FileObject {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl FileObject {
     pub fn new() -> FileObject {
@@ -1277,7 +1374,11 @@ pub struct IoStackLocation {
     pub context: u64,
 }
 
-impl Default for IoStackLocation { fn default() -> Self { Self::new() } }
+impl Default for IoStackLocation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IoStackLocation {
     pub fn new() -> IoStackLocation {
@@ -1305,10 +1406,18 @@ impl IoStackLocation {
             parameters: IoParameters {
                 device_io_control: DeviceIoControl::load(addr + 12, maps),
             },
-            device_object: maps.read_qword(addr + 12 + DeviceIoControl::size() as u64).unwrap(),
-            file_object: maps.read_qword(addr + 12 + DeviceIoControl::size() as u64 + 8).unwrap(),
-            completion_routine: maps.read_qword(addr + 12 + DeviceIoControl::size() as u64 + 16).unwrap(),
-            context: maps.read_qword(addr + 12 + DeviceIoControl::size() as u64 + 24).unwrap(),
+            device_object: maps
+                .read_qword(addr + 12 + DeviceIoControl::size() as u64)
+                .unwrap(),
+            file_object: maps
+                .read_qword(addr + 12 + DeviceIoControl::size() as u64 + 8)
+                .unwrap(),
+            completion_routine: maps
+                .read_qword(addr + 12 + DeviceIoControl::size() as u64 + 16)
+                .unwrap(),
+            context: maps
+                .read_qword(addr + 12 + DeviceIoControl::size() as u64 + 24)
+                .unwrap(),
         }
     }
 
@@ -1319,10 +1428,22 @@ impl IoStackLocation {
         maps.write_byte(addr + 3, self.control);
         maps.write_bytes(addr + 4, self._padding.to_vec());
         self.parameters.device_io_control.save(addr + 12, maps);
-        maps.write_qword(addr + 12 + DeviceIoControl::size() as u64, self.device_object);
-        maps.write_qword(addr + 12 + DeviceIoControl::size() as u64 + 8, self.file_object);
-        maps.write_qword(addr + 12 + DeviceIoControl::size() as u64 + 16, self.completion_routine);
-        maps.write_qword(addr + 12 + DeviceIoControl::size() as u64 + 24, self.context);
+        maps.write_qword(
+            addr + 12 + DeviceIoControl::size() as u64,
+            self.device_object,
+        );
+        maps.write_qword(
+            addr + 12 + DeviceIoControl::size() as u64 + 8,
+            self.file_object,
+        );
+        maps.write_qword(
+            addr + 12 + DeviceIoControl::size() as u64 + 16,
+            self.completion_routine,
+        );
+        maps.write_qword(
+            addr + 12 + DeviceIoControl::size() as u64 + 24,
+            self.context,
+        );
     }
 }
 
@@ -1332,7 +1453,11 @@ pub struct IrpOverlay {
     pub user_apc_context: u64,
 }
 
-impl Default for IrpOverlay { fn default() -> Self { Self::new() } }
+impl Default for IrpOverlay {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IrpOverlay {
     pub fn new() -> IrpOverlay {
@@ -1361,11 +1486,18 @@ pub struct IoStatusBlock {
     pub information: u64,
 }
 
-impl Default for IoStatusBlock { fn default() -> Self { Self::new() } }
+impl Default for IoStatusBlock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IoStatusBlock {
     pub fn new() -> IoStatusBlock {
-        IoStatusBlock { status: 0, information: 0 }
+        IoStatusBlock {
+            status: 0,
+            information: 0,
+        }
     }
 
     pub fn load(addr: u64, maps: &Maps) -> IoStatusBlock {
@@ -1389,7 +1521,11 @@ pub struct KDeviceQueueEntry {
     pub _padding: [u8; 3],
 }
 
-impl Default for KDeviceQueueEntry { fn default() -> Self { Self::new() } }
+impl Default for KDeviceQueueEntry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KDeviceQueueEntry {
     pub fn new() -> KDeviceQueueEntry {
@@ -1412,7 +1548,11 @@ pub struct TailOverlay {
     pub reserved2: u64,
 }
 
-impl Default for TailOverlay { fn default() -> Self { Self::new() } }
+impl Default for TailOverlay {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TailOverlay {
     pub fn new() -> TailOverlay {
@@ -1434,7 +1574,7 @@ impl TailOverlay {
                 maps.read_qword(addr + 32).unwrap(),
                 maps.read_qword(addr + 40).unwrap(),
             ],
-            list_entry: ListEntry64::new(), 
+            list_entry: ListEntry64::new(),
             current_stack_location: maps.read_qword(addr + 56).unwrap(),
             reserved2: maps.read_qword(addr + 64).unwrap(),
         }
@@ -1455,15 +1595,23 @@ pub struct IrpTail {
     pub overlay: TailOverlay,
 }
 
-impl Default for IrpTail { fn default() -> Self { Self::new() } }
+impl Default for IrpTail {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IrpTail {
     pub fn new() -> IrpTail {
-        IrpTail { overlay: TailOverlay::new() }
+        IrpTail {
+            overlay: TailOverlay::new(),
+        }
     }
 
     pub fn load(addr: u64, maps: &Maps) -> IrpTail {
-        IrpTail { overlay: TailOverlay::load(addr, maps) }
+        IrpTail {
+            overlay: TailOverlay::load(addr, maps),
+        }
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
@@ -1496,7 +1644,11 @@ pub struct Irp {
     pub tail: IrpTail,
 }
 
-impl Default for Irp { fn default() -> Self { Self::new() } }
+impl Default for Irp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Irp {
     pub fn new() -> Irp {
@@ -1587,7 +1739,11 @@ pub struct NtTib {
     pub self_ptr: u64,
 }
 
-impl Default for NtTib { fn default() -> Self { Self::new() } }
+impl Default for NtTib {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl NtTib {
     pub fn new() -> NtTib {
@@ -1644,7 +1800,11 @@ pub struct Teb {
     pub current_locale: u32,
 }
 
-impl Default for Teb { fn default() -> Self { Self::new() } }
+impl Default for Teb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Teb {
     pub fn new() -> Teb {
@@ -1680,8 +1840,8 @@ impl Teb {
             count_of_owned_critical_sections: maps.read_dword(addr + 116).unwrap(),
             csr_client_thread: maps.read_qword(addr + 120).unwrap(),
             win32_thread_info: maps.read_qword(addr + 128).unwrap(),
-            user32_reserved: [0;26],
-            user_reserved: [0;5],
+            user32_reserved: [0; 26],
+            user_reserved: [0; 5],
             //user32_reserved: maps.read_bytes(addr + 136, 26 * 4).try_into().unwrap(),
             //user_reserved: maps.read_bytes(addr + 240, 5 * 4).try_into().unwrap(),
             wow32_reserved: maps.read_qword(addr + 260).unwrap(),
@@ -1701,8 +1861,22 @@ impl Teb {
         maps.write_dword(addr + 116, self.count_of_owned_critical_sections);
         maps.write_qword(addr + 120, self.csr_client_thread);
         maps.write_qword(addr + 128, self.win32_thread_info);
-        maps.write_bytes(addr + 136, self.user32_reserved.iter().copied().flat_map(|v| v.to_le_bytes()).collect());
-        maps.write_bytes(addr + 240, self.user_reserved.iter().copied().flat_map(|v| v.to_le_bytes()).collect());
+        maps.write_bytes(
+            addr + 136,
+            self.user32_reserved
+                .iter()
+                .copied()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+        );
+        maps.write_bytes(
+            addr + 240,
+            self.user_reserved
+                .iter()
+                .copied()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+        );
         maps.write_qword(addr + 260, self.wow32_reserved);
         maps.write_dword(addr + 268, self.current_locale);
     }
@@ -1790,7 +1964,11 @@ pub struct Peb {
     pub wait_on_address_hash_table: [u64; 128],
 }
 
-impl Default for Peb { fn default() -> Self { Self::new() } }
+impl Default for Peb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Peb {
     pub fn new() -> Peb {
@@ -1883,11 +2061,18 @@ pub struct LargeInteger {
     pub high_part: u32,
 }
 
-impl Default for LargeInteger { fn default() -> Self { Self::new() } }
+impl Default for LargeInteger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl LargeInteger {
     pub fn new() -> LargeInteger {
-        LargeInteger { low_part: 0, high_part: 0 }
+        LargeInteger {
+            low_part: 0,
+            high_part: 0,
+        }
     }
 
     pub fn load(addr: u64, maps: &Maps) -> LargeInteger {
@@ -1911,7 +2096,11 @@ pub struct RtlUserProcessParameters {
     pub command_line: UnicodeString,
 }
 
-impl Default for RtlUserProcessParameters { fn default() -> Self { Self::new() } }
+impl Default for RtlUserProcessParameters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl RtlUserProcessParameters {
     pub fn new() -> RtlUserProcessParameters {
@@ -1926,7 +2115,8 @@ impl RtlUserProcessParameters {
     pub fn load(addr: u64, maps: &Maps) -> RtlUserProcessParameters {
         RtlUserProcessParameters {
             reserved1: maps.read_bytes(addr, 16).try_into().unwrap(),
-            reserved2: maps.read_bytes(addr + 16, 10 * 4)
+            reserved2: maps
+                .read_bytes(addr + 16, 10 * 4)
                 .chunks_exact(4)
                 .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
                 .collect::<Vec<u32>>()
@@ -1939,10 +2129,14 @@ impl RtlUserProcessParameters {
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
         maps.write_bytes(addr, self.reserved1.to_vec());
-        maps.write_bytes(addr + 16, self.reserved2.iter().flat_map(|v| v.to_le_bytes()).collect());
+        maps.write_bytes(
+            addr + 16,
+            self.reserved2
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect(),
+        );
         self.image_path_name.save(addr + 56, maps);
         self.command_line.save(addr + 64, maps);
     }
 }
-
-

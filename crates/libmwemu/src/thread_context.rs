@@ -52,7 +52,7 @@ impl ThreadContext {
             fls: Vec::new(),
             fs: BTreeMap::new(),
             call_stack: Vec::with_capacity(10000),
-            handle: 0
+            handle: 0,
         }
     }
 }

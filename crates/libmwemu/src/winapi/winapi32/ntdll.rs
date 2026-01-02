@@ -7,10 +7,10 @@ use crate::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
-use crate::maps::mem64::Permission;
-use scan_fmt::scan_fmt_some;
 use crate::emu::Emu;
+use crate::maps::mem64::Permission;
 use crate::winapi::winapi64::kernel32::InitializeCriticalSection;
+use scan_fmt::scan_fmt_some;
 
 const PAGE_NOACCESS: u32 = 0x01;
 const PAGE_READONLY: u32 = 0x02;

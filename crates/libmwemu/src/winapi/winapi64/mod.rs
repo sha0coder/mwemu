@@ -52,7 +52,10 @@ pub fn gateway(addr: u64, name: &str, emu: &mut emu::Emu) {
             // TODO: banzai check?
             emu.pe64.as_ref().unwrap().import_addr_to_name(addr)
         }
-        _ => panic!("/!\\ winapi64 gateway: trying to execute on {} at 0x{:x}", name, addr),
+        _ => panic!(
+            "/!\\ winapi64 gateway: trying to execute on {} at 0x{:x}",
+            name, addr
+        ),
     };
 
     emu.call_stack_mut().pop();

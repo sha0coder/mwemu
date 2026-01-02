@@ -1,8 +1,10 @@
-use std::io::Seek;
+use crate::emu::object_handle::hive_parser::{
+    HiveError, HiveKey, HiveParser, KeyBlock, RegistryValue, ValueBlock,
+};
 use ahash::AHashMap;
-use std::path::Path;
 use byteorder::ReadBytesExt;
-use crate::emu::object_handle::hive_parser::{HiveParser, HiveError, HiveKey, KeyBlock, ValueBlock, RegistryValue};
+use std::io::Seek;
+use std::path::Path;
 
 #[derive(Debug)]
 struct RegistryHandle {
@@ -13,13 +15,13 @@ struct RegistryHandle {
 struct RegisterManager {
     name: String,
     registry_handle: AHashMap<String, RegistryHandle>,
-    subkeys: AHashMap<String, RegisterManager>,  // Added for subkey hierarchy
+    subkeys: AHashMap<String, RegisterManager>, // Added for subkey hierarchy
 }
 
 #[derive(Debug)]
 pub struct RootRegistryManager {
     level_count: u16,
-    next_level_ptr: AHashMap<String, RegisterManager>,  // Changed to HashMap for fast access
+    next_level_ptr: AHashMap<String, RegisterManager>, // Changed to HashMap for fast access
 }
 
 impl RootRegistryManager {
@@ -43,12 +45,14 @@ impl RootRegistryManager {
 
         Ok(Self {
             level_count,
-            next_level_ptr: root_manager.subkeys,  // Root's subkeys become our first level
+            next_level_ptr: root_manager.subkeys, // Root's subkeys become our first level
         })
     }
 
     /// Build a RegisterManager from a HiveKey (recursive)
-    fn build_register_manager_from_hive_key(hive_key: &mut HiveKey) -> Result<RegisterManager, HiveError> {
+    fn build_register_manager_from_hive_key(
+        hive_key: &mut HiveKey,
+    ) -> Result<RegisterManager, HiveError> {
         let key_name = hive_key.key_block.get_name()?;
 
         let mut reg_mgr = RegisterManager {
@@ -67,16 +71,18 @@ impl RootRegistryManager {
     }
 
     /// Load all values from a HiveKey into a RegisterManager
-    fn load_key_values(hive_key: &mut HiveKey, reg_mgr: &mut RegisterManager) -> Result<(), HiveError> {
+    fn load_key_values(
+        hive_key: &mut HiveKey,
+        reg_mgr: &mut RegisterManager,
+    ) -> Result<(), HiveError> {
         let value_names = hive_key.keys_list()?;
 
         for value_name in value_names {
             // Use the non-generic version to get RegistryValue
             if let Some(registry_value) = hive_key.get_key_value_as_registry(&value_name)? {
-                reg_mgr.registry_handle.insert(
-                    value_name,
-                    RegistryHandle { registry_value }
-                );
+                reg_mgr
+                    .registry_handle
+                    .insert(value_name, RegistryHandle { registry_value });
             }
         }
 
@@ -84,12 +90,16 @@ impl RootRegistryManager {
     }
 
     /// Load all subkeys recursively
-    fn load_subkeys(hive_key: &mut HiveKey, reg_mgr: &mut RegisterManager) -> Result<(), HiveError> {
+    fn load_subkeys(
+        hive_key: &mut HiveKey,
+        reg_mgr: &mut RegisterManager,
+    ) -> Result<(), HiveError> {
         let subkey_names = hive_key.subkeys_list()?;
 
         for subkey_name in subkey_names {
             if let Some(mut subkey_hive_key) = hive_key.get_subkey_by_name(&subkey_name)? {
-                let subkey_reg_mgr = Self::build_register_manager_from_hive_key(&mut subkey_hive_key)?;
+                let subkey_reg_mgr =
+                    Self::build_register_manager_from_hive_key(&mut subkey_hive_key)?;
                 reg_mgr.subkeys.insert(subkey_name, subkey_reg_mgr);
             }
         }
@@ -181,7 +191,10 @@ impl RootRegistryManager {
 // Add helper methods to HiveKey for better integration
 impl<'a> HiveKey<'a> {
     /// Non-generic version to get RegistryValue directly
-    pub fn get_key_value_as_registry(&mut self, name: &str) -> Result<Option<RegistryValue>, HiveError> {
+    pub fn get_key_value_as_registry(
+        &mut self,
+        name: &str,
+    ) -> Result<Option<RegistryValue>, HiveError> {
         // Use the existing generic method but with RegistryValue type
         self.get_key_value_wrap(name)
     }
@@ -189,11 +202,15 @@ impl<'a> HiveKey<'a> {
     /// Get a subkey by name
     pub fn get_subkey_by_name(&mut self, name: &str) -> Result<Option<HiveKey>, HiveError> {
         let offsets_offset = self.base_offset + self.key_block.subkeys_offset as u64;
-        let offsets = crate::emu::object_handle::hive_parser::Offsets::read_from_file(self.file, offsets_offset)?;
+        let offsets = crate::emu::object_handle::hive_parser::Offsets::read_from_file(
+            self.file,
+            offsets_offset,
+        )?;
 
         for i in 0..self.key_block.subkey_count {
             let offset_entry_offset = offsets_offset + 16 + (i as u64 * 8);
-            self.file.seek(std::io::SeekFrom::Start(offset_entry_offset))?;
+            self.file
+                .seek(std::io::SeekFrom::Start(offset_entry_offset))?;
             let subkey_offset = self.file.read_i32::<byteorder::LittleEndian>()? as u64;
 
             if subkey_offset == 0 {
@@ -218,7 +235,11 @@ impl HiveParser {
     pub fn get_root_key(&mut self) -> Result<HiveKey, HiveError> {
         let main_key_offset = self.base_offset + 0x20;
         let root_key_block = KeyBlock::read_from_file(&mut self.file, main_key_offset)?;
-        Ok(HiveKey::new(root_key_block, self.base_offset, &mut self.file))
+        Ok(HiveKey::new(
+            root_key_block,
+            self.base_offset,
+            &mut self.file,
+        ))
     }
 }
 

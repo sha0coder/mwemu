@@ -2,13 +2,15 @@ use crate::tests::helpers;
 use crate::*;
 
 #[test]
-// this tests the emu.call32() 
+// this tests the emu.call32()
 pub fn call32() {
     helpers::setup();
 
     let mut emu = emu32();
-    let opcodes: Vec<u8> = vec![ //TODO: test it with 7 parameters
-        0x55, 0x89, 0xe5, 0x83, 0xec, 0x50, 0xb8, 0x37, 0x13, 0x00, 0x00, 0x83, 0xf0, 0x7b, 0xc9, 0xc3
+    let opcodes: Vec<u8> = vec![
+        //TODO: test it with 7 parameters
+        0x55, 0x89, 0xe5, 0x83, 0xec, 0x50, 0xb8, 0x37, 0x13, 0x00, 0x00, 0x83, 0xf0, 0x7b, 0xc9,
+        0xc3,
     ];
     emu.set_verbose(3);
     emu.linux = true; // otherwise I would need to set map files.

@@ -1,9 +1,9 @@
+use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
-use byteorder::{LittleEndian, ReadBytesExt};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -85,7 +85,7 @@ struct HiveCache {
 }
 
 pub struct HiveParser {
-    pub(crate) file: File,  // Own the file instead of referencing it
+    pub(crate) file: File, // Own the file instead of referencing it
     pub(crate) base_offset: u64,
     subkey_cache: HashMap<String, HiveCache>,
 }
@@ -318,8 +318,7 @@ impl<'a> HiveKey<'a> {
         Ok(None)
     }
 
-    pub fn get_key_value_wrap(&mut self, name: &str) -> Result<Option<RegistryValue>, HiveError>
-    {
+    pub fn get_key_value_wrap(&mut self, name: &str) -> Result<Option<RegistryValue>, HiveError> {
         if self.key_block.value_count == 0 {
             return Ok(None);
         }
@@ -371,22 +370,26 @@ impl<'a> HiveKey<'a> {
         self.file.seek(SeekFrom::Start(data_offset))?;
 
         match value.value_type {
-            1 | 2 => { // REG_SZ, REG_EXPAND_SZ
+            1 | 2 => {
+                // REG_SZ, REG_EXPAND_SZ
                 let mut buffer = vec![0u8; data_size as usize];
                 self.file.read_exact(&mut buffer)?;
                 let text = String::from_utf8_lossy(&buffer).into_owned();
                 Ok(RegistryValue::String(text))
             }
-            3 => { // REG_BINARY
+            3 => {
+                // REG_BINARY
                 let mut buffer = vec![0u8; data_size as usize];
                 self.file.read_exact(&mut buffer)?;
                 Ok(RegistryValue::Binary(buffer))
             }
-            4 => { // REG_DWORD
+            4 => {
+                // REG_DWORD
                 let dword = self.file.read_u32::<LittleEndian>()?;
                 Ok(RegistryValue::Dword(dword))
             }
-            7 => { // REG_MULTI_SZ
+            7 => {
+                // REG_MULTI_SZ
                 let mut buffer = vec![0u8; data_size as usize];
                 self.file.read_exact(&mut buffer)?;
 
@@ -434,7 +437,7 @@ impl HiveParser {
         let main_key = KeyBlock::read_from_file(&mut file, main_key_offset)?;
 
         let mut parser = Self {
-            file,  // Now we move the file into the struct
+            file, // Now we move the file into the struct
             base_offset,
             subkey_cache: HashMap::new(),
         };
@@ -480,10 +483,12 @@ impl HiveParser {
 
             // For first-level keys, create cache entries
             if current_path.is_empty() {
-                self.subkey_cache.entry(subkey_name.clone()).or_insert_with(|| HiveCache {
-                    main_key_offset: subkey_abs_offset,
-                    subpaths: Vec::new(),
-                });
+                self.subkey_cache
+                    .entry(subkey_name.clone())
+                    .or_insert_with(|| HiveCache {
+                        main_key_offset: subkey_abs_offset,
+                        subpaths: Vec::new(),
+                    });
             }
 
             subpaths.push(HiveSubpath {
@@ -512,7 +517,11 @@ impl HiveParser {
             for subpath in &cache.subpaths {
                 if subpath.path == path {
                     let key_block = KeyBlock::read_from_file(&mut self.file, subpath.key_offset)?;
-                    return Ok(Some(HiveKey::new(key_block, self.base_offset, &mut self.file)));
+                    return Ok(Some(HiveKey::new(
+                        key_block,
+                        self.base_offset,
+                        &mut self.file,
+                    )));
                 }
             }
         }
@@ -568,4 +577,3 @@ impl TryFrom<RegistryValue> for Vec<String> {
         }
     }
 }
-
