@@ -196,7 +196,6 @@ pub mod write_file;
 pub mod write_process_memory;
 pub mod device_io_control;
 mod local_free;
-mod create_file_w;
 
 // Re-export all functions
 pub use activate_act_ctx::ActivateActCtx;
@@ -388,7 +387,6 @@ pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
 pub use local_free::LocalFree;
 pub use device_io_control::api_DeviceIoControl;
-use crate::winapi::winapi64::kernel32::create_file_w::CreateFileW;
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
 pub fn clear_last_error(emu: &mut emu::Emu) {
@@ -415,7 +413,6 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "CreateFileW" => CreateFileW(emu),
         "CreateFileMappingA" => CreateFileMappingA(emu),
         "CreateFileMappingW" => CreateFileMappingW(emu),
-        "CreateFileW" => CreateFileW(emu),
         "CreateMutexA" => CreateMutexA(emu),
         "CreateMutexW" => CreateMutexW(emu),
         "CreateNamedPipeA" => CreateNamedPipeA(emu),

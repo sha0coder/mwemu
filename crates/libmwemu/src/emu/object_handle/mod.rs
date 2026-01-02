@@ -1,12 +1,11 @@
-use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use slab::Slab;
 pub(crate) use file_handle::FileHandle;
-
-
+pub(crate) use mapping_handle::MappingHandle;
 
 pub mod file_handle;
+pub mod mapping_handle;
 mod hive_parser;
 mod registry_handle;
 // TODO: support more handle: registry, thread, heap, etc
@@ -20,6 +19,7 @@ pub static HANDLE_MANGEMENT: std::sync::LazyLock<Arc<Mutex<crate::emu::object_ha
     std::sync::LazyLock::new(|| Arc::new(Mutex::new(crate::emu::object_handle::HandleManagement::new())));
 enum HandleType {
     FileHandle(FileHandle),
+    MappingHandle(MappingHandle),
 }
 
 pub(crate) struct HandleManagement {
@@ -41,6 +41,12 @@ impl HandleManagement {
         key as u32 // Assuming u32 is sufficient for slab keys in your context
     }
 
+    pub fn insert_mapping_handle(&mut self, mapping_handle: MappingHandle) -> u32 {
+        let key = self.handle_types.insert(HandleType::MappingHandle(mapping_handle));
+        self.number_of_handle += 1;
+        key as u32
+    }
+
     // Method to get a mutable reference to a FileHandle by its key
     pub fn get_mut_file_handle(&mut self, key: u32) -> Option<&mut FileHandle> {
         if let Some(handle_type) = self.handle_types.get_mut(key as usize) {
@@ -54,6 +60,17 @@ impl HandleManagement {
         }
     }
 
+    pub fn get_mut_mapping_handle(&mut self, key: u32) -> Option<&mut MappingHandle> {
+        if let Some(handle_type) = self.handle_types.get_mut(key as usize) {
+            match handle_type {
+                HandleType::MappingHandle(mh) => Some(mh),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
     // Method to remove a FileHandle (useful for CloseHandle)
     pub fn remove_file_handle(&mut self, key: u32) -> Option<FileHandle> {
         if let Some(handle_type) = self.handle_types.try_remove(key as usize) {
@@ -64,6 +81,23 @@ impl HandleManagement {
                 },
                 _ => {
                     // Put it back if it wasn't a FileHandle, though this indicates a logic error
+                    self.handle_types.insert(handle_type);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn remove_mapping_handle(&mut self, key: u32) -> Option<MappingHandle> {
+        if let Some(handle_type) = self.handle_types.try_remove(key as usize) {
+            match handle_type {
+                HandleType::MappingHandle(mh) => {
+                    self.number_of_handle -= 1;
+                    Some(mh)
+                }
+                _ => {
                     self.handle_types.insert(handle_type);
                     None
                 }

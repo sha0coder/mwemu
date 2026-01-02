@@ -1,30 +1,47 @@
 use crate::emu;
-use crate::winapi::helper;
+use crate::emu::object_handle::{HANDLE_MANGEMENT, MappingHandle};
+use crate::constants::INVALID_HANDLE_VALUE_32;
 
 pub fn CreateFileMappingA(emu: &mut emu::Emu) {
-    let hFile = emu.regs().rcx;
-    let attr = emu.regs().rdx;
-    let protect = emu.regs().r8;
+    let h_file = emu.regs().rcx;
+    let _attr = emu.regs().rdx;
+    let protect = emu.regs().r8 as u32;
     let max_sz_high = emu.regs().r9;
     let max_sz_low = emu
         .maps
         .read_qword(emu.regs().rsp + 0x20)
-        .expect("kernel32!CreateFileMappingW cannot read max size low");
+        .expect("kernel32!CreateFileMappingA cannot read max size low");
     let name_ptr = emu
         .maps
         .read_qword(emu.regs().rsp + 0x28)
-        .expect("kernel32!CreateFileMappingW cannot read name pointer");
+        .expect("kernel32!CreateFileMappingA cannot read name pointer");
 
     let mut name: String = String::new();
     if name_ptr > 0 {
         name = emu.maps.read_string(name_ptr);
     }
 
-    emu.regs_mut().rax = helper::handler_create(&name);
+    let max_size = (max_sz_high << 32) | max_sz_low;
+    let file_handle_opt = if h_file == INVALID_HANDLE_VALUE_32 || h_file == 0xFFFFFFFFFFFFFFFF {
+        None
+    } else {
+        Some(h_file as u32)
+    };
+
+    let mapping_handle = MappingHandle::new(name.clone(), file_handle_opt, protect, max_size);
+
+    let mut handle_mgmt = HANDLE_MANGEMENT.lock().unwrap();
+    let handle_key = handle_mgmt.insert_mapping_handle(mapping_handle);
+
+    emu.regs_mut().rax = handle_key as u64;
+
     log_red!(
         emu,
-        "kernel32!CreateFileMappingA '{}' ={}",
+        "kernel32!CreateFileMappingA '{}' h_file: 0x{:x} protect: 0x{:x} size: 0x{:x} = 0x{:x}",
         name,
-        emu.regs().get_eax()
+        h_file,
+        protect,
+        max_size,
+        handle_key
     );
 }

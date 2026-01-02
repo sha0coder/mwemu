@@ -27,7 +27,7 @@ pub enum HiveError {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Offsets {
+pub(crate) struct Offsets {
     block_size: i32,
     block_type: [u8; 2],
     count: i16,
@@ -36,11 +36,11 @@ struct Offsets {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct KeyBlock {
+pub(crate) struct KeyBlock {
     block_size: i32,
     block_type: [u8; 2],
-    subkey_count: i32,
-    subkeys_offset: i32,
+    pub(crate) subkey_count: i32,
+    pub(crate) subkeys_offset: i32,
     value_count: i32,
     offsets_offset: i32,
     name_len: i16,
@@ -48,7 +48,7 @@ struct KeyBlock {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ValueBlock {
+pub(crate) struct ValueBlock {
     block_size: i32,
     block_type: [u8; 2],
     name_len: i16,
@@ -58,6 +58,7 @@ struct ValueBlock {
     name: [u8; 255],
 }
 
+#[derive(Debug)]
 pub enum RegistryValue {
     String(String),
     Dword(u32),
@@ -66,9 +67,9 @@ pub enum RegistryValue {
 }
 
 pub struct HiveKey<'a> {
-    key_block: KeyBlock,
-    base_offset: u64,
-    file: &'a mut File,
+    pub(crate) key_block: KeyBlock,
+    pub(crate) base_offset: u64,
+    pub(crate) file: &'a mut File,
 }
 
 #[derive(Debug, Clone)]
@@ -84,13 +85,13 @@ struct HiveCache {
 }
 
 pub struct HiveParser {
-    file: File,  // Own the file instead of referencing it
-    base_offset: u64,
+    pub(crate) file: File,  // Own the file instead of referencing it
+    pub(crate) base_offset: u64,
     subkey_cache: HashMap<String, HiveCache>,
 }
 
 impl Offsets {
-    fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
+    pub(crate) fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
         file.seek(SeekFrom::Start(offset))?;
 
         let block_size = file.read_i32::<LittleEndian>()?;
@@ -110,7 +111,7 @@ impl Offsets {
 }
 
 impl KeyBlock {
-    fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
+    pub(crate) fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
         file.seek(SeekFrom::Start(offset))?;
 
         let block_size = file.read_i32::<LittleEndian>()?;
@@ -160,7 +161,7 @@ impl KeyBlock {
         })
     }
 
-    fn get_name(&self) -> Result<String, HiveError> {
+    pub(crate) fn get_name(&self) -> Result<String, HiveError> {
         if self.name_len <= 0 || self.name_len as usize > self.name.len() {
             return Err(HiveError::NameBufferOverflow);
         }
@@ -312,6 +313,40 @@ impl<'a> HiveKey<'a> {
                 Ok(val) => Ok(Some(val)),
                 Err(_) => Err(HiveError::InvalidValueType),
             };
+        }
+
+        Ok(None)
+    }
+
+    pub fn get_key_value_wrap(&mut self, name: &str) -> Result<Option<RegistryValue>, HiveError>
+    {
+        if self.key_block.value_count == 0 {
+            return Ok(None);
+        }
+
+        let offsets_base = self.base_offset + self.key_block.offsets_offset as u64 + 4;
+
+        for i in 0..self.key_block.value_count {
+            let offset_entry_offset = offsets_base + (i as u64 * 4);
+            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
+            let value_offset = self.file.read_i32::<LittleEndian>()? as u64;
+
+            if value_offset == 0 {
+                continue;
+            }
+
+            let value_abs_offset = self.base_offset + value_offset as u64;
+            let value = ValueBlock::read_from_file(self.file, value_abs_offset)?;
+
+            let value_name = value.get_name()?;
+            if value_name != name {
+                continue;
+            }
+
+            // Read the actual value data
+            let registry_value = self.read_value_data(&value)?;
+
+            return Ok(Some(registry_value));
         }
 
         Ok(None)
