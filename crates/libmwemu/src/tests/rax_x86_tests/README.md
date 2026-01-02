@@ -3,6 +3,10 @@ and is part of his RAX project:
 
 `https://github.com/19h/rax/tree/master/tests/x86_64`
 
-The tests have been adapted to use libmwemu's api.
+The tests have been converted to use libmwemu's api using some regex I prepared on regex.vim
 
-I'm working on adapting the tests, for now just shld and the regex to do the conversion.
+
+To trigger this tests use:
+```
+cargo test --features rax_x86_tests rax_x86_tests
+```
