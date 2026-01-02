@@ -14,6 +14,7 @@ pub mod begin_update_resource_a;
 pub mod close_handle;
 pub mod compare_string_w;
 pub mod connect_named_pipe;
+pub mod delete_file_a;
 pub mod copy_file_a;
 pub mod copy_file_w;
 pub mod create_act_ctx_a;
@@ -21,6 +22,7 @@ pub mod create_event_a;
 pub mod create_file_a;
 pub mod create_file_mapping_a;
 pub mod create_file_mapping_w;
+pub mod create_file_w;
 pub mod create_mutex_a;
 pub mod create_mutex_w;
 pub mod create_named_pipe_a;
@@ -56,6 +58,7 @@ pub mod get_command_line_a;
 pub mod get_command_line_w;
 pub mod get_computer_name_a;
 pub mod get_computer_name_w;
+pub mod get_disk_free_space_a;
 pub mod get_console_cp;
 pub mod get_console_mode;
 pub mod get_console_output_cp;
@@ -71,6 +74,7 @@ pub mod get_environment_variable_w;
 pub mod get_file_attributes_a;
 pub mod get_file_attributes_w;
 pub mod get_file_size;
+pub mod get_file_type;
 pub mod get_full_path_name_a;
 pub mod get_full_path_name_w;
 pub mod get_last_error;
@@ -99,6 +103,7 @@ pub mod get_temp_path_w;
 pub mod get_thread_context;
 pub mod get_thread_locale;
 pub mod get_tick_count;
+pub mod get_time_zone_information;
 pub mod get_user_default_lang_id;
 pub mod get_user_default_lcid;
 pub mod get_version;
@@ -140,16 +145,26 @@ pub mod move_file_a;
 pub mod move_file_w;
 pub mod multi_byte_to_wide_char;
 pub mod open_process;
+pub mod open_process_token;
 pub mod open_thread;
+
 pub mod process32_first;
 pub mod process32_next;
 pub mod query_performance_counter;
 pub mod read_file;
 pub mod read_process_memory;
+pub mod reg_close_key;
+pub mod reg_create_key_ex_a;
+pub mod reg_create_key_ex_w;
+pub mod reg_open_key_a;
+pub mod reg_set_value_ex_a;
+pub mod reg_set_value_ex_w;
 pub mod reset_event;
+
 pub mod resume_thread;
 pub mod set_current_directory_a;
 pub mod set_error_mode;
+pub mod set_file_pointer;
 pub mod set_last_error;
 pub mod set_thread_locale;
 pub mod set_thread_stack_guarantee;
@@ -191,6 +206,7 @@ pub use begin_update_resource_a::BeginUpdateResourceA;
 pub use close_handle::CloseHandle;
 pub use compare_string_w::CompareStringW;
 pub use connect_named_pipe::ConnectNamedPipe;
+pub use delete_file_a::DeleteFileA;
 pub use copy_file_a::CopyFileA;
 pub use copy_file_w::CopyFileW;
 pub use create_act_ctx_a::CreateActCtxA;
@@ -198,6 +214,7 @@ pub use create_event_a::CreateEventA;
 pub use create_file_a::CreateFileA;
 pub use create_file_mapping_a::CreateFileMappingA;
 pub use create_file_mapping_w::CreateFileMappingW;
+pub use create_file_w::CreateFileW;
 pub use create_mutex_a::CreateMutexA;
 pub use create_mutex_w::CreateMutexW;
 pub use create_named_pipe_a::CreateNamedPipeA;
@@ -233,6 +250,7 @@ pub use get_command_line_a::GetCommandLineA;
 pub use get_command_line_w::GetCommandLineW;
 pub use get_computer_name_a::GetComputerNameA;
 pub use get_computer_name_w::GetComputerNameW;
+pub use get_disk_free_space_a::GetDiskFreeSpaceA;
 pub use get_console_cp::GetConsoleCP;
 pub use get_console_mode::GetConsoleMode;
 pub use get_console_output_cp::GetConsoleOutputCP;
@@ -248,6 +266,7 @@ pub use get_environment_variable_w::GetEnvironmentVariableW;
 pub use get_file_attributes_a::GetFileAttributesA;
 pub use get_file_attributes_w::GetFileAttributesW;
 pub use get_file_size::GetFileSize;
+pub use get_file_type::GetFileType;
 pub use get_full_path_name_a::GetFullPathNameA;
 pub use get_full_path_name_w::GetFullPathNameW;
 pub use get_last_error::GetLastError;
@@ -276,6 +295,7 @@ pub use get_temp_path_w::GetTempPathW;
 pub use get_thread_context::GetThreadContext;
 pub use get_thread_locale::GetThreadLocale;
 pub use get_tick_count::GetTickCount;
+pub use get_time_zone_information::GetTimeZoneInformation;
 pub use get_user_default_lang_id::GetUserDefaultLangId;
 pub use get_user_default_lcid::GetUserDefaultLCID;
 pub use get_version::GetVersion;
@@ -317,16 +337,26 @@ pub use move_file_a::MoveFileA;
 pub use move_file_w::MoveFileW;
 pub use multi_byte_to_wide_char::MultiByteToWideChar;
 pub use open_process::OpenProcess;
+pub use open_process_token::OpenProcessToken;
 pub use open_thread::OpenThread;
+
 pub use process32_first::Process32First;
 pub use process32_next::Process32Next;
 pub use query_performance_counter::QueryPerformanceCounter;
 pub use read_file::ReadFile;
 pub use read_process_memory::ReadProcessMemory;
+pub use reg_close_key::RegCloseKey;
+pub use reg_create_key_ex_a::RegCreateKeyExA;
+pub use reg_create_key_ex_w::RegCreateKeyExW;
+pub use reg_open_key_a::RegOpenKeyA;
+pub use reg_set_value_ex_a::RegSetValueExA;
+pub use reg_set_value_ex_w::RegSetValueExW;
 pub use reset_event::ResetEvent;
+
 pub use resume_thread::ResumeThread;
 pub use set_current_directory_a::SetCurrentDirectoryA;
 pub use set_error_mode::SetErrorMode;
+pub use set_file_pointer::SetFilePointer;
 pub use set_last_error::SetLastError;
 pub use set_thread_locale::SetThreadLocale;
 pub use set_thread_stack_guarantee::SetThreadStackGuarantee;
@@ -376,6 +406,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "CloseHandle" => CloseHandle(emu),
         "CompareStringW" => CompareStringW(emu),
         "ConnectNamedPipe" => ConnectNamedPipe(emu),
+        "DeleteFileA" => DeleteFileA(emu),
         "CopyFileA" => CopyFileA(emu),
         "CopyFileW" => CopyFileW(emu),
         "CreateActCtxA" => CreateActCtxA(emu),
@@ -384,6 +415,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "CreateFileW" => CreateFileW(emu),
         "CreateFileMappingA" => CreateFileMappingA(emu),
         "CreateFileMappingW" => CreateFileMappingW(emu),
+        "CreateFileW" => CreateFileW(emu),
         "CreateMutexA" => CreateMutexA(emu),
         "CreateMutexW" => CreateMutexW(emu),
         "CreateNamedPipeA" => CreateNamedPipeA(emu),
@@ -419,6 +451,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetCommandLineW" => GetCommandLineW(emu),
         "GetComputerNameA" => GetComputerNameA(emu),
         "GetComputerNameW" => GetComputerNameW(emu),
+        "GetDiskFreeSpaceA" => GetDiskFreeSpaceA(emu),
         "GetConsoleCP" => GetConsoleCP(emu),
         "GetConsoleMode" => GetConsoleMode(emu),
         "GetConsoleOutputCP" => GetConsoleOutputCP(emu),
@@ -434,6 +467,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetFileAttributesA" => GetFileAttributesA(emu),
         "GetFileAttributesW" => GetFileAttributesW(emu),
         "GetFileSize" => GetFileSize(emu),
+        "GetFileType" => GetFileType(emu),
         "GetFullPathNameA" => GetFullPathNameA(emu),
         "GetFullPathNameW" => GetFullPathNameW(emu),
         "GetLastError" => GetLastError(emu),
@@ -463,6 +497,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetThreadContext" => GetThreadContext(emu),
         "GetThreadLocale" => GetThreadLocale(emu),
         "GetTickCount" => GetTickCount(emu),
+        "GetTimeZoneInformation" => GetTimeZoneInformation(emu),
         "GetUserDefaultLangId" => GetUserDefaultLangId(emu),
         "GetUserDefaultLCID" => GetUserDefaultLCID(emu),
         "GetVersion" => GetVersion(emu),
@@ -506,16 +541,26 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "MoveFileW" => MoveFileW(emu),
         "MultiByteToWideChar" => MultiByteToWideChar(emu),
         "OpenProcess" => OpenProcess(emu),
+        "OpenProcessToken" => OpenProcessToken(emu),
         "OpenThread" => OpenThread(emu),
+
         "Process32First" => Process32First(emu),
         "Process32Next" => Process32Next(emu),
         "QueryPerformanceCounter" => QueryPerformanceCounter(emu),
         "ReadFile" => ReadFile(emu),
         "ReadProcessMemory" => ReadProcessMemory(emu),
+        "RegCloseKey" => RegCloseKey(emu),
+        "RegCreateKeyExA" => RegCreateKeyExA(emu),
+        "RegCreateKeyExW" => RegCreateKeyExW(emu),
+        "RegOpenKeyA" => RegOpenKeyA(emu),
+        "RegSetValueExA" => RegSetValueExA(emu),
+        "RegSetValueExW" => RegSetValueExW(emu),
         "ResetEvent" => ResetEvent(emu),
+
         "ResumeThread" => ResumeThread(emu),
         "SetCurrentDirectoryA" => SetCurrentDirectoryA(emu),
         "SetErrorMode" => SetErrorMode(emu),
+        "SetFilePointer" => SetFilePointer(emu),
         "SetLastError" => SetLastError(emu),
         "SetThreadLocale" => SetThreadLocale(emu),
         "SetThreadStackGuarantee" => SetThreadStackGuarantee(emu),

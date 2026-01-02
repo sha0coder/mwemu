@@ -8,6 +8,7 @@ mod add_vectored_exception_handler;
 mod are_file_apis_ansi;
 mod close_handle;
 mod connect_named_pipe;
+mod delete_file_a;
 mod copy_file_a;
 mod copy_file_w;
 mod create_event_a;
@@ -55,6 +56,7 @@ mod get_current_process;
 mod get_current_process_id;
 mod get_current_thread_id;
 mod get_environment_strings;
+mod get_disk_free_space_a;
 mod get_environment_strings_w;
 mod get_file_attributes_a;
 mod get_file_attributes_w;
@@ -62,6 +64,8 @@ mod get_file_type;
 mod get_full_path_name_a;
 mod get_full_path_name_w;
 mod get_last_error;
+mod get_local_time;
+
 mod get_logical_drives;
 mod get_long_path_name_w;
 mod get_module_file_name_a;
@@ -96,6 +100,7 @@ mod get_version;
 mod get_version_ex_w;
 mod get_windows_directory_a;
 mod get_windows_directory_w;
+mod global_add_atom_a;
 mod heap_alloc;
 mod heap_create;
 mod heap_destroy;
@@ -144,6 +149,7 @@ mod reg_set_value_ex_a;
 mod reg_set_value_ex_w;
 mod resume_thread;
 mod set_error_mode;
+mod set_file_pointer;
 mod set_handle_count;
 mod set_last_error;
 mod set_thread_context;
@@ -164,7 +170,9 @@ mod verify_version_info_w;
 mod virtual_alloc;
 mod virtual_alloc_ex;
 mod virtual_alloc_ex_numa;
+mod virtual_lock;
 mod virtual_free;
+
 mod virtual_protect;
 mod virtual_protect_ex;
 mod virtual_query;
@@ -179,6 +187,7 @@ pub use add_vectored_exception_handler::*;
 pub use are_file_apis_ansi::*;
 pub use close_handle::*;
 pub use connect_named_pipe::*;
+pub use delete_file_a::*;
 pub use copy_file_a::*;
 pub use copy_file_w::*;
 pub use create_event_a::*;
@@ -227,13 +236,16 @@ pub use get_current_process_id::*;
 pub use get_current_thread_id::*;
 pub use get_environment_strings::*;
 pub use get_environment_strings_w::*;
+pub use get_disk_free_space_a::*;
 pub use get_file_attributes_a::*;
 pub use get_file_attributes_w::*;
 pub use get_file_type::*;
 pub use get_full_path_name_a::*;
 pub use get_full_path_name_w::*;
 pub use get_last_error::*;
+pub use get_local_time::*;
 pub use get_logical_drives::*;
+
 pub use get_long_path_name_w::*;
 pub use get_module_file_name_a::*;
 pub use get_module_file_name_w::*;
@@ -267,6 +279,7 @@ pub use get_version::*;
 pub use get_version_ex_w::*;
 pub use get_windows_directory_a::*;
 pub use get_windows_directory_w::*;
+pub use global_add_atom_a::*;
 pub use heap_alloc::*;
 pub use heap_create::*;
 pub use heap_destroy::*;
@@ -315,6 +328,7 @@ pub use reg_set_value_ex_a::*;
 pub use reg_set_value_ex_w::*;
 pub use resume_thread::*;
 pub use set_error_mode::*;
+pub use set_file_pointer::*;
 pub use set_handle_count::*;
 pub use set_last_error::*;
 pub use set_thread_context::*;
@@ -335,7 +349,9 @@ pub use verify_version_info_w::*;
 pub use virtual_alloc::*;
 pub use virtual_alloc_ex::*;
 pub use virtual_alloc_ex_numa::*;
+pub use virtual_lock::*;
 pub use virtual_free::*;
+
 pub use virtual_protect::*;
 pub use virtual_protect_ex::*;
 pub use virtual_query::*;
@@ -354,6 +370,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "AreFileApisANSI" => AreFileApisANSI(emu),
         "CloseHandle" => CloseHandle(emu),
         "ConnectNamedPipe" => ConnectNamedPipe(emu),
+        "DeleteFileA" => DeleteFileA(emu),
         "CopyFileA" => CopyFileA(emu),
         "CopyFileW" => CopyFileW(emu),
         "CreateEventA" => CreateEventA(emu),
@@ -400,6 +417,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "GetCurrentDirectoryW" => GetCurrentDirectoryW(emu),
         "GetCurrentProcess" => GetCurrentProcess(emu),
         "GetCurrentProcessId" => GetCurrentProcessId(emu),
+        "GetDiskFreeSpaceA" => GetDiskFreeSpaceA(emu),
         "GetCurrentThreadId" => GetCurrentThreadId(emu),
         "GetEnvironmentStrings" => GetEnvironmentStrings(emu),
         "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
@@ -410,6 +428,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "GetFullPathNameW" => GetFullPathNameW(emu),
         "GetLastError" => GetLastError(emu),
         "GetLogicalDrives" => GetLogicalDrives(emu),
+        "GetLocalTime" => GetLocalTime(emu),
         "GetLongPathNameW" => GetLongPathNameW(emu),
         "GetModuleFileNameA" => GetModuleFileNameA(emu),
         "GetModuleFileNameW" => GetModuleFileNameW(emu),
@@ -443,6 +462,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "GetVersionExW" => GetVersionExW(emu),
         "GetWindowsDirectoryA" => GetWindowsDirectoryA(emu),
         "GetWindowsDirectoryW" => GetWindowsDirectoryW(emu),
+        "GlobalAddAtomA" => GlobalAddAtomA(emu),
         "HeapAlloc" => HeapAlloc(emu),
         "HeapCreate" => HeapCreate(emu),
         "HeapDestroy" => HeapDestroy(emu),
@@ -466,8 +486,9 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "LocalAlloc" => LocalAlloc(emu),
         "LockResource" => LockResource(emu),
         "lstrcat" => lstrcat(emu),
-        "lstrcmp" => lstrcmpA(emu),
         "lstrcmpA" => lstrcmpA(emu),
+        "lstrcmp" => lstrcmpA(emu),
+
         "lstrcmpW" => lstrcmpW(emu),
         "lstrcpy" => lstrcpy(emu),
         "lstrlen" => lstrlen(emu),
@@ -492,6 +513,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "RegSetValueExW" => RegSetValueExW(emu),
         "ResumeThread" => ResumeThread(emu),
         "SetErrorMode" => SetErrorMode(emu),
+        "SetFilePointer" => SetFilePointer(emu),
         "SetHandleCount" => SetHandleCount(emu),
         "SetLastError" => SetLastError(emu),
         "SetThreadContext" => SetThreadContext(emu),
@@ -512,7 +534,9 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "VirtualAlloc" => VirtualAlloc(emu),
         "VirtualAllocEx" => VirtualAllocEx(emu),
         "VirtualAllocExNuma" => VirtualAllocExNuma(emu),
+        "VirtualLock" => VirtualLock(emu),
         "VirtualFree" => VirtualFree(emu),
+
         "VirtualProtect" => VirtualProtect(emu),
         "VirtualProtectEx" => VirtualProtectEx(emu),
         "VirtualQuery" => VirtualQuery(emu),

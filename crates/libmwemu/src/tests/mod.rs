@@ -60,3 +60,8 @@ mod banzai_mode_tests;
 mod console_control_tests;
 mod maps_operations_tests;
 mod config_tests;
+mod sse_avx_tests;
+mod bit_manipulation_tests;
+mod string_ops_tests;
+mod winapi64_tests;
+mod winapi32_tests;
