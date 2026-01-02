@@ -65,3 +65,4 @@ mod bit_manipulation_tests;
 mod string_ops_tests;
 mod winapi64_tests;
 mod winapi32_tests;
+mod rax_x86_tests;
