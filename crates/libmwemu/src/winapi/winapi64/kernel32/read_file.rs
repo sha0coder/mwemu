@@ -1,14 +1,12 @@
 use crate::emu;
-use crate::emu::object_handle;
 use crate::emu::object_handle::file_handle::INVALID_HANDLE_VALUE;
-use crate::emu::object_handle::{windows_to_emulate_path, FileHandle, HANDLE_MANGEMENT};
-use crate::winapi::helper;
+use crate::emu::object_handle::{HANDLE_MANGEMENT};
 
 pub fn ReadFile(emu: &mut emu::Emu) {
     let h_file = emu.regs().rcx as usize; // Handle to the file
-    let lp_buffer = emu.regs().rdx as u64; // Buffer to receive data
+    let lp_buffer = emu.regs().rdx; // Buffer to receive dat
     let n_number_of_bytes_to_read = emu.regs().r8 as u32; // Number of bytes to read
-    let lp_number_of_bytes_read = emu.regs().r9 as u64; // Pointer to store bytes read
+    let lp_number_of_bytes_read = emu.regs().r9; // Pointer to store bytes read
     let lp_overlapped = emu
         .maps
         .read_qword(emu.regs().rsp + 0x20)

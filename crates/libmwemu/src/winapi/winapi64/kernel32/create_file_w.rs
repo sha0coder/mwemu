@@ -1,7 +1,7 @@
 use crate::emu;
 use crate::emu::object_handle;
-use crate::emu::object_handle::file_handle::INVALID_HANDLE_VALUE;
-use crate::emu::object_handle::{windows_to_emulate_path, FileHandle, HANDLE_MANGEMENT};
+use crate::emu::object_handle::file_handle::{FileSystem, FILE_SYSTEM, INVALID_HANDLE_VALUE};
+use crate::emu::object_handle::{FileHandle, HANDLE_MANGEMENT};
 use crate::winapi::helper;
 use log::error;
 
@@ -31,8 +31,8 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
     );
 
     // Map the Windows path to the emulator's path
-    let emu_path = windows_to_emulate_path(&name_utf8);
-    let emu_path_str = emu_path.to_string_lossy().to_string();
+    let emu_path = FILE_SYSTEM.get().unwrap().read().unwrap().local_to_windows_path(&name_utf8).unwrap();
+    let emu_path_str = emu_path.to_string();
 
     // Attempt to create or open the file using the FileHandle struct
     match FileHandle::new(

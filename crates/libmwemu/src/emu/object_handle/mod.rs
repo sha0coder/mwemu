@@ -1,13 +1,13 @@
 pub(crate) use file_handle::FileHandle;
 pub(crate) use mapping_handle::MappingHandle;
 use slab::Slab;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 pub mod file_handle;
 mod hive_parser;
 pub mod mapping_handle;
 mod registry_handle;
+mod windows_path;
 // TODO: support more handle: registry, thread, heap, etc
 /*
 Here the handle management is control by Slab and return a number, that number can be used as
@@ -16,8 +16,8 @@ handle id to get the right handle. In the document, it doesn't specific that the
 */
 
 pub static HANDLE_MANGEMENT: std::sync::LazyLock<
-    Arc<Mutex<crate::emu::object_handle::HandleManagement>>,
-> = std::sync::LazyLock::new(|| {
+        Arc<Mutex<crate::emu::object_handle::HandleManagement>>,
+    > = std::sync::LazyLock::new(|| {
     Arc::new(Mutex::new(
         crate::emu::object_handle::HandleManagement::new(),
     ))
@@ -27,7 +27,7 @@ enum HandleType {
     MappingHandle(MappingHandle),
 }
 
-pub(crate) struct HandleManagement {
+pub struct HandleManagement {
     number_of_handle: usize,
     handle_types: Slab<HandleType>,
 }
@@ -117,54 +117,3 @@ impl HandleManagement {
     }
 }
 
-const DEFAULT_PATH: &str = "D:\\malware\\temp";
-
-pub fn windows_to_emulate_path<P: AsRef<Path>>(path: P) -> PathBuf {
-    let input_path = path.as_ref();
-    let base_path = Path::new(DEFAULT_PATH);
-
-    if input_path.is_absolute() {
-        if let Some(first_component) = input_path.components().next() {
-            let mut mapped_path = base_path.to_path_buf();
-            if let std::path::Component::Prefix(prefix_component) = first_component {
-                let drive_part = prefix_component.as_os_str().to_string_lossy();
-                if drive_part.len() >= 2 && drive_part.ends_with(':') {
-                    let drive_letter = &drive_part[..2];
-                    mapped_path.push(drive_letter);
-                } else {
-                    mapped_path.push("DEFAULT_DRIVE");
-                }
-            }
-            for component in input_path.components().skip(1) {
-                mapped_path.push(component);
-            }
-            return mapped_path;
-        }
-    } else {
-        return base_path.join(input_path);
-    }
-
-    base_path.to_path_buf()
-}
-
-// Converts an emulated path back to its original Windows path representation.
-// This function assumes the emulated path strictly follows the format:
-// DEFAULT_PATH + DriveLetter + RestOfPath (e.g., "D:\malware\temp\C\some\path" -> "C:\some\path").
-pub fn emulate_path_to_windows_path<P: AsRef<Path>>(emulated_path: P) -> Option<PathBuf> {
-    let emulated_path_buf = emulated_path.as_ref().to_path_buf();
-    let default_path_buf = Path::new(DEFAULT_PATH).to_path_buf();
-    let relative_to_default = emulated_path_buf.strip_prefix(&default_path_buf).ok()?;
-    let mut components = relative_to_default.components();
-    let drive_letter_component = components.next()?;
-    let drive_letter_str = drive_letter_component.as_os_str().to_string_lossy();
-
-    if drive_letter_str.len() != 2 || !drive_letter_str.ends_with(':') {
-        return None;
-    }
-
-    let mut windows_path = PathBuf::new();
-    windows_path.push(format!("{}\\", drive_letter_str));
-    windows_path.push(components.as_path());
-
-    Some(windows_path)
-}
