@@ -50,6 +50,25 @@ macro_rules! set_bit {
     };
 }
 
+pub const F_CF: u32 = 0;
+pub const F_PF: u32 = 2;
+pub const F_AF: u32 = 4;
+pub const F_ZF: u32 = 6;
+pub const F_SF: u32 = 7;
+pub const F_TF: u32 = 8;
+pub const F_IF: u32 = 9;
+pub const F_DF: u32 = 10;
+pub const F_OF: u32 = 11;
+pub const F_IOPL1: u32 = 12;
+pub const F_IOPL2: u32 = 13;
+pub const F_NT: u32 = 14;
+pub const F_RF: u32 = 16;
+pub const F_VM: u32 = 17;
+pub const F_AC: u32 = 18;
+pub const F_VIF: u32 = 19;
+pub const F_VIP: u32 = 20;
+pub const F_ID: u32 = 21;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Flags {
     pub f_cf: bool,
@@ -121,6 +140,27 @@ impl Flags {
         self.f_vif = false;
         self.f_vip = false;
         self.f_id = false;
+    }
+
+    pub fn set(&mut self) {
+        self.f_cf = true;
+        self.f_pf = true;
+        self.f_af = true;
+        self.f_zf = true;
+        self.f_sf = true;
+        self.f_tf = true;
+        self.f_if = true;
+        self.f_df = true;
+        self.f_of = true;
+        self.f_iopl1 = true;
+        self.f_iopl2 = true;
+        self.f_nt = true;
+        self.f_rf = true;
+        self.f_vm = true;
+        self.f_ac = true;
+        self.f_vif = true;
+        self.f_vip = true;
+        self.f_id = true;
     }
 
     pub fn print_trace(&self, pos: u64) {

@@ -65,3 +65,4 @@ mod tls_fls_tests;
 mod utility_functions_tests;
 mod winapi32_tests;
 mod winapi64_tests;
+mod rax_x86_tests;

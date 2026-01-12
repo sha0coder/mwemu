@@ -14,7 +14,7 @@
 
 It's a hardware emulator + OS process simulator implemented in pure rust.
 
-This approach is very convinient to malware analysis and other stuff (PE, shellcode etc)
+This approach is very convenient to malware analysis and other stuff (PE, shellcode etc)
 
 The OS is mainly windows, it emulates a windows process, some very basic support for linux.
 
