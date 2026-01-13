@@ -121,7 +121,7 @@ impl WindowsPath {
 
         if let Some(drive) = self.drive {
             path.push(drive);
-            path.push(':');
+            path.push_str(":\\");
         }
 
         let mut first = true;
@@ -344,7 +344,7 @@ mod tests {
         assert!(path.is_absolute());
         assert_eq!(path.get_drive(), Some('c'));
         assert_eq!(path.leaf(), Some("system32"));
-        assert_eq!(path.to_string(), "C:\\Windows\\System32");
+        assert_eq!(path.to_string(), "c:\\windows\\system32");
     }
 
     #[test]
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn test_unc_path() {
         let path = WindowsPath::from_string("C:\\Windows");
-        assert_eq!(path.to_unc_path(), "\\\\?\\C:\\Windows");
+        assert_eq!(path.to_unc_path(), "\\\\?\\c:\\windows");
     }
 
     #[test]
@@ -366,13 +366,13 @@ mod tests {
         let path1 = WindowsPath::from_string("C:\\Windows");
         let path2 = WindowsPath::from_string("System32");
         let joined = path1.join(&path2);
-        assert_eq!(joined.to_string(), "C:\\Windows\\System32");
+        assert_eq!(joined.to_string(), "c:\\windows\\system32");
     }
 
     #[test]
     fn test_parent() {
         let path = WindowsPath::from_string("C:\\Windows\\System32");
         let parent = path.parent();
-        assert_eq!(parent.to_string(), "C:\\Windows");
+        assert_eq!(parent.to_string(), "c:\\windows");
     }
 }

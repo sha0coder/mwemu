@@ -355,7 +355,7 @@ impl FileSystem {
         let normal_root = normal_root.as_ref();
         let normal_target = normal_target.as_ref();
 
-        if let Ok(relative_path) = Self::relative(normal_target, normal_root) {
+        if let Some(relative_path) = Self::relative(normal_target, normal_root) {
             !Self::is_escaping_relative_path(relative_path)
         } else {
             false
@@ -451,7 +451,7 @@ impl FileSystem {
         let absolute_local_path = Self::weakly_canonical(&Self::absolute(local_path)?)?;
 
         let relative_path = Self::relative(&absolute_local_path, &self.root)
-            .map_err(|_| format!("Failed to compute relative path for '{}'", local_path.display()))?;
+            .expect(format!("Failed to compute relative path for '{}'", local_path.display()).as_str());
 
         if Self::is_escaping_relative_path(&relative_path) {
             return Err(format!("Path '{}' is not within the root filesystem!", local_path.display()).into());
@@ -536,22 +536,22 @@ impl FileSystem {
         }
     }
 
-    fn relative<P1: AsRef<Path>, P2: AsRef<Path>>(path: P1, base: P2) -> io::Result<PathBuf> {
+    fn relative<P1: AsRef<Path>, P2: AsRef<Path>>(path: P1, base: P2) -> Option<PathBuf> {
         let path = path.as_ref();
         let base = base.as_ref();
 
         // Convert both paths to absolute and canonicalize if possible
-        let abs_path = Self::weakly_canonical(path)?;
-        let abs_base = Self::weakly_canonical(base)?;
+        let abs_path = Self::weakly_canonical(path).unwrap();
+        let abs_base = Self::weakly_canonical(base).unwrap();
 
         // Strip prefix if path starts with base
         if abs_path.starts_with(&abs_base) {
             let remainder = abs_path.strip_prefix(&abs_base)
-                .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to strip prefix"))?;
-            Ok(PathBuf::from(remainder))
+                .map_err(|_| io::Error::new(io::ErrorKind::Other, "Failed to strip prefix")).unwrap();
+            Some(PathBuf::from(remainder))
         } else {
             // Return the path as-is if it's not under the base
-            Ok(path.to_path_buf())
+            None
         }
     }
 }
