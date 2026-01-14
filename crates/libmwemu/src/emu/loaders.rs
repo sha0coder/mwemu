@@ -499,8 +499,7 @@ impl Emu {
             self.regs_mut().rsp = stack + (stack_sz / 2);
             //unimplemented!("elf32 is not supported for now");
 
-
-        // ELF64
+            // ELF64
         } else if Elf64::is_elf64(filename) && !self.cfg.shellcode {
             self.linux = true;
             self.cfg.is_64bits = true;

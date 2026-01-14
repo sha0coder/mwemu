@@ -110,7 +110,6 @@ impl Emu {
         Ok(self.regs().rax)
     }
 
-
     /// Call a 64bits function at addr, passing arguments in an array of u64.
     /// The calling convention is registers RDI, RSI, RDX, RCX, R8, R9 and then stack. Like linux64.
     pub fn linux_call64(&mut self, addr: u64, args: &[u64]) -> Result<u64, MwemuError> {
@@ -174,7 +173,6 @@ impl Emu {
         self.regs_mut().rsp = orig_stack;
         Ok(self.regs().rax)
     }
-
 
     /// Start emulation until a ret instruction is found.
     /// It will return the address or MwemuError.

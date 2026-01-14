@@ -8,6 +8,7 @@ mod libgcc;
 mod mscoree;
 mod msvcrt;
 mod ntdll;
+mod ntoskrnl;
 mod oleaut32;
 mod shell32;
 mod shlwapi;
@@ -16,7 +17,6 @@ mod user32;
 mod wincrt;
 mod wininet;
 mod ws2_32;
-mod ntoskrnl;
 
 use crate::emu;
 
@@ -48,7 +48,10 @@ pub fn gateway(addr: u32, name: &str, emu: &mut emu::Emu) {
             // TODO: banzai check?
             emu.pe32.as_ref().unwrap().import_addr_to_name(addr)
         }
-        _ => panic!("/!\\ winapi32 gateway: trying to execute on {} at 0x{:x}", name, addr),
+        _ => panic!(
+            "/!\\ winapi32 gateway: trying to execute on {} at 0x{:x}",
+            name, addr
+        ),
     };
     emu.call_stack_mut().pop();
 }

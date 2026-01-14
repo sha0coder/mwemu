@@ -1,9 +1,9 @@
+use crate::utils::{likely, unlikely};
 use std::cell::RefCell;
+use std::cmp;
 use std::collections::HashMap;
 use std::ffi::c_char;
 use std::rc::{Rc, Weak};
-use std::{cmp};
-use crate::utils::{likely, unlikely};
 
 type PRFrag = Option<Rc<RefCell<Fragment>>>;
 type PWFrag = Option<Weak<RefCell<Fragment>>>;
@@ -34,7 +34,6 @@ struct Fragment {
     next_free: PRFrag,
     prev_free: PWFrag,
 }
-
 
 impl Fragment {
     fn new(offset: u32, size: u32) -> Self {
@@ -105,7 +104,8 @@ impl O1Heap {
             return Err("size is less than the min arena size");
         }
 
-        let hashes: HashMap<u32, RCFrag, nohash_hasher::BuildNoHashHasher<u32>> = HashMap::default();
+        let hashes: HashMap<u32, RCFrag, nohash_hasher::BuildNoHashHasher<u32>> =
+            HashMap::default();
         let mut heap = Self {
             base: base,
             bins: vec![None; NUM_BINS_MAX],
@@ -180,7 +180,6 @@ impl O1Heap {
             return None;
         }
 
-
         let optimal_bin_index = self.log2_ceil(fragment_size / FRAGMENT_SIZE_MIN);
         let candidate_bin_mask = !((1 << optimal_bin_index) - 1);
         let suitable_bins = self.nonempty_bin_mask & candidate_bin_mask;
@@ -200,7 +199,10 @@ impl O1Heap {
                 // Split if necessary
                 let leftover = frag_size - fragment_size as u32;
                 if likely(leftover >= FRAGMENT_SIZE_MIN as u32) {
-                    let new_frag = Rc::new(RefCell::new(Fragment::new(frag_offset + fragment_size as u32, leftover)));
+                    let new_frag = Rc::new(RefCell::new(Fragment::new(
+                        frag_offset + fragment_size as u32,
+                        leftover,
+                    )));
                     // Link the new fragment in the chain
                     let next_rc = frag_rc.borrow().next.clone();
                     new_frag.borrow_mut().next = next_rc.clone();
@@ -211,7 +213,8 @@ impl O1Heap {
                     }
 
                     frag_rc.borrow_mut().next = Some(new_frag.clone());
-                    self.hashes.insert(frag_offset + fragment_size as u32, new_frag.clone());
+                    self.hashes
+                        .insert(frag_offset + fragment_size as u32, new_frag.clone());
                     // Add the new fragment to the appropriate bin
                     self.rebin(new_frag);
                 }
@@ -221,10 +224,8 @@ impl O1Heap {
                 frag_rc.borrow_mut().size = fragment_size as u32;
 
                 self.diagnostics.allocated += fragment_size;
-                self.diagnostics.peak_allocated = cmp::max(
-                    self.diagnostics.peak_allocated,
-                    self.diagnostics.allocated
-                );
+                self.diagnostics.peak_allocated =
+                    cmp::max(self.diagnostics.peak_allocated, self.diagnostics.allocated);
 
                 // Return "pointer" (offset in our case)
                 return Some(frag_offset as u64 + self.base);
@@ -287,9 +288,10 @@ impl O1Heap {
         }
 
         let frag_size = frag_rc.borrow().size;
-        if frag_size < FRAGMENT_SIZE_MIN as u32 ||
-            frag_size > self.diagnostics.capacity as u32 ||
-            frag_size % FRAGMENT_SIZE_MIN as u32 != 0 {
+        if frag_size < FRAGMENT_SIZE_MIN as u32
+            || frag_size > self.diagnostics.capacity as u32
+            || frag_size % FRAGMENT_SIZE_MIN as u32 != 0
+        {
             return; // Invalid fragment
         }
 

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU32;
-use std::sync::Arc;
+use std::sync::{Arc};
 use std::time::Instant;
 
 use atty::Stream;
@@ -19,8 +19,8 @@ use crate::{
 };
 use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 
-use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 use crate::maps::heap_allocation::O1Heap;
+use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 
 pub struct CustomLogFormat;
 impl RecordFormat for CustomLogFormat {
@@ -96,6 +96,7 @@ impl Emu {
             stored_contexts: HashMap::new(),
             entropy: 0.0,
             heap_management: None,
+            last_error: 0,
         }
     }
 
@@ -226,7 +227,6 @@ impl Emu {
         )
         .unwrap();
     }
-
 
     /// Initialize windows simulator, this does like init_cpu() but also setup the windows memory.
     /// This require having the map files in place, otherwise use just init_cpu() but emu32() and
@@ -367,9 +367,12 @@ impl Emu {
                 .expect("cannot create heap map");
             heap.load("heap.bin");
 
-            self.heap_management = Some(Box::new(O1Heap::new(self.heap_addr, heap_sz as u32).expect("Expect new heap_management but failed")));
+            self.heap_management = Some(Box::new(
+                O1Heap::new(self.heap_addr, heap_sz as u32)
+                    .expect("Expect new heap_management but failed"),
+            ));
         }
-        
+
         self.regs_mut().rbp = 0;
 
         self.fs_mut().insert(0xffffffffffffffc8, 0); //0x4b6c50
@@ -540,6 +543,9 @@ impl Emu {
             .create_map(".heap", self.heap_addr, heap_sz, Permission::READ_WRITE)
             .expect("cannot create heap map");
 
-        self.heap_management = Some(Box::new(O1Heap::new(self.heap_addr, heap_sz as u32).expect("Expect new heap_management but failed")));
+        self.heap_management = Some(Box::new(
+            O1Heap::new(self.heap_addr, heap_sz as u32)
+                .expect("Expect new heap_management but failed"),
+        ));
     }
 }

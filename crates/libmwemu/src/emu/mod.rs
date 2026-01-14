@@ -9,6 +9,7 @@ use std::{
 use iced_x86::{Instruction, IntelFormatter};
 
 use crate::emu::disassemble::InstructionCache;
+use crate::maps::heap_allocation::O1Heap;
 use crate::{
     banzai::Banzai,
     breakpoint::Breakpoints,
@@ -22,7 +23,6 @@ use crate::{
     structures::MemoryOperation,
     thread_context::ThreadContext,
 };
-use crate::maps::heap_allocation::O1Heap;
 
 mod banzai;
 mod call_stack;
@@ -49,6 +49,8 @@ mod threading;
 mod tls;
 mod trace;
 mod winapi;
+
+pub mod object_handle;
 
 pub struct Emu {
     // Global/shared state
@@ -101,4 +103,5 @@ pub struct Emu {
     pub stored_contexts: HashMap<String, StoredContext>,
     pub entropy: f64,
     pub heap_management: Option<Box<O1Heap>>,
+    pub last_error: u32,
 }

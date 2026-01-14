@@ -454,14 +454,16 @@ fn main() {
                 .format(CustomLogFormat::new())
                 .file(filename)
                 .chan_len(Some(100000)),
-        ).unwrap();
+        )
+        .unwrap();
     } else {
         fast_log::init(
             Config::new()
                 .format(CustomLogFormat::new())
                 .console()
                 .chan_len(Some(100000)),
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     // definitions

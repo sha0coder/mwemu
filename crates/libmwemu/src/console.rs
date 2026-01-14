@@ -197,9 +197,16 @@ impl Console {
                 "dr eax={}; dr ebx={}; dr ecx={}; dr edx={}; dr esi={}; \
                 dr edi={}; dr ebp={}; dr esp={}; dr eip={}; \
                 decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
-                emu.regs().get_eax(), emu.regs().get_ebx(), emu.regs().get_ecx(), emu.regs().get_edx(),
-                emu.regs().get_esi(), emu.regs().get_edi(), emu.regs().get_ebp(), emu.regs().get_esp(),
-                emu.regs().get_eip());
+                emu.regs().get_eax(),
+                emu.regs().get_ebx(),
+                emu.regs().get_ecx(),
+                emu.regs().get_edx(),
+                emu.regs().get_esi(),
+                emu.regs().get_edi(),
+                emu.regs().get_ebp(),
+                emu.regs().get_esp(),
+                emu.regs().get_eip()
+            );
         }
         let r2args = vec![
             "-n", "-a", "x86", "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,

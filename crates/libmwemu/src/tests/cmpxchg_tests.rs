@@ -1,6 +1,6 @@
+use crate::maps::mem64::Permission;
 use crate::tests::helpers;
 use crate::*;
-use crate::maps::mem64::Permission;
 
 #[test]
 pub fn test_cmpxchg8b_equal() {
@@ -15,8 +15,10 @@ pub fn test_cmpxchg8b_equal() {
     let code: [u8; 7] = [0x0f, 0xc7, 0x0d, 0x00, 0x10, 0x00, 0x00];
 
     // Map data at 0x1000
-    emu.maps.create_map("data", 0x1000, 0x1000, Permission::READ_WRITE).expect("failed to map data");
-    
+    emu.maps
+        .create_map("data", 0x1000, 0x1000, Permission::READ_WRITE)
+        .expect("failed to map data");
+
     // Setup memory: [0x1000] = 0x1122334455667788
     let mem_val: u64 = 0x1122334455667788;
     emu.maps.write_qword(0x1000, mem_val);
@@ -48,8 +50,10 @@ pub fn test_cmpxchg8b_not_equal() {
     // Code: cmpxchg8b [0x1000]
     let code: [u8; 7] = [0x0f, 0xc7, 0x0d, 0x00, 0x10, 0x00, 0x00];
 
-    emu.maps.create_map("data", 0x1000, 0x1000, Permission::READ_WRITE).expect("failed to map data");
-    
+    emu.maps
+        .create_map("data", 0x1000, 0x1000, Permission::READ_WRITE)
+        .expect("failed to map data");
+
     // Setup memory: [0x1000] = 0x9988776655443322
     let mem_val: u64 = 0x9988776655443322;
     emu.maps.write_qword(0x1000, mem_val);
@@ -65,8 +69,16 @@ pub fn test_cmpxchg8b_not_equal() {
     assert_eq!(emu.flags().f_zf, false, "ZF should be clear");
 
     // Check EDX:EAX = Memory
-    assert_eq!(emu.regs().get_edx(), 0x99887766, "EDX should be loaded from memory high");
-    assert_eq!(emu.regs().get_eax(), 0x55443322, "EAX should be loaded from memory low");
+    assert_eq!(
+        emu.regs().get_edx(),
+        0x99887766,
+        "EDX should be loaded from memory high"
+    );
+    assert_eq!(
+        emu.regs().get_eax(),
+        0x55443322,
+        "EAX should be loaded from memory low"
+    );
 
     // Check memory unchanged
     let check_mem = emu.maps.read_qword(0x1000).expect("failed to read memory");
@@ -87,8 +99,10 @@ pub fn test_cmpxchg16b_equal() {
     // 48 0F C7 0E (ModRM: 00 001 110 -> [RSI])
     let code: [u8; 4] = [0x48, 0x0f, 0xc7, 0x0e];
 
-    emu.maps.create_map("data", 0x1000, 0x1000, Permission::READ_WRITE).expect("failed to map data");
-    
+    emu.maps
+        .create_map("data", 0x1000, 0x1000, Permission::READ_WRITE)
+        .expect("failed to map data");
+
     // Setup RSI
     emu.regs_mut().rsi = 0x1000;
 
@@ -111,8 +125,14 @@ pub fn test_cmpxchg16b_equal() {
     assert_eq!(emu.flags().f_zf, true, "ZF should be set");
 
     // Check memory = RCX:RBX
-    let new_mem_val = emu.maps.read_128bits_le(0x1000).expect("failed to read memory");
-    assert_eq!(new_mem_val, 0xFFEEDDCCBBAA99887766554433221100, "Memory should be updated");
+    let new_mem_val = emu
+        .maps
+        .read_128bits_le(0x1000)
+        .expect("failed to read memory");
+    assert_eq!(
+        new_mem_val, 0xFFEEDDCCBBAA99887766554433221100,
+        "Memory should be updated"
+    );
 }
 
 #[test]
@@ -123,8 +143,10 @@ pub fn test_cmpxchg16b_not_equal() {
     // Code: cmpxchg16b [rsi]
     let code: [u8; 4] = [0x48, 0x0f, 0xc7, 0x0e];
 
-    emu.maps.create_map("data", 0x1000, 0x1000, Permission::READ_WRITE).expect("failed to map data");
-    
+    emu.maps
+        .create_map("data", 0x1000, 0x1000, Permission::READ_WRITE)
+        .expect("failed to map data");
+
     // Setup RSI
     emu.regs_mut().rsi = 0x1000;
 
@@ -143,10 +165,24 @@ pub fn test_cmpxchg16b_not_equal() {
     assert_eq!(emu.flags().f_zf, false, "ZF should be clear");
 
     // Check RDX:RAX = Memory
-    assert_eq!(emu.regs().rdx, 0x1234567890ABCDEF, "RDX should be loaded from memory high");
-    assert_eq!(emu.regs().rax, 0x1234567890ABCDEF, "RAX should be loaded from memory low");
+    assert_eq!(
+        emu.regs().rdx,
+        0x1234567890ABCDEF,
+        "RDX should be loaded from memory high"
+    );
+    assert_eq!(
+        emu.regs().rax,
+        0x1234567890ABCDEF,
+        "RAX should be loaded from memory low"
+    );
 
     // Check memory unchanged
-    let check_mem = emu.maps.read_128bits_le(0x1000).expect("failed to read memory");
-    assert_eq!(check_mem, 0x1234567890ABCDEF1234567890ABCDEF, "Memory should be unchanged");
+    let check_mem = emu
+        .maps
+        .read_128bits_le(0x1000)
+        .expect("failed to read memory");
+    assert_eq!(
+        check_mem, 0x1234567890ABCDEF1234567890ABCDEF,
+        "Memory should be unchanged"
+    );
 }

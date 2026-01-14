@@ -1,6 +1,6 @@
+pub mod heap_allocation;
 pub mod mem64;
 pub mod tlb;
-pub mod heap_allocation;
 
 use crate::constants;
 use crate::maps::mem64::Permission;

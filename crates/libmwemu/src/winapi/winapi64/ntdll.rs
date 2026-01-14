@@ -100,15 +100,14 @@ fn RtlZeroMemory(emu: &mut emu::Emu) {
     let length = emu.regs().rdx;
 
     log_red!(
-    emu,
-    "ntdll!RtlZeroMemory dest: 0x{:x} length: {}",
-    dest,
-    length
+        emu,
+        "ntdll!RtlZeroMemory dest: 0x{:x} length: {}",
+        dest,
+        length
     );
 
     emu.maps.memset(dest, 0, length as usize);
 }
-
 
 fn RtlMoveMemory(emu: &mut emu::Emu) {
     let dst = emu.regs().rcx;
@@ -1048,8 +1047,6 @@ fn NtReadFile(emu: &mut emu::Emu) {
     } else {
         panic!("TODO: read {}", filename);
     }
-
-
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
 }

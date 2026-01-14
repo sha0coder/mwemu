@@ -8,11 +8,7 @@ pub fn GlobalAddAtomA(emu: &mut emu::Emu) {
 
     let atom_name = emu.maps.read_string(lp_string);
 
-    log_red!(
-        emu,
-        "kernel32!GlobalAddAtomA name: `{}`",
-        atom_name
-    );
+    log_red!(emu, "kernel32!GlobalAddAtomA name: `{}`", atom_name);
 
     emu.stack_pop32(false);
 

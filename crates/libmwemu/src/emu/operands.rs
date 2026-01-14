@@ -114,19 +114,19 @@ impl Emu {
 
         if fs {
             if self.linux {
-                if let Some(val) = self.fs().get(&mem_addr) {
+                return if let Some(val) = self.fs().get(&mem_addr) {
                     if self.cfg.verbose > 0 {
                         log::info!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
                     }
                     if *val == 0 {
                         return Some(0); //0x7ffff7ff000);
                     }
-                    return Some(*val);
+                    Some(*val)
                 } else {
                     if self.cfg.verbose > 0 {
                         log::info!("reading FS[0x{:x}] -> 0", mem_addr);
                     }
-                    return Some(0); //0x7ffff7fff000);
+                    Some(0) //0x7ffff7fff000);
                 }
             }
 
@@ -433,7 +433,11 @@ impl Emu {
             OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
             OpKind::Memory => self
                 .handle_memory_get_operand(ins, noperand, do_derref)
-                .expect(&format!("handle_memory_get_operand failed for {:?} op {}", ins.mnemonic(), noperand)),
+                .expect(&format!(
+                    "handle_memory_get_operand failed for {:?} op {}",
+                    ins.mnemonic(),
+                    noperand
+                )),
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         Some(value)
@@ -493,7 +497,7 @@ impl Emu {
                         if value == 0x4b6c50 {
                             self.fs_mut().insert(0xffffffffffffffc8, 0x4b6c50);
                         }
-                        self.fs_mut().insert(temp_displace as u64, value);
+                        self.fs_mut().insert(temp_displace, value);
                     } else {
                         if self.cfg.verbose >= 1 {
                             log::info!("fs:{:x} setting SEH to 0x{:x}", temp_displace, value);
@@ -588,7 +592,7 @@ impl Emu {
                 match sz {
                     64 => {
                         if !self.maps.write_qword(mem_addr, value2) {
-                            if self.cfg.skip_unimplemented {
+                            return if self.cfg.skip_unimplemented {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
@@ -600,20 +604,20 @@ impl Emu {
                                     )
                                     .expect("cannot create banzai map");
                                 map.write_qword(mem_addr, value2);
-                                return true;
+                                true
                             } else {
                                 log::info!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
                                 self.exception(ExceptionType::BadAddressDereferencing);
-                                return false;
+                                false
                             }
                         }
                     }
                     32 => {
                         if !self.maps.write_dword(mem_addr, to32!(value2)) {
-                            if self.cfg.skip_unimplemented {
+                            return if self.cfg.skip_unimplemented {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
@@ -625,20 +629,20 @@ impl Emu {
                                     )
                                     .expect("cannot create banzai map");
                                 map.write_dword(mem_addr, to32!(value2));
-                                return true;
+                                true
                             } else {
                                 log::info!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
                                 self.exception(ExceptionType::BadAddressDereferencing);
-                                return false;
+                                false
                             }
                         }
                     }
                     16 => {
                         if !self.maps.write_word(mem_addr, value2 as u16) {
-                            if self.cfg.skip_unimplemented {
+                            return if self.cfg.skip_unimplemented {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
@@ -650,20 +654,20 @@ impl Emu {
                                     )
                                     .expect("cannot create banzai map");
                                 map.write_word(mem_addr, value2 as u16);
-                                return true;
+                                true
                             } else {
                                 log::info!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
                                 self.exception(ExceptionType::BadAddressDereferencing);
-                                return false;
+                                false
                             }
                         }
                     }
                     8 => {
                         if !self.maps.write_byte(mem_addr, value2 as u8) {
-                            if self.cfg.skip_unimplemented {
+                            return if self.cfg.skip_unimplemented {
                                 let map_name = format!("banzai_{:x}", mem_addr);
                                 let map = self
                                     .maps
@@ -675,14 +679,14 @@ impl Emu {
                                     )
                                     .expect("cannot create banzai map");
                                 map.write_byte(mem_addr, value2 as u8);
-                                return true;
+                                true
                             } else {
                                 log::info!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
                                 self.exception(ExceptionType::BadAddressDereferencing);
-                                return false;
+                                false
                             }
                         }
                     }
@@ -867,7 +871,7 @@ impl Emu {
 
                     value
                 } else {
-                    regs64::U256::from(mem_addr as u64)
+                    regs64::U256::from(mem_addr)
                 }
             }
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),

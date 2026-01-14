@@ -600,7 +600,6 @@ impl Regs64 {
                 self.set_r13w(0);
                 self.set_r14w(0);
                 self.set_r15w(0);
-
             }
             8 => {
                 self.set_al(0);

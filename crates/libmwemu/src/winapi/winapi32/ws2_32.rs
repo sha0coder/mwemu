@@ -94,7 +94,12 @@ fn getaddrinfo(emu: &mut emu::Emu) {
         "NULL".to_string()
     };
 
-    log_red!(emu, "ws2_32!getaddrinfo node: `{}` service: `{}`", node_name, service_name);
+    log_red!(
+        emu,
+        "ws2_32!getaddrinfo node: `{}` service: `{}`",
+        node_name,
+        service_name
+    );
 
     // Read hints if provided
     let mut hints_flags = 0;
@@ -115,7 +120,9 @@ fn getaddrinfo(emu: &mut emu::Emu) {
 
     // Allocate memory for the result
     let heap_management = emu.heap_management.as_mut().unwrap();
-    let addrinfo_addr = heap_management.allocate((addrinfo_size + sockaddr_in_size + 100) as usize).unwrap();
+    let addrinfo_addr = heap_management
+        .allocate((addrinfo_size + sockaddr_in_size + 100) as usize)
+        .unwrap();
     let sockaddr_addr = addrinfo_addr + addrinfo_size;
     let canonname_addr = sockaddr_addr + sockaddr_in_size;
 
@@ -147,10 +154,32 @@ fn getaddrinfo(emu: &mut emu::Emu) {
 
     // Write ADDRINFO structure
     emu.maps.write_dword(addrinfo_addr, hints_flags as u32); // ai_flags
-    emu.maps.write_dword(addrinfo_addr + 4, if hints_family != 0 { hints_family as u32 } else { 2 }); // ai_family (AF_INET)
-    emu.maps.write_dword(addrinfo_addr + 8, if hints_socktype != 0 { hints_socktype as u32 } else { 1 }); // ai_socktype (SOCK_STREAM)
-    emu.maps.write_dword(addrinfo_addr + 12, if hints_protocol != 0 { hints_protocol as u32 } else { 6 }); // ai_protocol (IPPROTO_TCP)
-    emu.maps.write_qword(addrinfo_addr + 16, sockaddr_in_size as u64); // ai_addrlen
+    emu.maps.write_dword(
+        addrinfo_addr + 4,
+        if hints_family != 0 {
+            hints_family as u32
+        } else {
+            2
+        },
+    ); // ai_family (AF_INET)
+    emu.maps.write_dword(
+        addrinfo_addr + 8,
+        if hints_socktype != 0 {
+            hints_socktype as u32
+        } else {
+            1
+        },
+    ); // ai_socktype (SOCK_STREAM)
+    emu.maps.write_dword(
+        addrinfo_addr + 12,
+        if hints_protocol != 0 {
+            hints_protocol as u32
+        } else {
+            6
+        },
+    ); // ai_protocol (IPPROTO_TCP)
+    emu.maps
+        .write_qword(addrinfo_addr + 16, sockaddr_in_size as u64); // ai_addrlen
     emu.maps.write_qword(addrinfo_addr + 24, canonname_addr); // ai_canonname
     emu.maps.write_qword(addrinfo_addr + 32, sockaddr_addr); // ai_addr
 
@@ -170,8 +199,17 @@ fn getaddrinfo(emu: &mut emu::Emu) {
     // Store the result pointer in the ppResult parameter
     emu.maps.write_qword(result_ptr_ptr as u64, addrinfo_addr);
 
-    log::info!("\tcreated dummy ADDRINFO for {}:{} at 0x{:x}", node_name, service_name, addrinfo_addr);
-    log::info!("\tsockaddr at 0x{:x}, canonname at 0x{:x}", sockaddr_addr, canonname_addr);
+    log::info!(
+        "\tcreated dummy ADDRINFO for {}:{} at 0x{:x}",
+        node_name,
+        service_name,
+        addrinfo_addr
+    );
+    log::info!(
+        "\tsockaddr at 0x{:x}, canonname at 0x{:x}",
+        sockaddr_addr,
+        canonname_addr
+    );
 
     // Return 0 for success (WSA error code)
     emu.regs_mut().rax = 0;
