@@ -43,7 +43,7 @@ The project was renamed from scemu to mwemu.
 
 ## Features
 
-- 📦 rust safety, good for malware. 
+- 📦 rust safety, good for emulating malware. 
 	- All dependencies are in rust.
 - ⚡ very fast emulation (much faster than unicorn) 
     - [benchmarks](BENCHMARK.md)
