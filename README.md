@@ -424,3 +424,10 @@ CppEhRecord {
 ```
 
 And here we have the error routine 0x4f96f4 and the filter 0x51068c
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sha0coder/mwemu&type=date&legend=top-left)](https://www.star-history.com/#sha0coder/mwemu&type=date&legend=top-left)
+
+
+
