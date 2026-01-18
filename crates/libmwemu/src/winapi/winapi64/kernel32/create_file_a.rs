@@ -1,8 +1,6 @@
 use crate::emu;
-use crate::emu::object_handle;
 use crate::emu::object_handle::file_handle::{FILE_SYSTEM, INVALID_HANDLE_VALUE};
 use crate::emu::object_handle::{FileHandle, HANDLE_MANGEMENT};
-use crate::winapi::helper;
 use log::error;
 
 pub fn CreateFileA(emu: &mut emu::Emu) {

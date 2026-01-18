@@ -944,7 +944,16 @@ impl Emu {
                         break;
                     }
                 } // end decoder loop
+
+                if self.is_api_run && self.is_break_on_api {
+                    self.is_api_run = false;
+                    break;
+                }
             } // end running loop
+
+            if self.is_break_on_api {
+                return Ok(0);
+            }
 
             self.is_running.store(1, atomic::Ordering::Relaxed);
             Console::spawn_console(self);
