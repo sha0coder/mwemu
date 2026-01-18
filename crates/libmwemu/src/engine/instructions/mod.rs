@@ -345,3 +345,4 @@ pub mod xor;
 pub mod xorpd;
 pub mod xorps;
 pub mod hlt;
+pub mod ud;

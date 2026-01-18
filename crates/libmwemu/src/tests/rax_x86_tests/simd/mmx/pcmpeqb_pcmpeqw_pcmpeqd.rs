@@ -1,0 +1,590 @@
+//! Tests for PCMPEQB, PCMPEQW, PCMPEQD instructions.
+//!
+//! PCMPEQB/PCMPEQW/PCMPEQD - Packed Compare for Equal (MMX)
+//!
+//! Compares packed integers for equality. Sets each element in destination
+//! to all 1s if equal, all 0s if not equal.
+//!
+//! Flags affected: None
+//!
+//! Reference: docs/pcmpeqb:pcmpeqw:pcmpeqd.txt
+
+use crate::*;
+
+fn write_mm_via_mem(mem: u64, addr: u64, value: u64) {
+    let mut emu = emu64();
+    emu.maps.write_qword(addr, value);
+}
+
+// ============================================================================
+// PCMPEQB mm, mm/m64 (opcode 0F 74 /r) - Compare 8x bytes
+// ============================================================================
+
+#[test]
+fn test_pcmpeqb_all_equal() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,                               // PCMPEQB MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0102030405060708);
+    emu.maps.write_qword(0x2008, 0x0102030405060708);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQB: all bytes equal");
+}
+
+#[test]
+fn test_pcmpeqb_all_different() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0102030405060708);
+    emu.maps.write_qword(0x2008, 0x0807060504030201);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PCMPEQB: all bytes different");
+}
+
+#[test]
+fn test_pcmpeqb_partial_match() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x01FF03FF05FF07FF);
+    emu.maps.write_qword(0x2008, 0x0102030405060708);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFF00FF00FF00FF00, "PCMPEQB: partial match");
+}
+
+#[test]
+fn test_pcmpeqb_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PCMPEQB MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAAAAAAAAAAAAAA);
+    emu.maps.write_qword(0x2008, 0xAAAAAAAAAAAAAAAA);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQB: memory operand");
+}
+
+#[test]
+fn test_pcmpeqb_zeros() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQB: all zeros equal");
+}
+
+#[test]
+fn test_pcmpeqb_alternating() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAA55AA55AA55AA55);
+    emu.maps.write_qword(0x2008, 0xAA00AA00AA00AA00);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFF00FF00FF00FF00, "PCMPEQB: alternating");
+}
+
+#[test]
+fn test_pcmpeqb_mm5_mm6() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x2c, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x34, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xee,                               // PCMPEQB MM5, MM6
+        0x0f, 0x7f, 0x2c, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0011223344556677);
+    emu.maps.write_qword(0x2008, 0x0011223344556600);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFF00, "PCMPEQB: MM5 vs MM6");
+}
+
+#[test]
+fn test_pcmpeqb_self() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc0,                               // PCMPEQB MM0, MM0
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQB: self compare");
+}
+
+// ============================================================================
+// PCMPEQW mm, mm/m64 (opcode 0F 75 /r) - Compare 4x words
+// ============================================================================
+
+#[test]
+fn test_pcmpeqw_all_equal() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xc1,                               // PCMPEQW MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQW: all words equal");
+}
+
+#[test]
+fn test_pcmpeqw_all_different() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0001000200030004);
+    emu.maps.write_qword(0x2008, 0x0005000600070008);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PCMPEQW: all different");
+}
+
+#[test]
+fn test_pcmpeqw_partial_match() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234FFFF90AB0000);
+    emu.maps.write_qword(0x2008, 0x1234567890AB0000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFF0000FFFFFFFF, "PCMPEQW: partial match");
+}
+
+#[test]
+fn test_pcmpeqw_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PCMPEQW MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000800080008000);
+    emu.maps.write_qword(0x2008, 0x8000800080008000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQW: memory operand");
+}
+
+#[test]
+fn test_pcmpeqw_zeros() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQW: all zeros");
+}
+
+#[test]
+fn test_pcmpeqw_mm7_mm0() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x3c, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xf8,                               // PCMPEQW MM7, MM0
+        0x0f, 0x7f, 0x3c, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAA5555AAAA5555);
+    emu.maps.write_qword(0x2008, 0xAAAA0000AAAA0000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFF0000FFFF0000, "PCMPEQW: MM7 vs MM0");
+}
+
+#[test]
+fn test_pcmpeqw_self() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x75, 0xc0,                               // PCMPEQW MM0, MM0
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFEDCBA9876543210);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQW: self compare");
+}
+
+// ============================================================================
+// PCMPEQD mm, mm/m64 (opcode 0F 76 /r) - Compare 2x dwords
+// ============================================================================
+
+#[test]
+fn test_pcmpeqd_all_equal() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc1,                               // PCMPEQD MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQD: all dwords equal");
+}
+
+#[test]
+fn test_pcmpeqd_all_different() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000100000002);
+    emu.maps.write_qword(0x2008, 0x0000000300000004);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PCMPEQD: all different");
+}
+
+#[test]
+fn test_pcmpeqd_partial_match() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567800000000);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFF00000000, "PCMPEQD: partial match");
+}
+
+#[test]
+fn test_pcmpeqd_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PCMPEQD MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000000080000000);
+    emu.maps.write_qword(0x2008, 0x8000000080000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQD: memory operand");
+}
+
+#[test]
+fn test_pcmpeqd_zeros() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQD: all zeros");
+}
+
+#[test]
+fn test_pcmpeqd_mm4_mm3() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x24, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x1c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xe3,                               // PCMPEQD MM4, MM3
+        0x0f, 0x7f, 0x24, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAAAAAA00000000);
+    emu.maps.write_qword(0x2008, 0xAAAAAAAA12345678);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFF00000000, "PCMPEQD: MM4 vs MM3");
+}
+
+#[test]
+fn test_pcmpeqd_self() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc0,                               // PCMPEQD MM0, MM0
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFEDCBA9876543210);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PCMPEQD: self compare");
+}
+
+#[test]
+fn test_pcmpeqd_high_low_swapped() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x76, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x90ABCDEF12345678);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PCMPEQD: swapped dwords");
+}
+
+// ============================================================================
+// Combined tests
+// ============================================================================
+
+#[test]
+fn test_all_compare_sizes() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x1c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x24, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x2c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,                               // PCMPEQB MM0, MM1
+        0x0f, 0x75, 0xd3,                               // PCMPEQW MM2, MM3
+        0x0f, 0x76, 0xe5,                               // PCMPEQD MM4, MM5
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0x0f, 0x7f, 0x14, 0x25, 0x18, 0x20, 0x00, 0x00,
+        0x0f, 0x7f, 0x24, 0x25, 0x20, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let byte_cmp = emu.maps.read_qword(0x2010).unwrap();
+    let word_cmp = emu.maps.read_qword(0x2018).unwrap();
+    let dword_cmp = emu.maps.read_qword(0x2020).unwrap();
+
+    assert_eq!(byte_cmp, 0xFFFFFFFFFFFFFFFF, "All sizes: bytes");
+    assert_eq!(word_cmp, 0xFFFFFFFFFFFFFFFF, "All sizes: words");
+    assert_eq!(dword_cmp, 0xFFFFFFFFFFFFFFFF, "All sizes: dwords");
+}
+
+#[test]
+fn test_compare_as_mask() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0x0f, 0x74, 0xc1,                               // PCMPEQB MM0, MM1 (result = mask)
+        0x0f, 0xdb, 0xd0,                               // PAND MM2, MM0 (apply mask)
+        0x0f, 0x7f, 0x14, 0x25, 0x18, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x01FF03FF05FF07FF);
+    emu.maps.write_qword(0x2008, 0x0102030405060708);
+    emu.maps.write_qword(0x2010, 0xFFFFFFFFFFFFFFFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2018).unwrap();
+    assert_eq!(result, 0xFF00FF00FF00FF00, "Compare as mask");
+}

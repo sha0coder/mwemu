@@ -136,10 +136,10 @@ fn test_rol_count_zero_preserves_flags() {
     ];
     let mut emu = emu64();
     emu.regs_mut().rax = 0x42;
-    emu.flags_mut().load(0x2 | flags::F_CF | flags::F_ZF | flags::F_OF);
+            emu.load_code_bytes(&code);
+    emu.flags_mut().load(0x2 | (1 << flags::F_CF) | (1 << flags::F_ZF) | (1 << flags::F_OF));
     let initial_flags = emu.flags().dump();
-    emu.load_code_bytes(&code);
-    emu.run(None).unwrap();
+        emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax & 0xFF, 0x42, "AL: unchanged");
     assert_eq!(emu.flags().dump() & (flags::F_CF | flags::F_ZF | flags::F_OF),
@@ -686,6 +686,7 @@ fn test_rol_mem8() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.load_code_bytes(&code);
     emu.maps.write_byte(DATA_ADDR, 0x81);
     emu.run(None).unwrap();
@@ -709,6 +710,7 @@ fn test_rol_mem16() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.load_code_bytes(&code);
     emu.maps.write_word(DATA_ADDR, 0x1234);
     emu.run(None).unwrap();
@@ -730,6 +732,7 @@ fn test_rol_mem32() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.regs_mut().rcx = 0x08;
     emu.load_code_bytes(&code);
     emu.maps.write_dword(DATA_ADDR, 0x12345678);
@@ -753,6 +756,7 @@ fn test_rol_mem64() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.load_code_bytes(&code);
     emu.maps.write_qword(DATA_ADDR, 0x123456789ABCDEF0);
     emu.run(None).unwrap();

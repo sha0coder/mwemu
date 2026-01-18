@@ -209,6 +209,16 @@ impl Maps {
         self.read_dword(addr).map(|v| f32::from_bits(v))
     }
 
+    pub fn write_f64(&mut self, addr: u64, value: f64) -> bool {
+        self.write_qword(addr, value.to_bits())
+    }
+
+    pub fn write_f32(&mut self, addr: u64, value: f32) -> bool {
+        self.write_dword(addr, value.to_bits())
+    }
+
+
+
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
         let end_addr = addr + 7;
         let banzai = self.banzai;
@@ -291,6 +301,22 @@ impl Maps {
         }
     }
 
+
+    pub fn write_bytes_slice(&mut self, addr: u64, data: &[u8]) -> bool {
+        if data.is_empty() {
+            return true;
+        }
+
+        // Write byte by byte to handle any boundary issues
+        for (i, &byte) in data.iter().enumerate() {
+            if !self.write_byte(addr + i as u64, byte) {
+                return false;
+            }
+        }
+        true
+    }
+
+
     pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) -> bool {
         if data.is_empty() {
             return true;
@@ -304,6 +330,16 @@ impl Maps {
         }
 
         true
+    }
+
+    pub fn write_128bits_le(&mut self, addr: u64, value: u128) -> bool {
+        let bytes = value.to_le_bytes().to_vec();
+        self.write_bytes(addr, bytes)
+    }
+
+    pub fn write_128bits_be(&mut self, addr: u64, value: u128) -> bool {
+        let bytes = value.to_be_bytes().to_vec();
+        self.write_bytes(addr, bytes)
     }
 
     pub fn read_128bits_be(&self, addr: u64) -> Option<u128> {
@@ -477,17 +513,18 @@ impl Maps {
 
     #[inline(always)]
     pub fn memset(&mut self, addr: u64, b: u8, amount: usize) {
-        self.write_bytes(addr, vec![b; amount]);
+        for i in 0..amount {
+            self.write_byte(addr + i as u64, b);
+        }
     }
 
     pub fn memcpy(&mut self, to: u64, from: u64, size: usize) -> bool {
-        match self.read_bytes_option(from, size) {
-            None => false,
-            Some(b) => {
-                self.write_bytes(to, b.to_vec());
-                true
-            }
-        }
+        let b = match self.read_bytes_option(from, size) {
+            None => { return false }
+            Some(b) => b.to_vec(),
+        };
+        self.write_bytes(to, b);
+        true
     }
 
     pub fn sizeof_wide(&self, unicode_str_ptr: u64) -> usize {
@@ -524,8 +561,18 @@ impl Maps {
 
     #[inline(always)]
     pub fn write_buffer(&mut self, to: u64, from: &[u8]) {
-        self.write_bytes(to, from.to_vec());
+        self.write_bytes_slice(to, from);
     }
+
+    pub fn read_bytes_buff(&self, buff: &mut [u8], addr: u64) {
+        let mem = match self.get_mem_by_addr(addr) {
+            Some(v) => v,
+            None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
+        };
+        let len = buff.len();
+        buff.copy_from_slice( mem.read_bytes(addr, len) );
+    }
+
 
     #[inline(always)]
     pub fn read_buffer(&mut self, from: u64, sz: usize) -> Vec<u8> {

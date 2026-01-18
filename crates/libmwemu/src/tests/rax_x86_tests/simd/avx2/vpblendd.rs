@@ -1,0 +1,471 @@
+use crate::*;
+
+// VPBLENDD - Blend Packed Dwords Using Immediate Mask (AVX2)
+//
+// Conditionally blends dwords from two source operands into destination
+// based on an immediate 8-bit control mask. Each bit in the mask controls
+// one dword element: 0 = select from first source, 1 = select from second source.
+//
+// For YMM registers (256-bit), 8 bits control 8 dwords.
+//
+// Opcodes (AVX2 - 256-bit YMM):
+// VEX.256.66.0F3A.W0 02 /r ib       VPBLENDD ymm1, ymm2, ymm3/m256, imm8
+
+const ALIGNED_ADDR: u64 = 0x3000;
+
+// ============================================================================
+// VPBLENDD Tests - Blend 8 Dwords Using Immediate Mask (256-bit)
+// ============================================================================
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0x00() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0x00 - select all from YMM1
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x00, // VPBLENDD YMM0, YMM1, YMM2, 0x00
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0xFF() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0xFF - select all from YMM2
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xFF, // VPBLENDD YMM0, YMM1, YMM2, 0xFF
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0xAA() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0xAA - alternating selection (10101010)
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xAA, // VPBLENDD YMM0, YMM1, YMM2, 0xAA
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0x55() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0x55 - alternating selection (01010101)
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x55, // VPBLENDD YMM0, YMM1, YMM2, 0x55
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0x0F() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0x0F - lower 4 from YMM2, upper 4 from YMM1
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x0F, // VPBLENDD YMM0, YMM1, YMM2, 0x0F
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_ymm2_0xF0() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, YMM2, 0xF0 - lower 4 from YMM1, upper 4 from YMM2
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xF0, // VPBLENDD YMM0, YMM1, YMM2, 0xF0
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm3_ymm4_ymm5_0x3C() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x5d, 0x02, 0xdd, 0x3C, // VPBLENDD YMM3, YMM4, YMM5, 0x3C
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm6_ymm7_ymm0_0xC3() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x45, 0x02, 0xf0, 0xC3, // VPBLENDD YMM6, YMM7, YMM0, 0xC3
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm9_ymm10_ymm11_0x81() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0x43, 0x2d, 0x02, 0xcb, 0x81, // VPBLENDD YMM9, YMM10, YMM11, 0x81
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm12_ymm13_ymm14_0x42() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0x43, 0x15, 0x02, 0xe6, 0x42, // VPBLENDD YMM12, YMM13, YMM14, 0x42
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm15_ymm0_ymm1_0x24() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0x63, 0x7d, 0x02, 0xf9, 0x24, // VPBLENDD YMM15, YMM0, YMM1, 0x24
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+// ============================================================================
+// VPBLENDD Tests - Blend with Memory Operand
+// ============================================================================
+
+#[test]
+fn test_vpblendd_ymm0_ymm1_mem_0xAA() {
+    let mut emu = emu64();
+    // VPBLENDD YMM0, YMM1, [memory], 0xAA
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0xe3, 0x75, 0x02, 0x00, 0xAA, // VPBLENDD YMM0, YMM1, [RAX], 0xAA
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
+    ];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm3_ymm4_mem_0x55() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0xe3, 0x5d, 0x02, 0x18, 0x55, // VPBLENDD YMM3, YMM4, [RAX], 0x55
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm6_ymm7_mem_0x0F() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0xe3, 0x45, 0x02, 0x30, 0x0F, // VPBLENDD YMM6, YMM7, [RAX], 0x0F
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm9_ymm10_mem_0xF0() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0x63, 0x2d, 0x02, 0x08, 0xF0, // VPBLENDD YMM9, YMM10, [RAX], 0xF0
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_ymm12_ymm13_mem_0x3C() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0x63, 0x15, 0x02, 0x20, 0x3C, // VPBLENDD YMM12, YMM13, [RAX], 0x3C
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+        0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11,
+        0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
+    ];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+// ============================================================================
+// Comprehensive tests
+// ============================================================================
+
+#[test]
+fn test_vpblendd_all_masks() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x00, // VPBLENDD YMM0, YMM1, YMM2, 0x00
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x01, // VPBLENDD YMM3, YMM1, YMM2, 0x01
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x03, // VPBLENDD YMM4, YMM1, YMM2, 0x03
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x07, // VPBLENDD YMM5, YMM1, YMM2, 0x07
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_extended_regs() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0x43, 0x3d, 0x02, 0xc1, 0xAA, // VPBLENDD YMM8, YMM8, YMM9, 0xAA
+        0xc4, 0x43, 0x15, 0x02, 0xd5, 0x55, // VPBLENDD YMM10, YMM13, YMM13, 0x55
+        0xc4, 0x43, 0x05, 0x02, 0xff, 0xF0, // VPBLENDD YMM15, YMM15, YMM15, 0xF0
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_single_bit_masks() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x01, // VPBLENDD YMM0, YMM1, YMM2, 0x01 (bit 0)
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x02, // VPBLENDD YMM3, YMM1, YMM2, 0x02 (bit 1)
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x04, // VPBLENDD YMM4, YMM1, YMM2, 0x04 (bit 2)
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x08, // VPBLENDD YMM5, YMM1, YMM2, 0x08 (bit 3)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_upper_bit_masks() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x10, // VPBLENDD YMM0, YMM1, YMM2, 0x10 (bit 4)
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x20, // VPBLENDD YMM3, YMM1, YMM2, 0x20 (bit 5)
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x40, // VPBLENDD YMM4, YMM1, YMM2, 0x40 (bit 6)
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x80, // VPBLENDD YMM5, YMM1, YMM2, 0x80 (bit 7)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_chain() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xAA, // VPBLENDD YMM0, YMM1, YMM2, 0xAA
+        0xc4, 0xe3, 0x7d, 0x02, 0xdb, 0x55, // VPBLENDD YMM3, YMM0, YMM3, 0x55
+        0xc4, 0xe3, 0x65, 0x02, 0xe0, 0x0F, // VPBLENDD YMM4, YMM3, YMM0, 0x0F
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_mem_various_offsets() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0xc4, 0xe3, 0x75, 0x02, 0x00, 0xAA, // VPBLENDD YMM0, YMM1, [RAX], 0xAA
+        0xc4, 0xe3, 0x75, 0x02, 0x50, 0x20, 0x55, // VPBLENDD YMM2, YMM1, [RAX+32], 0x55
+        0xc4, 0xe3, 0x75, 0x02, 0x60, 0x40, 0xF0, // VPBLENDD YMM4, YMM1, [RAX+64], 0xF0
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_same_src_dst() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x7d, 0x02, 0xc1, 0xAA, // VPBLENDD YMM0, YMM0, YMM1, 0xAA
+        0xc4, 0xe3, 0x75, 0x02, 0xd2, 0x55, // VPBLENDD YMM2, YMM1, YMM2, 0x55
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_sequential_patterns() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x00, // VPBLENDD YMM0, YMM1, YMM2, 0x00
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x11, // VPBLENDD YMM3, YMM1, YMM2, 0x11
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x22, // VPBLENDD YMM4, YMM1, YMM2, 0x22
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x33, // VPBLENDD YMM5, YMM1, YMM2, 0x33
+        0xc4, 0xe3, 0x75, 0x02, 0xf2, 0x44, // VPBLENDD YMM6, YMM1, YMM2, 0x44
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_complement_masks() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xAA, // VPBLENDD YMM0, YMM1, YMM2, 0xAA
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x55, // VPBLENDD YMM3, YMM1, YMM2, 0x55
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x0F, // VPBLENDD YMM4, YMM1, YMM2, 0x0F
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0xF0, // VPBLENDD YMM5, YMM1, YMM2, 0xF0
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_three_way_pattern() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x18, // VPBLENDD YMM0, YMM1, YMM2, 0x18 (00011000)
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x81, // VPBLENDD YMM3, YMM1, YMM2, 0x81 (10000001)
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0x42, // VPBLENDD YMM4, YMM1, YMM2, 0x42 (01000010)
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x24, // VPBLENDD YMM5, YMM1, YMM2, 0x24 (00100100)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_low_lane_only() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x0F, // VPBLENDD YMM0, YMM1, YMM2, 0x0F (lower 4 dwords)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_high_lane_only() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xF0, // VPBLENDD YMM0, YMM1, YMM2, 0xF0 (upper 4 dwords)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_cross_lane_pattern() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0x99, // VPBLENDD YMM0, YMM1, YMM2, 0x99 (10011001)
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x66, // VPBLENDD YMM3, YMM1, YMM2, 0x66 (01100110)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_corner_case_masks() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x75, 0x02, 0xc2, 0xC0, // VPBLENDD YMM0, YMM1, YMM2, 0xC0 (11000000)
+        0xc4, 0xe3, 0x75, 0x02, 0xda, 0x03, // VPBLENDD YMM3, YMM1, YMM2, 0x03 (00000011)
+        0xc4, 0xe3, 0x75, 0x02, 0xe2, 0xE1, // VPBLENDD YMM4, YMM1, YMM2, 0xE1 (11100001)
+        0xc4, 0xe3, 0x75, 0x02, 0xea, 0x1E, // VPBLENDD YMM5, YMM1, YMM2, 0x1E (00011110)
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_mem_with_sib() {
+    let mut emu = emu64();
+    let code = [0x48, 0xb8];
+    let mut full_code = code.to_vec();
+    full_code.extend_from_slice(&ALIGNED_ADDR.to_le_bytes());
+    full_code.extend_from_slice(&[
+        0x48, 0x31, 0xdb, // XOR RBX, RBX (RBX = 0)
+        0xc4, 0xe3, 0x75, 0x02, 0x04, 0x18, 0xAA, // VPBLENDD YMM0, YMM1, [RAX + RBX], 0xAA
+        0xf4, // HLT
+    ]);
+
+    emu.load_code_bytes(&full_code);
+    let data = vec![0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A];
+    emu.maps.write_bytes_slice(ALIGNED_ADDR, &data);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_vpblendd_all_reg_combos() {
+    let mut emu = emu64();
+    let code = [
+        0xc4, 0xe3, 0x7d, 0x02, 0xc2, 0xAA, // VPBLENDD YMM0, YMM0, YMM2, 0xAA
+        0xc4, 0xe3, 0x6d, 0x02, 0xdb, 0x55, // VPBLENDD YMM3, YMM2, YMM3, 0x55
+        0xc4, 0xe3, 0x5d, 0x02, 0xe5, 0xF0, // VPBLENDD YMM4, YMM4, YMM5, 0xF0
+        0xc4, 0xe3, 0x4d, 0x02, 0xf7, 0x0F, // VPBLENDD YMM6, YMM6, YMM7, 0x0F
+        0xf4, // HLT
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}

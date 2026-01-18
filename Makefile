@@ -18,3 +18,6 @@ tests:
 
 pytests:
 	cd crates/pymwemu && ./test_all.sh
+
+test_x86:
+	cargo test --release --features rax_x86_tests rax_x86_tests

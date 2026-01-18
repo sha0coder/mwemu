@@ -1,0 +1,674 @@
+//! Tests for PSUBB, PSUBW, PSUBD instructions.
+//!
+//! PSUBB/PSUBW/PSUBD - Packed Subtract (MMX)
+//!
+//! Performs SIMD subtract of packed integers from source operand from destination,
+//! storing results in destination. Underflow is handled with wraparound.
+//!
+//! - PSUBB: Subtract 8 packed byte integers (8x8-bit)
+//! - PSUBW: Subtract 4 packed word integers (4x16-bit)
+//! - PSUBD: Subtract 2 packed doubleword integers (2x32-bit)
+//!
+//! Flags affected: None
+//!
+//! Reference: docs/psubb:psubw:psubd.txt
+
+use crate::*;
+
+fn write_mm_via_mem(mem: u64, addr: u64, value: u64) {
+    let mut emu = emu64();
+    emu.maps.write_qword(addr, value);
+}
+
+// ============================================================================
+// PSUBB mm, mm/m64 (opcode 0F F8 /r) - 8x byte subtraction
+// ============================================================================
+
+#[test]
+fn test_psubb_mm_mm_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xf8, 0xc1,                               // PSUBB MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0A09080706050403);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0908070605040302, "PSUBB: basic subtraction");
+}
+
+#[test]
+fn test_psubb_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PSUBB: underflow wraparound");
+}
+
+#[test]
+fn test_psubb_zero_result() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0102030405060708);
+    emu.maps.write_qword(0x2008, 0x0102030405060708);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBB: subtract same value");
+}
+
+#[test]
+fn test_psubb_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PSUBB MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFF7F3F1FFF7F3F1F);
+    emu.maps.write_qword(0x2008, 0x0F0F0F0F0F0F0F0F);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xF0703010F0703010, "PSUBB: memory operand");
+}
+
+#[test]
+fn test_psubb_signed_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7F80010180010180);
+    emu.maps.write_qword(0x2008, 0x0101FE01FE01FE01);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7E7F03008200037F, "PSUBB: signed values");
+}
+
+#[test]
+fn test_psubb_alternating_pattern() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAAAAAAAAAAAAAA);
+    emu.maps.write_qword(0x2008, 0x5555555555555555);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x5555555555555555, "PSUBB: alternating pattern");
+}
+
+#[test]
+fn test_psubb_all_ff() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0xFFFFFFFFFFFFFFFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBB: FF - FF = 00");
+}
+
+#[test]
+fn test_psubb_mm5_mm6() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x2c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM5, [0x2000]
+        0x0f, 0x6f, 0x34, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM6, [0x2008]
+        0x0f, 0xf8, 0xee,                               // PSUBB MM5, MM6
+        0x0f, 0x7f, 0x2c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM5
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8877665544332211);
+    emu.maps.write_qword(0x2008, 0x0807060504030201);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x8070605040302010, "PSUBB: MM5 - MM6");
+}
+
+// ============================================================================
+// PSUBW mm, mm/m64 (opcode 0F F9 /r) - 4x word subtraction
+// ============================================================================
+
+#[test]
+fn test_psubw_mm_mm_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,                               // PSUBW MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x000A000900080007);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0009000800070006, "PSUBW: basic subtraction");
+}
+
+#[test]
+fn test_psubw_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PSUBW: underflow wraparound");
+}
+
+#[test]
+fn test_psubw_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PSUBW MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFF800040002000);
+    emu.maps.write_qword(0x2008, 0x0001100010001000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFE700030001000, "PSUBW: memory operand");
+}
+
+#[test]
+fn test_psubw_zero_result() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBW: same value");
+}
+
+#[test]
+fn test_psubw_signed_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7FFF800000018000);
+    emu.maps.write_qword(0x2008, 0x0001FFFF00018000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7FFE800100000000, "PSUBW: signed values");
+}
+
+#[test]
+fn test_psubw_partial_underflow() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000800000010000);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    // 0000-0001=FFFF, 8000-0001=7FFF, 0001-0001=0000, 0000-0001=FFFF
+    assert_eq!(result, 0xFFFF7FFF0000FFFF, "PSUBW: partial underflow");
+}
+
+#[test]
+fn test_psubw_mm7_mm1() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x3c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM7, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xf9, 0xf9,                               // PSUBW MM7, MM1
+        0x0f, 0x7f, 0x3c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM7
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAA5555AAAA5555);
+    emu.maps.write_qword(0x2008, 0x5555AAAA5555AAAA);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x5555AAAB5555AAAB, "PSUBW: MM7 - MM1");
+}
+
+#[test]
+fn test_psubw_large_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000800080008000);
+    emu.maps.write_qword(0x2008, 0x8000800080008000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBW: large values");
+}
+
+// ============================================================================
+// PSUBD mm, mm/m64 (opcode 0F FA /r) - 2x dword subtraction
+// ============================================================================
+
+#[test]
+fn test_psubd_mm_mm_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,                               // PSUBD MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000A00000009);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000900000008, "PSUBD: basic subtraction");
+}
+
+#[test]
+fn test_psubd_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PSUBD: underflow wraparound");
+}
+
+#[test]
+fn test_psubd_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PSUBD MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFF80000000);
+    emu.maps.write_qword(0x2008, 0x1000000010000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xEFFFFFFF70000000, "PSUBD: memory operand");
+}
+
+#[test]
+fn test_psubd_zero_result() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBD: same value");
+}
+
+#[test]
+fn test_psubd_signed_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7FFFFFFF80000000);
+    emu.maps.write_qword(0x2008, 0x00000001FFFFFFFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7FFFFFFE80000001, "PSUBD: signed values");
+}
+
+#[test]
+fn test_psubd_partial_underflow() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000100000000);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x00000000FFFFFFFF, "PSUBD: partial underflow");
+}
+
+#[test]
+fn test_psubd_mm4_mm3() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x24, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM4, [0x2000]
+        0x0f, 0x6f, 0x1c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM3, [0x2008]
+        0x0f, 0xfa, 0xe3,                               // PSUBD MM4, MM3
+        0x0f, 0x7f, 0x24, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM4
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAAAAAA55555555);
+    emu.maps.write_qword(0x2008, 0x55555555AAAAAAAA);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x55555555AAAAAAAB, "PSUBD: MM4 - MM3");
+}
+
+#[test]
+fn test_psubd_large_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000000080000000);
+    emu.maps.write_qword(0x2008, 0x8000000080000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBD: large values");
+}
+
+#[test]
+fn test_psubd_sequential() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,                               // PSUBD MM0, MM1
+        0x0f, 0xfa, 0xc1,                               // PSUBD MM0, MM1 again
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000001400000014);
+    emu.maps.write_qword(0x2008, 0x0000000500000005);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000A0000000A, "PSUBD: sequential subtractions");
+}
+
+#[test]
+fn test_psubd_max_min() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfa, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7FFFFFFF00000000);
+    emu.maps.write_qword(0x2008, 0xFFFFFFFF80000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x8000000080000000, "PSUBD: max - min boundary");
+}
+
+// ============================================================================
+// Mixed tests
+// ============================================================================
+
+#[test]
+fn test_psubb_all_zeros() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBB: zero - zero = zero");
+}
+
+#[test]
+fn test_psubw_one_minus_one() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0001000100010001);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBW: 1 - 1 = 0");
+}
+
+#[test]
+fn test_unsigned_signed_interoperability() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xf8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8040201008040201);
+    emu.maps.write_qword(0x2008, 0x0102040810204080);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7F3E1C08F8E4C281, "PSUBB: unsigned/signed");
+}

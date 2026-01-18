@@ -107,10 +107,10 @@ fn test_shld_ax_zero_count() {
     let mut emu = emu64();
     emu.regs_mut().rax = 0x1234;
     emu.regs_mut().rbx = 0xABCD;
-    emu.flags_mut().load(0x2 | flags::F_CF | flags::F_OF);
+            emu.load_code_bytes(&code);
+    emu.flags_mut().load(0x2 | (1 << flags::F_CF) | (1 << flags::F_OF));
     let initial_flags = emu.flags().dump();
-    emu.load_code_bytes(&code);
-    emu.run(None).unwrap();
+        emu.run(None).unwrap();
     assert_eq!(emu.regs().rax & 0xFFFF, 0x1234, "AX: unchanged with count 0");
     assert_eq!(emu.flags().dump() & (flags::F_CF | flags::F_OF),
                initial_flags & (flags::F_CF | flags::F_OF), "Flags preserved");
@@ -233,10 +233,10 @@ fn test_shld_eax_zero_count() {
     let mut emu = emu64();
     emu.regs_mut().rax = 0x12345678;
     emu.regs_mut().rbx = 0xABCDEF01;
-    emu.flags_mut().load(0x2 | flags::F_CF);
-    let initial = emu.regs().rax & 0xFFFFFFFF;
+        let initial = emu.regs().rax & 0xFFFFFFFF;
     emu.load_code_bytes(&code);
-    emu.run(None).unwrap();
+    emu.flags_mut().load(0x2 | (1 << flags::F_CF));
+        emu.run(None).unwrap();
     assert_eq!(emu.regs().rax & 0xFFFFFFFF, initial, "EAX: unchanged");
 }
 
@@ -422,10 +422,10 @@ fn test_shld_rax_zero_count() {
     let mut emu = emu64();
     emu.regs_mut().rax = 0x123456789ABCDEF0;
     emu.regs_mut().rbx = 0xFEDCBA9876543210;
-    emu.flags_mut().load(0x2 | flags::F_CF);
-    let initial = emu.regs().rax;
+        let initial = emu.regs().rax;
     emu.load_code_bytes(&code);
-    emu.run(None).unwrap();
+    emu.flags_mut().load(0x2 | (1 << flags::F_CF));
+        emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, initial, "RAX: unchanged");
 }
 
@@ -446,6 +446,7 @@ fn test_shld_mem16_imm8() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.regs_mut().rdx = 0xABCD;
     emu.load_code_bytes(&code);
     emu.maps.write_word(DATA_ADDR, 0x1234);
@@ -465,6 +466,7 @@ fn test_shld_mem32_cl() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.regs_mut().rdx = 0xABCDEF01;
     emu.regs_mut().rcx = 0x08;
     emu.load_code_bytes(&code);
@@ -486,6 +488,7 @@ fn test_shld_mem64_imm8() {
         0xf4,
     ];
     let mut emu = emu64();
+    emu.maps.create_map("test_data", 0x7000, 0x1000, crate::maps::mem64::Permission::READ_WRITE).expect("failed to map test_data");
     emu.regs_mut().rdx = 0xAAAABBBBCCCCDDDD;
     emu.load_code_bytes(&code);
     emu.maps.write_qword(DATA_ADDR, 0x123456789ABCDEF0);

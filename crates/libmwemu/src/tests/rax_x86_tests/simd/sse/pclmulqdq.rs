@@ -1,0 +1,151 @@
+use crate::*;
+
+// PCLMULQDQ - Carry-Less Multiplication Quadword
+//
+// Performs a carry-less multiplication of two quadwords from the source and destination
+// operands and stores the result in the destination.
+//
+// Opcode:
+// 66 0F 3A 44 /r ib    PCLMULQDQ xmm1, xmm2/m128, imm8
+
+const DATA_ADDR: u64 = 0x3000;
+
+#[test]
+fn test_pclmulqdq_xmm0_xmm1_0x00() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0xc1, 0x00, 0xf4]; // PCLMULQDQ XMM0, XMM1, 0x00; HLT
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm2_xmm3_0x01() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0xd3, 0x01, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm4_xmm5_0x10() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0xe5, 0x10, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm6_xmm7_0x11() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0xf7, 0x11, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm8_xmm9_0x00() {
+    let mut emu = emu64();
+    let code = [0x66, 0x45, 0x0f, 0x3a, 0x44, 0xc1, 0x00, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm14_xmm15_0x11() {
+    let mut emu = emu64();
+    let code = [0x66, 0x45, 0x0f, 0x3a, 0x44, 0xf7, 0x11, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm0_mem_0x00() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0x04, 0x25, 0x00, 0x30, 0x00, 0x00, 0x00, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_xmm7_mem_0x11() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0x3c, 0x25, 0x00, 0x30, 0x00, 0x00, 0x11, 0xf4];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_all_imm_variants() {
+    let mut emu = emu64();
+    let code = [
+        0x66, 0x0f, 0x3a, 0x44, 0xc1, 0x00, // PCLMULQDQ XMM0, XMM1, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xd3, 0x01, // PCLMULQDQ XMM2, XMM3, 0x01
+        0x66, 0x0f, 0x3a, 0x44, 0xe5, 0x10, // PCLMULQDQ XMM4, XMM5, 0x10
+        0x66, 0x0f, 0x3a, 0x44, 0xf7, 0x11, // PCLMULQDQ XMM6, XMM7, 0x11
+        0xf4,
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_self() {
+    let mut emu = emu64();
+    let code = [0x66, 0x0f, 0x3a, 0x44, 0xc0, 0x00, 0xf4]; // PCLMULQDQ XMM0, XMM0, 0x00
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_chain() {
+    let mut emu = emu64();
+    let code = [
+        0x66, 0x0f, 0x3a, 0x44, 0xc1, 0x00, // PCLMULQDQ XMM0, XMM1, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xc2, 0x00, // PCLMULQDQ XMM0, XMM2, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xc3, 0x00, // PCLMULQDQ XMM0, XMM3, 0x00
+        0xf4,
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_extended_regs() {
+    let mut emu = emu64();
+    let code = [
+        0x66, 0x45, 0x0f, 0x3a, 0x44, 0xc1, 0x00, // PCLMULQDQ XMM8, XMM9, 0x00
+        0x66, 0x45, 0x0f, 0x3a, 0x44, 0xda, 0x01, // PCLMULQDQ XMM11, XMM10, 0x01
+        0x66, 0x45, 0x0f, 0x3a, 0x44, 0xec, 0x10, // PCLMULQDQ XMM13, XMM12, 0x10
+        0x66, 0x45, 0x0f, 0x3a, 0x44, 0xfe, 0x11, // PCLMULQDQ XMM15, XMM14, 0x11
+        0xf4,
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_mixed_regs() {
+    let mut emu = emu64();
+    let code = [
+        0x66, 0x0f, 0x3a, 0x44, 0xc7, 0x00, // PCLMULQDQ XMM0, XMM7, 0x00
+        0x66, 0x44, 0x0f, 0x3a, 0x44, 0xc0, 0x00, // PCLMULQDQ XMM8, XMM0, 0x00
+        0x66, 0x41, 0x0f, 0x3a, 0x44, 0xc7, 0x00, // PCLMULQDQ XMM0, XMM15, 0x00
+        0xf4,
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}
+
+#[test]
+fn test_pclmulqdq_all_pairs() {
+    let mut emu = emu64();
+    let code = [
+        0x66, 0x0f, 0x3a, 0x44, 0xc1, 0x00, // PCLMULQDQ XMM0, XMM1, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xda, 0x00, // PCLMULQDQ XMM3, XMM2, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xe5, 0x00, // PCLMULQDQ XMM4, XMM5, 0x00
+        0x66, 0x0f, 0x3a, 0x44, 0xfe, 0x00, // PCLMULQDQ XMM7, XMM6, 0x00
+        0xf4,
+    ];
+    emu.load_code_bytes(&code);
+    emu.run(None).unwrap();
+}

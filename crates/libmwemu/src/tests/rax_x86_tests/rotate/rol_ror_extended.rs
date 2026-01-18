@@ -247,7 +247,7 @@ fn test_ror_count_masking_8bit() {
     // Result should be same as ROR by (31 % 8) = 7
     let code2 = [0xc0, 0xc8, 0x07, 0xf4];
     let mut emu = emu64();
-    emu.load_code_bytes(&code);
+    emu.load_code_bytes(&code2);
     emu.regs_mut().rax = 0x12;
     emu.run(None).unwrap();
 
@@ -454,6 +454,7 @@ fn test_rol_sequential_rotations() {
     // Should be same as ROL by 3
     let code2 = [0xc0, 0xc0, 0x03, 0xf4];
     let mut emu = emu64();
+    emu.load_code_bytes(&code2);
     emu.regs_mut().rax = 0x12;
     emu.run(None).unwrap();
 

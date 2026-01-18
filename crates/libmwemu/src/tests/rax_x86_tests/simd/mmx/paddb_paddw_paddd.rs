@@ -1,0 +1,699 @@
+//! Tests for PADDB, PADDW, PADDD instructions.
+//!
+//! PADDB/PADDW/PADDD - Packed Add (MMX)
+//!
+//! Performs SIMD add of packed integers from source and destination operands,
+//! storing results in destination. Overflow is handled with wraparound.
+//!
+//! - PADDB: Add 8 packed byte integers (8x8-bit)
+//! - PADDW: Add 4 packed word integers (4x16-bit)
+//! - PADDD: Add 2 packed doubleword integers (2x32-bit)
+//!
+//! Flags affected: None
+//!
+//! Reference: docs/paddb:paddw:paddd:paddq.txt
+
+use crate::*;
+
+// Helper to write 64-bit value to MM register via memory
+fn write_mm_via_mem(mem: u64, addr: u64, value: u64) {
+    let mut emu = emu64();
+    emu.maps.write_qword(addr, value);
+}
+
+// ============================================================================
+// PADDB mm, mm/m64 (opcode 0F FC /r) - 8x byte addition
+// ============================================================================
+
+#[test]
+fn test_paddb_mm_mm_basic() {
+    let mut emu = emu64();
+    // PADDB MM0, MM1
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xfc, 0xc1,                               // PADDB MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,                                            // HLT
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // MM0 = 0x0102030405060708
+    emu.maps.write_qword(0x2000, 0x0102030405060708);
+    // MM1 = 0x0101010101010101
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0203040506070809, "PADDB: basic byte addition");
+}
+
+#[test]
+fn test_paddb_mm_mm_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xfc, 0xc1,                               // PADDB MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFF00FF00FF00FF00);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0001000100010001, "PADDB: byte wraparound");
+}
+
+#[test]
+fn test_paddb_mm_m64() {
+    let mut emu = emu64();
+    // PADDB MM2, [memory]
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM2, [0x2000]
+        0x0f, 0xfc, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PADDB MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM2
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1020304050607080);
+    emu.maps.write_qword(0x2008, 0x0F0F0F0F0F0F0F0F);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x1F2F3F4F5F6F7F8F, "PADDB: memory operand");
+}
+
+#[test]
+fn test_paddb_all_zeros() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfc, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDB: all zeros");
+}
+
+#[test]
+fn test_paddb_all_ones() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfc, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDB: all bytes wrap");
+}
+
+#[test]
+fn test_paddb_mixed_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfc, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0123456789ABCDEF);
+    emu.maps.write_qword(0x2008, 0xFEDCBA9876543210);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PADDB: mixed values all wrap to FF");
+}
+
+#[test]
+fn test_paddb_mm3_mm4() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x1c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM3, [0x2000]
+        0x0f, 0x6f, 0x24, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM4, [0x2008]
+        0x0f, 0xfc, 0xdc,                               // PADDB MM3, MM4
+        0x0f, 0x7f, 0x1c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM3
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1111111111111111);
+    emu.maps.write_qword(0x2008, 0x2222222222222222);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x3333333333333333, "PADDB: MM3 + MM4");
+}
+
+#[test]
+fn test_paddb_signed_unsigned() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfc, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7F80FF0001FE8001);
+    emu.maps.write_qword(0x2008, 0x0180010101027FFE);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    // 7F+01=80, 80+80=00, FF+01=00, 00+01=01, 01+01=02, FE+02=00, 80+7F=FF, 01+FE=FF
+    assert_eq!(result, 0x800000010200FFFF, "PADDB: signed/unsigned mix");
+}
+
+// ============================================================================
+// PADDW mm, mm/m64 (opcode 0F FD /r) - 4x word addition
+// ============================================================================
+
+#[test]
+fn test_paddw_mm_mm_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,                               // PADDW MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 4 words: 0x0001, 0x0002, 0x0003, 0x0004
+    emu.maps.write_qword(0x2000, 0x0004000300020001);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0005000400030002, "PADDW: basic word addition");
+}
+
+#[test]
+fn test_paddw_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDW: word wraparound");
+}
+
+#[test]
+fn test_paddw_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PADDW MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1000200030004000);
+    emu.maps.write_qword(0x2008, 0x0FFF0FFF0FFF0FFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x1FFF2FFF3FFF4FFF, "PADDW: memory operand");
+}
+
+#[test]
+fn test_paddw_partial_overflow() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFF7FFF0001FFFE);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    // FFFE+0001=FFFF, 0001+0001=0002, 7FFF+0001=8000, FFFF+0001=0000
+    assert_eq!(result, 0x000080000002FFFF, "PADDW: partial overflow");
+}
+
+#[test]
+fn test_paddw_mm5_mm6() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x2c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM5, [0x2000]
+        0x0f, 0x6f, 0x34, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM6, [0x2008]
+        0x0f, 0xfd, 0xee,                               // PADDW MM5, MM6
+        0x0f, 0x7f, 0x2c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM5
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x1235567990ACCDF0, "PADDW: MM5 + MM6");
+}
+
+#[test]
+fn test_paddw_large_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000800080008000);
+    emu.maps.write_qword(0x2008, 0x8000800080008000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDW: large values wrap");
+}
+
+#[test]
+fn test_paddw_alternating() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAA5555AAAA5555);
+    emu.maps.write_qword(0x2008, 0x5555AAAA5555AAAA);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PADDW: alternating bits");
+}
+
+// ============================================================================
+// PADDD mm, mm/m64 (opcode 0F FE /r) - 2x dword addition
+// ============================================================================
+
+#[test]
+fn test_paddd_mm_mm_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,                               // PADDD MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 2 dwords: 0x00000001, 0x00000002
+    emu.maps.write_qword(0x2000, 0x0000000200000001);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000300000002, "PADDD: basic dword addition");
+}
+
+#[test]
+fn test_paddd_wraparound() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDD: dword wraparound");
+}
+
+#[test]
+fn test_paddd_mm_m64() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0x14, 0x25, 0x08, 0x20, 0x00, 0x00, // PADDD MM2, [0x2008]
+        0x0f, 0x7f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1000000020000000);
+    emu.maps.write_qword(0x2008, 0x0FFFFFFF0FFFFFFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x1FFFFFFF2FFFFFFF, "PADDD: memory operand");
+}
+
+#[test]
+fn test_paddd_partial_overflow() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFFFFFF00000001);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000002, "PADDD: partial overflow");
+}
+
+#[test]
+fn test_paddd_mm7_mm0() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x3c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM7, [0x2000]
+        0x0f, 0x6f, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2008]
+        0x0f, 0xfe, 0xf8,                               // PADDD MM7, MM0
+        0x0f, 0x7f, 0x3c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM7
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x1234567990ABCDF0, "PADDD: MM7 + MM0");
+}
+
+#[test]
+fn test_paddd_large_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000000080000000);
+    emu.maps.write_qword(0x2008, 0x8000000080000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDD: large values wrap");
+}
+
+#[test]
+fn test_paddd_max_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7FFFFFFF7FFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x8000000080000000, "PADDD: signed overflow");
+}
+
+#[test]
+fn test_paddd_sequential() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,                               // PADDD MM0, MM1
+        0x0f, 0xfe, 0xc1,                               // PADDD MM0, MM1 again
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000100000001);
+    emu.maps.write_qword(0x2008, 0x0000000500000005);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000B0000000B, "PADDD: sequential additions");
+}
+
+// ============================================================================
+// Combined tests with different MM registers
+// ============================================================================
+
+#[test]
+fn test_paddb_all_mm_registers() {
+    let mut emu = emu64();
+    let code = vec![
+        // Load values
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2000]
+        0x0f, 0x6f, 0x14, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM2, [0x2000]
+        0x0f, 0x6f, 0x1c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM3, [0x2000]
+        0x0f, 0x6f, 0x24, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM4, [0x2000]
+        0x0f, 0x6f, 0x2c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM5, [0x2000]
+        0x0f, 0x6f, 0x34, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM6, [0x2000]
+        0x0f, 0x6f, 0x3c, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM7, [0x2000]
+        // Add 1 to each
+        0x0f, 0x6f, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2008] (value 1)
+        0x0f, 0xfc, 0xc8,                               // PADDB MM1, MM0
+        0x0f, 0xfc, 0xd0,                               // PADDB MM2, MM0
+        0x0f, 0xfc, 0xd8,                               // PADDB MM3, MM0
+        0x0f, 0xfc, 0xe0,                               // PADDB MM4, MM0
+        0x0f, 0xfc, 0xe8,                               // PADDB MM5, MM0
+        0x0f, 0xfc, 0xf0,                               // PADDB MM6, MM0
+        0x0f, 0xfc, 0xf8,                               // PADDB MM7, MM0
+        // Store MM7
+        0x0f, 0x7f, 0x3c, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM7
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0102030405060708);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0203040506070809, "PADDB: all MM registers work");
+}
+
+#[test]
+fn test_paddw_zero_result() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000000000000);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PADDW: zero + zero = zero");
+}
+
+#[test]
+fn test_paddd_one_plus_one() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0000000100000001);
+    emu.maps.write_qword(0x2008, 0x0000000100000001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000200000002, "PADDD: 1 + 1 = 2");
+}
+
+#[test]
+fn test_paddb_incremental() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfc, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0001020304050607);
+    emu.maps.write_qword(0x2008, 0x0F0E0D0C0B0A0908);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0F0F0F0F0F0F0F0F, "PADDB: incremental values");
+}
+
+#[test]
+fn test_paddw_boundary() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfd, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x7FFF00017FFF0001);
+    emu.maps.write_qword(0x2008, 0x0001FFFF0001FFFF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    // 0001+FFFF=0000, 7FFF+0001=8000, 0001+FFFF=0000, 7FFF+0001=8000
+    assert_eq!(result, 0x8000000080000000, "PADDW: boundary conditions");
+}
+
+#[test]
+fn test_paddd_alternating_bits() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xfe, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAAAAAA55555555);
+    emu.maps.write_qword(0x2008, 0x55555555AAAAAAAA);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PADDD: alternating bits");
+}

@@ -1,0 +1,496 @@
+//! Tests for PSUBUSB and PSUBUSW instructions (MMX).
+//!
+//! PSUBUSB - Subtract Packed Unsigned Bytes with Unsigned Saturation (MMX)
+//! PSUBUSW - Subtract Packed Unsigned Words with Unsigned Saturation (MMX)
+//!
+//! Subtracts packed unsigned integers with saturation.
+//! If result is negative, it saturates to 0.
+//!
+//! Opcodes:
+//! - PSUBUSB: 0F D8 /r
+//! - PSUBUSW: 0F D9 /r
+//!
+//! Flags affected: None
+//!
+//! Reference: /Users/int/dev/rax/docs/psubusb:psubusw.txt
+
+use crate::*;
+
+fn write_mm_via_mem(mem: u64, addr: u64, value: u64) {
+    let mut emu = emu64();
+    emu.maps.write_qword(addr, value);
+}
+
+// ============================================================================
+// PSUBUSB mm, mm/m64 - Subtract Packed Unsigned Bytes with Saturation
+// ============================================================================
+
+#[test]
+fn test_psubusb_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xd8, 0xc1,                               // PSUBUSB MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x50403020100F0A05);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x4F3F2F1F0F0E0904, "PSUBUSB: basic subtraction");
+}
+
+#[test]
+fn test_psubusb_saturation_to_zero() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0101010101010101);
+    emu.maps.write_qword(0x2008, 0x0202020202020202);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSB: saturation to zero");
+}
+
+#[test]
+fn test_psubusb_no_saturation() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 255 - 1 = 254
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0101010101010101);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFEFEFEFEFEFEFEFE, "PSUBUSB: no saturation");
+}
+
+#[test]
+fn test_psubusb_zero_diff() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x1234567890ABCDEF);
+    emu.maps.write_qword(0x2008, 0x1234567890ABCDEF);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSB: zero difference");
+}
+
+#[test]
+fn test_psubusb_max_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 255 - 0 = 255
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PSUBUSB: max values");
+}
+
+#[test]
+fn test_psubusb_mixed_saturation() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFF80502814100801);
+    emu.maps.write_qword(0x2008, 0x01A05028140A0802);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFE00000000060000, "PSUBUSB: mixed saturation");
+}
+
+#[test]
+fn test_psubusb_alternating() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAA55AA55AA55AA55);
+    emu.maps.write_qword(0x2008, 0x5555555555555555);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x5500550055005500, "PSUBUSB: alternating pattern");
+}
+
+#[test]
+fn test_psubusb_memory_operand() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0xd8, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // PSUBUSB MM0, [0x2008]
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8070605040302010);
+    emu.maps.write_qword(0x2008, 0x1010101010101010);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7060504030201000, "PSUBUSB: memory operand");
+}
+
+#[test]
+fn test_psubusb_sequential() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc1,
+        0x0f, 0x6f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc2,
+        0x0f, 0x7f, 0x04, 0x25, 0x18, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x5050505050505050);
+    emu.maps.write_qword(0x2008, 0x1010101010101010);
+    emu.maps.write_qword(0x2010, 0x1010101010101010);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2018).unwrap();
+    assert_eq!(result, 0x3030303030303030, "PSUBUSB: sequential subtraction");
+}
+
+#[test]
+fn test_psubusb_self() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xd8, 0xc0,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x123456789ABCDEF0);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSB: self-subtract");
+}
+
+// ============================================================================
+// PSUBUSW mm, mm/m64 - Subtract Packed Unsigned Words with Saturation
+// ============================================================================
+
+#[test]
+fn test_psubusw_basic() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00, // MOVQ MM1, [0x2008]
+        0x0f, 0xd9, 0xc1,                               // PSUBUSW MM0, MM1
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0FA00BB807D003E8);
+    emu.maps.write_qword(0x2008, 0x006400C8012C0064);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0F3C0AF006A40384, "PSUBUSW: basic subtraction");
+}
+
+#[test]
+fn test_psubusw_saturation_to_zero() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x0001000100010001);
+    emu.maps.write_qword(0x2008, 0x0002000200020002);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSW: saturation to zero");
+}
+
+#[test]
+fn test_psubusw_no_saturation() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 65535 - 1 = 65534
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0001000100010001);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFEFFFEFFFEFFFE, "PSUBUSW: no saturation");
+}
+
+#[test]
+fn test_psubusw_zero_diff() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x123456789ABCDEF0);
+    emu.maps.write_qword(0x2008, 0x123456789ABCDEF0);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSW: zero difference");
+}
+
+#[test]
+fn test_psubusw_max_values() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    // 65535 - 0 = 65535
+    emu.maps.write_qword(0x2000, 0xFFFFFFFFFFFFFFFF);
+    emu.maps.write_qword(0x2008, 0x0000000000000000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFFFFFFFFFFFFFF, "PSUBUSW: max values");
+}
+
+#[test]
+fn test_psubusw_mixed_saturation() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xFFFF800050001000);
+    emu.maps.write_qword(0x2008, 0x0001A00050000800);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xFFFE000000000800, "PSUBUSW: mixed saturation");
+}
+
+#[test]
+fn test_psubusw_alternating() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xAAAA5555AAAA5555);
+    emu.maps.write_qword(0x2008, 0x5555555555555555);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x5555000055550000, "PSUBUSW: alternating pattern");
+}
+
+#[test]
+fn test_psubusw_memory_operand() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // MOVQ MM0, [0x2000]
+        0x0f, 0xd9, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // PSUBUSW MM0, [0x2008]
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00, // MOVQ [0x2010], MM0
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x8000700060005000);
+    emu.maps.write_qword(0x2008, 0x1000100010001000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x7000600050004000, "PSUBUSW: memory operand");
+}
+
+#[test]
+fn test_psubusw_sequential() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x6f, 0x14, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc2,
+        0x0f, 0x7f, 0x04, 0x25, 0x18, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x5000500050005000);
+    emu.maps.write_qword(0x2008, 0x1000100010001000);
+    emu.maps.write_qword(0x2010, 0x1000100010001000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2018).unwrap();
+    assert_eq!(result, 0x3000300030003000, "PSUBUSW: sequential subtraction");
+}
+
+#[test]
+fn test_psubusw_self() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc0,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0x123456789ABCDEF0);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0x0000000000000000, "PSUBUSW: self-subtract");
+}
+
+#[test]
+fn test_psubusw_large_diff() {
+    let mut emu = emu64();
+    let code = vec![
+        0x0f, 0x6f, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00,
+        0x0f, 0x6f, 0x0c, 0x25, 0x08, 0x20, 0x00, 0x00,
+        0x0f, 0xd9, 0xc1,
+        0x0f, 0x7f, 0x04, 0x25, 0x10, 0x20, 0x00, 0x00,
+        0xf4,
+    ];
+
+    emu.load_code_bytes(&code);
+
+    emu.maps.write_qword(0x2000, 0xF000D000B0009000);
+    emu.maps.write_qword(0x2008, 0x1000100010001000);
+
+    emu.run(None).unwrap();
+
+    let result = emu.maps.read_qword(0x2010).unwrap();
+    assert_eq!(result, 0xE000C000A0008000, "PSUBUSW: large difference");
+}

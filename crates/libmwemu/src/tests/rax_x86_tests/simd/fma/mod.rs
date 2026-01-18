@@ -1,0 +1,8 @@
+mod vfmadd132ps_vfmadd213ps_vfmadd231ps;
+mod vfmadd132pd_vfmadd213pd_vfmadd231pd;
+mod vfmadd132ss_vfmadd213ss_vfmadd231ss;
+mod vfmadd132sd_vfmadd213sd_vfmadd231sd;
+mod vfmsub_variants;
+mod vfnmadd_variants;
+mod vfnmsub_variants;
+mod vfmaddsub_vfmsubadd;

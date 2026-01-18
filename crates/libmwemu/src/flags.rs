@@ -1607,13 +1607,14 @@ impl Flags {
         let mask = if sz == 64 { 0x3f } else { 0x1f };
         let count = value1 & mask;
         let pow = if sz == 64 { u64::MAX } else { (1u64 << sz) - 1 };
+        let count = count % (sz as u64 + 1);
         let res = match count {
             0 => value0 & pow,
             1 => ((value0 >> 1) | ((self.f_cf as u64) << (sz - 1))) & pow,
             _ => {
                 ((value0 >> count)
-                    | ((self.f_cf as u64) << ((sz as u64) - count))
-                    | (value0 << ((sz as u64 + 1) - count)))
+                    | ((self.f_cf as u64) << (sz as u64 - count))
+                    | (value0 << (sz as u64 + 1 - count)))
                     & pow
             }
         };
@@ -1648,17 +1649,16 @@ impl Flags {
     }
 
     pub fn rcl(&mut self, value0: u64, value1: u64, sz: u32) -> u64 {
-        //assert!(sz == 8 || sz == 16 || sz == 32 || sz == 64);
-
         let mask = if sz == 64 { 0x3f } else { 0x1f };
-        let count = value1 & mask;
+        let count = (value1 & mask) % (sz as u64 + 1);
+
         if count == 0 {
             let pow = if sz == 64 { u64::MAX } else { (1u64 << sz) - 1 };
             return value0 & pow;
         }
 
         if sz == 64 {
-            let pow128 = (1u128 << 64) - 1;
+            let pow128 = u64::MAX as u128;
             let extended = ((value0 as u128 & pow128) << 1) | (self.f_cf as u128);
             let rotated = ((extended << count) | (extended >> (65 - count))) & ((1u128 << 65) - 1);
             let res = (rotated >> 1) & pow128;
@@ -1756,10 +1756,11 @@ impl Flags {
 
         let value0 = value0 & res_mask;
 
+        let count = (value1 & mask) % width as u64;
         let res = if count == 0 {
             value0
         } else {
-            ((value0 << count) | (value0 >> (width - count))) & res_mask
+            ((value0 << count) | (value0 >> (width as u64 - count))) & res_mask
         };
 
         // CF = least significant bit of the result after the rotate
