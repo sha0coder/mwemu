@@ -97,6 +97,8 @@ impl Emu {
             entropy: 0.0,
             heap_management: None,
             last_error: 0,
+            is_api_run: false,
+            is_break_on_api: false,
         }
     }
 

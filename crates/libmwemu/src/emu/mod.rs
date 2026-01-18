@@ -104,4 +104,6 @@ pub struct Emu {
     pub entropy: f64,
     pub heap_management: Option<Box<O1Heap>>,
     pub last_error: u32,
+    pub is_api_run: bool,
+    pub is_break_on_api: bool, // this value will only be modify internally for python use case
 }

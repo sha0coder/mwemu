@@ -1,5 +1,5 @@
 use crate::emu::object_handle::hive_parser::{
-    HiveError, HiveKey, HiveParser, KeyBlock, RegistryValue, ValueBlock,
+    HiveError, HiveKey, HiveParser, KeyBlock, RegistryValue,
 };
 use ahash::AHashMap;
 use byteorder::ReadBytesExt;
@@ -7,12 +7,12 @@ use std::io::Seek;
 use std::path::Path;
 
 #[derive(Debug)]
-struct RegistryHandle {
+pub struct RegistryHandle {
     registry_value: RegistryValue,
 }
 
 #[derive(Debug)]
-struct RegisterManager {
+pub struct RegisterManager {
     name: String,
     registry_handle: AHashMap<String, RegistryHandle>,
     subkeys: AHashMap<String, RegisterManager>, // Added for subkey hierarchy
