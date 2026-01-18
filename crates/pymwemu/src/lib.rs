@@ -2,6 +2,7 @@ use env_logger::Env;
 use iced_x86::Formatter;
 use std::io::Write as _;
 
+use pyo3::exceptions::PyException;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -298,7 +299,7 @@ impl Emu {
         self.emu.load_code_bytes(bytes);
     }
 
-    /// allocate a buffer on the emulated process address space.  
+    /// allocate a buffer on the emulated process address space.
     fn alloc(&mut self, name: &str, size: u64) -> PyResult<u64> {
         Ok(self.emu.alloc(name, size, Permission::READ_WRITE_EXECUTE))
     }
@@ -674,13 +675,13 @@ impl Emu {
     }
 
     /// read an ascii string from a memory address,
-    /// if the address point to a non allocated zone string will be empty.    
+    /// if the address point to a non allocated zone string will be empty.
     pub fn read_string(&self, addr: u64) -> PyResult<String> {
         Ok(self.emu.maps.read_string(addr))
     }
 
     /// read a wide string from a memory address,
-    /// if the address point to a non allocated zone string will be empty.    
+    /// if the address point to a non allocated zone string will be empty.
     pub fn read_wide_string(&self, addr: u64) -> PyResult<String> {
         Ok(self.emu.maps.read_wide_string(addr))
     }
@@ -847,18 +848,18 @@ impl Emu {
     /// emulate until next winapi call
     pub fn run_until_apicall(&mut self) -> PyResult<(u64, String)> {
         self.emu.skip_apicall = true;
-        loop {
-            if !self.emu.step() {
-                match self.emu.its_apicall {
-                    Some(addr) => {
-                        self.emu.skip_apicall = false;
-                        let name = self.emu.api_addr_to_name(addr);
-                        self.emu.regs_mut().rip += self.emu.last_instruction_size as u64;
-                        return Ok((addr, name));
-                    }
-                    None => continue,
-                }
+        self.emu.is_break_on_api = true;
+        // run until api
+        self.emu.run(None);
+        match self.emu.its_apicall {
+            Some(addr) => {
+                self.emu.skip_apicall = false;
+                let name = self.emu.api_addr_to_name(addr);
+                self.emu.regs_mut().rip += self.emu.last_instruction_size as u64;
+                return Ok((addr, name));
             }
+
+            _ => Err(PyException::new_err("breakpoint on apicall fail because there isn't any address return"))
         }
     }
 }

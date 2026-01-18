@@ -150,6 +150,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             current_thread_id: emu.current_thread_id,
             entropy: emu.entropy,
             last_error: emu.last_error,
+
         }
     }
 }
@@ -213,6 +214,8 @@ impl From<SerializableEmu> for Emu {
             entropy: 0.0,
             heap_management: None,
             last_error: 0,
+            is_api_run: false,
+            is_break_on_api: false,
         }
     }
 }

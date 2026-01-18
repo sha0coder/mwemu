@@ -29,6 +29,7 @@ impl Emu {
                     self.regs_mut().rip = self.gateway_return;
                     winapi64::gateway(addr, "not_loaded", self);
                     self.force_break = true;
+                    self.is_api_run = true;
                     return true;
                 } else {
                     log::error!(
