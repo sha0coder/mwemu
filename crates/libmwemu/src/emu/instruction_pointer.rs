@@ -121,6 +121,7 @@ impl Emu {
                     self.regs_mut().rip = self.gateway_return;
                     winapi32::gateway(addr as u32, "not_loaded", self);
                     self.force_break = true;
+                    self.is_api_run = true;
                     return true;
                 } else {
                     log::error!("/!\\ setting eip to non mapped addr 0x{:x}", addr);
