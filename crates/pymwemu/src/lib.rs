@@ -850,7 +850,7 @@ impl Emu {
         self.emu.skip_apicall = true;
         self.emu.is_break_on_api = true;
         // run until api
-        self.emu.run(None);
+        let _ = self.emu.run(None);
         match self.emu.its_apicall {
             Some(addr) => {
                 self.emu.skip_apicall = false;
