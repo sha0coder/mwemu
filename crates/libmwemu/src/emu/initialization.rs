@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU32;
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Instant;
 
 use atty::Stream;
@@ -291,8 +291,6 @@ impl Emu {
     /// The minimum initializations necessary to emualte asm with no OS simulation.
     pub fn init_cpu(&mut self) {
         self.pos = 0;
-        //self.regs_mut().clear::<64>();
-        self.flags_mut().clear();
 
         if self.cfg.is_64bits {
             self.maps.is_64bits = true;

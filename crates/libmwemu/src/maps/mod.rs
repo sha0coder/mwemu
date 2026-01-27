@@ -217,8 +217,6 @@ impl Maps {
         self.write_dword(addr, value.to_bits())
     }
 
-
-
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
         let end_addr = addr + 7;
         let banzai = self.banzai;
@@ -301,7 +299,6 @@ impl Maps {
         }
     }
 
-
     pub fn write_bytes_slice(&mut self, addr: u64, data: &[u8]) -> bool {
         if data.is_empty() {
             return true;
@@ -315,7 +312,6 @@ impl Maps {
         }
         true
     }
-
 
     pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) -> bool {
         if data.is_empty() {
@@ -520,7 +516,7 @@ impl Maps {
 
     pub fn memcpy(&mut self, to: u64, from: u64, size: usize) -> bool {
         let b = match self.read_bytes_option(from, size) {
-            None => { return false }
+            None => return false,
             Some(b) => b.to_vec(),
         };
         self.write_bytes(to, b);
@@ -570,9 +566,8 @@ impl Maps {
             None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
         };
         let len = buff.len();
-        buff.copy_from_slice( mem.read_bytes(addr, len) );
+        buff.copy_from_slice(mem.read_bytes(addr, len));
     }
-
 
     #[inline(always)]
     pub fn read_buffer(&mut self, from: u64, sz: usize) -> Vec<u8> {
@@ -1240,6 +1235,7 @@ impl Maps {
         self._alloc(sz, constants::LIBS32_MIN, constants::LIBS32_MAX, true)
     }
 
+    // this alloc return an address but you have to map it
     pub fn alloc(&self, sz: u64) -> Option<u64> {
         if self.is_64bits {
             self._alloc(sz, constants::ALLOC64_MIN, constants::ALLOC64_MAX, false)

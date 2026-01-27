@@ -1,5 +1,5 @@
 use crate::*;
-const DATA_ADDR: u64 = 0x7000;
+const DATA_ADDR: u64 = 0x1000;
 
 // Comprehensive tests for PUSH with memory operands
 //
@@ -18,14 +18,22 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_push_mem_indirect_rax() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1234567890ABCDEF);
 
@@ -38,14 +46,22 @@ fn test_push_mem_indirect_rax() {
 
 #[test]
 fn test_push_mem_indirect_rbx() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x33, // PUSH [RBX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbx = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xDEADBEEFCAFEBABE);
 
@@ -57,14 +73,22 @@ fn test_push_mem_indirect_rbx() {
 
 #[test]
 fn test_push_mem_indirect_rcx() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x31, // PUSH [RCX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rcx = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xAAAAAAAABBBBBBBB);
 
@@ -76,14 +100,22 @@ fn test_push_mem_indirect_rcx() {
 
 #[test]
 fn test_push_mem_indirect_r8() {
-    let mut emu = emu64();
     let code = [
         0x41, 0xff, 0x30, // PUSH [R8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r8 = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1111222233334444);
 
@@ -99,14 +131,22 @@ fn test_push_mem_indirect_r8() {
 
 #[test]
 fn test_push_mem_disp8_positive() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x70, 0x08, // PUSH [RAX + 8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 8, 0x4242424242424242);
 
@@ -118,14 +158,22 @@ fn test_push_mem_disp8_positive() {
 
 #[test]
 fn test_push_mem_disp8_negative() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x70, 0xf8, // PUSH [RAX - 8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR + 16;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 8, 0x9999999999999999);
 
@@ -137,14 +185,22 @@ fn test_push_mem_disp8_negative() {
 
 #[test]
 fn test_push_mem_disp8_zero() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x70, 0x00, // PUSH [RAX + 0]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x5555555555555555);
 
@@ -160,14 +216,22 @@ fn test_push_mem_disp8_zero() {
 
 #[test]
 fn test_push_mem_disp32_large() {
-    let mut emu = emu64();
     let code = [
         0xff, 0xb0, 0x00, 0x10, 0x00, 0x00, // PUSH [RAX + 0x1000]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x2000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x1000, 0x7777777777777777);
 
@@ -179,14 +243,22 @@ fn test_push_mem_disp32_large() {
 
 #[test]
 fn test_push_mem_disp32_small() {
-    let mut emu = emu64();
     let code = [
         0xff, 0xb0, 0x10, 0x00, 0x00, 0x00, // PUSH [RAX + 0x10]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x10, 0x1234123412341234);
 
@@ -202,15 +274,23 @@ fn test_push_mem_disp32_small() {
 
 #[test]
 fn test_push_mem_sib_base_index() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x34, 0x18, // PUSH [RAX + RBX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x100;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x100, 0x8888888888888888);
 
@@ -222,15 +302,23 @@ fn test_push_mem_sib_base_index() {
 
 #[test]
 fn test_push_mem_sib_base_index_scale2() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x34, 0x58, // PUSH [RAX + RBX*2]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x10;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x20, 0x2222222222222222);
 
@@ -242,15 +330,23 @@ fn test_push_mem_sib_base_index_scale2() {
 
 #[test]
 fn test_push_mem_sib_base_index_scale4() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x34, 0x98, // PUSH [RAX + RBX*4]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x08;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x20, 0x3333333333333333);
 
@@ -262,15 +358,23 @@ fn test_push_mem_sib_base_index_scale4() {
 
 #[test]
 fn test_push_mem_sib_base_index_scale8() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x34, 0xd8, // PUSH [RAX + RBX*8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x04;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x20, 0x4444444444444444);
 
@@ -286,15 +390,23 @@ fn test_push_mem_sib_base_index_scale8() {
 
 #[test]
 fn test_push_mem_sib_disp8() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x74, 0x18, 0x10, // PUSH [RAX + RBX + 0x10]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x20;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x30, 0x6666666666666666);
 
@@ -306,15 +418,23 @@ fn test_push_mem_sib_disp8() {
 
 #[test]
 fn test_push_mem_sib_scale_disp8() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x74, 0x58, 0x08, // PUSH [RAX + RBX*2 + 8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x10;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x28, 0xABCDABCDABCDABCD);
 
@@ -326,15 +446,23 @@ fn test_push_mem_sib_scale_disp8() {
 
 #[test]
 fn test_push_mem_sib_disp32() {
-    let mut emu = emu64();
     let code = [
         0xff, 0xb4, 0x18, 0x00, 0x01, 0x00, 0x00, // PUSH [RAX + RBX + 0x100]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 0x50;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x150, 0xFEDCFEDCFEDCFEDC);
 
@@ -350,18 +478,26 @@ fn test_push_mem_sib_disp32() {
 
 #[test]
 fn test_push_mem_sequence() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xff, 0x33, // PUSH [RBX]
         0xff, 0x31, // PUSH [RCX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = DATA_ADDR + 0x10;
     emu.regs_mut().rcx = DATA_ADDR + 0x20;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1111111111111111);
     emu.maps.write_qword(DATA_ADDR + 0x10, 0x2222222222222222);
@@ -371,13 +507,18 @@ fn test_push_mem_sequence() {
 
     assert_eq!(emu.regs().rsp, 0x1000 - 24, "Three values pushed");
     assert_eq!(emu.maps.read_qword(0x1000 - 8).unwrap(), 0x1111111111111111);
-    assert_eq!(emu.maps.read_qword(0x1000 - 16).unwrap(), 0x2222222222222222);
-    assert_eq!(emu.maps.read_qword(0x1000 - 24).unwrap(), 0x3333333333333333);
+    assert_eq!(
+        emu.maps.read_qword(0x1000 - 16).unwrap(),
+        0x2222222222222222
+    );
+    assert_eq!(
+        emu.maps.read_qword(0x1000 - 24).unwrap(),
+        0x3333333333333333
+    );
 }
 
 #[test]
 fn test_push_mem_array_elements() {
-    let mut emu = emu64();
     let code = [
         // Push array[0], array[1], array[2]
         0xff, 0x30, // PUSH [RAX] (array[0])
@@ -385,9 +526,18 @@ fn test_push_mem_array_elements() {
         0xff, 0x70, 0x10, // PUSH [RAX + 16] (array[2])
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xAA);
     emu.maps.write_qword(DATA_ADDR + 8, 0xBB);
@@ -395,9 +545,21 @@ fn test_push_mem_array_elements() {
 
     emu.run(None).unwrap();
 
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp).unwrap(), 0xCC, "array[2]");
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp + 8).unwrap(), 0xBB, "array[1]");
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp + 16).unwrap(), 0xAA, "array[0]");
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp).unwrap(),
+        0xCC,
+        "array[2]"
+    );
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp + 8).unwrap(),
+        0xBB,
+        "array[1]"
+    );
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp + 16).unwrap(),
+        0xAA,
+        "array[0]"
+    );
 }
 
 // ============================================================================
@@ -406,15 +568,23 @@ fn test_push_mem_array_elements() {
 
 #[test]
 fn test_push_mem_pop_roundtrip() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0x5b, // POP RBX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xBEEFBEEFBEEFBEEF);
 
@@ -430,16 +600,24 @@ fn test_push_mem_pop_roundtrip() {
 
 #[test]
 fn test_push_mem_preserves_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc3, 0x99, 0x00, 0x00, 0x00, // MOV RBX, 0x99
         0x48, 0xc7, 0xc1, 0x88, 0x00, 0x00, 0x00, // MOV RCX, 0x88
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1234567890ABCDEF);
 
@@ -451,15 +629,23 @@ fn test_push_mem_preserves_registers() {
 
 #[test]
 fn test_push_mem_preserves_flags() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC (set carry)
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x42);
 
@@ -474,14 +660,22 @@ fn test_push_mem_preserves_flags() {
 
 #[test]
 fn test_push_mem_zero() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0);
 
@@ -493,14 +687,22 @@ fn test_push_mem_zero() {
 
 #[test]
 fn test_push_mem_all_ones() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xFFFFFFFFFFFFFFFF);
 
@@ -512,14 +714,22 @@ fn test_push_mem_all_ones() {
 
 #[test]
 fn test_push_mem_alternating_bits() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xAAAAAAAAAAAAAAAA);
 
@@ -535,19 +745,35 @@ fn test_push_mem_alternating_bits() {
 
 #[test]
 fn test_push_mem_from_stack() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x42, // PUSH 0x42 (put value on stack)
         0x48, 0x89, 0xe0, // MOV RAX, RSP (RAX points to stack)
         0xff, 0x30, // PUSH [RAX] (push copy of top of stack)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp).unwrap(), 0x42, "Duplicate on top");
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp + 8).unwrap(), 0x42, "Original");
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp).unwrap(),
+        0x42,
+        "Duplicate on top"
+    );
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp + 8).unwrap(),
+        0x42,
+        "Original"
+    );
 }
 
 // ============================================================================
@@ -556,14 +782,22 @@ fn test_push_mem_from_stack() {
 
 #[test]
 fn test_push_mem_base_rsi() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x36, // PUSH [RSI]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rsi = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x9876543210FEDCBA);
 
@@ -575,14 +809,22 @@ fn test_push_mem_base_rsi() {
 
 #[test]
 fn test_push_mem_base_rdi() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x37, // PUSH [RDI]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rdi = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1122334455667788);
 
@@ -594,14 +836,22 @@ fn test_push_mem_base_rdi() {
 
 #[test]
 fn test_push_mem_base_rbp() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x75, 0x00, // PUSH [RBP + 0]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x5A5A5A5A5A5A5A5A);
 
@@ -617,7 +867,6 @@ fn test_push_mem_base_rbp() {
 
 #[test]
 fn test_push_mem_struct_fields() {
-    let mut emu = emu64();
     let code = [
         // Assuming RAX points to a struct, push its fields
         0xff, 0x30, // PUSH [RAX] (field 0)
@@ -625,9 +874,18 @@ fn test_push_mem_struct_fields() {
         0xff, 0x70, 0x10, // PUSH [RAX + 16] (field 2)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x1111);
     emu.maps.write_qword(DATA_ADDR + 8, 0x2222);
@@ -635,9 +893,21 @@ fn test_push_mem_struct_fields() {
 
     emu.run(None).unwrap();
 
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp).unwrap(), 0x3333, "Field 2");
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp + 8).unwrap(), 0x2222, "Field 1");
-    assert_eq!(emu.maps.read_qword(emu.regs().rsp + 16).unwrap(), 0x1111, "Field 0");
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp).unwrap(),
+        0x3333,
+        "Field 2"
+    );
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp + 8).unwrap(),
+        0x2222,
+        "Field 1"
+    );
+    assert_eq!(
+        emu.maps.read_qword(emu.regs().rsp + 16).unwrap(),
+        0x1111,
+        "Field 0"
+    );
 }
 
 // ============================================================================
@@ -646,16 +916,29 @@ fn test_push_mem_struct_fields() {
 
 #[test]
 fn test_push_mem_high_address() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x30, // PUSH [RAX]
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
-    emu.regs_mut().rax = 0x100000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
+    let space = emu.alloc(
+        "space",
+        100,
+        crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+    );
+    emu.regs_mut().rsp = 0x1000;
+    emu.regs_mut().rax = space;
 
-    emu.maps.write_qword(0x100000, 0xDEADBEEF);
+    emu.maps.write_qword(space, 0xDEADBEEF);
 
     emu.run(None).unwrap();
 
@@ -665,14 +948,22 @@ fn test_push_mem_high_address() {
 
 #[test]
 fn test_push_mem_with_extended_registers() {
-    let mut emu = emu64();
     let code = [
         0x41, 0xff, 0x37, // PUSH [R15]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r15 = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0xF15F15F15F15F15);
 
@@ -684,16 +975,24 @@ fn test_push_mem_with_extended_registers() {
 
 #[test]
 fn test_push_mem_indexed_array_access() {
-    let mut emu = emu64();
     let code = [
         // PUSH array[RBX] where array base is in RAX
         0xff, 0x34, 0xd8, // PUSH [RAX + RBX*8]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rbx = 5; // array[5]
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 40, 0x5555555555555555);
 
@@ -705,16 +1004,24 @@ fn test_push_mem_indexed_array_access() {
 
 #[test]
 fn test_push_mem_complex_addressing() {
-    let mut emu = emu64();
     let code = [
         // PUSH [RAX + RCX*4 + 0x20]
         0xff, 0x74, 0x88, 0x20, // PUSH [RAX + RCX*4 + 0x20]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
     emu.regs_mut().rcx = 0x10;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR + 0x60, 0xC0FFEEC0FFEEC0FF);
 
@@ -726,7 +1033,6 @@ fn test_push_mem_complex_addressing() {
 
 #[test]
 fn test_push_mem_consecutive_locations() {
-    let mut emu = emu64();
     let code = [
         0xff, 0x70, 0x00, // PUSH [RAX + 0]
         0xff, 0x70, 0x08, // PUSH [RAX + 8]
@@ -735,12 +1041,22 @@ fn test_push_mem_consecutive_locations() {
         0xff, 0x70, 0x20, // PUSH [RAX + 32]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps
+        .create_map(
+            "stack_test",
+            0x1000 - (0x1000 / 2),
+            0x1000,
+            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
+        )
+        .unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     for i in 0..5 {
-        emu.maps.write_qword(DATA_ADDR + i * 8, (i + 1) as u64 * 0x1111111111111111);
+        emu.maps
+            .write_qword(DATA_ADDR + i * 8, (i + 1) as u64 * 0x1111111111111111);
     }
 
     emu.run(None).unwrap();

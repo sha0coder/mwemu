@@ -1,4 +1,3 @@
-use crate::*;
 const DATA_ADDR: u64 = 0x7000;
 use crate::tests::rax_x86_tests::common::*;
 

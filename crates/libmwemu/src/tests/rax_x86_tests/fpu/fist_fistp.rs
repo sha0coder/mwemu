@@ -25,25 +25,25 @@ fn write_f64(mem: u64, addr: u64, value: f64) {
 }
 
 fn read_i16(mem: u64, addr: u64) -> i16 {
-    let mut emu = emu64();    let mut buf = [0u8; 2];
+    let emu = emu64();    let mut buf = [0u8; 2];
     emu.maps.read_bytes_buff(&mut buf, addr);
     i16::from_le_bytes(buf)
 }
 
 fn read_i32(mem: u64, addr: u64) -> i32 {
-    let mut emu = emu64();    let mut buf = [0u8; 4];
+    let emu = emu64();    let mut buf = [0u8; 4];
     emu.maps.read_bytes_buff(&mut buf, addr);
     i32::from_le_bytes(buf)
 }
 
 fn read_i64(mem: u64, addr: u64) -> i64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     i64::from_le_bytes(buf)
 }
 
 fn read_f64(mem: u64, addr: u64) -> f64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f64::from_le_bytes(buf)
 }

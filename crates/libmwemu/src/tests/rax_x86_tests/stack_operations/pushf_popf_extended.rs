@@ -18,13 +18,14 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_pushfq_basic() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FF8, "RSP decremented by 8");
@@ -37,14 +38,15 @@ fn test_pushfq_basic() {
 
 #[test]
 fn test_pushfq_with_carry_set() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC (set carry)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -55,14 +57,15 @@ fn test_pushfq_with_carry_set() {
 
 #[test]
 fn test_pushfq_with_zero_set() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x31, 0xc0, // XOR RAX, RAX (sets ZF)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -73,15 +76,16 @@ fn test_pushfq_with_zero_set() {
 
 #[test]
 fn test_pushfq_with_sign_set() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, -1
         0x48, 0x85, 0xc0, // TEST RAX, RAX (sets SF)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -92,7 +96,6 @@ fn test_pushfq_with_sign_set() {
 
 #[test]
 fn test_pushfq_multiple_flags() {
-    let mut emu = emu64();
     let code = [
         // XOR clears CF, so do XOR first to set ZF, then STC to set CF
         0x48, 0x31, 0xc0, // XOR RAX, RAX (sets ZF, PF, clears CF/OF)
@@ -100,8 +103,10 @@ fn test_pushfq_multiple_flags() {
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -113,15 +118,16 @@ fn test_pushfq_multiple_flags() {
 
 #[test]
 fn test_pushfq_preserves_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x42, 0x00, 0x00, 0x00, // MOV RAX, 0x42
         0x48, 0xc7, 0xc3, 0x99, 0x00, 0x00, 0x00, // MOV RBX, 0x99
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x42, "RAX unchanged");
@@ -130,7 +136,6 @@ fn test_pushfq_preserves_registers() {
 
 #[test]
 fn test_pushfq_multiple_times() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC
         0x48, 0x9c, // PUSHFQ (with CF)
@@ -138,8 +143,10 @@ fn test_pushfq_multiple_times() {
         0x48, 0x9c, // PUSHFQ (without CF)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000 - 16, "RSP decremented twice");
@@ -161,14 +168,15 @@ fn test_pushfq_multiple_times() {
 
 #[test]
 fn test_popfq_basic() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -176,7 +184,6 @@ fn test_popfq_basic() {
 
 #[test]
 fn test_popfq_restore_carry() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC (set carry)
         0x48, 0x9c, // PUSHFQ
@@ -184,8 +191,10 @@ fn test_popfq_restore_carry() {
         0x48, 0x9d, // POPFQ (restore carry)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored");
@@ -193,7 +202,6 @@ fn test_popfq_restore_carry() {
 
 #[test]
 fn test_popfq_restore_zero() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x31, 0xc0, // XOR RAX, RAX (sets ZF)
         0x48, 0x9c, // PUSHFQ
@@ -202,8 +210,10 @@ fn test_popfq_restore_zero() {
         0x48, 0x9d, // POPFQ (restore ZF)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_zf, "ZF should be restored");
@@ -211,7 +221,6 @@ fn test_popfq_restore_zero() {
 
 #[test]
 fn test_popfq_restore_sign() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, -1
         0x48, 0x85, 0xc0, // TEST RAX, RAX (sets SF)
@@ -220,8 +229,10 @@ fn test_popfq_restore_sign() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_sf, "SF should be restored");
@@ -229,7 +240,6 @@ fn test_popfq_restore_sign() {
 
 #[test]
 fn test_popfq_restore_all_flags() {
-    let mut emu = emu64();
     let code = [
         // XOR clears CF, so do XOR first to set ZF, then STC to set CF
         0x48, 0x31, 0xc0, // XOR RAX, RAX (sets ZF, PF, clears CF)
@@ -241,8 +251,10 @@ fn test_popfq_restore_all_flags() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored");
@@ -251,7 +263,6 @@ fn test_popfq_restore_all_flags() {
 
 #[test]
 fn test_popfq_preserves_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x42, 0x00, 0x00, 0x00, // MOV RAX, 0x42
         0x48, 0xc7, 0xc3, 0x99, 0x00, 0x00, 0x00, // MOV RBX, 0x99
@@ -259,8 +270,10 @@ fn test_popfq_preserves_registers() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x42, "RAX unchanged");
@@ -273,7 +286,6 @@ fn test_popfq_preserves_registers() {
 
 #[test]
 fn test_pushfq_popfq_roundtrip() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC
         0x48, 0x9c, // PUSHFQ
@@ -281,8 +293,10 @@ fn test_pushfq_popfq_roundtrip() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored by POPFQ");
@@ -291,7 +305,6 @@ fn test_pushfq_popfq_roundtrip() {
 
 #[test]
 fn test_pushfq_popfq_nested() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC
         0x48, 0x9c, // PUSHFQ (save flags with CF)
@@ -301,8 +314,10 @@ fn test_pushfq_popfq_nested() {
         0x48, 0x9d, // POPFQ (restore CF)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored from first PUSHFQ");
@@ -311,7 +326,6 @@ fn test_pushfq_popfq_nested() {
 
 #[test]
 fn test_pushfq_popfq_with_arithmetic() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, -1
         0x48, 0x83, 0xc0, 0x01, // ADD RAX, 1 (sets ZF, CF)
@@ -322,8 +336,10 @@ fn test_pushfq_popfq_with_arithmetic() {
         0x48, 0x9d, // POPFQ (restore original flags)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_zf, "ZF should be restored");
@@ -332,7 +348,6 @@ fn test_pushfq_popfq_with_arithmetic() {
 
 #[test]
 fn test_pushfq_modify_on_stack() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ
         // Modify CF bit on stack
@@ -342,8 +357,10 @@ fn test_pushfq_modify_on_stack() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be set from modified stack value");
@@ -351,7 +368,6 @@ fn test_pushfq_modify_on_stack() {
 
 #[test]
 fn test_multiple_pushfq_popfq() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC
         0x48, 0x9c, // PUSHFQ
@@ -362,8 +378,10 @@ fn test_multiple_pushfq_popfq() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Stack should be balanced");
@@ -376,13 +394,14 @@ fn test_multiple_pushfq_popfq() {
 
 #[test]
 fn test_pushf_16bit() {
-    let mut emu = emu64();
     let code = [
         0x66, 0x9c, // PUSHF with 66H prefix = 16-bit push
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FFE, "RSP decremented by 2");
@@ -390,14 +409,15 @@ fn test_pushf_16bit() {
 
 #[test]
 fn test_popf_16bit() {
-    let mut emu = emu64();
     let code = [
         0x66, 0x9c, // PUSHF
         0x66, 0x9d, // POPF
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP should be balanced");
@@ -409,13 +429,14 @@ fn test_popf_16bit() {
 
 #[test]
 fn test_pushfq_at_stack_boundary() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x08; // Near bottom of memory
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x08-(0x08 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x08; // Near bottom of memory
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x00, "RSP decremented");
@@ -423,13 +444,14 @@ fn test_pushfq_at_stack_boundary() {
 
 #[test]
 fn test_popfq_from_prepared_stack() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x3000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x3000;
 
     let flags_with_cf = 0x0001u64;
     let flags_bytes = flags_with_cf.to_le_bytes();
@@ -441,15 +463,16 @@ fn test_popfq_from_prepared_stack() {
 
 #[test]
 fn test_pushfq_popfq_preserves_reserved_bits() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ
         0x48, 0x9d, // POPFQ
         0x48, 0x9c, // PUSHFQ again
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -461,7 +484,6 @@ fn test_pushfq_popfq_preserves_reserved_bits() {
 
 #[test]
 fn test_pushfq_with_overflow() {
-    let mut emu = emu64();
     let code = [
         // Use 32-bit operand size to trigger signed overflow
         // 0x7FFFFFFF + 1 = 0x80000000 (positive + positive = negative in 32-bit)
@@ -470,8 +492,10 @@ fn test_pushfq_with_overflow() {
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -482,7 +506,6 @@ fn test_pushfq_with_overflow() {
 
 #[test]
 fn test_popfq_restore_overflow() {
-    let mut emu = emu64();
     let code = [
         // Use 32-bit operand size to trigger signed overflow
         0xb8, 0xff, 0xff, 0xff, 0x7f, // MOV EAX, 0x7FFFFFFF (32-bit)
@@ -492,8 +515,10 @@ fn test_popfq_restore_overflow() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_of, "OF should be restored");
@@ -501,14 +526,15 @@ fn test_popfq_restore_overflow() {
 
 #[test]
 fn test_pushfq_with_direction_flag() {
-    let mut emu = emu64();
     let code = [
         0xfd, // STD (set direction flag)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -519,7 +545,6 @@ fn test_pushfq_with_direction_flag() {
 
 #[test]
 fn test_popfq_restore_direction_flag() {
-    let mut emu = emu64();
     let code = [
         0xfd, // STD
         0x48, 0x9c, // PUSHFQ
@@ -527,8 +552,10 @@ fn test_popfq_restore_direction_flag() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_df, "DF should be restored");
@@ -536,7 +563,6 @@ fn test_popfq_restore_direction_flag() {
 
 #[test]
 fn test_pushfq_popfq_with_all_status_flags() {
-    let mut emu = emu64();
     let code = [
         // Set up complex flag state
         // Use 32-bit ADD to set OF (64-bit won't overflow with 0x7FFFFFFF+1)
@@ -554,8 +580,10 @@ fn test_pushfq_popfq_with_all_status_flags() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored");
@@ -565,7 +593,6 @@ fn test_pushfq_popfq_with_all_status_flags() {
 
 #[test]
 fn test_pushfq_after_comparison() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x0a, 0x00, 0x00, 0x00, // MOV RAX, 10
         0x48, 0xc7, 0xc3, 0x05, 0x00, 0x00, 0x00, // MOV RBX, 5
@@ -573,8 +600,10 @@ fn test_pushfq_after_comparison() {
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -587,7 +616,6 @@ fn test_pushfq_after_comparison() {
 
 #[test]
 fn test_popfq_after_comparison() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x05, 0x00, 0x00, 0x00, // MOV RAX, 5
         0x48, 0xc7, 0xc3, 0x0a, 0x00, 0x00, 0x00, // MOV RBX, 10
@@ -599,8 +627,10 @@ fn test_popfq_after_comparison() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be restored from first comparison");
@@ -608,7 +638,6 @@ fn test_popfq_after_comparison() {
 
 #[test]
 fn test_pushfq_popfq_in_loop_simulation() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC
         // Save flags
@@ -626,8 +655,10 @@ fn test_pushfq_popfq_in_loop_simulation() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_cf, "CF should be preserved through multiple save/restore");
@@ -636,15 +667,16 @@ fn test_pushfq_popfq_in_loop_simulation() {
 
 #[test]
 fn test_pushfq_with_parity_flag() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x03, 0x00, 0x00, 0x00, // MOV RAX, 3 (0b11, even parity)
         0x48, 0x85, 0xc0, // TEST RAX, RAX (sets PF)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -655,7 +687,6 @@ fn test_pushfq_with_parity_flag() {
 
 #[test]
 fn test_popfq_restore_parity() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x03, 0x00, 0x00, 0x00, // MOV RAX, 3
         0x48, 0x85, 0xc0, // TEST RAX, RAX (sets PF)
@@ -665,8 +696,10 @@ fn test_popfq_restore_parity() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_pf, "PF should be restored");
@@ -674,15 +707,16 @@ fn test_popfq_restore_parity() {
 
 #[test]
 fn test_pushfq_with_auxiliary_carry() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x0f, 0x00, 0x00, 0x00, // MOV RAX, 0x0F
         0x48, 0x83, 0xc0, 0x01, // ADD RAX, 1 (sets AF)
         0x48, 0x9c, // PUSHFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     let mut stack_val = [0u8; 8];
@@ -693,7 +727,6 @@ fn test_pushfq_with_auxiliary_carry() {
 
 #[test]
 fn test_popfq_restore_auxiliary_carry() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x0f, 0x00, 0x00, 0x00, // MOV RAX, 0x0F
         0x48, 0x83, 0xc0, 0x01, // ADD RAX, 1 (sets AF)
@@ -702,8 +735,10 @@ fn test_popfq_restore_auxiliary_carry() {
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert!(emu.flags().f_af, "AF should be restored");

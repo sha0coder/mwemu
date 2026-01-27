@@ -23,14 +23,15 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_enter_basic_no_nesting() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     // ENTER 0,0 should: PUSH RBP, MOV RBP, RSP
@@ -43,14 +44,15 @@ fn test_enter_basic_no_nesting() {
 
 #[test]
 fn test_enter_allocate_8_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set after pushing");
@@ -62,14 +64,15 @@ fn test_enter_allocate_8_bytes() {
 
 #[test]
 fn test_enter_allocate_16_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -81,14 +84,15 @@ fn test_enter_allocate_16_bytes() {
 
 #[test]
 fn test_enter_allocate_32_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -97,14 +101,15 @@ fn test_enter_allocate_32_bytes() {
 
 #[test]
 fn test_enter_allocate_64_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x40, 0x00, 0x00, // ENTER 64, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -113,14 +118,15 @@ fn test_enter_allocate_64_bytes() {
 
 #[test]
 fn test_enter_allocate_128_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x80, 0x00, 0x00, // ENTER 128, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -129,14 +135,15 @@ fn test_enter_allocate_128_bytes() {
 
 #[test]
 fn test_enter_allocate_256_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x01, 0x00, // ENTER 256, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -145,14 +152,15 @@ fn test_enter_allocate_256_bytes() {
 
 #[test]
 fn test_enter_allocate_1024_bytes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x04, 0x00, // ENTER 1024, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x2000 - 8, "RBP set");
@@ -161,14 +169,15 @@ fn test_enter_allocate_1024_bytes() {
 
 #[test]
 fn test_enter_allocate_max_16bit() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0xff, 0xff, 0x00, // ENTER 65535, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x20000-(0x20000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x20000;
     emu.regs_mut().rbp = 0x30000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x20000 - 8, "RBP set");
@@ -181,14 +190,15 @@ fn test_enter_allocate_max_16bit() {
 
 #[test]
 fn test_enter_nesting_level_1_no_alloc() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x01, // ENTER 0, 1
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     // 1. PUSH RBP (old RBP = 0x2000)
@@ -205,14 +215,15 @@ fn test_enter_nesting_level_1_no_alloc() {
 
 #[test]
 fn test_enter_nesting_level_1_with_alloc() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x01, // ENTER 16, 1
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000 - 32, "RSP decremented by 32");
@@ -227,14 +238,15 @@ fn test_enter_nesting_level_1_with_alloc() {
 
 #[test]
 fn test_enter_nesting_level_2() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x02, // ENTER 0, 2
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(0x3000, 0x4000);
 
@@ -245,14 +257,15 @@ fn test_enter_nesting_level_2() {
 
 #[test]
 fn test_enter_nesting_level_3() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x03, // ENTER 8, 3
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(0x3000, 0x4000);
     emu.maps.write_qword(0x4000, 0x5000);
@@ -264,14 +277,15 @@ fn test_enter_nesting_level_3() {
 
 #[test]
 fn test_enter_nesting_level_4_with_alloc() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x04, // ENTER 32, 4
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000 - 72, "RSP decremented by 72");
@@ -279,14 +293,15 @@ fn test_enter_nesting_level_4_with_alloc() {
 
 #[test]
 fn test_enter_nesting_level_5() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x05, // ENTER 0, 5
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000 - 48, "RSP decremented by 48");
@@ -298,7 +313,6 @@ fn test_enter_nesting_level_5() {
 
 #[test]
 fn test_enter_preserves_other_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x11, 0x00, 0x00, 0x00, // MOV RAX, 0x11
         0x48, 0xc7, 0xc3, 0x22, 0x00, 0x00, 0x00, // MOV RBX, 0x22
@@ -306,8 +320,10 @@ fn test_enter_preserves_other_registers() {
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x11, "RAX unchanged");
@@ -317,14 +333,15 @@ fn test_enter_preserves_other_registers() {
 
 #[test]
 fn test_enter_preserves_flags() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC (set carry)
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_ne!(emu.flags().dump() & 0x01, 0, "CF should be preserved");
@@ -336,15 +353,16 @@ fn test_enter_preserves_flags() {
 
 #[test]
 fn test_enter_leave_roundtrip() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -353,7 +371,6 @@ fn test_enter_leave_roundtrip() {
 
 #[test]
 fn test_enter_leave_nested() {
-    let mut emu = emu64();
     let code = [
         // Outer function
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
@@ -363,9 +380,11 @@ fn test_enter_leave_nested() {
         0xc9, // LEAVE (outer)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored after nested ENTER/LEAVE");
@@ -378,14 +397,15 @@ fn test_enter_leave_nested() {
 
 #[test]
 fn test_enter_high_stack_address() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x100000-(0x100000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x100000;
     emu.regs_mut().rbp = 0x200000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x100000 - 8, "RBP set");
@@ -397,14 +417,15 @@ fn test_enter_high_stack_address() {
 
 #[test]
 fn test_enter_low_stack_address() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x100-(0x100 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x100;
     emu.regs_mut().rbp = 0x200;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x100 - 8, "RBP set");
@@ -420,7 +441,6 @@ fn test_enter_low_stack_address() {
 
 #[test]
 fn test_enter_multiple_calls() {
-    let mut emu = emu64();
     let code = [
         // First function
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
@@ -430,9 +450,11 @@ fn test_enter_multiple_calls() {
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000 - 80, "RSP after three ENTERs");
@@ -440,14 +462,15 @@ fn test_enter_multiple_calls() {
 
 #[test]
 fn test_enter_with_odd_allocation() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x11, 0x00, 0x00, // ENTER 17, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -456,14 +479,15 @@ fn test_enter_with_odd_allocation() {
 
 #[test]
 fn test_enter_allocation_alignment() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x18, 0x00, 0x00, // ENTER 24, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP set");
@@ -476,7 +500,6 @@ fn test_enter_allocation_alignment() {
 
 #[test]
 fn test_enter_frame_pointer_chain() {
-    let mut emu = emu64();
     let code = [
         // First frame
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
@@ -486,9 +509,11 @@ fn test_enter_frame_pointer_chain() {
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000 - 24, "Three frames created");
@@ -507,14 +532,15 @@ fn test_enter_frame_pointer_chain() {
 
 #[test]
 fn test_enter_small_local_vars() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x18, 0x00, 0x00, // ENTER 24, 0 (3 x 8-byte vars)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "Frame pointer set");
@@ -523,14 +549,15 @@ fn test_enter_small_local_vars() {
 
 #[test]
 fn test_enter_large_local_array() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x02, 0x00, // ENTER 512, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x2000 - 8, "Frame pointer set");
@@ -539,14 +566,15 @@ fn test_enter_large_local_array() {
 
 #[test]
 fn test_enter_no_locals() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "Frame pointer set");
@@ -559,16 +587,17 @@ fn test_enter_no_locals() {
 
 #[test]
 fn test_enter_then_push() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0x48, 0xc7, 0xc0, 0x42, 0x00, 0x00, 0x00, // MOV RAX, 0x42
         0x50, // PUSH RAX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000 - 32, "RSP after ENTER and PUSH");
@@ -579,16 +608,17 @@ fn test_enter_then_push() {
 
 #[test]
 fn test_enter_then_mov_to_local() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0x48, 0xc7, 0xc0, 0xaa, 0x00, 0x00, 0x00, // MOV RAX, 0xAA
         0x48, 0x89, 0x45, 0xf8, // MOV [RBP-8], RAX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     let local_var = emu.maps.read_qword(emu.regs().rbp - 8).unwrap();
@@ -597,7 +627,6 @@ fn test_enter_then_mov_to_local() {
 
 #[test]
 fn test_enter_with_parameter_access() {
-    let mut emu = emu64();
     let code = [
         // Simulate: parameters pushed before call, then ENTER
         0x48, 0xc7, 0xc0, 0x11, 0x00, 0x00, 0x00, // MOV RAX, 0x11
@@ -607,9 +636,11 @@ fn test_enter_with_parameter_access() {
         0x48, 0x8b, 0x5d, 0x10, // MOV RBX, [RBP+16]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_ne!(emu.regs().rbx, 0, "Parameter accessed through RBP");
@@ -621,14 +652,15 @@ fn test_enter_with_parameter_access() {
 
 #[test]
 fn test_enter_nesting_level_10() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x0a, // ENTER 0, 10
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000 - 88, "RSP with nesting level 10");
@@ -636,14 +668,15 @@ fn test_enter_nesting_level_10() {
 
 #[test]
 fn test_enter_nesting_level_16() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x10, // ENTER 0, 16
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x4000-(0x4000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x4000;
     emu.regs_mut().rbp = 0x5000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x4000 - 136, "RSP with nesting level 16");
@@ -651,14 +684,15 @@ fn test_enter_nesting_level_16() {
 
 #[test]
 fn test_enter_nesting_level_31() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x1f, // ENTER 0, 31
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x5000-(0x5000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x5000;
     emu.regs_mut().rbp = 0x6000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x5000 - 256, "RSP with max nesting level 31");
@@ -670,14 +704,15 @@ fn test_enter_nesting_level_31() {
 
 #[test]
 fn test_enter_zero_allocation_zero_nesting() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000 - 8, "Only RBP pushed");
@@ -686,14 +721,15 @@ fn test_enter_zero_allocation_zero_nesting() {
 
 #[test]
 fn test_enter_with_same_rbp_rsp() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x1000; // RBP == RSP
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000 - 8, "RBP updated");
@@ -704,16 +740,17 @@ fn test_enter_with_same_rbp_rsp() {
 
 #[test]
 fn test_enter_consecutive_same_size() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000 - 120, "Three identical ENTERs");
@@ -721,7 +758,6 @@ fn test_enter_consecutive_same_size() {
 
 #[test]
 fn test_enter_mixed_sizes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
@@ -729,9 +765,11 @@ fn test_enter_mixed_sizes() {
         0xc8, 0x40, 0x00, 0x00, // ENTER 64, 0
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     // 16 + 24 + 40 + 72 = 152

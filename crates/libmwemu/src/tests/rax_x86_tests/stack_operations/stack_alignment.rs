@@ -13,12 +13,13 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_stack_alignment_16_byte() {
-    let mut emu = emu64();
     let code = [
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "RSP is 16-byte aligned");
@@ -26,12 +27,13 @@ fn test_stack_alignment_16_byte() {
 
 #[test]
 fn test_stack_misalignment_8_byte() {
-    let mut emu = emu64();
     let code = [
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1008; // 8-byte aligned, not 16-byte aligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1008-(0x1008 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1008; // 8-byte aligned, not 16-byte aligned
     emu.run(None).unwrap();
 
     assert_ne!(emu.regs().rsp & 0x0F, 0, "RSP is not 16-byte aligned");
@@ -40,13 +42,14 @@ fn test_stack_misalignment_8_byte() {
 
 #[test]
 fn test_single_push_breaks_alignment() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "RSP offset by 8 from 16-byte boundary");
@@ -54,14 +57,15 @@ fn test_single_push_breaks_alignment() {
 
 #[test]
 fn test_two_pushes_restore_alignment() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX
         0x53, // PUSH RBX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000; // 16-byte aligned
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "RSP is 16-byte aligned after two pushes");
@@ -69,13 +73,14 @@ fn test_two_pushes_restore_alignment() {
 
 #[test]
 fn test_odd_pushes_misalign() {
-    let mut emu = emu64();
     let code = [
         0x50, 0x53, 0x51, // PUSH RAX, RBX, RCX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "Three pushes misalign stack");
@@ -83,13 +88,14 @@ fn test_odd_pushes_misalign() {
 
 #[test]
 fn test_four_pushes_aligned() {
-    let mut emu = emu64();
     let code = [
         0x50, 0x53, 0x51, 0x52, // PUSH RAX, RBX, RCX, RDX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "Four pushes maintain alignment");
@@ -101,13 +107,14 @@ fn test_four_pushes_aligned() {
 
 #[test]
 fn test_enter_maintains_alignment() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "ENTER pushes RBP (8 bytes), misaligning");
@@ -115,13 +122,14 @@ fn test_enter_maintains_alignment() {
 
 #[test]
 fn test_enter_with_even_allocation() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH RBP (8) + SUB RSP, 16 = 24 bytes total, misaligned
@@ -130,13 +138,14 @@ fn test_enter_with_even_allocation() {
 
 #[test]
 fn test_enter_with_alignment_padding() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH RBP (8) + SUB RSP, 8 = 16 bytes total, aligned
@@ -145,14 +154,15 @@ fn test_enter_with_alignment_padding() {
 
 #[test]
 fn test_enter_leave_alignment_roundtrip() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "ENTER/LEAVE roundtrip preserves alignment");
@@ -164,13 +174,14 @@ fn test_enter_leave_alignment_roundtrip() {
 
 #[test]
 fn test_push_imm_alignment() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x42, // PUSH 0x42
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "PUSH immediate breaks alignment");
@@ -178,14 +189,15 @@ fn test_push_imm_alignment() {
 
 #[test]
 fn test_multiple_push_imm_pattern() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03, 0x6a, 0x04,
         0x6a, 0x05, 0x6a, 0x06, 0x6a, 0x07, 0x6a, 0x08,
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // 8 pushes * 8 bytes = 64 bytes, maintains alignment
@@ -198,13 +210,14 @@ fn test_multiple_push_imm_pattern() {
 
 #[test]
 fn test_sub_rsp_16_aligned() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x10, // SUB RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "SUB RSP, 16 maintains alignment");
@@ -212,13 +225,14 @@ fn test_sub_rsp_16_aligned() {
 
 #[test]
 fn test_sub_rsp_8_misaligned() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "SUB RSP, 8 breaks alignment");
@@ -226,13 +240,14 @@ fn test_sub_rsp_8_misaligned() {
 
 #[test]
 fn test_sub_rsp_32_aligned() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "SUB RSP, 32 maintains alignment");
@@ -240,13 +255,14 @@ fn test_sub_rsp_32_aligned() {
 
 #[test]
 fn test_sub_rsp_48_aligned() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x30, // SUB RSP, 48
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "SUB RSP, 48 maintains alignment");
@@ -254,13 +270,14 @@ fn test_sub_rsp_48_aligned() {
 
 #[test]
 fn test_sub_rsp_odd_value() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x18, // SUB RSP, 24
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 8, "SUB RSP, 24 breaks alignment");
@@ -272,13 +289,14 @@ fn test_sub_rsp_odd_value() {
 
 #[test]
 fn test_align_stack_with_and() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xe4, 0xf0, // AND RSP, 0xFFFFFFFFFFFFFFF0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1008; // Misaligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1008-(0x1008 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1008; // Misaligned
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "AND aligns stack to 16 bytes");
@@ -287,13 +305,14 @@ fn test_align_stack_with_and() {
 
 #[test]
 fn test_align_already_aligned_stack() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xe4, 0xf0, // AND RSP, 0xFFFFFFFFFFFFFFF0
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000; // Already aligned
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000; // Already aligned
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Already aligned stack unchanged");
@@ -305,15 +324,16 @@ fn test_align_already_aligned_stack() {
 
 #[test]
 fn test_function_prologue_alignment() {
-    let mut emu = emu64();
     let code = [
         0x55, // PUSH RBP
         0x48, 0x89, 0xe5, // MOV RBP, RSP
         0x48, 0x83, 0xec, 0x10, // SUB RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH RBP (8) + SUB 16 = 24 bytes, misaligned
@@ -322,7 +342,6 @@ fn test_function_prologue_alignment() {
 
 #[test]
 fn test_function_prologue_with_saved_regs() {
-    let mut emu = emu64();
     let code = [
         0x55, // PUSH RBP
         0x48, 0x89, 0xe5, // MOV RBP, RSP
@@ -330,8 +349,10 @@ fn test_function_prologue_with_saved_regs() {
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8 (locals)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH RBP (8) + PUSH RBX (8) + SUB 8 = 24 bytes, misaligned
@@ -340,15 +361,16 @@ fn test_function_prologue_with_saved_regs() {
 
 #[test]
 fn test_function_prologue_aligned_locals() {
-    let mut emu = emu64();
     let code = [
         0x55, // PUSH RBP
         0x48, 0x89, 0xe5, // MOV RBP, RSP
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8 (adjust for alignment)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH RBP (8) + SUB 8 = 16 bytes, aligned
@@ -361,14 +383,15 @@ fn test_function_prologue_aligned_locals() {
 
 #[test]
 fn test_push_pop_alignment_restoration() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX (break alignment)
         0x58, // POP RAX (restore alignment)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "PUSH/POP restores alignment");
@@ -376,14 +399,15 @@ fn test_push_pop_alignment_restoration() {
 
 #[test]
 fn test_sub_add_alignment_restoration() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x18, // SUB RSP, 24 (misalign)
         0x48, 0x83, 0xc4, 0x18, // ADD RSP, 24 (restore)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "SUB/ADD restores alignment");
@@ -395,7 +419,6 @@ fn test_sub_add_alignment_restoration() {
 
 #[test]
 fn test_nested_function_alignment() {
-    let mut emu = emu64();
     let code = [
         // Outer function
         0x55, // PUSH RBP
@@ -407,8 +430,10 @@ fn test_nested_function_alignment() {
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "Nested functions maintain alignment");
@@ -416,15 +441,16 @@ fn test_nested_function_alignment() {
 
 #[test]
 fn test_alignment_with_parameter_passing() {
-    let mut emu = emu64();
     let code = [
         // Push 6 parameters (odd number)
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03,
         0x6a, 0x04, 0x6a, 0x05, 0x6a, 0x06,
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // 6 * 8 = 48 bytes, maintains alignment
@@ -433,14 +459,15 @@ fn test_alignment_with_parameter_passing() {
 
 #[test]
 fn test_alignment_with_odd_parameters() {
-    let mut emu = emu64();
     let code = [
         // Push 3 parameters (odd number)
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03,
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // 3 * 8 = 24 bytes, breaks alignment
@@ -453,7 +480,6 @@ fn test_alignment_with_odd_parameters() {
 
 #[test]
 fn test_check_multiple_alignment_points() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX (point 1: misaligned)
         0x50, // PUSH RAX (point 2: aligned)
@@ -461,8 +487,10 @@ fn test_check_multiple_alignment_points() {
         0x50, // PUSH RAX (point 4: aligned)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "Four pushes result in alignment");
@@ -470,12 +498,13 @@ fn test_check_multiple_alignment_points() {
 
 #[test]
 fn test_alignment_at_various_addresses() {
-    let mut emu = emu64();
     let code = [0xf4]; // HLT
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
 
     for addr in [0x1000, 0x2000, 0x3000, 0x4000, 0x10000, 0x100000].iter() {
-        emu.regs_mut().rsp = *addr;
-        emu.load_code_bytes(&code);
+        emu.maps.create_map("stack_test", *addr-(*addr / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = *addr;
     emu.run(None).unwrap();
 
         assert_eq!(emu.regs().rsp & 0x0F, 0, "Address 0x{:x} is 16-byte aligned", addr);
@@ -484,14 +513,15 @@ fn test_alignment_at_various_addresses() {
 
 #[test]
 fn test_pushfq_popfq_alignment() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x9c, // PUSHFQ (8 bytes)
         0x48, 0x9d, // POPFQ
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "PUSHFQ/POPFQ preserves alignment");
@@ -499,13 +529,14 @@ fn test_pushfq_popfq_alignment() {
 
 #[test]
 fn test_large_stack_frame_alignment() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x81, 0xec, 0x00, 0x10, 0x00, 0x00, // SUB RSP, 0x1000 (4096 bytes)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x10000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x10000-(0x10000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x10000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp & 0x0F, 0, "Large allocation maintains alignment");
@@ -514,7 +545,6 @@ fn test_large_stack_frame_alignment() {
 
 #[test]
 fn test_alignment_after_mixed_operations() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
@@ -522,8 +552,10 @@ fn test_alignment_after_mixed_operations() {
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // PUSH(8) + SUB(8) + PUSH(8) + SUB(8) = 32 bytes, aligned

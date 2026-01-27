@@ -23,14 +23,14 @@ fn write_f64(mem: u64, addr: u64, value: f64) {
 
 // Helper to read f32 from memory
 fn read_f32(mem: u64, addr: u64) -> f32 {
-    let mut emu = emu64();    let mut buf = [0u8; 4];
+    let emu = emu64();    let mut buf = [0u8; 4];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f32::from_le_bytes(buf)
 }
 
 // Helper to read f64 from memory
 fn read_f64(mem: u64, addr: u64) -> f64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f64::from_le_bytes(buf)
 }

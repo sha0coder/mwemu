@@ -30,7 +30,7 @@ fn write_u16(mem: u64, addr: u64, val: u16) {
 }
 
 fn read_u16(mem: u64, addr: u64) -> u16 {
-    let mut emu = emu64();    let mut buf = [0u8; 2];
+    let emu = emu64();    let mut buf = [0u8; 2];
     emu.maps.read_bytes_buff(&mut buf, addr);
     u16::from_le_bytes(buf)
 }
@@ -40,7 +40,7 @@ fn write_f64(mem: u64, addr: u64, val: f64) {
 }
 
 fn read_f64(mem: u64, addr: u64) -> f64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f64::from_le_bytes(buf)
 }

@@ -18,14 +18,15 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_leave_basic() {
-    let mut emu = emu64();
     let code = [
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2FF8-(0x2FF8 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2FF8; // Stack pointer below frame pointer
     emu.regs_mut().rbp = 0x3000; // Frame pointer
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(0x3000, 0x4000);
 
@@ -37,15 +38,16 @@ fn test_leave_basic() {
 
 #[test]
 fn test_leave_after_enter() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored to original");
@@ -54,7 +56,6 @@ fn test_leave_after_enter() {
 
 #[test]
 fn test_leave_with_local_variables() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0 (allocate space for locals)
         // Simulate using local variables
@@ -62,9 +63,11 @@ fn test_leave_with_local_variables() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored despite local var usage");
@@ -73,15 +76,16 @@ fn test_leave_with_local_variables() {
 
 #[test]
 fn test_leave_small_frame() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -90,15 +94,16 @@ fn test_leave_small_frame() {
 
 #[test]
 fn test_leave_large_frame() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x04, 0x00, // ENTER 1024, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP restored after large allocation");
@@ -111,7 +116,6 @@ fn test_leave_large_frame() {
 
 #[test]
 fn test_leave_nested_functions() {
-    let mut emu = emu64();
     let code = [
         // Outer function
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
@@ -121,9 +125,11 @@ fn test_leave_nested_functions() {
         0xc9, // LEAVE (outer)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP fully restored after nested calls");
@@ -132,7 +138,6 @@ fn test_leave_nested_functions() {
 
 #[test]
 fn test_leave_triple_nested() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0 (func1)
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0 (func2)
@@ -142,9 +147,11 @@ fn test_leave_triple_nested() {
         0xc9, // LEAVE (func1)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP restored through 3 levels");
@@ -153,7 +160,6 @@ fn test_leave_triple_nested() {
 
 #[test]
 fn test_leave_deep_nesting() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
@@ -167,9 +173,11 @@ fn test_leave_deep_nesting() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000, "RSP restored through deep nesting");
@@ -182,7 +190,6 @@ fn test_leave_deep_nesting() {
 
 #[test]
 fn test_leave_preserves_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x11, 0x00, 0x00, 0x00, // MOV RAX, 0x11
         0x48, 0xc7, 0xc3, 0x22, 0x00, 0x00, 0x00, // MOV RBX, 0x22
@@ -191,8 +198,10 @@ fn test_leave_preserves_registers() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x11, "RAX unchanged");
@@ -202,15 +211,16 @@ fn test_leave_preserves_registers() {
 
 #[test]
 fn test_leave_preserves_flags() {
-    let mut emu = emu64();
     let code = [
         0xf9, // STC (set carry)
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_ne!(emu.flags().dump() & 0x01, 0, "CF should be preserved");
@@ -222,7 +232,6 @@ fn test_leave_preserves_flags() {
 
 #[test]
 fn test_leave_manual_frame() {
-    let mut emu = emu64();
     let code = [
         // Manual ENTER equivalent
         0x55, // PUSH RBP
@@ -232,9 +241,11 @@ fn test_leave_manual_frame() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -243,7 +254,6 @@ fn test_leave_manual_frame() {
 
 #[test]
 fn test_leave_with_push_pop_in_function() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0x50, // PUSH RAX
@@ -254,11 +264,13 @@ fn test_leave_with_push_pop_in_function() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
     emu.regs_mut().rax = 0xAAAA;
     emu.regs_mut().rbx = 0xBBBB;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -273,14 +285,15 @@ fn test_leave_with_push_pop_in_function() {
 
 #[test]
 fn test_leave_standalone() {
-    let mut emu = emu64();
     let code = [
         0xc9, // LEAVE (without prior ENTER)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2FF8-(0x2FF8 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2FF8;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(0x3000, 0x4000);
 
@@ -292,7 +305,6 @@ fn test_leave_standalone() {
 
 #[test]
 fn test_leave_with_modified_stack() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         // Manually adjust RSP
@@ -300,9 +312,11 @@ fn test_leave_with_modified_stack() {
         0xc9, // LEAVE (should still work correctly)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     // LEAVE uses RBP, not RSP, so RSP modification doesn't matter
@@ -316,15 +330,16 @@ fn test_leave_with_modified_stack() {
 
 #[test]
 fn test_leave_high_stack_address() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x100000-(0x100000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x100000;
     emu.regs_mut().rbp = 0x200000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x100000, "RSP restored at high address");
@@ -333,15 +348,16 @@ fn test_leave_high_stack_address() {
 
 #[test]
 fn test_leave_low_stack_address() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x100-(0x100 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x100;
     emu.regs_mut().rbp = 0x200;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x100, "RSP restored at low address");
@@ -354,15 +370,16 @@ fn test_leave_low_stack_address() {
 
 #[test]
 fn test_leave_zero_sized_frame() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored");
@@ -375,7 +392,6 @@ fn test_leave_zero_sized_frame() {
 
 #[test]
 fn test_leave_typical_epilogue() {
-    let mut emu = emu64();
     let code = [
         // Prologue
         0xc8, 0x18, 0x00, 0x00, // ENTER 24, 0
@@ -385,9 +401,11 @@ fn test_leave_typical_epilogue() {
         0xc9, // LEAVE
         0xf4, // HLT (would be RET)
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x42, "Return value set");
@@ -397,7 +415,6 @@ fn test_leave_typical_epilogue() {
 
 #[test]
 fn test_leave_with_saved_registers() {
-    let mut emu = emu64();
     let code = [
         // Prologue
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
@@ -412,11 +429,13 @@ fn test_leave_with_saved_registers() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
     emu.regs_mut().rax = 0xAAAA;
     emu.regs_mut().rbx = 0xBBBB;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0xAAAA, "RAX restored");
@@ -430,7 +449,6 @@ fn test_leave_with_saved_registers() {
 
 #[test]
 fn test_leave_sequence() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xc9, // LEAVE
@@ -438,9 +456,11 @@ fn test_leave_sequence() {
         0xc9, // LEAVE again
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored after sequence");
@@ -453,7 +473,6 @@ fn test_leave_sequence() {
 
 #[test]
 fn test_leave_frame_chain() {
-    let mut emu = emu64();
     let code = [
         // Create frame chain
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0 (frame 1)
@@ -465,9 +484,11 @@ fn test_leave_frame_chain() {
         0xc9, // LEAVE (frame 1)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "Full chain unwound");
@@ -476,7 +497,6 @@ fn test_leave_frame_chain() {
 
 #[test]
 fn test_leave_with_varying_frames() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x40, 0x00, 0x00, // ENTER 64, 0
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
@@ -486,9 +506,11 @@ fn test_leave_with_varying_frames() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "All frames unwound");
@@ -501,14 +523,15 @@ fn test_leave_with_varying_frames() {
 
 #[test]
 fn test_leave_rbp_equals_rsp() {
-    let mut emu = emu64();
     let code = [
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x3000; // RBP == RSP
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(0x3000, 0x4000);
 
@@ -520,15 +543,16 @@ fn test_leave_rbp_equals_rsp() {
 
 #[test]
 fn test_leave_with_zero_saved_rbp() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x0000; // RBP is zero
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x0000, "Zero RBP restored");
@@ -536,15 +560,16 @@ fn test_leave_with_zero_saved_rbp() {
 
 #[test]
 fn test_leave_stack_grows_correctly() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x01, 0x00, // ENTER 256, 0
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "Large frame properly unwound");
@@ -556,7 +581,6 @@ fn test_leave_stack_grows_correctly() {
 
 #[test]
 fn test_leave_after_stack_arithmetic() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         // Do some stack operations
@@ -565,9 +589,11 @@ fn test_leave_after_stack_arithmetic() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "LEAVE restores correctly despite SUB/ADD");
@@ -575,7 +601,6 @@ fn test_leave_after_stack_arithmetic() {
 
 #[test]
 fn test_leave_after_many_pushes() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0
         0x50, 0x50, 0x50, 0x50, // PUSH RAX x4
@@ -583,9 +608,11 @@ fn test_leave_after_many_pushes() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Stack balanced after PUSH/POP");
@@ -597,7 +624,6 @@ fn test_leave_after_many_pushes() {
 
 #[test]
 fn test_leave_recursive_function_simulation() {
-    let mut emu = emu64();
     let code = [
         // Recursion level 1
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
@@ -611,9 +637,11 @@ fn test_leave_recursive_function_simulation() {
         0xc9, // LEAVE (level 1)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x3000-(0x3000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x3000;
     emu.regs_mut().rbp = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000, "Recursion fully unwound");
@@ -622,7 +650,6 @@ fn test_leave_recursive_function_simulation() {
 
 #[test]
 fn test_leave_with_mixed_operations() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x20, 0x00, 0x00, // ENTER 32, 0
         // Save registers
@@ -637,11 +664,13 @@ fn test_leave_with_mixed_operations() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
     emu.regs_mut().rax = 0x1111;
     emu.regs_mut().rbx = 0x2222;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x1111, "RAX restored by POP");
@@ -651,7 +680,6 @@ fn test_leave_with_mixed_operations() {
 
 #[test]
 fn test_leave_exception_handler_pattern() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x10, 0x00, 0x00, // ENTER 16, 0 (exception handler frame)
         // Handler code
@@ -660,9 +688,11 @@ fn test_leave_exception_handler_pattern() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Handler frame unwound");
@@ -670,7 +700,6 @@ fn test_leave_exception_handler_pattern() {
 
 #[test]
 fn test_leave_tail_call_preparation() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x08, 0x00, 0x00, // ENTER 8, 0
         // Prepare for tail call
@@ -678,9 +707,11 @@ fn test_leave_tail_call_preparation() {
         // Would JMP to tail call target here
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Frame cleaned for tail call");
@@ -689,7 +720,6 @@ fn test_leave_tail_call_preparation() {
 
 #[test]
 fn test_leave_coroutine_switch_pattern() {
-    let mut emu = emu64();
     let code = [
         0xc8, 0x00, 0x00, 0x00, // ENTER 0, 0
         // Save context
@@ -699,13 +729,15 @@ fn test_leave_coroutine_switch_pattern() {
         0xc9, // LEAVE
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x2000-(0x2000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x2000;
     emu.regs_mut().rbp = 0x3000;
     emu.regs_mut().rax = 0xAA;
     emu.regs_mut().rbx = 0xBB;
     emu.regs_mut().rcx = 0xCC;
     emu.regs_mut().rdx = 0xDD;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "Context switch cleaned up");

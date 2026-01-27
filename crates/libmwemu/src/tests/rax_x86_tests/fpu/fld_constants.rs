@@ -34,7 +34,7 @@ const DATA_ADDR: u64 = 0x7000;
 
 // Helper function to read f64 from memory
 fn read_f64(mem: u64, addr: u64) -> f64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f64::from_le_bytes(buf)
 }

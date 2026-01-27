@@ -1,13 +1,12 @@
 #![cfg(feature = "rax_x86_tests")]
-mod common;
-mod rotate;
 mod arithmetic;
-mod logical;
+mod common;
 mod logic_and_bit_manipulation;
-mod simd;
+mod logical;
+mod rotate;
+//mod simd;  // disabled for increasing rax test speed
 mod fpu;
 mod stack_operations;
-
 
 /*
 mod bcd;

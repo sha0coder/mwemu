@@ -16,13 +16,14 @@ const DATA_ADDR: u64 = 0x7000;
 
 #[test]
 fn test_add_rsp_8() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xc4, 0x08, // ADD RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1008, "RSP incremented by 8");
@@ -30,13 +31,14 @@ fn test_add_rsp_8() {
 
 #[test]
 fn test_add_rsp_16() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xc4, 0x10, // ADD RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1010, "RSP incremented by 16");
@@ -44,13 +46,14 @@ fn test_add_rsp_16() {
 
 #[test]
 fn test_add_rsp_32() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xc4, 0x20, // ADD RSP, 32
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1020, "RSP incremented by 32");
@@ -58,13 +61,14 @@ fn test_add_rsp_32() {
 
 #[test]
 fn test_add_rsp_large() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x81, 0xc4, 0x00, 0x10, 0x00, 0x00, // ADD RSP, 0x1000
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP incremented by 4096");
@@ -72,15 +76,16 @@ fn test_add_rsp_large() {
 
 #[test]
 fn test_add_rsp_cleanup_params() {
-    let mut emu = emu64();
     let code = [
         // Simulate: 3 params pushed, clean them up
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03, // PUSH 1, 2, 3
         0x48, 0x83, 0xc4, 0x18, // ADD RSP, 24 (3 * 8)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Stack cleaned up after parameter push");
@@ -92,13 +97,14 @@ fn test_add_rsp_cleanup_params() {
 
 #[test]
 fn test_sub_rsp_8() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FF8, "RSP decremented by 8");
@@ -106,13 +112,14 @@ fn test_sub_rsp_8() {
 
 #[test]
 fn test_sub_rsp_16() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x10, // SUB RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FF0, "RSP decremented by 16");
@@ -120,13 +127,14 @@ fn test_sub_rsp_16() {
 
 #[test]
 fn test_sub_rsp_32() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FE0, "RSP decremented by 32");
@@ -134,13 +142,14 @@ fn test_sub_rsp_32() {
 
 #[test]
 fn test_sub_rsp_large_frame() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x81, 0xec, 0x00, 0x10, 0x00, 0x00, // SUB RSP, 0x1000
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x10000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x10000-(0x10000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x10000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0xF000, "Large stack frame allocated");
@@ -148,15 +157,16 @@ fn test_sub_rsp_large_frame() {
 
 #[test]
 fn test_sub_rsp_for_locals() {
-    let mut emu = emu64();
     let code = [
         0x55, // PUSH RBP
         0x48, 0x89, 0xe5, // MOV RBP, RSP
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32 (local vars)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000 - 40, "Frame + locals allocated");
@@ -168,14 +178,15 @@ fn test_sub_rsp_for_locals() {
 
 #[test]
 fn test_mov_rsp_rax() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xc4, // MOV RSP, RAX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP set from RAX");
@@ -183,14 +194,15 @@ fn test_mov_rsp_rax() {
 
 #[test]
 fn test_mov_rsp_rbx() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xdc, // MOV RSP, RBX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbx = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000, "RSP set from RBX");
@@ -198,14 +210,15 @@ fn test_mov_rsp_rbx() {
 
 #[test]
 fn test_mov_rsp_rbp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xec, // MOV RSP, RBP
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP set from RBP (like LEAVE part 1)");
@@ -213,14 +226,15 @@ fn test_mov_rsp_rbp() {
 
 #[test]
 fn test_mov_rsp_r8() {
-    let mut emu = emu64();
     let code = [
         0x4c, 0x89, 0xc4, // MOV RSP, R8
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r8 = 0x4000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x4000, "RSP set from R8");
@@ -232,13 +246,14 @@ fn test_mov_rsp_r8() {
 
 #[test]
 fn test_mov_rax_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe0, // MOV RAX, RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rax, 0x1000, "RAX gets RSP value");
@@ -247,13 +262,14 @@ fn test_mov_rax_rsp() {
 
 #[test]
 fn test_mov_rbx_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe3, // MOV RBX, RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbx, 0x1000, "RBX gets RSP value");
@@ -261,13 +277,14 @@ fn test_mov_rbx_rsp() {
 
 #[test]
 fn test_mov_rbp_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe5, // MOV RBP, RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x1000, "RBP gets RSP value (prologue pattern)");
@@ -275,15 +292,16 @@ fn test_mov_rbp_rsp() {
 
 #[test]
 fn test_save_restore_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe0, // MOV RAX, RSP (save)
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32 (allocate)
         0x48, 0x89, 0xc4, // MOV RSP, RAX (restore)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP saved and restored");
@@ -295,13 +313,14 @@ fn test_save_restore_rsp() {
 
 #[test]
 fn test_lea_rsp_rsp_plus_8() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x8d, 0x64, 0x24, 0x08, // LEA RSP, [RSP + 8]
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1008, "RSP adjusted by LEA +8");
@@ -309,13 +328,14 @@ fn test_lea_rsp_rsp_plus_8() {
 
 #[test]
 fn test_lea_rsp_rsp_minus_8() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x8d, 0x64, 0x24, 0xf8, // LEA RSP, [RSP - 8]
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FF8, "RSP adjusted by LEA -8");
@@ -323,13 +343,14 @@ fn test_lea_rsp_rsp_minus_8() {
 
 #[test]
 fn test_lea_rsp_rsp_plus_16() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x8d, 0x64, 0x24, 0x10, // LEA RSP, [RSP + 16]
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1010, "RSP adjusted by LEA +16");
@@ -337,14 +358,15 @@ fn test_lea_rsp_rsp_plus_16() {
 
 #[test]
 fn test_lea_rsp_rbp_minus_offset() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x8d, 0x65, 0xf0, // LEA RSP, [RBP - 16]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1FF0, "RSP set via LEA from RBP");
@@ -356,13 +378,14 @@ fn test_lea_rsp_rbp_minus_offset() {
 
 #[test]
 fn test_inc_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xff, 0xc4, // INC RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1001, "RSP incremented by 1");
@@ -370,13 +393,14 @@ fn test_inc_rsp() {
 
 #[test]
 fn test_dec_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xff, 0xcc, // DEC RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FFF, "RSP decremented by 1");
@@ -384,7 +408,6 @@ fn test_dec_rsp() {
 
 #[test]
 fn test_multiple_inc_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xff, 0xc4, // INC RSP
         0x48, 0xff, 0xc4, // INC RSP
@@ -392,8 +415,10 @@ fn test_multiple_inc_rsp() {
         0x48, 0xff, 0xc4, // INC RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1004, "RSP incremented 4 times");
@@ -405,14 +430,15 @@ fn test_multiple_inc_rsp() {
 
 #[test]
 fn test_xchg_rsp_rax() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x94, // XCHG RSP, RAX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x2000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x2000, "RSP gets RAX value");
@@ -421,14 +447,15 @@ fn test_xchg_rsp_rax() {
 
 #[test]
 fn test_xchg_rsp_rbx() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x87, 0xdc, // XCHG RSP, RBX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbx = 0x3000;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x3000, "RSP gets RBX value");
@@ -441,14 +468,15 @@ fn test_xchg_rsp_rbx() {
 
 #[test]
 fn test_rsp_alloc_dealloc_cycle() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32 (allocate)
         0x48, 0x83, 0xc4, 0x20, // ADD RSP, 32 (deallocate)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored after alloc/dealloc");
@@ -456,7 +484,6 @@ fn test_rsp_alloc_dealloc_cycle() {
 
 #[test]
 fn test_rsp_save_alloc_restore() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe3, // MOV RBX, RSP (save)
         0x48, 0x83, 0xec, 0x40, // SUB RSP, 64
@@ -464,8 +491,10 @@ fn test_rsp_save_alloc_restore() {
         0x48, 0x89, 0xdc, // MOV RSP, RBX (restore)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP fully restored");
@@ -473,15 +502,16 @@ fn test_rsp_save_alloc_restore() {
 
 #[test]
 fn test_rsp_with_stack_operations() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xec, 0x10, // SUB RSP, 16
         0x48, 0xc7, 0x04, 0x24, 0x42, 0x00, 0x00, 0x00, // MOV [RSP], 0x42
         0x48, 0x83, 0xc4, 0x10, // ADD RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP balanced");
@@ -491,14 +521,15 @@ fn test_rsp_with_stack_operations() {
 
 #[test]
 fn test_rsp_lea_cleanup() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03, // PUSH 3 values
         0x48, 0x8d, 0x64, 0x24, 0x18, // LEA RSP, [RSP + 24] (clean up)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "Stack cleaned up via LEA");
@@ -510,14 +541,15 @@ fn test_rsp_lea_cleanup() {
 
 #[test]
 fn test_add_rsp_rax() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x01, 0xc4, // ADD RSP, RAX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x100;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1100, "RSP += RAX");
@@ -525,14 +557,15 @@ fn test_add_rsp_rax() {
 
 #[test]
 fn test_sub_rsp_rbx() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x29, 0xdc, // SUB RSP, RBX
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbx = 0x50;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x0FB0, "RSP -= RBX");
@@ -540,13 +573,14 @@ fn test_sub_rsp_rbx() {
 
 #[test]
 fn test_and_rsp_align() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xe4, 0xf0, // AND RSP, -16 (align to 16 bytes)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1008;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1008-(0x1008 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1008;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP aligned to 16 bytes");
@@ -558,14 +592,15 @@ fn test_and_rsp_align() {
 
 #[test]
 fn test_mov_rsp_from_memory() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x8b, 0x20, // MOV RSP, [RAX]
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
 
     emu.maps.write_qword(DATA_ADDR, 0x2000);
 
@@ -576,14 +611,15 @@ fn test_mov_rsp_from_memory() {
 
 #[test]
 fn test_mov_memory_from_rsp() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0x20, // MOV [RAX], RSP
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1234-(0x1234 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1234;
     emu.regs_mut().rax = DATA_ADDR;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     let val = emu.maps.read_qword(DATA_ADDR).unwrap();
@@ -596,13 +632,14 @@ fn test_mov_memory_from_rsp() {
 
 #[test]
 fn test_rsp_zero() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x31, 0xe4, // XOR RSP, RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0, "RSP can be zeroed");
@@ -610,13 +647,14 @@ fn test_rsp_zero() {
 
 #[test]
 fn test_rsp_max_value() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc4, 0xff, 0xff, 0xff, 0xff, // MOV RSP, -1
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0xFFFFFFFFFFFFFFFF, "RSP can be set to max value");
@@ -624,13 +662,14 @@ fn test_rsp_max_value() {
 
 #[test]
 fn test_rsp_wraparound_add() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x83, 0xc4, 0x10, // ADD RSP, 16
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0xFFFFFFFFFFFFFFF0;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0xFFFFFFFFFFFFFFF0-(0xFFFFFFFFFFFFFFF0 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0xFFFFFFFFFFFFFFF0;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0, "RSP wraps around on overflow");
@@ -638,7 +677,6 @@ fn test_rsp_wraparound_add() {
 
 #[test]
 fn test_rsp_complex_calculation() {
-    let mut emu = emu64();
     let code = [
         0x48, 0x89, 0xe0, // MOV RAX, RSP
         0x48, 0x83, 0xec, 0x20, // SUB RSP, 32
@@ -646,8 +684,10 @@ fn test_rsp_complex_calculation() {
         0x48, 0x29, 0xc4, // SUB RSP, RAX (RSP -= old RSP)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     // RSP = 0x1000 - 32 + 0x1000 - 0x1000 = 0x1000 - 32 = 0xFE0
@@ -656,7 +696,6 @@ fn test_rsp_complex_calculation() {
 
 #[test]
 fn test_rsp_in_loop_simulation() {
-    let mut emu = emu64();
     let code = [
         // Simulate stack operations in a loop
         0x48, 0x83, 0xec, 0x08, // SUB RSP, 8
@@ -667,8 +706,10 @@ fn test_rsp_in_loop_simulation() {
         0x48, 0x83, 0xc4, 0x08, // ADD RSP, 8
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rsp, 0x1000, "RSP balanced after loop simulation");

@@ -27,7 +27,7 @@ fn write_i32(mem: u64, addr: u64, value: i32) {
 }
 
 fn read_u16(mem: u64, addr: u64) -> u16 {
-    let mut emu = emu64();    let mut buf = [0u8; 2];
+    let emu = emu64();    let mut buf = [0u8; 2];
     emu.maps.read_bytes_buff(&mut buf, addr);
     u16::from_le_bytes(buf)
 }

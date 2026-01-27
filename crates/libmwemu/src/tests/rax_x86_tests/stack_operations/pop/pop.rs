@@ -8,16 +8,17 @@ const DATA_ADDR: u64 = 0x7000;
 // Basic POP register (64-bit)
 #[test]
 fn test_pop_rax() {
-    let mut emu = emu64();
     let code = [
         0x50, // PUSH RAX (put value on stack)
         0x48, 0xc7, 0xc0, 0x00, 0x00, 0x00, 0x00, // MOV RAX, 0 (clear RAX)
         0x58, // POP RAX (restore from stack)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x1234567890ABCDEF;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 0x1234567890ABCDEF, "RAX restored from stack");
     assert_eq!(emu.regs().rsp, 0x1000, "RSP back to original");
@@ -26,7 +27,6 @@ fn test_pop_rax() {
 // POP different registers
 #[test]
 fn test_pop_rbx() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc3, 0x11, 0x22, 0x33, 0x44, // MOV RBX, 0x44332211
         0x53, // PUSH RBX
@@ -34,19 +34,22 @@ fn test_pop_rbx() {
         0x5b, // POP RBX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rbx, 0x44332211, "RBX restored");
 }
 
 #[test]
 fn test_pop_rcx() {
-    let mut emu = emu64();
     let code = [0x51, 0x59, 0xf4]; // PUSH RCX, POP RCX, HLT
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rcx = 0xAAAAAAAABBBBBBBB;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rcx, 0xAAAAAAAABBBBBBBB);
 }
@@ -54,12 +57,14 @@ fn test_pop_rcx() {
 // POP all general purpose registers
 #[test]
 fn test_pop_all_gp_registers() {
-    let mut emu = emu64();
     let code = [
         0x50, 0x53, 0x51, 0x52, 0x56, 0x57, 0x55, // PUSH all
         0x5d, 0x5f, 0x5e, 0x5a, 0x59, 0x5b, 0x58, // POP all (reverse order)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x1111111111111111;
     emu.regs_mut().rbx = 0x2222222222222222;
@@ -68,7 +73,6 @@ fn test_pop_all_gp_registers() {
     emu.regs_mut().rsi = 0x5555555555555555;
     emu.regs_mut().rdi = 0x6666666666666666;
     emu.regs_mut().rbp = 0x7777777777777777;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().rbp, 0x7777777777777777, "RBP restored");
@@ -84,31 +88,33 @@ fn test_pop_all_gp_registers() {
 // POP extended registers (R8-R15)
 #[test]
 fn test_pop_r8() {
-    let mut emu = emu64();
     let code = [
         0x41, 0x50, // PUSH R8
         0x49, 0x31, 0xc0, // XOR R8, R8
         0x41, 0x58, // POP R8
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r8 = 0xCCCCCCCCCCCCCCCC;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().r8, 0xCCCCCCCCCCCCCCCC);
 }
 
 #[test]
 fn test_pop_r15() {
-    let mut emu = emu64();
     let code = [
         0x41, 0x57, // PUSH R15
         0x41, 0x5f, // POP R15
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r15 = 0xDDDDDDDDDDDDDDDD;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().r15, 0xDDDDDDDDDDDDDDDD);
 }
@@ -116,14 +122,15 @@ fn test_pop_r15() {
 // POP increments RSP
 #[test]
 fn test_pop_increments_rsp() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x42, // PUSH 0x42
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rsp, 0x1000, "RSP back to original after PUSH/POP");
     assert_eq!(emu.regs().rax, 0x42, "Value popped");
@@ -132,7 +139,6 @@ fn test_pop_increments_rsp() {
 // Multiple POP operations
 #[test]
 fn test_multiple_pop() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x11, // PUSH 0x11
         0x6a, 0x22, // PUSH 0x22
@@ -142,8 +148,10 @@ fn test_multiple_pop() {
         0x59, // POP RCX (gets 0x11)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 0x33, "Last pushed, first popped");
     assert_eq!(emu.regs().rbx, 0x22, "Middle value");
@@ -154,7 +162,6 @@ fn test_multiple_pop() {
 // POP preserves flags
 #[test]
 fn test_pop_preserves_flags() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, -1
         0x48, 0x83, 0xc0, 0x01, // ADD RAX, 1 (sets ZF)
@@ -162,8 +169,10 @@ fn test_pop_preserves_flags() {
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert!(emu.flags().dump() & 0x40 != 0, "ZF should still be set");
 }
@@ -171,14 +180,15 @@ fn test_pop_preserves_flags() {
 // POP RSP (special case - uses value from stack)
 #[test]
 fn test_pop_rsp() {
-    let mut emu = emu64();
     let code = [
         0x54, // PUSH RSP
         0x5c, // POP RSP
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rsp, 0x1000, "RSP restored from stack");
 }
@@ -186,7 +196,6 @@ fn test_pop_rsp() {
 // Test LIFO (Last In First Out) behavior
 #[test]
 fn test_lifo_behavior() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x01, 0x00, 0x00, 0x00, // MOV RAX, 1
         0x48, 0xc7, 0xc3, 0x02, 0x00, 0x00, 0x00, // MOV RBX, 2
@@ -195,8 +204,10 @@ fn test_lifo_behavior() {
         0x5a, 0x5f, 0x5e, // POP RDX, RDI, RSI
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rdx, 3, "RDX gets last pushed (RCX=3)");
     assert_eq!(emu.regs().rdi, 2, "RDI gets middle (RBX=2)");
@@ -206,15 +217,16 @@ fn test_lifo_behavior() {
 // POP with zero value
 #[test]
 fn test_pop_zero() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x00, // PUSH 0
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, -1
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 0, "RAX should be 0");
 }
@@ -222,7 +234,6 @@ fn test_pop_zero() {
 // POP with maximum value
 #[test]
 fn test_pop_max_value() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, // MOV RAX, 0xFFFFFFFF
         0x50, // PUSH RAX
@@ -230,8 +241,10 @@ fn test_pop_max_value() {
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     // MOV r64, imm32 sign-extends: 0xFFFFFFFF becomes 0xFFFFFFFFFFFFFFFF
     assert_eq!(emu.regs().rax, 0xFFFFFFFFFFFFFFFF, "RAX should be sign-extended max");
@@ -240,7 +253,6 @@ fn test_pop_max_value() {
 // Practical use case: function epilogue
 #[test]
 fn test_pop_practical_function_epilogue() {
-    let mut emu = emu64();
     let code = [
         // Prologue
         0x55, // PUSH RBP
@@ -254,11 +266,13 @@ fn test_pop_practical_function_epilogue() {
         0x5d, // POP RBP (restore RBP)
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rbp = 0x2000;
     emu.regs_mut().rax = 0x1111;
     emu.regs_mut().rbx = 0x2222;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rbp, 0x2000, "RBP restored");
     assert_eq!(emu.regs().rax, 0x1111, "RAX restored");
@@ -269,7 +283,6 @@ fn test_pop_practical_function_epilogue() {
 // POP from different stack positions
 #[test]
 fn test_pop_after_stack_manipulation() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x01, // PUSH 1
         0x6a, 0x02, // PUSH 2
@@ -278,8 +291,10 @@ fn test_pop_after_stack_manipulation() {
         0x58, // POP RAX (gets 2, not 3)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 2, "Skipped top value, got second");
 }
@@ -287,7 +302,6 @@ fn test_pop_after_stack_manipulation() {
 // Test with all extended registers
 #[test]
 fn test_pop_all_extended_regs() {
-    let mut emu = emu64();
     let code = [
         0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53, // PUSH R8-R11
         0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, // PUSH R12-R15
@@ -295,6 +309,9 @@ fn test_pop_all_extended_regs() {
         0x41, 0x5b, 0x41, 0x5a, 0x41, 0x59, 0x41, 0x58, // POP R11-R8
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().r8 = 0x08;
     emu.regs_mut().r9 = 0x09;
@@ -304,7 +321,6 @@ fn test_pop_all_extended_regs() {
     emu.regs_mut().r13 = 0x0D;
     emu.regs_mut().r14 = 0x0E;
     emu.regs_mut().r15 = 0x0F;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
 
     assert_eq!(emu.regs().r15, 0x0F, "R15 restored");
@@ -320,7 +336,6 @@ fn test_pop_all_extended_regs() {
 // Chain of PUSHes and POPs
 #[test]
 fn test_push_pop_chain() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0x11, 0x00, 0x00, 0x00, // MOV RAX, 0x11
         0x50, // PUSH RAX
@@ -333,8 +348,10 @@ fn test_push_pop_chain() {
         0x5a, // POP RDX (0x11)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rbx, 0x33);
     assert_eq!(emu.regs().rcx, 0x22);
@@ -344,15 +361,16 @@ fn test_push_pop_chain() {
 // Test stack alignment
 #[test]
 fn test_stack_alignment() {
-    let mut emu = emu64();
     let code = [
         0x50, 0x50, 0x50, 0x50, // PUSH RAX 4 times
         0x58, 0x58, 0x58, 0x58, // POP RAX 4 times
         0xf4, // HLT
     ];
+    let mut emu = emu64();
+    emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
     emu.regs_mut().rsp = 0x1000;
     emu.regs_mut().rax = 0x42;
-    emu.load_code_bytes(&code);
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rsp, 0x1000, "Stack aligned after equal PUSH/POP");
 }
@@ -360,7 +378,6 @@ fn test_stack_alignment() {
 // POP into same register multiple times
 #[test]
 fn test_pop_same_register_multiple() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x01, // PUSH 1
         0x6a, 0x02, // PUSH 2
@@ -370,8 +387,10 @@ fn test_pop_same_register_multiple() {
         0x58, // POP RAX (gets 1, overwrites 2)
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 1, "RAX has last popped value");
 }
@@ -379,7 +398,6 @@ fn test_pop_same_register_multiple() {
 // Test interaction with MOV
 #[test]
 fn test_pop_with_mov() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc0, 0xaa, 0x00, 0x00, 0x00, // MOV RAX, 0xAA
         0x50, // PUSH RAX
@@ -388,8 +406,10 @@ fn test_pop_with_mov() {
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rax, 0xAA, "RAX restored from stack");
     assert_eq!(emu.regs().rbx, 0xBB, "RBX has copied value");
@@ -398,7 +418,6 @@ fn test_pop_with_mov() {
 // Deep stack test
 #[test]
 fn test_deep_stack() {
-    let mut emu = emu64();
     let code = [
         0x6a, 0x01, 0x6a, 0x02, 0x6a, 0x03, 0x6a, 0x04, 0x6a, 0x05,
         0x6a, 0x06, 0x6a, 0x07, 0x6a, 0x08, 0x6a, 0x09, 0x6a, 0x0a,
@@ -406,8 +425,10 @@ fn test_deep_stack() {
         0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58,
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     assert_eq!(emu.regs().rsp, 0x1000, "Deep stack balanced");
     assert_eq!(emu.regs().rax, 1, "Last pop gets first push");
@@ -416,7 +437,6 @@ fn test_deep_stack() {
 // Test POP doesn't affect other registers
 #[test]
 fn test_pop_preserves_other_registers() {
-    let mut emu = emu64();
     let code = [
         0x48, 0xc7, 0xc3, 0x33, 0x00, 0x00, 0x00, // MOV RBX, 0x33
         0x48, 0xc7, 0xc1, 0x44, 0x00, 0x00, 0x00, // MOV RCX, 0x44
@@ -424,8 +444,10 @@ fn test_pop_preserves_other_registers() {
         0x58, // POP RAX
         0xf4, // HLT
     ];
-    emu.regs_mut().rsp = 0x1000;
+    let mut emu = emu64();
     emu.load_code_bytes(&code);
+    emu.maps.create_map("stack_test", 0x1000-(0x1000 / 2), 0x1000, crate::maps::mem64::Permission::READ_WRITE_EXECUTE).unwrap();
+    emu.regs_mut().rsp = 0x1000;
     emu.run(None).unwrap();
     // PUSH imm8 sign-extends: 0x99 (bit 7 set) -> 0xFFFFFFFFFFFFFF99
     assert_eq!(emu.regs().rax, 0xFFFFFFFFFFFFFF99, "RAX popped (sign-extended)");

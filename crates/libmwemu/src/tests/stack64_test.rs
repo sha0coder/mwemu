@@ -29,3 +29,10 @@ pub fn stack64_test() {
 
     assert!(emu.regs().rsp > base);
 }
+
+#[test]
+fn initial_test_stack_alignment_bare_metal() {
+    let mut emu = emu64();
+    emu.init_cpu();
+    assert_eq!(emu.regs().rsp % 16, 0);
+}

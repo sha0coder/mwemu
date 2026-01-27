@@ -29,7 +29,7 @@ fn write_f64(mem: u64, addr: u64, value: f64) {
 }
 
 fn read_f64(mem: u64, addr: u64) -> f64 {
-    let mut emu = emu64();    let mut buf = [0u8; 8];
+    let emu = emu64();    let mut buf = [0u8; 8];
     emu.maps.read_bytes_buff(&mut buf, addr);
     f64::from_le_bytes(buf)
 }
@@ -41,7 +41,7 @@ fn write_bcd(mem: u64, addr: u64, value: &[u8; 10]) {
 
 // Read BCD value from memory
 fn read_bcd(mem: u64, addr: u64) -> [u8; 10] {
-    let mut emu = emu64();    let mut buf = [0u8; 10];
+    let emu = emu64();    let mut buf = [0u8; 10];
     emu.maps.read_bytes_buff(&mut buf, addr);
     buf
 }
@@ -49,7 +49,7 @@ fn read_bcd(mem: u64, addr: u64) -> [u8; 10] {
 // Helper to create BCD representation from a decimal string
 // BCD format: bytes 0-8 contain digits (LSB first), byte 9 has sign bit
 fn make_bcd(value: i64) -> [u8; 10] {
-    let mut emu = emu64();    let mut bcd = [0u8; 10];
+    let emu = emu64();    let mut bcd = [0u8; 10];
     let is_negative = value < 0;
     let mut abs_value = value.abs() as u64;
 
@@ -68,7 +68,7 @@ fn make_bcd(value: i64) -> [u8; 10] {
 
 // Helper to extract value from BCD
 fn parse_bcd(bcd: &[u8; 10]) -> Option<i64> {
-    let mut emu = emu64();    let is_negative = (bcd[9] & 0x80) != 0;
+    let emu = emu64();    let is_negative = (bcd[9] & 0x80) != 0;
     let mut value: i64 = 0;
     let mut multiplier: i64 = 1;
 
