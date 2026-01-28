@@ -650,6 +650,22 @@ impl Regs64 {
         // nothing to do
     }
 
+    pub fn sub_rsp(&mut self) {
+        self.rsp = self.rsp.wrapping_sub(8);
+    }
+
+    pub fn sub_esp(&mut self) {
+        let esp = self.rsp as u32;
+        let new_esp = esp.wrapping_sub(4);
+        self.rsp = (self.rsp & 0xFFFF_FFFF_0000_0000) | (new_esp as u64);
+    }
+
+    pub fn sub_sp(&mut self) {
+        let sp = self.rsp as u16;
+        let new_sp = sp.wrapping_sub(2);
+        self.rsp = (self.rsp & 0xFFFF_FFFF_FFFF_0000) | (new_sp as u64);
+    }
+
     pub fn print<const B: usize>(&self) {
         log::info!("regs:");
 

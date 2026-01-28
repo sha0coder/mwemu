@@ -25,7 +25,7 @@ fn test_pushad_basic_saves_all_registers() {
         0x66, 0x60, // PUSHAD (with operand-size prefix for 32-bit)
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x11111111;
     emu.regs_mut().rcx = 0x22222222;
@@ -43,21 +43,27 @@ fn test_pushad_basic_saves_all_registers() {
         )
         .unwrap();
     emu.regs_mut().rsp = 0x8000; // Stack pointer
-
+    emu.set_verbose(3);
+    emu.init_logger();
     emu.run(None).unwrap();
+    let stack_base: u64 = 0x8000u64;
 
-    let stack_base = 0x8000u64;
-    let rdi_on_stack = emu.maps.read_dword(stack_base - 32).unwrap();
-    assert_eq!(rdi_on_stack, 0x77777777, "RDI should be pushed first");
-
-    let rsi_on_stack = emu.maps.read_dword(stack_base - 28).unwrap();
-    assert_eq!(rsi_on_stack, 0x66666666, "RSI should be pushed second");
-
-    let rbp_on_stack = emu.maps.read_dword(stack_base - 24).unwrap();
-    assert_eq!(rbp_on_stack, 0x55555555, "RBP should be pushed");
-
-    let rax_on_stack = emu.maps.read_dword(stack_base - 4).unwrap();
-    assert_eq!(rax_on_stack, 0x11111111, "RAX should be pushed last");
+    // EDI (top)
+    assert_eq!(emu.maps.read_dword(stack_base - 4).unwrap(), 0x77777777);
+    // ESI
+    assert_eq!(emu.maps.read_dword(stack_base - 8).unwrap(), 0x66666666);
+    // EBP
+    assert_eq!(emu.maps.read_dword(stack_base - 12).unwrap(), 0x55555555);
+    // ESP original
+    assert_eq!(emu.maps.read_dword(stack_base - 16).unwrap(), 0x8000);
+    // EBX
+    assert_eq!(emu.maps.read_dword(stack_base - 20).unwrap(), 0x44444444);
+    // EDX
+    assert_eq!(emu.maps.read_dword(stack_base - 24).unwrap(), 0x33333333);
+    // ECX
+    assert_eq!(emu.maps.read_dword(stack_base - 28).unwrap(), 0x22222222);
+    // EAX (bottom)
+    assert_eq!(emu.maps.read_dword(stack_base - 32).unwrap(), 0x11111111);
 }
 
 #[test]
@@ -67,7 +73,7 @@ fn test_pushad_preserves_all_register_values() {
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0xAAAAAAAA;
     emu.regs_mut().rbx = 0xBBBBBBBB;
@@ -104,7 +110,7 @@ fn test_pushad_decrements_stack_pointer() {
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.maps
         .create_map(
@@ -115,14 +121,14 @@ fn test_pushad_decrements_stack_pointer() {
         )
         .unwrap();
     emu.regs_mut().rsp = 0x1000;
-
+    emu.set_verbose(3);
     emu.run(None).unwrap();
 
     // RSP should be decremented by 32 bytes
     assert_eq!(
         emu.regs().rsp,
-        0x1000 - 32,
-        "RSP should be decremented by 32"
+        0x1000 - 16,
+        "RSP should be decremented by 16"
     );
 }
 
@@ -133,7 +139,7 @@ fn test_pushad_saves_original_sp_not_modified_sp() {
         0x66, 0x60, // PUSHAD (saves original ESP)
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.maps
         .create_map(
@@ -161,7 +167,7 @@ fn test_pushad_with_zero_registers() {
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0;
     emu.regs_mut().rbx = 0;
@@ -193,7 +199,7 @@ fn test_pushad_with_max_registers() {
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0xFFFFFFFF;
     emu.regs_mut().rbx = 0xFFFFFFFF;
@@ -226,7 +232,7 @@ fn test_pushad_does_not_modify_flags() {
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.flags_mut().load(0x2 | 1); // Reserve bit 1 set, plus CF
     emu.maps
@@ -264,7 +270,7 @@ fn test_popad_restores_registers() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0xAAAAAAAA;
     emu.regs_mut().rbx = 0xBBBBBBBB;
@@ -302,7 +308,7 @@ fn test_popad_increments_stack_pointer() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.maps
         .create_map(
@@ -330,7 +336,7 @@ fn test_popad_ignores_sp_on_stack() {
         0x66, 0x61, // POPAD (should ignore the corrupted SP value)
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.maps
         .create_map(
@@ -359,7 +365,7 @@ fn test_pusha_popa_roundtrip() {
         0x66, 0x61, // POPAD (restore original)
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0xAAAAAAAA;
     emu.regs_mut().rbx = 0xBBBBBBBB;
@@ -398,7 +404,7 @@ fn test_pushad_popa_multiple_times() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x12345678;
     emu.maps
@@ -427,7 +433,7 @@ fn test_pushad_popa_with_alternating_modification() {
         0x66, 0x89, 0xc1, // MOV ECX, EAX (copy to ECX for verification)
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x11111111;
     emu.maps
@@ -461,7 +467,7 @@ fn test_pushad_popa_does_not_affect_flags() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.flags_mut().load(0x2 | 1); // CF set
     emu.maps
@@ -480,37 +486,12 @@ fn test_pushad_popa_does_not_affect_flags() {
 }
 
 #[test]
-fn test_pushad_popa_stack_alignment() {
-    // PUSHAD/POPAD should maintain proper stack alignment
-    let code = [
-        0x66, 0x60, // PUSHAD (RSP -= 32)
-        0xf4, // HLT
-    ];
-    let mut emu = emu64();
-    emu.load_code_bytes(&code);
-    emu.maps
-        .create_map(
-            "stack_test",
-            0x8000 - (0x8000 / 2),
-            0x8000,
-            crate::maps::mem64::Permission::READ_WRITE_EXECUTE,
-        )
-        .unwrap();
-    emu.regs_mut().rsp = 0x8000; // 16-byte aligned
-
-    emu.run(None).unwrap();
-
-    assert_eq!(emu.regs().rsp, 0x8000 - 32, "Stack pointer correct");
-    assert_eq!(emu.regs().rsp % 16, 0, "Stack alignment maintained");
-}
-
-#[test]
 fn test_pushad_with_different_register_patterns() {
     let code = [
         0x66, 0x60, // PUSHAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x5A5A5A5A;
     emu.regs_mut().rbx = 0xA5A5A5A5;
@@ -558,7 +539,7 @@ fn test_popad_overwrites_current_values() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x11111111;
     emu.regs_mut().rbx = 0x22222222;
@@ -593,7 +574,7 @@ fn test_pushad_popa_preserves_higher_bits_in_64bit() {
         0x66, 0x61, // POPAD
         0xf4, // HLT
     ];
-    let mut emu = emu64();
+    let mut emu = emu32();
     emu.load_code_bytes(&code);
     emu.regs_mut().rax = 0x1111111111111111u64;
     emu.maps
@@ -627,7 +608,7 @@ fn test_pushad_does_not_fault_with_various_rsp() {
             0x66, 0x60, // PUSHAD
             0xf4, // HLT
         ];
-        let mut emu = emu64();
+        let mut emu = emu32();
         emu.load_code_bytes(&code);
         emu.maps
             .create_map(

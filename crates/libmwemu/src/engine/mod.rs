@@ -16,6 +16,7 @@ pub fn emulate_instruction(
         Mnemonic::Call => instructions::call::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Push => instructions::push::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pop => instructions::pop::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Pusha => instructions::pusha::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pushad => instructions::pushad::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Popad => instructions::popad::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Popcnt => instructions::popcnt::execute(emu, ins, instruction_sz, rep_step),
@@ -366,9 +367,9 @@ pub fn emulate_instruction(
         Mnemonic::Enqcmds => instructions::enqcmds::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Enter => instructions::enter::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Rdmsr => instructions::rdmsr::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Ud0 =>  instructions::ud::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Ud1 =>  instructions::ud::execute(emu, ins, instruction_sz, rep_step),
-        Mnemonic::Ud2 =>  instructions::ud::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Ud0 => instructions::ud::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Ud1 => instructions::ud::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Ud2 => instructions::ud::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Hlt => instructions::hlt::execute(emu, ins, instruction_sz, rep_step),
         _ => {
             log::info!(

@@ -512,7 +512,11 @@ impl HiveParser {
         Ok(())
     }
 
-    pub fn get_subkey(&mut self, key_name: &str, path: &str) -> Result<Option<HiveKey>, HiveError> {
+    pub fn get_subkey(
+        &mut self,
+        key_name: &str,
+        path: &str,
+    ) -> Result<Option<HiveKey<'_>>, HiveError> {
         if let Some(cache) = self.subkey_cache.get(key_name) {
             for subpath in &cache.subpaths {
                 if subpath.path == path {

@@ -38,6 +38,6 @@ fn initial_test_stack_alignment_32bit_bare_metal() {
     assert_eq!(
         emu.regs().get_esp() % 4,
         0,
-        "x86-32: la pila debe estar alineada a 4 bytes"
+        "in 32bits stack has to be aligned to 4 bytes"
     );
 }
