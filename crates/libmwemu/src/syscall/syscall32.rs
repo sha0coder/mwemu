@@ -23,12 +23,14 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         1 => {
             log::info!(
-                "{}** {} syscall exit()  {}",
+                "{}** {} syscall exit() {}  {}",
                 emu.colors.light_red,
                 emu.pos,
+                emu.regs().get_ebx(),
                 emu.colors.nc
             );
-            std::process::exit(emu.regs().get_ebx() as i32);
+            emu.stop();
+            return;
         }
 
         2 => {

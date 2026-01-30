@@ -595,7 +595,7 @@ impl Emu {
                 .load(filename)
             {
                 log::info!("shellcode not found, select the file with -f");
-                std::process::exit(1);
+                return;
             }
             let code = self.maps.get_mem_mut("code");
             code.extend(0xffff); // this could overlap an existing map

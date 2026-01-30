@@ -638,7 +638,7 @@ impl Emu {
                         block.resize(block_temp_len, 0);
                     }
                     block.clone_from_slice(block_temp);
-                    if block.len() == 0 {
+                    if block.is_empty() {
                         return Err(MwemuError::new("cannot read code block, weird address."));
                     }
                     let mut decoder =
@@ -827,16 +827,18 @@ impl Emu {
                         }
                     }
 
-                    if self.pos % 10000 == 0 {
-                        if self.cfg.entropy {
-                            self.update_entropy();
-                        }
+                    if self.cfg.entropy && self.pos % 10000 == 0 {
+                        self.update_entropy();
                     }
 
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
                     //tracing::trace_instruction(self, self.pos);
                     /*************************************/
+
+                    if self.is_running.load(atomic::Ordering::Relaxed) == 0 {
+                        return Ok(self.regs().rip);
+                    }
 
                     if let Some(rep_count) = self.rep {
                         if self.cfg.verbose >= 3 {

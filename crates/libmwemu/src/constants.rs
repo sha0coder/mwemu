@@ -14,6 +14,8 @@ pub const TEMP_PATH: &str = "C:\\Temp\\"; // randomize this
 pub const CWD_PATH: &str = "C:\\cwd"; // randomize this
 pub const WINDOWS_DIRECTORY: &str = "C:\\Windows"; // randomize this
 pub const SYSTEM_DIRECTORY: &str = "C:\\Windows\\System32"; // randomize this
+                                                            //
+pub const CURRENT_PROCESS_HANDLE: u64 = 1975;
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
 

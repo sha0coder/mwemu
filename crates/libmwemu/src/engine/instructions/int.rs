@@ -28,7 +28,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             0x29 => {
                 log::info!("call_stack = {:?}", emu.call_stack());
                 log::info!("int 0x29: __fastfail {}", emu.regs().rcx);
-                std::process::exit(1);
+                emu.stop();
+                return false;
             }
 
             0x03 => {

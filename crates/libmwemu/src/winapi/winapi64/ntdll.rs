@@ -364,7 +364,7 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
 fn RtlExitUserThread(emu: &mut emu::Emu) {
     log_red!(emu, "ntdll!RtlExitUserThread");
     Console::spawn_console(emu);
-    std::process::exit(1);
+    emu.stop();
 }
 
 fn ZwQueueApcThread(emu: &mut emu::Emu) {

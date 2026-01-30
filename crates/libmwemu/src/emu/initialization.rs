@@ -8,7 +8,6 @@ use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{Formatter as _, IntelFormatter};
 
-use crate::console::Console;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
@@ -38,6 +37,12 @@ impl RecordFormat for CustomLogFormat {
 impl CustomLogFormat {
     pub fn new() -> CustomLogFormat {
         Self {}
+    }
+}
+
+impl Default for Emu {
+    fn default() -> Self {
+        Emu::new()
     }
 }
 
@@ -483,13 +488,8 @@ impl Emu {
         assert!(r == 0x53d26);
         */
 
-        if self.maps.mem_test() {
-            log::info!("memory test Ok.");
-        } else {
-            log::error!("It doesn't pass the memory tests!!");
-            Console::spawn_console(self);
-            std::process::exit(1);
-        }
+        assert!(self.maps.mem_test(), "It doesn't pass the memory tests!!");
+        log::info!("memory test Ok.");
     }
 
     /// This is called from init(), this setup the 64bits windows memory simulation.
