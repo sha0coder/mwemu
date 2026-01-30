@@ -1,0 +1,25 @@
+use crate::constants;
+use crate::emu;
+
+pub fn SetLocaleInfoA(emu: &mut emu::Emu) {
+    let _Locale = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("cannot read the api parameter");
+    let _LCType = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 4)
+        .expect("cannot read the api parameter");
+    let _lpLCData = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 8)
+        .expect("cannot read the api parameter");
+
+    log_red!(emu, "kernel32!SetLocaleInfoA");
+
+    emu.regs_mut().rax = constants::ERROR_SUCCESS;
+
+    for _ in 0..3 {
+        emu.stack_pop32(false);
+    }
+}
