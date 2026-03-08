@@ -131,7 +131,7 @@ pub struct ImageOptionalHeader64 {
 }
 
 impl ImageOptionalHeader64 {
-    pub fn load(raw: &Vec<u8>, off: usize) -> ImageOptionalHeader64 {
+    pub fn load(raw: &[u8], off: usize) -> ImageOptionalHeader64 {
         let mut dd: Vec<ImageDataDirectory> = Vec::new();
         let mut pos = 112; //+ 144;   //108;
         for i in 0..IMAGE_NUMBEROF_DIRECTORY_ENTRIES {
@@ -413,7 +413,7 @@ impl PE64 {
             }
         }
 
-        log::warn!("Virtual address 0x{:x} not found in any section", vaddr);
+        //panic!("Virtual address 0x{:x} not found in any section", vaddr);
         0
     }
 
@@ -455,6 +455,10 @@ impl PE64 {
         &self.sect_hdr[id]
     }
 
+    pub fn get_pe_off(&self) -> u32 {
+        self.dos.e_lfanew
+    }
+
     pub fn get_section_ptr(&self, id: usize) -> &[u8] {
         if id > self.sect_hdr.len() {
             panic!("/!\\ warning: invalid section id {}", id);
@@ -477,8 +481,7 @@ impl PE64 {
             }
             return &self.raw[off..];
         }
-        let section_ptr = &self.raw[off..off + sz];
-        section_ptr
+        &self.raw[off..off + sz]
     }
 
     pub fn get_section_vaddr(&self, id: usize) -> u32 {
@@ -528,7 +531,12 @@ impl PE64 {
                 continue;
             }
             if winapi64::kernel32::load_library(emu, &dld.name) == 0 {
-                panic!("cannot found the library `{}` on maps64", &dld.name);
+                log::info!(
+                    "cannot found the library `{}` on {}",
+                    &dld.name,
+                    emu.cfg.maps_folder
+                );
+                continue;
             }
 
             let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, dld.name_table) as usize;
@@ -568,6 +576,28 @@ impl PE64 {
         log::info!("delay load bound!");
     }
 
+    pub fn get_dependencies(&mut self, emu: &mut emu::Emu) -> Vec<String> {
+        let mut dependencies: Vec<String> = Vec::new();
+
+        for i in 0..self.image_import_descriptor.len() {
+            let iim = &self.image_import_descriptor[i];
+
+            if iim.name.is_empty() {
+                continue;
+            }
+
+            let mut libname = iim.name.clone();
+            if iim.name.starts_with("api-ms-win-") {
+                println!("{} -> kernelbase", &iim.name);
+                libname = "kernelbase".to_string();
+            }
+
+            dependencies.push(libname);
+        }
+
+        dependencies
+    }
+
     pub fn iat_binding(&mut self, emu: &mut emu::Emu) {
         // https://docs.microsoft.com/en-us/archive/msdn-magazine/2002/march/inside-windows-an-in-depth-look-into-the-win32-portable-executable-file-format-part-2#Binding
 
@@ -584,9 +614,26 @@ impl PE64 {
             if iim.name.is_empty() {
                 continue;
             }
-            if winapi64::kernel32::load_library(emu, &iim.name) == 0 {
-                log::info!("cannot found the library {} on maps64/", &iim.name);
-                return;
+
+            let mut libname = iim.name.clone();
+            if iim.name.starts_with("api-ms-win-") {
+                println!("{} -> kernelbase", &iim.name);
+                libname = "kernelbase".to_string();
+            }
+
+            /*
+            if winapi64::kernel32::is_library_loaded(emu, &libname) {
+                println!("lib {} already binded.", &libname);
+                continue;
+            }*/
+
+            if winapi64::kernel32::load_library(emu, &libname) == 0 {
+                log::info!(
+                    "cannot found the library {} on {}",
+                    &iim.name,
+                    emu.cfg.maps_folder
+                );
+                continue;
             }
 
             if iim.original_first_thunk == 0 {

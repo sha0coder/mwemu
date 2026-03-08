@@ -210,15 +210,15 @@ pub fn peb_teb_ldr_structures_test() {
     let sample_w = emu.maps.get_addr_name(ldr_entry.dll_base);
     assert!(sample_w.is_some());
     let sample = sample_w.unwrap();
-    assert_eq!(sample, "ntdll.pe");
+    assert_eq!(sample, "kernel32.pe");
 
     let ntdll_str_ptr = ldr_entry.base_dll_name.buffer as u64;
     assert!(ntdll_str_ptr > 0);
     let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
-    assert_eq!(ntdll_str, "ntdll.dll");
+    assert_eq!(ntdll_str, "kernel32.dll");
 
     let ntdll_str_ptr = ldr_entry.full_dll_name.buffer as u64;
     assert!(ntdll_str_ptr > 0);
     let ntdll_str = emu.maps.read_wide_string(ntdll_str_ptr);
-    assert_eq!(ntdll_str, "C:\\Windows\\System32\\ntdll.dll");
+    assert_eq!(ntdll_str, "C:\\Windows\\System32\\kernel32.dll");
 }

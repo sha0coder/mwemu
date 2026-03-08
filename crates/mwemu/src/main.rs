@@ -137,6 +137,7 @@ fn main() {
         .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
         .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
+        .arg(clap_arg!("ssdt", "", "ssdt", "emulate winapi, use ssdt syscall implementation instead"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -217,6 +218,11 @@ fn main() {
             16,
         )
         .expect("invalid address");
+    }
+
+    // emualte winapi
+    if matches.is_present("ssdt") {
+        emu.cfg.emulate_winapi = true;
     }
 
     // verbose_at

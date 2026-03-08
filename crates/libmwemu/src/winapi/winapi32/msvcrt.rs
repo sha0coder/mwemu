@@ -27,6 +27,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "strtok" => strtok(emu),
         "exit" => exit(emu),
         "__set_app_type" => __set_app_type(emu),
+        "_errno" => _errno(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -389,4 +390,9 @@ fn exit(emu: &mut emu::Emu) {
         .expect("msvcrt!exit error reading param status.");
     log_red!(emu, "msvcrt!exit {}", status);
     emu.stop();
+}
+
+fn _errno(emu: &mut emu::Emu) {
+    log_red!(emu, "msvcrt!_errno =0");
+    emu.regs_mut().rax = 0;
 }

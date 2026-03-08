@@ -1038,14 +1038,17 @@ impl PE32 {
     }
 
     pub fn delay_load_binding(&mut self, emu: &mut emu::Emu) {
-        log::info!("Delay load binding started ...");
+        log::info!("Delay load binding started for {} ...", self.filename);
         for i in 0..self.delay_load_dir.len() {
             let dld = &self.delay_load_dir[i];
             if dld.name.is_empty() {
                 continue;
             }
             if winapi32::kernel32::load_library(emu, &dld.name) == 0 {
-                panic!("cannot found the library `{}` on maps64", &dld.name);
+                panic!(
+                    "cannot found the library `{}` on {}",
+                    &dld.name, emu.cfg.maps_folder
+                );
             }
 
             let mut off_name = PE32::vaddr_to_off(&self.sect_hdr, dld.name_table) as usize;
@@ -1112,7 +1115,8 @@ impl PE32 {
 
             if winapi32::kernel32::load_library(emu, &iim.name) == 0 {
                 log::info!("cannot found the library `{}` on maps32/", &iim.name);
-                return;
+                continue;
+                //return;
             } else if dbg {
                 log::info!("library `{}` loaded", &iim.name);
             }

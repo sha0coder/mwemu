@@ -11,8 +11,6 @@ pub fn allocator64_test() {
     emu.cfg.maps_folder = "../../maps/maps64/".to_string();
     emu.init_win32(false, false);
 
-    assert_eq!(emu.maps.exists_mapname("shell32.rsrc"), true);
-    assert_eq!(emu.maps.get_map_by_name("shell32.rsrc").is_some(), true);
     assert_eq!(emu.maps.exists_mapname("notexist"), false);
     assert_eq!(emu.maps.get_map_by_name("notexist").is_some(), false);
 

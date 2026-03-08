@@ -797,6 +797,27 @@ pub fn guess_api_name(emu: &mut emu::Emu, addr: u64) -> String {
     "function not found".to_string()
 }
 
+pub fn is_library_loaded(emu: &mut emu::Emu, libname: &str) -> bool {
+    let mut dll = libname.to_string().to_lowercase();
+
+    if dll.is_empty() {
+        return false;
+    }
+
+    if !dll.ends_with(".dll") {
+        dll.push_str(".dll");
+    }
+
+    let mut dll_path = emu.cfg.maps_folder.clone();
+    dll_path.push('/');
+    dll_path.push_str(&dll);
+
+    match peb64::get_module_base(&dll, emu) {
+        Some(base) => true,
+        None => false,
+    }
+}
+
 pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     // log::info!("kern32!load_library: {}", libname);
 
@@ -820,10 +841,9 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     match peb64::get_module_base(&dll, emu) {
         Some(base) => {
             // already linked
-            /*
             if emu.cfg.verbose > 0 {
                 log::info!("dll {} already linked.", dll);
-            }*/
+            }
             base
         }
         None => {
@@ -831,9 +851,10 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             if std::path::Path::new(&dll_path).exists() {
                 let (base, pe_off) = emu.load_pe64(&dll_path, false, 0);
                 peb64::dynamic_link_module(base, pe_off, &dll, emu);
-                return base;
+                base
             } else {
-                panic!("dll {} not found.", dll_path);
+                log::info!("dll {} not found.", dll_path);
+                0
             }
         }
     }

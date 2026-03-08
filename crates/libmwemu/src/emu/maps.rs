@@ -27,12 +27,18 @@ impl Emu {
     fn maps_folder_is_valid(&self, folder: &str) -> bool {
         let folder_path = Path::new(folder);
         if !folder_path.exists() {
+            println!("folder doesnt exist");
             return false;
         }
 
         // Check for essential files based on architecture
         let essential_files = if folder.contains("32") {
-            vec!["ntdll.dll", "kernel32.dll", "banzai.csv"]
+            println!("self.cfg.emulate_winapi: {}", self.cfg.emulate_winapi);
+            if self.cfg.emulate_winapi {
+                vec!["ntdll.dll", "kernel32.dll"]
+            } else {
+                vec!["ntdll.dll", "kernel32.dll", "banzai.csv"]
+            }
         } else {
             vec!["ntdll.dll", "kernel32.dll"]
         };
@@ -40,6 +46,7 @@ impl Emu {
         for file in essential_files {
             let file_path = folder_path.join(file);
             if !file_path.exists() {
+                println!("essential file missing: {}", file_path.display());
                 log::info!(
                     "Essential file '{}' missing from maps folder",
                     file_path.display()

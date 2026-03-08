@@ -45,6 +45,7 @@ pub struct Config {
     pub definitions: HashMap<u64, Definition>,
     pub entropy: bool,
     pub shellcode: bool,
+    pub emulate_winapi: bool,
 }
 
 impl Default for Config {
@@ -96,6 +97,16 @@ impl Config {
             definitions: HashMap::new(),
             entropy: false,
             shellcode: false,
+            emulate_winapi: false,
         }
+    }
+
+    pub fn get_maps_folder(&self, filename: &str) -> String {
+        let mut path = self.maps_folder.clone();
+        if !path.ends_with('/') {
+            path.push('/');
+        }
+        path.push_str(&filename);
+        path
     }
 }
