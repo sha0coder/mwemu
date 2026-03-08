@@ -836,8 +836,6 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     dll_path.push('/');
     dll_path.push_str(&dll);
 
-    println!("dll_path: {} dll: {}", dll_path, dll);
-
     match peb64::get_module_base(&dll, emu) {
         Some(base) => {
             // already linked

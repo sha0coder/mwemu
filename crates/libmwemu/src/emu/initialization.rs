@@ -18,7 +18,7 @@ use crate::{
     banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config,
     global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext,
 };
-use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
+use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32};
 
 use crate::maps::heap_allocation::O1Heap;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
@@ -502,19 +502,6 @@ impl Emu {
         log::info!("loading memory maps");
         self.maps.is_64bits = true;
 
-        /*
-        let orig_path = std::env::current_dir().unwrap();
-        std::env::set_current_dir(self.cfg.maps_folder.clone());
-
-        self.maps.create_map("m10000", 0x10000, 0).expect("cannot create m10000 map");
-        self.maps.create_map("m20000", 0x20000, 0).expect("cannot create m20000 map");
-        self.maps.create_map("m520000", 0x520000, 0).expect("cannot create m520000 map");
-        self.maps.create_map("m53b000", 0x53b000, 0).expect("cannot create m53b000 map");
-        self.maps.create_map("code", self.cfg.code_base_addr, 0);
-
-        std::env::set_current_dir(orig_path);
-        */
-
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
 
@@ -545,7 +532,7 @@ impl Emu {
 
         // Stage 3: map dependencies
         for dll in dependencies {
-            let filepath = &self.cfg.get_maps_folder(&dll);
+            let filepath = self.cfg.get_maps_folder(&dll);
             log::debug!("mapping depenency {}", &filepath);
             let (base, pe64) = self.map_dll_pe64(&filepath);
             let lib = Lib {

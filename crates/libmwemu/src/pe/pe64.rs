@@ -530,6 +530,7 @@ impl PE64 {
             if dld.name.is_empty() {
                 continue;
             }
+            /*
             if winapi64::kernel32::load_library(emu, &dld.name) == 0 {
                 log::info!(
                     "cannot found the library `{}` on {}",
@@ -537,7 +538,7 @@ impl PE64 {
                     emu.cfg.maps_folder
                 );
                 continue;
-            }
+            }*/
 
             let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, dld.name_table) as usize;
             let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, dld.address_table) as usize;
@@ -588,7 +589,6 @@ impl PE64 {
 
             let mut libname = iim.name.clone();
             if iim.name.starts_with("api-ms-win-") {
-                println!("{} -> kernelbase", &iim.name);
                 libname = "kernelbase".to_string();
             }
 
@@ -615,11 +615,11 @@ impl PE64 {
                 continue;
             }
 
-            let mut libname = iim.name.clone();
+            let libname = iim.name.clone();
+            /*
             if iim.name.starts_with("api-ms-win-") {
-                println!("{} -> kernelbase", &iim.name);
                 libname = "kernelbase".to_string();
-            }
+            }*/
 
             /*
             if winapi64::kernel32::is_library_loaded(emu, &libname) {
@@ -627,6 +627,7 @@ impl PE64 {
                 continue;
             }*/
 
+            /*
             if winapi64::kernel32::load_library(emu, &libname) == 0 {
                 log::info!(
                     "cannot found the library {} on {}",
@@ -635,6 +636,7 @@ impl PE64 {
                 );
                 continue;
             }
+            */
 
             if iim.original_first_thunk == 0 {
                 self.iat_binding_alternative(emu, iim.first_thunk);
