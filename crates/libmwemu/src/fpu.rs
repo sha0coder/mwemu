@@ -315,24 +315,21 @@ impl FPU {
     }
 
     pub fn add_to_st0(&mut self, i: usize) {
-        let v = self.st.get(0);
+        let v = self.st.get(i);
         self.st.get_mut(0).map(|st| st.add(v));
     }
 
     pub fn add(&mut self, i: usize, j: usize) {
-        assert!(i != j);
         let v = self.st.get(j);
         self.st.get_mut(i).map(|st| st.add(v));
     }
 
     pub fn sub(&mut self, i: usize, j: usize) {
-        assert!(i != j);
         let v = self.st.get(j);
         self.st.get_mut(i).map(|st| st.sub(v));
     }
 
     pub fn subr(&mut self, i: usize, j: usize) {
-        assert!(i != j);
         let a = self.st.get(i).clone();
         let mut b = self.st.get(j).clone();
         b.sub(a);
