@@ -704,7 +704,6 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
     let mut flink = peb64::Flink::new(emu);
     flink.load(emu);
     let first_ptr = flink.get_ptr();
-
     loop {
         if flink.export_table_rva > 0 {
             //println!("export_table_rva: 0x{:x}", flink.export_table_rva);

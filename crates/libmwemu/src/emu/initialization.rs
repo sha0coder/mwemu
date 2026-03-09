@@ -506,17 +506,20 @@ impl Emu {
         kuser_shared::init_kuser_shared_data(self);
 
         let mut metadata: Vec<Lib> = Vec::new();
+        let base: Vec<&str> = vec!["kernelbase.dll", "kernel32.dll", "ntdll.dll"];
 
         // Stage 1: map kernel32
-        let filepath = self.cfg.get_maps_folder("kernel32.dll");
-        log::debug!("mapping base lib64: {}", &filepath);
-        let (base, pe64) = self.map_dll_pe64(&filepath);
-        let lib = Lib {
-            pe64,
-            base,
-            name: "kernel32.dll".to_string(),
-        };
-        metadata.push(lib);
+        for dll in &base {
+            let filepath = self.cfg.get_maps_folder(dll);
+            log::debug!("mapping base lib64: {}", &filepath);
+            let (base, pe64) = self.map_dll_pe64(&filepath);
+            let lib = Lib {
+                pe64,
+                base,
+                name: dll.to_string(),
+            };
+            metadata.push(lib);
+        }
 
         // Stage 2: get_dependencies
         let mut dependencies: BTreeSet<String> = BTreeSet::new();
@@ -526,7 +529,9 @@ impl Emu {
                 if !dep.ends_with(".dll") {
                     dep.push_str(".dll");
                 }
-                dependencies.insert(dep);
+                if !base.contains(&dep.as_str()) {
+                    dependencies.insert(dep);
+                }
             }
         }
 

@@ -11,6 +11,7 @@ use crate::pe::pe32::{
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES, PE32, SECTION_HEADER_SZ,
 };
 use crate::structures;
+use crate::utils;
 use crate::winapi::winapi64;
 use std::fs::File;
 use std::io::Read;
@@ -568,13 +569,26 @@ impl PE64 {
                 if emu.cfg.verbose >= 1 {
                     log::info!("binded 0x{:x} {}", real_addr, func_name);
                 }*/
+
+                // patch inside the elf64 object
                 write_u64_le!(self.raw, off_addr, real_addr);
+                // patch in the .iat memory map
+                self.iat_patch(emu, off_addr as u64, real_addr);
 
                 off_name += HintNameItem::size();
                 off_addr += 8;
             }
         }
         log::info!("delay load bound!");
+    }
+
+    // patch directly in the map because now is pre-mapped
+    pub fn iat_patch(&mut self, emu: &mut emu::Emu, offset: u64, value: u64) {
+        let mut map_name = utils::filename_no_ext(&self.filename).unwrap_or_default();
+        map_name.push_str(".iat");
+        if let Some(map) = emu.maps.get_map_by_name_mut(&map_name) {
+            map.write_qword(map.get_base() + offset as u64, value);
+        }
     }
 
     pub fn get_dependencies(&mut self, emu: &mut emu::Emu) -> Vec<String> {
@@ -669,7 +683,11 @@ impl PE64 {
 
                 let real_addr = winapi64::kernel32::resolve_api_name(emu, &api_name);
                 if real_addr > 0 {
-                    write_u64_le!(self.raw, off, real_addr); // patch the IAT to do the binding
+                    let map = emu.maps.get_map_by_name(&self.filename);
+                    // patch inside the elf64 object
+                    write_u64_le!(self.raw, off, real_addr);
+                    // patch in the .iat memory map
+                    self.iat_patch(emu, off as u64, real_addr);
                 }
             }
 
@@ -721,7 +739,11 @@ impl PE64 {
             let fake_addr = read_u64_le!(self.raw, off_addr);
 
             //println!("writing real_addr: 0x{:x} {} 0x{:x} -> 0x{:x} ", off_addr, func_name, fake_addr, real_addr);
+
+            // patch inside the elf64 object
             write_u64_le!(self.raw, off_addr, real_addr);
+            // patch in the .iat memory map
+            self.iat_patch(emu, off_addr as u64, real_addr);
 
             off_name += HintNameItem::size();
             off_addr += 8;
