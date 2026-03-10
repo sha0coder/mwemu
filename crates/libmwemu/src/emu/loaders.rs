@@ -85,8 +85,8 @@ impl Emu {
         if set_entry || self.cfg.emulate_winapi {
             // 2. pe binding
             if !is_maps || self.cfg.emulate_winapi {
-                pe32.iat_binding(self);
-                pe32.delay_load_binding(self);
+                pe32.iat_binding(self, base);
+                pe32.delay_load_binding(self, base);
                 self.base = base as u64;
             }
 
@@ -338,8 +338,8 @@ impl Emu {
         if set_entry || self.cfg.emulate_winapi {
             // 2. pe binding
             if !is_maps || self.cfg.emulate_winapi {
-                pe64.iat_binding(self);
-                pe64.delay_load_binding(self);
+                pe64.iat_binding(self, base);
+                pe64.delay_load_binding(self, base);
                 self.base = base;
             }
 

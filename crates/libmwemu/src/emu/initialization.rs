@@ -557,8 +557,8 @@ impl Emu {
         // Stage 3: IAT Binding  base + deps
         for dll in metadata.iter_mut() {
             log::debug!("iat binding {}", &dll.name);
-            dll.pe64.iat_binding(self);
-            dll.pe64.delay_load_binding(self);
+            dll.pe64.iat_binding(self, dll.base);
+            dll.pe64.delay_load_binding(self, dll.base);
         }
         log::debug!("win32 64bits base libs ok.");
 
