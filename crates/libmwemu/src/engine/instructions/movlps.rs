@@ -14,7 +14,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::trace!("error getting xmm value1");
                 return false;
             }
         };
@@ -23,7 +23,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let value1 = match emu.get_operand_value(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::trace!("error getting xmm value1");
                 return false;
             }
         };
@@ -32,7 +32,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::trace!("error getting xmm value1");
                 return false;
             }
         };
@@ -41,21 +41,21 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let value0 = match emu.get_operand_xmm_value_128(ins, 0, false) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm address value1");
+                log::trace!("error getting xmm address value1");
                 return false;
             }
         };
         let addr = match emu.get_operand_value(ins, 1, false) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm address value1");
+                log::trace!("error getting xmm address value1");
                 return false;
             }
         };
         let value1 = match emu.maps.read_qword(addr) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm qword value1");
+                log::trace!("error getting xmm qword value1");
                 return false;
             }
         };
@@ -68,13 +68,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
-                log::info!("error getting xmm value1");
+                log::trace!("error getting xmm value1");
                 return false;
             }
         };
         emu.set_operand_value(ins, 0, value1 as u64);
     } else {
-        log::info!("SSE with other size combinations sz0:{} sz1:{}", sz0, sz1);
+        log::trace!("SSE with other size combinations sz0:{} sz1:{}", sz0, sz1);
         return false;
     }
     true

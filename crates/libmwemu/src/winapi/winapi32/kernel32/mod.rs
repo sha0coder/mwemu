@@ -2613,7 +2613,7 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
                 }
 
                 let ordinal = flink.get_function_ordinal(emu, i);
-                log::info!(
+                log::trace!(
                     "0x{:x} {}!{}",
                     ordinal.func_va,
                     &flink.mod_name,
@@ -2656,7 +2656,7 @@ pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) 
         }
         flink.next(emu);
 
-        //log::info!("flink: 0x{:x} first_ptr: 0x{:x} num_of_funcs: {}", flink.get_ptr(), first_ptr, flink.num_of_funcs);
+        //log::trace!("flink: 0x{:x} first_ptr: 0x{:x} num_of_funcs: {}", flink.get_ptr(), first_ptr, flink.num_of_funcs);
 
         if flink.get_ptr() == first_ptr {
             break;
@@ -2716,7 +2716,7 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
         }
         flink.next(emu);
 
-        //log::info!("flink: 0x{:x} first_ptr: 0x{:x} num_of_funcs: {}", flink.get_ptr(), first_ptr, flink.num_of_funcs);
+        //log::trace!("flink: 0x{:x} first_ptr: 0x{:x} num_of_funcs: {}", flink.get_ptr(), first_ptr, flink.num_of_funcs);
 
         if flink.get_ptr() == first_ptr {
             break;
@@ -2811,7 +2811,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             // already linked
             /*
             if emu.cfg.verbose > 0 {
-                log::info!("dll {} already linked.", dll);
+                log::trace!("dll {} already linked.", dll);
             }*/
             base
         }

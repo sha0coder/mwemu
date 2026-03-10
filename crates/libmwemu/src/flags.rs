@@ -194,31 +194,31 @@ impl Flags {
             fs.push_str("OF ");
         }
         fs.push_str("]");
-        log::info!("\t{} flags: 0x{:x} {}", pos, self.dump(), fs);
+        log::trace!("\t{} flags: 0x{:x} {}", pos, self.dump(), fs);
     }
 
     pub fn print(&self) {
-        log::info!("--- flags ---");
-        log::info!("0x{:x}", self.dump());
-        log::info!("cf: {}", self.f_cf);
-        log::info!("pf: {}", self.f_pf);
-        log::info!("af: {}", self.f_af);
-        log::info!("zf: {}", self.f_zf);
-        log::info!("sf: {}", self.f_sf);
-        log::info!("tf: {}", self.f_tf);
-        log::info!("if: {}", self.f_if);
-        log::info!("df: {}", self.f_df);
-        log::info!("of: {}", self.f_of);
-        log::info!("iopl1: {}", self.f_iopl1);
-        log::info!("iopl2: {}", self.f_iopl2);
-        log::info!("nt: {}", self.f_nt);
-        log::info!("rf: {}", self.f_rf);
-        log::info!("vm: {}", self.f_vm);
-        log::info!("ac: {}", self.f_ac);
-        log::info!("vif: {}", self.f_vif);
-        log::info!("vip: {}", self.f_vip);
-        log::info!("id: {}", self.f_id);
-        log::info!("---");
+        log::trace!("--- flags ---");
+        log::trace!("0x{:x}", self.dump());
+        log::trace!("cf: {}", self.f_cf);
+        log::trace!("pf: {}", self.f_pf);
+        log::trace!("af: {}", self.f_af);
+        log::trace!("zf: {}", self.f_zf);
+        log::trace!("sf: {}", self.f_sf);
+        log::trace!("tf: {}", self.f_tf);
+        log::trace!("if: {}", self.f_if);
+        log::trace!("df: {}", self.f_df);
+        log::trace!("of: {}", self.f_of);
+        log::trace!("iopl1: {}", self.f_iopl1);
+        log::trace!("iopl2: {}", self.f_iopl2);
+        log::trace!("nt: {}", self.f_nt);
+        log::trace!("rf: {}", self.f_rf);
+        log::trace!("vm: {}", self.f_vm);
+        log::trace!("ac: {}", self.f_ac);
+        log::trace!("vif: {}", self.f_vif);
+        log::trace!("vip: {}", self.f_vip);
+        log::trace!("id: {}", self.f_id);
+        log::trace!("---");
     }
 
     pub fn diff(a: &Flags, b: &Flags) -> String {

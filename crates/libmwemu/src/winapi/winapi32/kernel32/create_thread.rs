@@ -39,7 +39,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     }
 
     if flags == constants::CREATE_SUSPENDED {
-        log::info!("\tcreated suspended!");
+        log::trace!("\tcreated suspended!");
     }
 
     // TODO: match winapi64 multi threading
@@ -60,7 +60,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
             // alloc a stack vs reusing stack.
             return;
         } else {
-            log::info!("cannot emulate the thread, the function pointer is not mapped.");
+            log::trace!("cannot emulate the thread, the function pointer is not mapped.");
         }
     }
 

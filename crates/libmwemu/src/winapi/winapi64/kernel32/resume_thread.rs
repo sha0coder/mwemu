@@ -42,9 +42,9 @@ pub fn ResumeThread(emu: &mut emu::Emu) {
             // Resume the thread
             if thread.suspended {
                 thread.suspended = false;
-                log::info!("Thread 0x{:x} resumed (was suspended)", thread_id);
+                log::trace!("Thread 0x{:x} resumed (was suspended)", thread_id);
             } else {
-                log::info!("Thread 0x{:x} was already running", thread_id);
+                log::trace!("Thread 0x{:x} was already running", thread_id);
             }
             break;
         }
@@ -58,7 +58,7 @@ pub fn ResumeThread(emu: &mut emu::Emu) {
 
     // Return the previous suspend count
     emu.regs_mut().rax = previous_suspend_count;
-    log::info!(
+    log::trace!(
         "ResumeThread returning previous suspend count: {}",
         previous_suspend_count
     );

@@ -33,14 +33,14 @@ pub fn WriteProcessMemory(emu: &mut emu::Emu) {
 
     if emu.maps.memcpy(buff, addr, size as usize) {
         emu.regs_mut().rax = 1;
-        log::info!(
+        log::trace!(
             "{}\twritten succesfully{}",
             emu.colors.light_red,
             emu.colors.nc
         );
     } else {
         emu.regs_mut().rax = 0;
-        log::info!(
+        log::trace!(
             "{}\tcouldnt write the bytes{}",
             emu.colors.light_red,
             emu.colors.nc

@@ -21,23 +21,23 @@ pub fn WriteProcessMemory(emu: &mut emu::Emu) {
 
     if emu.maps.memcpy(buff, addr, size as usize) {
         emu.regs_mut().rax = 1;
-        log::info!(
+        log::trace!(
             "{}\twritten succesfully{}",
             emu.colors.light_red,
             emu.colors.nc
         );
         if written_ptr != 0 && !emu.maps.write_qword(written_ptr, size) {
-            log::info!("kernel32!WriteProcessMemory cannot write on written_ptr");
+            log::trace!("kernel32!WriteProcessMemory cannot write on written_ptr");
         }
     } else {
         emu.regs_mut().rax = 0;
-        log::info!(
+        log::trace!(
             "{}\tcouldnt write all the bytes{}",
             emu.colors.light_red,
             emu.colors.nc
         );
         if written_ptr != 0 && !emu.maps.write_qword(written_ptr, 0) {
-            log::info!("kernel32!WriteProcessMemory cannot write on written_ptr");
+            log::trace!("kernel32!WriteProcessMemory cannot write on written_ptr");
         }
     }
 }

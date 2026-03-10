@@ -1125,11 +1125,11 @@ impl Mem64 {
     }
 
     pub fn print_bytes(&self) {
-        log::info!("---mem---");
+        log::trace!("---mem---");
         for b in self.mem.iter() {
             print!("{}", b);
         }
-        log::info!("---");
+        log::trace!("---");
     }
 
     pub fn print_dwords(&self) {
@@ -1137,12 +1137,12 @@ impl Mem64 {
     }
 
     pub fn print_dwords_from_to(&self, from: u64, to: u64) {
-        log::info!("---mem---");
+        log::trace!("---mem---");
         for addr in (from..to).step_by(4) {
-            log::info!("0x{:x}", self.read_dword(addr))
+            log::trace!("0x{:x}", self.read_dword(addr))
         }
 
-        log::info!("---");
+        log::trace!("---");
     }
 
     pub fn md5(&self) -> md5::Digest {
@@ -1157,7 +1157,7 @@ impl Mem64 {
     }
 
     pub fn load_chunk(&mut self, filename: &str, off: u64, sz: usize) -> bool {
-        // log::info!("loading chunk: {} {} {}", filename, off, sz);
+        // log::trace!("loading chunk: {} {} {}", filename, off, sz);
         let mut f = match File::open(filename) {
             Ok(f) => f,
             Err(_) => {
@@ -1178,7 +1178,7 @@ impl Mem64 {
     }
 
     pub fn load(&mut self, filename: &str) -> bool {
-        // log::info!("loading map: {}", filename);
+        // log::trace!("loading map: {}", filename);
         let f = match File::open(filename) {
             Ok(f) => f,
             Err(_) => {

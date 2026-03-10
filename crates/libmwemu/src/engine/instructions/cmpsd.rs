@@ -18,14 +18,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         value0 = match emu.maps.read_dword(emu.regs().rsi) {
             Some(v) => v,
             None => {
-                log::info!("cannot read rsi");
+                log::trace!("cannot read rsi");
                 return false;
             }
         };
         value1 = match emu.maps.read_dword(emu.regs().rdi) {
             Some(v) => v,
             None => {
-                log::info!("cannot read rdi");
+                log::trace!("cannot read rdi");
                 return false;
             }
         };
@@ -42,14 +42,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         value0 = match emu.maps.read_dword(emu.regs().get_esi()) {
             Some(v) => v,
             None => {
-                log::info!("cannot read esi");
+                log::trace!("cannot read esi");
                 return false;
             }
         };
         value1 = match emu.maps.read_dword(emu.regs().get_edi()) {
             Some(v) => v,
             None => {
-                log::info!("cannot read edi");
+                log::trace!("cannot read edi");
                 return false;
             }
         };
@@ -71,11 +71,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.cfg.verbose >= 2 {
         if value0 > value1 {
-            log::info!("\tcmp: 0x{:x} > 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} > 0x{:x}", value0, value1);
         } else if value0 < value1 {
-            log::info!("\tcmp: 0x{:x} < 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} < 0x{:x}", value0, value1);
         } else {
-            log::info!("\tcmp: 0x{:x} == 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} == 0x{:x}", value0, value1);
         }
     }
     true

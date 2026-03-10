@@ -65,7 +65,7 @@ impl Emu {
         let rip = self.regs().rip;
         let definitions = &self.cfg.definitions;
         if let Some(definition) = definitions.get(&rip) {
-            log::info!(
+            log::trace!(
                 "Event: {} (0x{:x}) - {}",
                 definition.name,
                 rip,
@@ -91,7 +91,7 @@ impl Emu {
             for param in &definition.parameters {
                 let value = self.resolve_source(&param.source);
                 let display_value = self.format_parameter_value(value, &param.param_type);
-                log::info!("    {}: {}", param.name, display_value);
+                log::trace!("    {}: {}", param.name, display_value);
             }
         }
     }

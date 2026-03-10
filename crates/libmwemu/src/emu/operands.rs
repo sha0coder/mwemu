@@ -116,7 +116,7 @@ impl Emu {
             if self.linux {
                 return if let Some(val) = self.fs().get(&mem_addr) {
                     if self.cfg.verbose > 0 {
-                        log::info!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
+                        log::trace!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
                     }
                     if *val == 0 {
                         return Some(0); //0x7ffff7ff000);
@@ -124,7 +124,7 @@ impl Emu {
                     Some(*val)
                 } else {
                     if self.cfg.verbose > 0 {
-                        log::info!("reading FS[0x{:x}] -> 0", mem_addr);
+                        log::trace!("reading FS[0x{:x}] -> 0", mem_addr);
                     }
                     Some(0) //0x7ffff7fff000);
                 }
@@ -133,7 +133,7 @@ impl Emu {
             let value1: u64 = match mem_addr {
                 0xc0 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading ISWOW64 is 32bits on a 64bits system?", self.pos);
+                        log::trace!("{} Reading ISWOW64 is 32bits on a 64bits system?", self.pos);
                     }
                     if self.cfg.is_64bits {
                         0
@@ -145,45 +145,45 @@ impl Emu {
                     let teb = self.maps.get_mem("teb");
                     let tib = teb.get_base(); // tib is first element.
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading NtTIB 0x{:x}", self.pos, tib);
+                        log::trace!("{} Reading NtTIB 0x{:x}", self.pos, tib);
                     }
                     tib
                 }
                 0x30 => {
                     let peb = self.maps.get_mem("peb");
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
+                        log::trace!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
                     }
                     peb.get_base()
                 }
                 0x20 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading PID 0x{:x}", self.pos, 10);
+                        log::trace!("{} Reading PID 0x{:x}", self.pos, 10);
                     }
                     10
                 }
                 0x24 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading TID 0x{:x}", self.pos, 101);
+                        log::trace!("{} Reading TID 0x{:x}", self.pos, 101);
                     }
                     101
                 }
                 0x34 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading last error value 0", self.pos);
+                        log::trace!("{} Reading last error value 0", self.pos);
                     }
                     0
                 }
                 0x18 => {
                     let teb = self.maps.get_mem("teb");
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
+                        log::trace!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
                     }
                     teb.get_base()
                 }
                 0x00 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh());
+                        log::trace!("Reading SEH 0x{:x}", self.seh());
                     }
                     self.seh()
                 }
@@ -193,7 +193,7 @@ impl Emu {
                 }
                 0x2c => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading local ");
+                        log::trace!("Reading local ");
                     }
                     let locale = self.alloc("locale", 100, Permission::READ_WRITE);
                     self.maps.write_dword(locale, constants::EN_US_LOCALE);
@@ -209,7 +209,7 @@ impl Emu {
                     locale
                 }
                 _ => {
-                    log::info!("unimplemented fs:[{}]", mem_addr);
+                    log::trace!("unimplemented fs:[{}]", mem_addr);
                     return None;
                 }
             };
@@ -221,33 +221,33 @@ impl Emu {
                 0x60 => {
                     let peb = self.maps.get_mem("peb");
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
+                        log::trace!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
                     }
                     peb.get_base()
                 }
                 0x30 => {
                     let teb = self.maps.get_mem("teb");
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
+                        log::trace!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
                     }
                     teb.get_base()
                 }
                 0x40 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading PID 0x{:x}", self.pos, 10);
+                        log::trace!("{} Reading PID 0x{:x}", self.pos, 10);
                     }
                     10
                 }
                 0x48 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading TID 0x{:x}", self.pos, 101);
+                        log::trace!("{} Reading TID 0x{:x}", self.pos, 101);
                     }
                     101
                 }
                 0x10 => {
                     let stack = self.maps.get_mem("stack");
                     if self.cfg.verbose >= 1 {
-                        log::info!("{} Reading StackLimit 0x{:x}", self.pos, &stack.size());
+                        log::trace!("{} Reading StackLimit 0x{:x}", self.pos, &stack.size());
                     }
                     stack.size() as u64
                 }
@@ -256,13 +256,13 @@ impl Emu {
                 }
                 0x1488 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh());
+                        log::trace!("Reading SEH 0x{:x}", self.seh());
                     }
                     self.seh()
                 }
                 0x8 => {
                     if self.cfg.verbose >= 1 {
-                        log::info!("Reading SEH 0x{:x}", self.seh());
+                        log::trace!("Reading SEH 0x{:x}", self.seh());
                     }
                     if self.cfg.is_64bits {
                         self.maps.get_mem("peb").get_base()
@@ -293,7 +293,7 @@ impl Emu {
                     static_tls
                 }
                 _ => {
-                    log::info!("unimplemented gs:[0x{:x}]", mem_addr);
+                    log::trace!("unimplemented gs:[0x{:x}]", mem_addr);
                     return None;
                 }
             };
@@ -320,7 +320,7 @@ impl Emu {
                         v
                     }
                     None => {
-                        log::info!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
+                        log::trace!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::QWordDereferencing);
                         return None;
                     }
@@ -334,7 +334,7 @@ impl Emu {
                         v.into()
                     }
                     None => {
-                        log::info!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
+                        log::trace!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::DWordDereferencing);
                         return None;
                     }
@@ -348,7 +348,7 @@ impl Emu {
                         v.into()
                     }
                     None => {
-                        log::info!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
+                        log::trace!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::WordDereferencing);
                         return None;
                     }
@@ -362,7 +362,7 @@ impl Emu {
                         v.into()
                     }
                     None => {
-                        log::info!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
+                        log::trace!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
                         self.exception(ExceptionType::ByteDereferencing);
                         return None;
                     }
@@ -387,11 +387,11 @@ impl Emu {
                     name: name.to_string(),
                 };
                 self.memory_operations.push(memory_operation);
-                log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value, name);
+                log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value, name);
             }
 
             if self.bp.is_bp_mem_read(mem_addr) {
-                log::info!("Memory breakpoint on read 0x{:x}", mem_addr);
+                log::trace!("Memory breakpoint on read 0x{:x}", mem_addr);
                 if self.running_script {
                     self.force_break = true;
                 } else {
@@ -492,7 +492,7 @@ impl Emu {
                 if mem_seg == Register::FS || mem_base == Register::GS {
                     if self.linux {
                         if self.cfg.verbose > 0 {
-                            log::info!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
+                            log::trace!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
                         }
                         if value == 0x4b6c50 {
                             self.fs_mut().insert(0xffffffffffffffc8, 0x4b6c50);
@@ -500,7 +500,7 @@ impl Emu {
                         self.fs_mut().insert(temp_displace, value);
                     } else {
                         if self.cfg.verbose >= 1 {
-                            log::info!("fs:{:x} setting SEH to 0x{:x}", temp_displace, value);
+                            log::trace!("fs:{:x} setting SEH to 0x{:x}", temp_displace, value);
                         }
                         self.set_seh(value);
                     }
@@ -606,7 +606,7 @@ impl Emu {
                                 map.write_qword(mem_addr, value2);
                                 true
                             } else {
-                                log::info!(
+                                log::trace!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
@@ -631,7 +631,7 @@ impl Emu {
                                 map.write_dword(mem_addr, to32!(value2));
                                 true
                             } else {
-                                log::info!(
+                                log::trace!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
@@ -656,7 +656,7 @@ impl Emu {
                                 map.write_word(mem_addr, value2 as u16);
                                 true
                             } else {
-                                log::info!(
+                                log::trace!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
@@ -681,7 +681,7 @@ impl Emu {
                                 map.write_byte(mem_addr, value2 as u8);
                                 true
                             } else {
-                                log::info!(
+                                log::trace!(
                                     "/!\\ exception dereferencing bad address. 0x{:x}",
                                     mem_addr
                                 );
@@ -709,7 +709,7 @@ impl Emu {
                         name: name.to_string(),
                     };
                     self.memory_operations.push(memory_operation);
-                    log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
+                    log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
                 }
 
                 /*
@@ -720,13 +720,13 @@ impl Emu {
 
                 if name == "code" {
                     if self.cfg.verbose >= 1 {
-                        log::info!("/!\\ polymorfic code, addr 0x{:x}", mem_addr);
+                        log::trace!("/!\\ polymorfic code, addr 0x{:x}", mem_addr);
                     }
                     self.force_break = true;
                 }*/
 
                 if self.bp.is_bp_mem_write_addr(mem_addr) {
-                    log::info!("Memory breakpoint on write 0x{:x}", mem_addr);
+                    log::trace!("Memory breakpoint on write 0x{:x}", mem_addr);
                     if self.running_script {
                         self.force_break = true;
                     } else {
@@ -767,7 +767,7 @@ impl Emu {
                 {
                     Some(addr) => addr,
                     None => {
-                        log::info!("/!\\ xmm exception reading operand");
+                        log::trace!("/!\\ xmm exception reading operand");
                         self.exception(ExceptionType::SettingXmmOperand);
                         return None;
                     }
@@ -781,7 +781,7 @@ impl Emu {
                     let value: u128 = match self.maps.read_128bits_le(mem_addr) {
                         Some(v) => v,
                         None => {
-                            log::info!("/!\\ exception reading xmm operand at 0x{:x} ", mem_addr);
+                            log::trace!("/!\\ exception reading xmm operand at 0x{:x} ", mem_addr);
                             self.exception(ExceptionType::ReadingXmmOperand);
                             return None;
                         }
@@ -810,7 +810,7 @@ impl Emu {
                 {
                     Some(addr) => addr,
                     None => {
-                        log::info!("/!\\ exception setting xmm operand.");
+                        log::trace!("/!\\ exception setting xmm operand.");
                         self.exception(ExceptionType::SettingXmmOperand);
                         return;
                     }
@@ -855,7 +855,7 @@ impl Emu {
                 {
                     Some(addr) => addr,
                     None => {
-                        log::info!("/!\\ xmm exception reading operand");
+                        log::trace!("/!\\ xmm exception reading operand");
                         self.exception(ExceptionType::ReadingXmmOperand);
                         return None;
                     }
@@ -898,7 +898,7 @@ impl Emu {
                 {
                     Some(addr) => addr,
                     None => {
-                        log::info!("/!\\ exception setting xmm operand.");
+                        log::trace!("/!\\ exception setting xmm operand.");
                         self.exception(ExceptionType::SettingXmmOperand);
                         return;
                     }

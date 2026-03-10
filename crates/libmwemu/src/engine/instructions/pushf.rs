@@ -10,7 +10,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.regs_mut().rsp -= 2;
 
     if !emu.maps.write_word(emu.regs().rsp, val) {
-        log::info!("/!\\ exception writing word at rsp 0x{:x}", emu.regs().rsp);
+        log::trace!("/!\\ exception writing word at rsp 0x{:x}", emu.regs().rsp);
         emu.exception(exception_type::ExceptionType::WritingWord);
         return false;
     }

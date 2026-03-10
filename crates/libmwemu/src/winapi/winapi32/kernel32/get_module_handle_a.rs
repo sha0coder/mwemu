@@ -16,7 +16,7 @@ pub fn GetModuleHandleA(emu: &mut emu::Emu) {
         mod_name = match emu.maps.get_addr_name(caller_rip) {
             Some(n) => n,
             None => {
-                log::info!(
+                log::trace!(
                     "kernel32!GetModuleHandleA called from weird place 0x{:x}",
                     caller_rip
                 );

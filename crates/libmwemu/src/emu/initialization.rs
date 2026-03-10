@@ -258,7 +258,7 @@ impl Emu {
             self.disable_ctrlc();
         }
 
-        //log::info!("initializing regs");
+        //log::trace!("initializing regs");
         if clear_registers {
             self.regs_mut().clear::<64>();
         }
@@ -395,7 +395,7 @@ impl Emu {
 
     /// This is called from init(), this setup the 32bits windows memory simulation.
     pub fn init_win32_mem32(&mut self) {
-        log::info!("loading memory maps");
+        log::trace!("loading memory maps");
 
         self.maps.is_64bits = false;
 
@@ -494,12 +494,12 @@ impl Emu {
         */
 
         assert!(self.maps.mem_test(), "It doesn't pass the memory tests!!");
-        log::info!("memory test Ok.");
+        log::trace!("memory test Ok.");
     }
 
     /// This is called from init(), this setup the 64bits windows memory simulation.
     pub fn init_win32_mem64(&mut self) {
-        log::info!("loading memory maps");
+        log::trace!("loading memory maps");
         self.maps.is_64bits = true;
 
         peb64::init_peb(self);

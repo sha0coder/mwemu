@@ -26,7 +26,7 @@ pub fn WriteFile(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(file_hndl) {
-        log::info!("\tinvalid handle.")
+        log::trace!("\tinvalid handle.")
     }
 
     emu.regs_mut().rax = 1;

@@ -28,11 +28,11 @@ impl Emu {
         let mut pe32 = PE32::load(filename);
         let base: u32;
 
-        log::info!("loading pe32 {}", filename);
+        log::trace!("loading pe32 {}", filename);
 
         /* .rsrc extraction tests
         if set_entry {
-            log::info!("get_resource_by_id");
+            log::trace!("get_resource_by_id");
             pe32.get_resource(Some(3), Some(0), None, None);
         }*/
 
@@ -93,17 +93,17 @@ impl Emu {
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs_mut().rip = base as u64 + pe32.opt.address_of_entry_point as u64;
-                log::info!("entry point at 0x{:x}", self.regs().rip);
+                log::trace!("entry point at 0x{:x}", self.regs().rip);
             } else {
                 self.regs_mut().rip = self.cfg.entry_point;
-                log::info!(
+                log::trace!(
                     "entry point at 0x{:x} but forcing it at 0x{:x}",
                     base as u64 + pe32.opt.address_of_entry_point as u64,
                     self.regs().rip
                 );
             }
 
-            log::info!("base: 0x{:x}", base);
+            log::trace!("base: 0x{:x}", base);
         }
 
         let sec_allign = pe32.opt.section_alignment;
@@ -135,7 +135,7 @@ impl Emu {
             };
 
             if sz == 0 {
-                log::info!("size of section {} is 0", sect.get_name());
+                log::trace!("size of section {} is 0", sect.get_name());
                 continue;
             }
 
@@ -158,7 +158,7 @@ impl Emu {
             ) {
                 Ok(m) => m,
                 Err(e) => {
-                    log::info!(
+                    log::trace!(
                         "weird pe, skipping section {} {} because overlaps",
                         filename2,
                         sect.get_name()
@@ -239,7 +239,7 @@ impl Emu {
             };
 
             if sz == 0 {
-                log::info!("size of section {} is 0", sect.get_name());
+                log::trace!("size of section {} is 0", sect.get_name());
                 continue;
             }
 
@@ -262,7 +262,7 @@ impl Emu {
             ) {
                 Ok(m) => m,
                 Err(e) => {
-                    log::info!(
+                    log::trace!(
                         "weird pe, skipping section because overlaps {} {}",
                         map_name,
                         sect.get_name()
@@ -346,16 +346,16 @@ impl Emu {
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs_mut().rip = base + pe64.opt.address_of_entry_point as u64;
-                log::info!("entry point at 0x{:x}", self.regs().rip);
+                log::trace!("entry point at 0x{:x}", self.regs().rip);
             } else {
                 self.regs_mut().rip = self.cfg.entry_point;
-                log::info!(
+                log::trace!(
                     "entry point at 0x{:x} but forcing it at 0x{:x} by -a flag",
                     base + pe64.opt.address_of_entry_point as u64,
                     self.regs().rip
                 );
             }
-            log::info!("base: 0x{:x}", base);
+            log::trace!("base: 0x{:x}", base);
         }
 
         let sec_allign = pe64.opt.section_alignment;
@@ -390,7 +390,7 @@ impl Emu {
             };
 
             if sz == 0 {
-                log::info!("size of section {} is 0", sect.get_name());
+                log::trace!("size of section {} is 0", sect.get_name());
                 continue;
             }
 
@@ -413,7 +413,7 @@ impl Emu {
             ) {
                 Ok(m) => m,
                 Err(e) => {
-                    log::info!(
+                    log::trace!(
                         "weird pe, skipping section because overlaps {} {}",
                         filename2,
                         sect.get_name()
@@ -463,9 +463,9 @@ impl Emu {
         let dyn_link = !elf64.get_dynamic().is_empty();
 
         if dyn_link {
-            log::info!("dynamic elf64 detected.");
+            log::trace!("dynamic elf64 detected.");
         } else {
-            log::info!("static elf64 detected.");
+            log::trace!("static elf64 detected.");
         }
 
         elf64.load(
@@ -497,13 +497,13 @@ impl Emu {
 
         // 1. Configured entry point
         if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
-            log::info!("forcing entry point to 0x{:x}", self.cfg.entry_point);
+            log::trace!("forcing entry point to 0x{:x}", self.cfg.entry_point);
             self.regs_mut().rip = self.cfg.entry_point;
 
         // 2. Entry point pointing inside .text
         } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr + text_sz
         {
-            log::info!(
+            log::trace!(
                 "Entry point pointing to .text 0x{:x}",
                 elf64.elf_hdr.e_entry
             );
@@ -512,7 +512,7 @@ impl Emu {
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
             self.regs_mut().rip = elf64.elf_hdr.e_entry + elf64.base; //text_addr;
-            log::info!(
+            log::trace!(
                 "relative entry point: 0x{:x}  fixed: 0x{:x}",
                 elf64.elf_hdr.e_entry,
                 self.regs().rip
@@ -530,7 +530,7 @@ impl Emu {
         if dyn_link {
             //let mut ld = Elf64::parse("/lib64/ld-linux-x86-64.so.2").unwrap();
             //ld.load(&mut self.maps, "ld-linux", true, dyn_link, constants::CFG_DEFAULT_BASE);
-            //log::info!("--- emulating ld-linux _start ---");
+            //log::trace!("--- emulating ld-linux _start ---");
 
             self.regs_mut().rip = elf64.elf_hdr.e_entry;
 
@@ -543,7 +543,7 @@ impl Emu {
 
         /*
         for lib in elf64.get_dynamic() {
-            log::info!("dynamic library {}", lib);
+            log::trace!("dynamic library {}", lib);
             let libspath = "/usr/lib/x86_64-linux-gnu/";
             let libpath = format!("{}{}", libspath, lib);
             let mut elflib = Elf64::parse(&libpath).unwrap();
@@ -581,7 +581,7 @@ impl Emu {
             self.linux = true;
             self.cfg.is_64bits = false;
 
-            log::info!("elf32 detected.");
+            log::trace!("elf32 detected.");
             let mut elf32 = Elf32::parse(filename).unwrap();
             elf32.load(&mut self.maps);
             self.regs_mut().rip = elf32.elf_hdr.e_entry.into();
@@ -596,12 +596,12 @@ impl Emu {
             self.cfg.is_64bits = true;
             self.maps.clear();
 
-            log::info!("elf64 detected.");
+            log::trace!("elf64 detected.");
             let base = self.load_elf64(filename);
 
         // PE32
         } else if !self.cfg.is_64bits && PE32::is_pe32(filename) && !self.cfg.shellcode {
-            log::info!("PE32 header detected.");
+            log::trace!("PE32 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init_win32(clear_registers, clear_flags);
@@ -612,7 +612,7 @@ impl Emu {
             /*
             for i in 0..self.tls_callbacks.len() {
                 self.regs_mut().rip = self.tls_callbacks[i];
-                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
+                log::trace!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
                 self.stack_push32(base);
                 self.run(Some(base as u64));
             }*/
@@ -621,7 +621,7 @@ impl Emu {
 
         // PE64
         } else if self.cfg.is_64bits && PE64::is_pe64(filename) && !self.cfg.shellcode {
-            log::info!("PE64 header detected.");
+            log::trace!("PE64 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init_win32(clear_registers, clear_flags);
@@ -645,7 +645,7 @@ impl Emu {
             /*
             for i in 0..self.tls_callbacks.len() {
                 self.regs_mut().rip = self.tls_callbacks[i];
-                log::info!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
+                log::trace!("emulating tls_callback {} at 0x{:x}", i + 1, self.regs().rip);
                 self.stack_push64(base);
                 self.run(Some(base));
             }*/
@@ -654,7 +654,7 @@ impl Emu {
 
         // Shellcode
         } else {
-            log::info!("shellcode detected.");
+            log::trace!("shellcode detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init_win32(clear_registers, clear_flags);
@@ -685,7 +685,7 @@ impl Emu {
                 .expect("cannot create code map")
                 .load(filename)
             {
-                log::info!("shellcode not found, select the file with -f");
+                log::trace!("shellcode not found, select the file with -f");
                 return;
             }
             let code = self.maps.get_mem_mut("code");
@@ -708,7 +708,7 @@ impl Emu {
     /// Any OS simulation is triggered, but init() could be called by the user
     pub fn load_code_bytes(&mut self, bytes: &[u8]) {
         if self.cfg.verbose >= 1 {
-            log::info!("Loading shellcode from bytes");
+            log::trace!("Loading shellcode from bytes");
         }
 
         self.init_cpu();

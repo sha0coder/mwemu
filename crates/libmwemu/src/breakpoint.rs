@@ -103,24 +103,24 @@ impl Breakpoints {
 
     pub fn show(&self) {
         let addr_str: Vec<String> = self.addr.iter().map(|a| format!("0x{:x}", a)).collect();
-        log::info!("break on address: [{}]", addr_str.join(", "));
+        log::trace!("break on address: [{}]", addr_str.join(", "));
 
         let instruction_str: Vec<String> = self.addr.iter().map(|a| format!("0x{:x}", a)).collect();
-        log::info!("break on instruction: [{}]", instruction_str.join(", ")); // Uses Debug formatting for the whole vector
+        log::trace!("break on instruction: [{}]", instruction_str.join(", ")); // Uses Debug formatting for the whole vector
 
         let mem_read_str: Vec<String> = self
             .mem_read_addr
             .iter()
             .map(|a| format!("0x{:x}", a))
             .collect();
-        log::info!("break on memory read: [{}]", mem_read_str.join(", "));
+        log::trace!("break on memory read: [{}]", mem_read_str.join(", "));
 
         let mem_write_str: Vec<String> = self
             .mem_write_addr
             .iter()
             .map(|a| format!("0x{:x}", a))
             .collect();
-        log::info!("break on memory write: [{}]", mem_write_str.join(", "));
+        log::trace!("break on memory write: [{}]", mem_write_str.join(", "));
     }
 }
 
@@ -183,9 +183,9 @@ impl Breakpoint {
     }
 
     pub fn show(&self) {
-        log::info!("break on address: 0x{:x}", self.addr);
-        log::info!("break on instruction: {}", self.instruction);
-        log::info!("break on memory read: 0x{:x}", self.mem_read_addr);
-        log::info!("break on memory write: 0x{:x}", self.mem_write_addr);
+        log::trace!("break on address: 0x{:x}", self.addr);
+        log::trace!("break on instruction: {}", self.instruction);
+        log::trace!("break on memory read: 0x{:x}", self.mem_read_addr);
+        log::trace!("break on memory write: 0x{:x}", self.mem_write_addr);
     }
 }

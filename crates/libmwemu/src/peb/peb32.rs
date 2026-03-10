@@ -149,7 +149,7 @@ impl Flink {
     }
 
     pub fn print(&self) {
-        log::info!("{:#x?}", self);
+        log::trace!("{:#x?}", self);
     }
 
     pub fn get_ptr(&self) -> u64 {
@@ -235,7 +235,7 @@ impl Flink {
         self.num_of_funcs = match emu.maps.read_dword(self.export_table + 0x18) {
             Some(num_of_funcs) => num_of_funcs as u64,
             None => {
-                log::info!(
+                log::trace!(
                     "error reading export_table 0x{:x} = 0x{:x} + 0x{:x}",
                     self.export_table,
                     self.export_table_rva,
@@ -329,7 +329,7 @@ pub fn get_module_base(libname: &str, emu: &mut emu::Emu) -> Option<u64> {
     flink.load(emu);
     let first_flink = flink.get_ptr();
     loop {
-        //log::info!("{} == {}", libname2, flink.mod_name);
+        //log::trace!("{} == {}", libname2, flink.mod_name);
 
         if libname.to_string().to_lowercase() == flink.mod_name.to_string().to_lowercase()
             || libname2 == flink.mod_name.to_string().to_lowercase()
@@ -360,7 +360,7 @@ pub fn show_linked_modules(emu: &mut emu::Emu) {
             .maps
             .read_byte(flink.mod_base + flink.pe_hdr + 1)
             .unwrap_or_default();
-        log::info!(
+        log::trace!(
             "0x{:x} {} flink:{:x} blink:{:x} base:{:x} pe_hdr:{:x} {:x}{:x}",
             flink.get_ptr(),
             flink.mod_name,
@@ -393,7 +393,7 @@ pub fn dynamic_unlink_module(libname: &str, emu: &mut emu::Emu) {
     let mut flink = Flink::new(emu);
     flink.load(emu);
     while flink.mod_name != libname {
-        log::info!("{}", flink.mod_name);
+        log::trace!("{}", flink.mod_name);
         prev_flink = flink.get_ptr();
         flink.next(emu);
     }
@@ -402,12 +402,12 @@ pub fn dynamic_unlink_module(libname: &str, emu: &mut emu::Emu) {
     let next_flink: u64 = flink.get_ptr();
 
     // previous flink
-    log::info!("prev_flink: 0x{:x}", prev_flink);
+    log::trace!("prev_flink: 0x{:x}", prev_flink);
     //emu.maps.write_dword(prev_flink, next_flink as u32);
     emu.maps.write_dword(prev_flink, 0);
 
     // next blink
-    log::info!("next_flink: 0x{:x}", next_flink);
+    log::trace!("next_flink: 0x{:x}", next_flink);
     emu.maps.write_dword(next_flink + 4, prev_flink as u32);
 
     show_linked_modules(emu);

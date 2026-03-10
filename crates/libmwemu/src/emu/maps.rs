@@ -12,7 +12,7 @@ impl Emu {
 
         // Check if maps folder exists and contains essential files
         if !self.maps_folder_is_valid(folder) {
-            log::info!(
+            log::trace!(
                 "Maps folder '{}' not found or incomplete, attempting to download...",
                 folder
             );
@@ -47,7 +47,7 @@ impl Emu {
             let file_path = folder_path.join(file);
             if !file_path.exists() {
                 println!("essential file missing: {}", file_path.display());
-                log::info!(
+                log::trace!(
                     "Essential file '{}' missing from maps folder",
                     file_path.display()
                 );
@@ -70,7 +70,7 @@ impl Emu {
             _ => return Err(format!("Unknown maps folder: {}", folder).into()),
         };
 
-        log::info!(
+        log::trace!(
             "Downloading {} from GitHub releases... (this may take a moment)",
             folder
         );
@@ -87,13 +87,13 @@ impl Emu {
 
         let mut bytes = Vec::new();
         response.into_reader().read_to_end(&mut bytes)?;
-        log::info!("Downloaded {} MB", bytes.len() / 1024 / 1024);
+        log::trace!("Downloaded {} MB", bytes.len() / 1024 / 1024);
 
         // Extract the zip file
         let cursor = std::io::Cursor::new(bytes);
         let mut archive = zip::ZipArchive::new(cursor)?;
 
-        log::info!("Extracting {} files...", archive.len());
+        log::trace!("Extracting {} files...", archive.len());
 
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
@@ -116,7 +116,7 @@ impl Emu {
             }
         }
 
-        log::info!("Successfully extracted maps folder: {}", folder);
+        log::trace!("Successfully extracted maps folder: {}", folder);
         Ok(())
     }
 
@@ -153,7 +153,7 @@ impl Emu {
         let addr = match self.maps.alloc(size) {
             Some(a) => a,
             None => {
-                log::info!("low memory");
+                log::trace!("low memory");
                 return 0;
             }
         };

@@ -239,10 +239,10 @@ impl Emu {
             self.formatter.format(&instruction, &mut output);
             if self.cfg.is_64bits {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip(), output));
-                //log::info!("0x{:x}: {}", instruction.ip(), output);
+                //log::trace!("0x{:x}: {}", instruction.ip(), output);
             } else {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip32(), output));
-                //log::info!("0x{:x}: {}", instruction.ip32(), output);
+                //log::trace!("0x{:x}: {}", instruction.ip32(), output);
             }
             count += 1;
             if count == amount {

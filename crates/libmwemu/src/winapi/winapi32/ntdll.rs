@@ -244,10 +244,10 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
     log_red!(emu, "ntdll!NtQueryVirtualMemory addr: 0x{:x}", addr);
 
     if handle != 0xffffffff {
-        log::info!("\tusing handle of remote process {:x}", handle);
+        log::trace!("\tusing handle of remote process {:x}", handle);
 
         if !helper::handler_exist(handle) {
-            log::info!("\nhandler doesnt exist.");
+            log::trace!("\nhandler doesnt exist.");
         }
     }
 
@@ -258,7 +258,7 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
         as u64;
 
     if !emu.maps.is_mapped(addr) {
-        log::info!(
+        log::trace!(
             "/!\\ ntdll!NtQueryVirtualMemory: querying non maped addr: 0x{:x}",
             addr
         );
@@ -474,7 +474,7 @@ fn sscanf(emu: &mut emu::Emu) {
     //let params = scanf!(b, format!("{}", rust_fmt)).unwrap();
 
     unimplemented!("sscanf is unimplemented for now.");
-    //log::info!("sscanf not implemented for now");
+    //log::trace!("sscanf not implemented for now");
     //Console::spawn_console(emu);
 }
 
@@ -570,11 +570,11 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                 emu.maps.sizeof_wide(dos_path_name_ptr) * 2,
             );
         } else if emu.cfg.verbose >= 1 {
-            log::info!(
+            log::trace!(
                 "/!\\ ntdll!RtlDosPathNameToNtPathName_U denied dest buffer on {} map",
                 dst_map_name
             );
-            log::info!(
+            log::trace!(
                 "memcpy1 0x{:x} <- 0x{:x}  sz: {}",
                 dos_path_unicode_ptr,
                 dos_path_name_ptr,
@@ -612,7 +612,7 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                 }
                 None => {
                     if emu.cfg.verbose >= 1 {
-                        log::info!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
+                        log::trace!("/!\\ ntdll!RtlDosPathNameToNtPathName_U low memory");
                     }
                 }
             };
@@ -741,7 +741,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     let name = emu.maps.get_addr_name(base_addr).unwrap_or("").to_string();
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
-            log::info!("map not allocated, so cannot free it.");
+            log::trace!("map not allocated, so cannot free it.");
         }
         emu.regs_mut().rax = 0;
         return;
@@ -753,7 +753,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     } else {
         emu.regs_mut().rax = 0;
         if emu.cfg.verbose >= 1 {
-            log::info!("trying to free a systems map {}", name);
+            log::trace!("trying to free a systems map {}", name);
         }
     }
 }

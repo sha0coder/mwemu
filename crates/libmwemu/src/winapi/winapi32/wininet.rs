@@ -232,7 +232,7 @@ pub fn InternetConnectA(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(internet_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     /*
@@ -306,7 +306,7 @@ pub fn InternetConnectW(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(internet_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     /*
@@ -389,11 +389,11 @@ fn HttpOpenRequestA(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(conn_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     if flags & constants::INTERNET_FLAG_SECURE == 1 {
-        log::info!("\tssl communication.");
+        log::trace!("\tssl communication.");
     }
 
     /*
@@ -488,7 +488,7 @@ fn HttpOpenRequestW(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(conn_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     /*
@@ -550,7 +550,7 @@ fn InternetSetOptionA(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(inet_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     for _ in 0..4 {
@@ -593,7 +593,7 @@ fn InternetSetOptionW(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(inet_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     for _ in 0..4 {
@@ -631,7 +631,7 @@ fn HttpSendRequestA(emu: &mut emu::Emu) {
     log_red!(emu, "wininet!HttpSendRequestA hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     /*
@@ -675,7 +675,7 @@ fn HttpSendRequestW(emu: &mut emu::Emu) {
     log_red!(emu, "wininet!HttpSendRequestW hdrs: {} opt: {}", hdrs, opt);
 
     if !helper::handler_exist(req_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     /*
@@ -731,7 +731,7 @@ fn InternetReadFile(emu: &mut emu::Emu) {
     );
 
     if !helper::handler_exist(file_hndl) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     if emu.cfg.endpoint {

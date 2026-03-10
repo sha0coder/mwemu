@@ -245,17 +245,17 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
     log_red!(emu, "ntdll!NtQueryVirtualMemory addr: 0x{:x}", addr);
 
     if handle != 0xffffffff {
-        log::info!("\tusing handle of remote process {:x}", handle);
+        log::trace!("\tusing handle of remote process {:x}", handle);
 
         if !helper::handler_exist(handle) {
-            log::info!("\nhandler doesnt exist.");
+            log::trace!("\nhandler doesnt exist.");
         }
     }
 
     let out_meminfo_ptr = emu.regs().r9;
 
     if !emu.maps.is_mapped(addr) {
-        log::info!(
+        log::trace!(
             "/!\\ ntdll!NtQueryVirtualMemory: querying non maped addr: 0x{:x}",
             addr
         );
@@ -447,7 +447,7 @@ fn RtlQueueWorkItem(emu: &mut emu::Emu) {
 
     if fptr > constants::LIBS_BARRIER64 {
         let name = kernel32::guess_api_name(emu, fptr);
-        log::info!("api: {} ", name);
+        log::trace!("api: {} ", name);
     }
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
@@ -890,7 +890,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     let name = emu.maps.get_addr_name(base_addr).unwrap_or("").to_string();
     if name.is_empty() {
         if emu.cfg.verbose >= 1 {
-            log::info!("map not allocated, so cannot free it.");
+            log::trace!("map not allocated, so cannot free it.");
         }
         emu.regs_mut().rax = 0;
         return;
@@ -902,7 +902,7 @@ fn RtlFreeHeap(emu: &mut emu::Emu) {
     } else {
         emu.regs_mut().rax = 0;
         if emu.cfg.verbose >= 1 {
-            log::info!("trying to free a systems map {}", name);
+            log::trace!("trying to free a systems map {}", name);
         }
     }
 }

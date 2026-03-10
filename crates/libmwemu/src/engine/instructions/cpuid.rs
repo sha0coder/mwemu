@@ -10,7 +10,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     // TODO: implement 0x40000000 -> get the virtualization vendor
 
     if emu.cfg.verbose >= 1 {
-        log::info!(
+        log::trace!(
             "\tcpuid input value: 0x{:x}, 0x{:x}",
             emu.regs().rax,
             emu.regs().rcx
@@ -142,7 +142,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rdx = 0; //0x100;
         }
         _ => {
-            log::info!("unimplemented cpuid call 0x{:x}", emu.regs().rax);
+            log::trace!("unimplemented cpuid call 0x{:x}", emu.regs().rax);
             return false;
         }
     }

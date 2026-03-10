@@ -55,7 +55,7 @@ pub fn log_emu_state(emu: &mut Emu) {
         Some(ins) => {
             let ins = ins.clone();
             emu.formatter.format(&ins, &mut out);
-            log::info!(
+            log::trace!(
                 "{}{} 0x{:x}: {}{}",
                 color,
                 emu.pos,
