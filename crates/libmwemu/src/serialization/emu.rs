@@ -216,6 +216,8 @@ impl From<SerializableEmu> for Emu {
             last_error: 0,
             is_api_run: false,
             is_break_on_api: false,
+            instruction_count: 0,
+            fault_count: 0,
         }
     }
 }

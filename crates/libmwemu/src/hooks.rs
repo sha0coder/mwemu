@@ -3,24 +3,28 @@ use iced_x86::Instruction;
 use crate::emu;
 use crate::exception_type;
 
+// Hook types using Box<dyn FnMut> for state capture instead of bare fn pointers.
 // return: false will ignore interrupt handling like 0x80 -> linux
-type TypeHookOnInterrupt = fn(emu: &mut emu::Emu, ip_addr: u64, interrupt: u64) -> bool;
+pub type TypeHookOnInterrupt =
+    Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 // return: allow handle exception?
-type TypeHookOnException =
-    fn(emu: &mut emu::Emu, ip_addr: u64, ex_type: exception_type::ExceptionType) -> bool;
+pub type TypeHookOnException =
+    Box<dyn FnMut(&mut emu::Emu, u64, exception_type::ExceptionType) -> bool>;
 // memory read is pre-read you can modify the value that is going to be read.
-type TypeHookOnMemoryRead = fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32);
+pub type TypeHookOnMemoryRead =
+    Box<dyn FnMut(&mut emu::Emu, u64, u64, u32)>;
 // the memory write is pre but you can change the value is going to be written.
-type TypeHookOnMemoryWrite =
-    fn(emu: &mut emu::Emu, ip_addr: u64, mem_addr: u64, sz: u32, value: u128) -> u128;
+pub type TypeHookOnMemoryWrite =
+    Box<dyn FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128>;
 
 // [BREAKING API CHANGE] returning false will skip the handling of the instruction
-type TypeHookOnPreInstruction =
-    fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize) -> bool;
+pub type TypeHookOnPreInstruction =
+    Box<dyn FnMut(&mut emu::Emu, u64, &Instruction, usize) -> bool>;
 
-type TypeHookOnPostInstruction =
-    fn(emu: &mut emu::Emu, ip_addr: u64, ins: &Instruction, sz: usize, emu_ok: bool);
-type TypeHookOnWinApiCall = fn(emu: &mut emu::Emu, ip_addr: u64, called_addr: u64) -> bool;
+pub type TypeHookOnPostInstruction =
+    Box<dyn FnMut(&mut emu::Emu, u64, &Instruction, usize, bool)>;
+pub type TypeHookOnWinApiCall =
+    Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 
 pub struct Hooks {
     pub hook_on_interrupt: Option<TypeHookOnInterrupt>,
@@ -51,56 +55,74 @@ impl Hooks {
         }
     }
 
-    pub fn on_interrupt(&mut self, hook: TypeHookOnInterrupt) {
-        self.hook_on_interrupt = Some(hook);
+    pub fn on_interrupt(&mut self, hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static) {
+        self.hook_on_interrupt = Some(Box::new(hook));
     }
 
     pub fn disable_interrupt(&mut self) {
         self.hook_on_interrupt = None;
     }
 
-    pub fn on_exception(&mut self, hook: TypeHookOnException) {
-        self.hook_on_exception = Some(hook);
+    pub fn on_exception(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, exception_type::ExceptionType) -> bool + 'static,
+    ) {
+        self.hook_on_exception = Some(Box::new(hook));
     }
 
     pub fn disable_exception(&mut self) {
         self.hook_on_exception = None;
     }
 
-    pub fn on_memory_read(&mut self, hook: TypeHookOnMemoryRead) {
-        self.hook_on_memory_read = Some(hook);
+    pub fn on_memory_read(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64, u32) + 'static,
+    ) {
+        self.hook_on_memory_read = Some(Box::new(hook));
     }
 
     pub fn disable_memory_read(&mut self) {
         self.hook_on_memory_read = None;
     }
 
-    pub fn on_memory_write(&mut self, hook: TypeHookOnMemoryWrite) {
-        self.hook_on_memory_write = Some(hook);
+    pub fn on_memory_write(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128 + 'static,
+    ) {
+        self.hook_on_memory_write = Some(Box::new(hook));
     }
 
     pub fn disable_memory_write(&mut self) {
         self.hook_on_memory_write = None;
     }
 
-    pub fn on_pre_instruction(&mut self, hook: TypeHookOnPreInstruction) {
-        self.hook_on_pre_instruction = Some(hook);
+    pub fn on_pre_instruction(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, &Instruction, usize) -> bool + 'static,
+    ) {
+        self.hook_on_pre_instruction = Some(Box::new(hook));
     }
 
     pub fn disable_pre_instruction(&mut self) {
         self.hook_on_pre_instruction = None;
     }
 
-    pub fn on_post_instruction(&mut self, hook: TypeHookOnPostInstruction) {
-        self.hook_on_post_instruction = Some(hook);
+    pub fn on_post_instruction(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, &Instruction, usize, bool) + 'static,
+    ) {
+        self.hook_on_post_instruction = Some(Box::new(hook));
     }
 
     pub fn disable_post_instruction(&mut self) {
         self.hook_on_post_instruction = None;
     }
 
-    pub fn on_winapi_call(&mut self, hook: TypeHookOnWinApiCall) {
-        self.hook_on_winapi_call = Some(hook);
+    pub fn on_winapi_call(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static,
+    ) {
+        self.hook_on_winapi_call = Some(Box::new(hook));
     }
 
     pub fn disable_winapi_call(&mut self) {

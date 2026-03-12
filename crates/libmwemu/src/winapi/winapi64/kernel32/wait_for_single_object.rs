@@ -6,10 +6,15 @@ pub fn WaitForSingleObject(emu: &mut emu::Emu) {
 
     log_red!(
         emu,
-        "kernel32!WaitForSingleObject  hndl: {} millis: {}",
+        "kernel32!WaitForSingleObject  hndl: {} millis: {}{}",
         hndl,
-        millis
+        millis,
+        if emu.cfg.short_circuit_sleep { " [short-circuited]" } else { "" }
     );
+
+    if !emu.cfg.short_circuit_sleep && millis > 0 && millis != 0xFFFFFFFF {
+        emu.tick += millis as usize;
+    }
 
     emu.regs_mut().rax = constants::WAIT_TIMEOUT;
 }

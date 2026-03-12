@@ -3,6 +3,7 @@ use crate::{config::Config, emu::Emu};
 impl Emu {
     /// Set a custom config, normally used only from commandline tool main.rs
     pub fn set_config(&mut self, cfg: Config) {
+        self.maps.max_alloc_size = cfg.max_alloc_size;
         self.cfg = cfg;
         if self.cfg.console {
             self.exp = self.cfg.console_num;

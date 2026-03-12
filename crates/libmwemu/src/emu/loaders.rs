@@ -191,7 +191,8 @@ impl Emu {
                 0,
                 0x2c1950,
             );
-            peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
+            let exe_name = self.cfg.exe_name.clone();
+            peb32::update_ldr_entry_base(&exe_name, base as u64, self);
         }
 
         // 6. return values
@@ -447,7 +448,8 @@ impl Emu {
                 0,
                 0x2c1950,
             );
-            peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
+            let exe_name = self.cfg.exe_name.clone();
+            peb64::update_ldr_entry_base(&exe_name, base, self);
         }
 
         // 6. return values
@@ -658,20 +660,21 @@ impl Emu {
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init_win32(clear_registers, clear_flags);
+            let exe_name = self.cfg.exe_name.clone();
             if self.cfg.is_64bits {
                 let (base, pe_off) = self.load_pe64(
-                    &format!("{}/{}", self.cfg.maps_folder, constants::EXE_NAME),
+                    &format!("{}/{}", self.cfg.maps_folder, exe_name),
                     false,
                     0,
                 );
-                peb64::update_ldr_entry_base(constants::EXE_NAME, base, self);
+                peb64::update_ldr_entry_base(&exe_name, base, self);
             } else {
                 let (base, pe_off) = self.load_pe32(
-                    &format!("{}/{}", self.cfg.maps_folder, constants::EXE_NAME),
+                    &format!("{}/{}", self.cfg.maps_folder, exe_name),
                     false,
                     0,
                 );
-                peb32::update_ldr_entry_base(constants::EXE_NAME, base as u64, self);
+                peb32::update_ldr_entry_base(&exe_name, base as u64, self);
             }
 
             if !self

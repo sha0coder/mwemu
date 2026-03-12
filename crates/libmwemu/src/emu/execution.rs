@@ -333,8 +333,11 @@ impl Emu {
         self.decoder_position = position;
 
         // Run pre-instruction hook
-        if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-            if !hook_fn(self, self.regs().rip, &ins, sz) {
+        if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+            let rip = self.regs().rip;
+            let skip = !hook_fn(self, rip, &ins, sz);
+            self.hooks.hook_on_pre_instruction = Some(hook_fn);
+            if skip {
                 // update eip/rip
                 if self.force_reload {
                     self.force_reload = false;
@@ -353,8 +356,10 @@ impl Emu {
         self.last_instruction_size = sz;
 
         // Run post-instruction hook
-        if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-            hook_fn(self, self.regs().rip, &ins, sz, result_ok)
+        if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+            let rip = self.regs().rip;
+            hook_fn(self, rip, &ins, sz, result_ok);
+            self.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
         // update eip/rip
@@ -675,6 +680,34 @@ impl Emu {
                     self.decoder_position = self.instruction_cache.current_instruction_slot;
                     self.memory_operations.clear();
                     self.pos += 1;
+                    self.instruction_count += 1;
+
+                    // Check max_instructions limit
+                    if let Some(max) = self.cfg.max_instructions {
+                        if self.instruction_count >= max {
+                            log::info!("max_instructions limit reached ({})", max);
+                            return Ok(self.regs().rip);
+                        }
+                    }
+
+                    // Check timeout
+                    if let Some(timeout) = self.cfg.timeout_secs {
+                        if self.instruction_count % 10000 == 0 {
+                            let elapsed = self.now.elapsed().as_secs_f64();
+                            if elapsed >= timeout {
+                                log::info!("timeout reached ({:.1}s >= {:.1}s)", elapsed, timeout);
+                                return Ok(self.regs().rip);
+                            }
+                        }
+                    }
+
+                    // Check max_faults limit
+                    if let Some(max) = self.cfg.max_faults {
+                        if self.fault_count >= max {
+                            log::info!("max_faults limit reached ({})", max);
+                            return Ok(self.regs().rip);
+                        }
+                    }
 
                     // turn on verbosity after a lot of pos
                     if let Some(vpos) = self.cfg.verbose_at {
@@ -789,8 +822,11 @@ impl Emu {
                     //let mut info_factory = InstructionInfoFactory::new();
                     //let info = info_factory.info(&ins);
 
-                    if let Some(hook_fn) = self.hooks.hook_on_pre_instruction {
-                        if !hook_fn(self, self.regs().rip, &ins, sz) {
+                    if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+                        let rip = self.regs().rip;
+                        let skip = !hook_fn(self, rip, &ins, sz);
+                        self.hooks.hook_on_pre_instruction = Some(hook_fn);
+                        if skip {
                             continue;
                         }
                     }
@@ -895,8 +931,10 @@ impl Emu {
                         }
                     }
 
-                    if let Some(hook_fn) = self.hooks.hook_on_post_instruction {
-                        hook_fn(self, self.regs().rip, &ins, sz, emulation_ok)
+                    if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+                        let rip = self.regs().rip;
+                        hook_fn(self, rip, &ins, sz, emulation_ok);
+                        self.hooks.hook_on_post_instruction = Some(hook_fn);
                     }
 
                     if self.cfg.inspect {

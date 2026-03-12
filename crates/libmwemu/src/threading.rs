@@ -223,8 +223,10 @@ impl ThreadScheduler {
         emu.decoder_position = position;
 
         // Pre-instruction hook
-        if let Some(hook_fn) = emu.hooks.hook_on_pre_instruction {
-            if !hook_fn(emu, rip, &ins, sz) {
+        if let Some(mut hook_fn) = emu.hooks.hook_on_pre_instruction.take() {
+            let skip = !hook_fn(emu, rip, &ins, sz);
+            emu.hooks.hook_on_pre_instruction = Some(hook_fn);
+            if skip {
                 Self::advance_ip(emu, sz);
                 return true;
             }
@@ -235,10 +237,11 @@ impl ThreadScheduler {
         emu.last_instruction_size = sz;
 
         // Post-instruction hook
-        if let Some(hook_fn) = emu.hooks.hook_on_post_instruction {
+        if let Some(mut hook_fn) = emu.hooks.hook_on_post_instruction.take() {
             let instruction = emu.instruction.take().unwrap();
             hook_fn(emu, rip, &instruction, sz, result_ok);
             emu.instruction = Some(instruction);
+            emu.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
         // Advance instruction pointer
