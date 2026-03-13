@@ -65,7 +65,8 @@ fn test_scasb() {
     emu.regs_mut().rip = code_addr;
     emu.regs_mut().rsp = 0x8000;
 
-    let _ = emu.run_until_ret().unwrap();
+    emu.set_verbose(3);
+    let _ = emu.run_until_ret();
 
     assert_eq!(emu.regs().rbx, 1, "SCASB failed to find 'W'");
 

@@ -638,6 +638,21 @@ impl Emu {
                     // reading anymore would be a waste of time
                     let block_sz = constants::BLOCK_LEN;
                     let block_temp = code.read_bytes(rip, block_sz);
+                    let mut zeros = 0;
+                    for b in block_temp.iter() {
+                        if *b == 0 {
+                            zeros += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    if zeros > 100 {
+                        if self.cfg.verbose > 0 {
+                            log::error!("{} empty code block at 0x{:x}", self.pos, rip);
+                        }
+                        return Err(MwemuError::new("empty code block"));
+                    }
+
                     let block_temp_len = block_temp.len();
                     if block_temp_len != block.len() {
                         block.resize(block_temp_len, 0);

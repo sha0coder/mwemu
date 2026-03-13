@@ -562,7 +562,12 @@ impl PE64 {
 
                 let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
                 if real_addr == 0 {
-                    break;
+                    break; // otherwise create loops
+                    /*
+                    off_name += HintNameItem::size();
+                    off_addr += 8;
+                    continue;
+                    */
                 }
                 /*
                 if emu.cfg.verbose >= 1 {
@@ -734,7 +739,10 @@ impl PE64 {
             //println!("resolving func_name: {}", func_name);
             let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
             if real_addr == 0 {
-                break;
+                off_name += HintNameItem::size();
+                off_addr += 8;
+                rva += 8;
+                continue;
             }
 
             /*if emu.cfg.verbose >= 1 {
