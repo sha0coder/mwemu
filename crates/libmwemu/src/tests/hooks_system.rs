@@ -16,26 +16,26 @@ pub fn hooks_system() {
     assert!(hooks.hook_on_post_instruction.is_none());
     assert!(hooks.hook_on_winapi_call.is_none());
 
-    // Test setting hooks
-    hooks.hook_on_interrupt = Some(|_emu, _addr, _interrupt| true);
+    // Test setting hooks using the setter methods (which accept closures)
+    hooks.on_interrupt(|_emu, _addr, _interrupt| true);
     assert!(hooks.hook_on_interrupt.is_some());
 
-    hooks.hook_on_exception = Some(|_emu, _addr, _ex_type| true);
+    hooks.on_exception(|_emu, _addr, _ex_type| true);
     assert!(hooks.hook_on_exception.is_some());
 
-    hooks.hook_on_memory_read = Some(|_emu, _ip, _addr, _sz| {});
+    hooks.on_memory_read(|_emu, _ip, _addr, _sz| {});
     assert!(hooks.hook_on_memory_read.is_some());
 
-    hooks.hook_on_memory_write = Some(|_emu, _ip, _addr, _sz, value| value);
+    hooks.on_memory_write(|_emu, _ip, _addr, _sz, value| value);
     assert!(hooks.hook_on_memory_write.is_some());
 
-    hooks.hook_on_pre_instruction = Some(|_emu, _addr, _ins, _sz| true);
+    hooks.on_pre_instruction(|_emu, _addr, _ins, _sz| true);
     assert!(hooks.hook_on_pre_instruction.is_some());
 
-    hooks.hook_on_post_instruction = Some(|_emu, _addr, _ins, _sz, _ok| {});
+    hooks.on_post_instruction(|_emu, _addr, _ins, _sz, _ok| {});
     assert!(hooks.hook_on_post_instruction.is_some());
 
-    hooks.hook_on_winapi_call = Some(|_emu, _addr, _called_addr| true);
+    hooks.on_winapi_call(|_emu, _addr, _called_addr| true);
     assert!(hooks.hook_on_winapi_call.is_some());
 
     // Test if all hooks are set

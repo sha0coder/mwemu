@@ -94,9 +94,13 @@ impl Emu {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs_mut().rip = self.gateway_return;
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
+            let handle_winapi: bool = if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                let rip = self.regs().rip;
+                let result = hook_fn(self, rip, addr);
+                self.hooks.hook_on_winapi_call = Some(hook_fn);
+                result
+            } else {
+                true
             };
 
             if handle_winapi {
@@ -196,9 +200,13 @@ impl Emu {
             let gateway_return = self.gateway_return;
             self.regs_mut().set_eip(gateway_return);
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
+            let handle_winapi: bool = if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                let rip = self.regs().rip;
+                let result = hook_fn(self, rip, addr);
+                self.hooks.hook_on_winapi_call = Some(hook_fn);
+                result
+            } else {
+                true
             };
 
             if handle_winapi {

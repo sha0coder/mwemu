@@ -26,7 +26,8 @@ pub fn GetComputerNameW(emu: &mut emu::Emu) {
         .expect("Cannot read buffer size") as usize;
 
     // Calculate required size in characters
-    let computer_name_chars = constants::HOST_NAME.chars().count();
+    let host_name = emu.cfg.host_name.clone();
+    let computer_name_chars = host_name.chars().count();
     let required_size_with_null = computer_name_chars + 1; // +1 for null terminator
 
     // Check if output buffer is valid (only if buffer_size > 0)
@@ -54,7 +55,7 @@ pub fn GetComputerNameW(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the computer name
-    emu.maps.write_wide_string(buff_ptr, constants::HOST_NAME);
+    emu.maps.write_wide_string(buff_ptr, &host_name);
 
     // On success, write the number of characters copied (NOT including null terminator)
     emu.maps.write_dword(size_ptr, computer_name_chars as u32);
@@ -62,7 +63,7 @@ pub fn GetComputerNameW(emu: &mut emu::Emu) {
     log_red!(
         emu,
         "kernel32!GetComputerNameW returning: '{}' (chars: {})",
-        constants::HOST_NAME,
+        host_name,
         computer_name_chars
     );
 

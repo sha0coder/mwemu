@@ -4,7 +4,12 @@ use crate::maps::mem64::Permission;
 pub fn HeapAlloc(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
     let flags = emu.regs().rdx;
-    let size = emu.regs().r8;
+    let mut size = emu.regs().r8;
+
+    // Apply minimum padding
+    if size < emu.cfg.heap_alloc_min_size {
+        size = emu.cfg.heap_alloc_min_size;
+    }
 
     let heap_addr: u64 = if size < 0x8000 {
         let heap_manage = emu.heap_management.as_mut().unwrap();

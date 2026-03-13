@@ -1,4 +1,3 @@
-use crate::constants;
 use crate::emu;
 use crate::peb;
 use crate::winapi::helper;
@@ -13,7 +12,7 @@ pub fn GetModuleHandleW(emu: &mut emu::Emu) {
     let base;
 
     if mod_name_ptr == 0 {
-        mod_name = constants::EXE_NAME.to_string();
+        mod_name = emu.cfg.exe_name.clone();
         base = match peb::peb32::get_module_base(&mod_name, emu) {
             Some(b) => b,
             None => helper::handler_create(&mod_name),

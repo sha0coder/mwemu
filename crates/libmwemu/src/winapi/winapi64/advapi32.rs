@@ -146,7 +146,8 @@ fn GetUserNameA(emu: &mut emu::Emu) {
         .expect("Cannot read buffer size") as usize;
 
     // Calculate required size in bytes (including null terminator)
-    let required_size = constants::USER_NAME.len() + 1; // +1 for null terminator
+    let user_name = emu.cfg.user_name.clone();
+    let required_size = user_name.len() + 1; // +1 for null terminator
 
     // Always update the size to show required bytes
     emu.maps.write_qword(in_out_sz, required_size as u64);
@@ -171,12 +172,12 @@ fn GetUserNameA(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the username
-    emu.maps.write_string(out_username, constants::USER_NAME);
+    emu.maps.write_string(out_username, &user_name);
 
     log_red!(
         emu,
         "GetUserNameA returning: '{}' (size: {})",
-        constants::USER_NAME,
+        user_name,
         required_size
     );
 
@@ -208,7 +209,8 @@ fn GetUserNameW(emu: &mut emu::Emu) {
         .expect("Cannot read buffer size") as usize;
 
     // Calculate required size in characters (including null terminator)
-    let username_chars = constants::USER_NAME.chars().count();
+    let user_name = emu.cfg.user_name.clone();
+    let username_chars = user_name.chars().count();
     let required_size = username_chars + 1; // +1 for null terminator
 
     // Always update the size to show required characters
@@ -235,12 +237,12 @@ fn GetUserNameW(emu: &mut emu::Emu) {
 
     // Buffer is large enough, write the username
     emu.maps
-        .write_wide_string(out_username, constants::USER_NAME);
+        .write_wide_string(out_username, &user_name);
 
     log_red!(
         emu,
         "GetUserNameW returning: '{}' (size: {})",
-        constants::USER_NAME,
+        user_name,
         required_size
     );
 

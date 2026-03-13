@@ -25,6 +25,8 @@ pub struct Maps {
     pub name_map: AHashMap<String, usize>,
     pub is_64bits: bool,
     tlb: RefCell<TLB>,
+    /// Maximum allocation size (default 0xffffff / ~16MB). Allocations larger than this are capped.
+    pub max_alloc_size: u64,
 }
 
 impl Default for Maps {
@@ -36,6 +38,7 @@ impl Default for Maps {
             is_64bits: false,
             banzai: false,
             tlb: RefCell::new(TLB::new()),
+            max_alloc_size: 0xffffff,
         }
     }
 }
@@ -58,6 +61,7 @@ impl Maps {
             name_map,
             is_64bits,
             tlb,
+            max_alloc_size: 0xffffff,
         }
     }
 
@@ -1259,8 +1263,8 @@ impl Maps {
         let mut prev: u64 = self.align_up(bottom, Self::DEFAULT_ALIGNMENT);
         let debug = false;
 
-        if sz > 0xffffff {
-            sz = 0xffffff;
+        if sz > self.max_alloc_size {
+            sz = self.max_alloc_size;
         }
 
         // Round up size to alignment

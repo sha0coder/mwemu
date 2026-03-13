@@ -46,6 +46,34 @@ pub struct Config {
     pub entropy: bool,
     pub shellcode: bool,
     pub emulate_winapi: bool,
+
+    // Configurable allocation cap (default 16MB). Allocations larger than this are truncated.
+    pub max_alloc_size: u64,
+
+    // Configurable environment constants (override hardcoded values in constants.rs)
+    pub module_name: String,
+    pub exe_name: String,
+    pub user_name: String,
+    pub host_name: String,
+    pub temp_path: String,
+    pub cwd_path: String,
+    pub windows_directory: String,
+    pub system_directory: String,
+
+    // Execution limits
+    pub max_instructions: Option<u64>,   // Stop emulation after N instructions
+    pub timeout_secs: Option<f64>,       // Stop emulation after N seconds wall-clock time
+
+    // Fault tracking
+    pub max_faults: Option<u32>,         // Stop emulation after N faults/exceptions
+
+    // Sleep/Wait short-circuit: if true, Sleep/Wait calls advance tick but return immediately
+    pub short_circuit_sleep: bool,
+
+    // HeapAlloc minimum padding: ensure all heap allocations are at least this size
+    pub heap_alloc_min_size: u64,
+    // HeapFree soft-free: if true, HeapFree marks memory as freed but doesn't deallocate
+    pub heap_free_soft: bool,
 }
 
 impl Default for Config {
@@ -98,6 +126,21 @@ impl Config {
             entropy: false,
             shellcode: false,
             emulate_winapi: false,
+            max_alloc_size: 0xffffff, // 16MB default
+            module_name: constants::MODULE_NAME.to_string(),
+            exe_name: constants::EXE_NAME.to_string(),
+            user_name: constants::USER_NAME.to_string(),
+            host_name: constants::HOST_NAME.to_string(),
+            temp_path: constants::TEMP_PATH.to_string(),
+            cwd_path: constants::CWD_PATH.to_string(),
+            windows_directory: constants::WINDOWS_DIRECTORY.to_string(),
+            system_directory: constants::SYSTEM_DIRECTORY.to_string(),
+            max_instructions: None,
+            timeout_secs: None,
+            max_faults: None,
+            short_circuit_sleep: false,
+            heap_alloc_min_size: 0,
+            heap_free_soft: false,
         }
     }
 
