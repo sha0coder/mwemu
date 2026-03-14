@@ -27,6 +27,7 @@ use crate::serialization::thread_context::SerializableThreadContext;
 use crate::structures::MemoryOperation;
 
 use crate::emu::disassemble::InstructionCache;
+use crate::emu::object_handle::HandleManagement;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableEmu {
@@ -218,6 +219,7 @@ impl From<SerializableEmu> for Emu {
             is_break_on_api: false,
             instruction_count: 0,
             fault_count: 0,
+            handle_management: HandleManagement::new(), // TODO: for now, we haven't implement HandleManagement as serializable but in the future maybe
         }
     }
 }

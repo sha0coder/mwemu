@@ -161,12 +161,8 @@ impl WindowsPath {
             path.push(drive);
         }
 
-        let mut first = true;
         for folder in &self.folders {
-            if !first {
-                path.push('/');
-            }
-            first = false;
+            path.push('/');
 
             if !folder.is_empty() {
                 path.push_str(folder);

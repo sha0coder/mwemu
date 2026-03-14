@@ -183,6 +183,8 @@ mod wide_char_to_multi_byte;
 mod win_exec;
 mod write_file;
 mod write_process_memory;
+mod GetFileSize;
+mod get_file_size_ex;
 
 mod __tlg_create_wsz;
 mod _guard_check_icall_nop;
