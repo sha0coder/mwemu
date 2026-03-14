@@ -1,7 +1,6 @@
 pub(crate) use file_handle::FileHandle;
 pub(crate) use mapping_handle::MappingHandle;
 use slab::Slab;
-use std::sync::{Arc, Mutex};
 
 pub mod file_handle;
 mod hive_parser;
@@ -75,6 +74,8 @@ impl HandleManagement {
 
     // Method to remove a FileHandle (useful for CloseHandle)
     pub fn remove_file_handle(&mut self, key: u32) -> Option<FileHandle> {
+        let file_handle = self.get_mut_file_handle(key)?;
+        file_handle.close();
         if let Some(handle_type) = self.handle_types.try_remove(key as usize) {
             match handle_type {
                 HandleType::FileHandle(fh) => {

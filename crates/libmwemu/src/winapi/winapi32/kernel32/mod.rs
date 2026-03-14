@@ -182,6 +182,8 @@ mod wide_char_to_multi_byte;
 mod win_exec;
 mod write_file;
 mod write_process_memory;
+mod GetFileSize;
+mod get_file_size_ex;
 
 pub use add_vectored_exception_handler::*;
 pub use are_file_apis_ansi::*;
