@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::emu;
 
 pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     let out_buff_ptr = emu.regs().rcx;
@@ -11,7 +11,7 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
         size
     );
 
-    let system_dir = constants::SYSTEM_DIRECTORY;
+    let system_dir = emu.cfg.system_directory.clone();
     let required_length = system_dir.len() + 1; // +1 for null terminator
 
     // If buffer is NULL, return required size
@@ -42,7 +42,7 @@ pub fn GetSystemDirectoryW(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the directory
-    emu.maps.write_wide_string(out_buff_ptr, system_dir);
+    emu.maps.write_wide_string(out_buff_ptr, &system_dir);
 
     log_red!(
         emu,

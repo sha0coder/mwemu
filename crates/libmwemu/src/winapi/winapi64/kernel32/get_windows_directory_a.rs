@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::emu;
 
 pub fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
     let lp_buffer = emu.regs().rcx as usize;
@@ -10,7 +10,7 @@ pub fn GetWindowsDirectoryA(emu: &mut emu::Emu) {
         lp_buffer,
         u_size
     );
-    let output = constants::WINDOWS_DIRECTORY;
-    emu.maps.write_string(lp_buffer as u64, output);
+    let output = emu.cfg.windows_directory.clone();
+    emu.maps.write_string(lp_buffer as u64, &output);
     emu.regs_mut().rax = output.len() as u64;
 }

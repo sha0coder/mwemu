@@ -1037,20 +1037,29 @@ impl PE32 {
         callbacks
     }
 
-    pub fn delay_load_binding(&mut self, emu: &mut emu::Emu) {
-        log::info!("Delay load binding started ...");
+    pub fn delay_load_binding(&mut self, emu: &mut emu::Emu, base_addr: u32) {
+        log::info!("Delay load binding started for {} ...", self.filename);
         for i in 0..self.delay_load_dir.len() {
             let dld = &self.delay_load_dir[i];
             if dld.name.is_empty() {
                 continue;
             }
+
+            /*            if dld.name.starts_with("api-ms-win-") {
+                dld = "kernelbase".to_string();
+            }*/
+
             if winapi32::kernel32::load_library(emu, &dld.name) == 0 {
-                panic!("cannot found the library `{}` on maps64", &dld.name);
+                panic!(
+                    "cannot found the library `{}` on {}",
+                    &dld.name, emu.cfg.maps_folder
+                );
             }
 
             let mut off_name = PE32::vaddr_to_off(&self.sect_hdr, dld.name_table) as usize;
             let mut off_addr =
                 PE32::vaddr_to_off(&self.sect_hdr, dld.bound_delay_import_table) as usize;
+            let mut rva = dld.bound_delay_import_table;
 
             loop {
                 if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 4 {
@@ -1058,12 +1067,13 @@ impl PE32 {
                 }
 
                 let hint = HintNameItem::load(&self.raw, off_name);
-                let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
+                let _addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
                 let off2 = PE32::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
                 if off2 == 0 {
                     //|| addr < 0x100 {
                     off_name += HintNameItem::size();
                     off_addr += 4;
+                    rva += 4;
                     continue;
                 }
                 let func_name = PE32::read_string(&self.raw, off2 + 2);
@@ -1079,16 +1089,23 @@ impl PE32 {
                     log::info!("binded 0x{:x} {}", real_addr, func_name);
                 }*/
 
-                write_u32_le!(self.raw, off_addr, real_addr);
+                write_u32_le!(self.raw, off_addr, real_addr as u32);
+                let patch_addr = base_addr as u64 + rva as u64;
+                if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
+                    mem.force_write_dword(patch_addr, real_addr as u32);
+                }
 
                 off_name += HintNameItem::size();
                 off_addr += 4;
+                rva += 4;
             }
         }
         log::info!("delay load bound!");
     }
 
-    pub fn iat_binding(&mut self, emu: &mut emu::Emu) {
+
+
+    pub fn iat_binding(&mut self, emu: &mut emu::Emu, base_addr: u32) {
         let dbg = false;
 
         // https://docs.microsoft.com/en-us/archive/msdn-magazine/2002/march/inside-windows-an-in-depth-look-into-the-win32-portable-executable-file-format-part-2#Binding
@@ -1101,26 +1118,27 @@ impl PE32 {
         println!("-----> {}", self.image_import_descriptor.len());
 
         for i in 0..self.image_import_descriptor.len() {
-            let iim = &self.image_import_descriptor[i];
-            if dbg {
-                log::info!("import: {}", iim.name);
-            }
+            let iim_name = self.image_import_descriptor[i].name.clone();
+            let original_first_thunk = self.image_import_descriptor[i].original_first_thunk;
+            let first_thunk = self.image_import_descriptor[i].first_thunk;
 
-            if iim.name.is_empty() {
+            if iim_name.is_empty() {
                 continue;
             }
 
-            if winapi32::kernel32::load_library(emu, &iim.name) == 0 {
-                log::info!("cannot found the library `{}` on maps32/", &iim.name);
-                return;
+            if winapi32::kernel32::load_library(emu, &iim_name) == 0 {
+                log::info!("cannot found the library `{}` on maps32/", &iim_name);
+                continue;
+                //return;
             } else if dbg {
-                log::info!("library `{}` loaded", &iim.name);
+                log::info!("library `{}` loaded", &iim_name);
             }
 
             // Walking function names.
             let mut off_name =
-                PE32::vaddr_to_off(&self.sect_hdr, iim.original_first_thunk) as usize;
-            let mut off_addr = PE32::vaddr_to_off(&self.sect_hdr, iim.first_thunk) as usize;
+                PE32::vaddr_to_off(&self.sect_hdr, original_first_thunk) as usize;
+            let mut off_addr = PE32::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
+            let mut rva = first_thunk;
 
             loop {
                 if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 4 {
@@ -1133,11 +1151,12 @@ impl PE32 {
                     //|| addr < 0x100 {
                     off_name += HintNameItem::size();
                     off_addr += 4;
+                    rva += 4;
                     continue;
                 }
                 let func_name = PE32::read_string(&self.raw, off2 + 2);
                 let real_addr =
-                    winapi32::kernel32::resolve_api_name_in_module(emu, &iim.name, &func_name);
+                    winapi32::kernel32::resolve_api_name_in_module(emu, &iim_name, &func_name);
                 if dbg {
                     let real_addr1 = winapi32::kernel32::resolve_api_name(emu, &func_name);
                     if real_addr1 != real_addr {
@@ -1145,7 +1164,7 @@ impl PE32 {
                         let (va, modm, func) = winapi32::kernel32::search_api_name(emu, &func_name);
                         log::info!(
                             "inport: {}!{}  ldr: {}!{}",
-                            &iim.name,
+                            &iim_name,
                             &func_name,
                             modm,
                             func
@@ -1153,7 +1172,7 @@ impl PE32 {
                         log::info!(
                             "0x{:x} {}!{}  0x{:x}-> 0x{:x}",
                             addr,
-                            iim.name,
+                            iim_name,
                             func_name,
                             off_addr,
                             real_addr
@@ -1175,15 +1194,15 @@ impl PE32 {
                     //log::info!("patch addr: 0x{:x}: 0x{:x} -> 0x{:x}", off_addr, old_addr, real_addr);
                 }
 
-                write_u32_le!(self.raw, off_addr, real_addr);
-
-                /*
-                if emu.cfg.verbose >= 1 {
-                    log::info!("binded 0x{:x} {}", real_addr, func_name);
-                }*/
+                write_u32_le!(self.raw, off_addr, real_addr as u32);
+                let patch_addr = base_addr as u64 + rva as u64;
+                if emu.maps.is_mapped(patch_addr) {
+                    emu.maps.write_dword(patch_addr, real_addr as u32);
+                }
 
                 off_name += HintNameItem::size();
                 off_addr += 4;
+                rva += 4;
             }
         }
         log::info!("{} IAT Bound.", &self.filename);

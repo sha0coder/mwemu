@@ -13,9 +13,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         None => return false,
     };
 
-    let handle_interrupts = match emu.hooks.hook_on_interrupt {
-        Some(hook_fn) => hook_fn(emu, emu.regs().rip, interrupt),
-        None => true,
+    let handle_interrupts = if let Some(mut hook_fn) = emu.hooks.hook_on_interrupt.take() {
+        let rip = emu.regs().rip;
+        let result = hook_fn(emu, rip, interrupt);
+        emu.hooks.hook_on_interrupt = Some(hook_fn);
+        result
+    } else {
+        true
     };
 
     if handle_interrupts {
@@ -28,7 +32,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             0x29 => {
                 log::info!("call_stack = {:?}", emu.call_stack());
                 log::info!("int 0x29: __fastfail {}", emu.regs().rcx);
-                std::process::exit(1);
+                emu.stop();
+                return false;
             }
 
             0x03 => {

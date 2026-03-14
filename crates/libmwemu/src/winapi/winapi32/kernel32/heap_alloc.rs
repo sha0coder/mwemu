@@ -10,10 +10,15 @@ pub fn HeapAlloc(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!HeapAlloc cannot read the flags");
-    let size = emu
+    let mut size = emu
         .maps
         .read_dword(emu.regs().get_esp() + 8)
         .expect("kernel32!HeapAlloc cannot read the size") as u64;
+
+    // Apply minimum padding
+    if size < emu.cfg.heap_alloc_min_size {
+        size = emu.cfg.heap_alloc_min_size;
+    }
 
     let heap_addr: u64 = if size < 0x8000 {
         let heap_manage = emu.heap_management.as_mut().unwrap();

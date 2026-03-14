@@ -4,6 +4,7 @@ use crate::{
 };
 
 impl Emu {
+    ///TODO: reimplement set_eip and set_rip
     /// Redirect execution flow on 64bits.
     /// If the target address is a winapi, triggers it's implementation.
     pub fn set_rip(&mut self, addr: u64, is_branch: bool) -> bool {
@@ -25,6 +26,15 @@ impl Emu {
                 }
                 let api_name = self.pe64.as_ref().unwrap().import_addr_to_name(addr);
                 if !api_name.is_empty() {
+                    // emulate winapi
+                    if self.cfg.emulate_winapi {
+                        let rip = self.regs().rip;
+                        let api_name = winapi64::kernel32::guess_api_name(self, addr);
+                        log::info!("{}:{} emulating {}", self.pos, rip, api_name);
+                        self.regs_mut().rip = addr;
+                        return true;
+                    }
+
                     self.gateway_return = self.stack_pop64(false).unwrap_or(0);
                     self.regs_mut().rip = self.gateway_return;
                     winapi64::gateway(addr, "not_loaded", self);
@@ -44,6 +54,7 @@ impl Emu {
         };
 
         let map_name = self.filename.as_str();
+
         /*
         if addr < constants::LIBS64_MIN
             || name == "code"
@@ -52,11 +63,7 @@ impl Emu {
         if addr < constants::LIBS64_MIN {
             if self.cfg.verbose > 0 {
                 let rip = self.regs().rip;
-                let prev = match self.maps.get_addr_name(rip) {
-                    Some(n) => n,
-                    None => "??",
-                };
-
+                let prev = self.maps.get_addr_name(rip).unwrap_or("??");
                 if prev != name {
                     log::info!("{}:0x{:x} map change  {} -> {}", self.pos, rip, prev, name);
                 }
@@ -70,6 +77,15 @@ impl Emu {
                 log::info!("/!\\ changing RIP to {} ", name);
             }
 
+            // emulate winapi
+            if self.cfg.emulate_winapi {
+                let rip = self.regs().rip;
+                let api_name = winapi64::kernel32::guess_api_name(self, addr);
+                log::info!("{}:{} emulating {}", self.pos, rip, api_name);
+                self.regs_mut().rip = addr;
+                return true;
+            }
+
             if self.skip_apicall {
                 self.its_apicall = Some(addr);
                 return false;
@@ -78,9 +94,13 @@ impl Emu {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs_mut().rip = self.gateway_return;
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
+            let handle_winapi: bool = if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                let rip = self.regs().rip;
+                let result = hook_fn(self, rip, addr);
+                self.hooks.hook_on_winapi_call = Some(hook_fn);
+                result
+            } else {
+                true
             };
 
             if handle_winapi {
@@ -117,6 +137,15 @@ impl Emu {
                 }
                 let api_name = self.pe32.as_ref().unwrap().import_addr_to_name(addr as u32);
                 if !api_name.is_empty() {
+                    // winapi emulation case
+                    if self.cfg.emulate_winapi {
+                        let eip = self.regs().get_eip();
+                        let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
+                        log::info!("{}:{} emulating {}", self.pos, eip, api_name);
+                        self.regs_mut().set_eip(addr);
+                        return true;
+                    }
+
                     self.gateway_return = self.stack_pop32(false).unwrap_or(0) as u64;
                     self.regs_mut().rip = self.gateway_return;
                     winapi32::gateway(addr as u32, "not_loaded", self);
@@ -132,6 +161,7 @@ impl Emu {
         };
 
         let map_name = self.filename_to_mapname(&self.filename);
+
         /*
         if name == "code"
             || addr < constants::LIBS32_MIN
@@ -140,10 +170,7 @@ impl Emu {
         if addr < constants::LIBS32_MIN {
             if self.cfg.verbose > 0 {
                 let eip = self.regs().get_eip();
-                let prev = match self.maps.get_addr_name(eip) {
-                    Some(n) => n,
-                    None => "??",
-                };
+                let prev = self.maps.get_addr_name(eip).unwrap_or("??");
                 if prev != name {
                     log::info!("{}:0x{:x} map change  {} -> {}", self.pos, eip, prev, name);
                 }
@@ -155,6 +182,15 @@ impl Emu {
                 log::info!("/!\\ changing EIP to {} 0x{:x}", name, addr);
             }
 
+            // winapi emulation case
+            if self.cfg.emulate_winapi {
+                let eip = self.regs().get_eip();
+                let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
+                log::info!("{}:{} emulating {}", self.pos, eip, api_name);
+                self.regs_mut().set_eip(addr);
+                return true;
+            }
+
             if self.skip_apicall {
                 self.its_apicall = Some(addr);
                 return false;
@@ -164,9 +200,13 @@ impl Emu {
             let gateway_return = self.gateway_return;
             self.regs_mut().set_eip(gateway_return);
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
+            let handle_winapi: bool = if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                let rip = self.regs().rip;
+                let result = hook_fn(self, rip, addr);
+                self.hooks.hook_on_winapi_call = Some(hook_fn);
+                result
+            } else {
+                true
             };
 
             if handle_winapi {

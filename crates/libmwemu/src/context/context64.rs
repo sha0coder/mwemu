@@ -47,6 +47,10 @@ pub struct Context64 {
 }
 
 impl Context64 {
+    pub fn size() -> usize {
+        std::mem::size_of::<Self>()
+    }
+
     pub fn new(regs: &Regs64) -> Context64 {
         Context64 {
             p1_home: 0,

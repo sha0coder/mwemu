@@ -7,17 +7,18 @@ use std::time::Instant;
 use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{Formatter as _, IntelFormatter};
+use std::collections::BTreeSet;
 
-use crate::console::Console;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
+use crate::pe::pe64;
 use crate::peb::{peb32, peb64};
 use crate::{
     banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config,
     global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext,
 };
-use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
+use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32};
 
 use crate::maps::heap_allocation::O1Heap;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
@@ -40,6 +41,18 @@ impl CustomLogFormat {
     pub fn new() -> CustomLogFormat {
         Self {}
     }
+}
+
+impl Default for Emu {
+    fn default() -> Self {
+        Emu::new()
+    }
+}
+
+pub struct Lib {
+    pe64: pe64::PE64,
+    base: u64,
+    name: String,
 }
 
 impl Emu {
@@ -100,6 +113,8 @@ impl Emu {
             last_error: 0,
             is_api_run: false,
             is_break_on_api: false,
+            instruction_count: 0,
+            fault_count: 0,
             handle_management: HandleManagement::new(),
         }
     }
@@ -259,11 +274,8 @@ impl Emu {
         self.regs_mut().rip = self.cfg.entry_point;
         if self.cfg.is_64bits {
             self.maps.is_64bits = true;
-            //self.init_regs_tests(); // TODO: not sure why this was on
             self.init_win32_mem64();
             self.init_stack64();
-            //self.init_stack64_tests();
-            //self.init_flags_tests();
         } else {
             // 32bits
             self.maps.is_64bits = false;
@@ -485,13 +497,8 @@ impl Emu {
         assert!(r == 0x53d26);
         */
 
-        if self.maps.mem_test() {
-            log::info!("memory test Ok.");
-        } else {
-            log::error!("It doesn't pass the memory tests!!");
-            Console::spawn_console(self);
-            std::process::exit(1);
-        }
+        assert!(self.maps.mem_test(), "It doesn't pass the memory tests!!");
+        log::info!("memory test Ok.");
     }
 
     /// This is called from init(), this setup the 64bits windows memory simulation.
@@ -499,37 +506,68 @@ impl Emu {
         log::info!("loading memory maps");
         self.maps.is_64bits = true;
 
-        /*
-        let orig_path = std::env::current_dir().unwrap();
-        std::env::set_current_dir(self.cfg.maps_folder.clone());
-
-        self.maps.create_map("m10000", 0x10000, 0).expect("cannot create m10000 map");
-        self.maps.create_map("m20000", 0x20000, 0).expect("cannot create m20000 map");
-        self.maps.create_map("m520000", 0x520000, 0).expect("cannot create m520000 map");
-        self.maps.create_map("m53b000", 0x53b000, 0).expect("cannot create m53b000 map");
-        self.maps.create_map("code", self.cfg.code_base_addr, 0);
-
-        std::env::set_current_dir(orig_path);
-        */
-
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
 
-        winapi64::kernel32::load_library(self, "ntdll.dll");
+        let mut metadata: Vec<Lib> = Vec::new();
+        let base: Vec<&str> = vec!["kernelbase.dll", "kernel32.dll", "ntdll.dll"];
+
+        // Stage 1: map kernel32
+        for dll in &base {
+            let filepath = self.cfg.get_maps_folder(dll);
+            log::debug!("mapping base lib64: {}", &filepath);
+            let (base, pe64) = self.map_dll_pe64(&filepath);
+            let lib = Lib {
+                pe64,
+                base,
+                name: dll.to_string(),
+            };
+            metadata.push(lib);
+        }
+
+        // Stage 2: get_dependencies
+        let mut dependencies: BTreeSet<String> = BTreeSet::new();
+        for dll in metadata.iter_mut() {
+            for mut dep in dll.pe64.get_dependencies(self) {
+                dep = dep.to_lowercase();
+                if !dep.ends_with(".dll") {
+                    dep.push_str(".dll");
+                }
+                if !base.contains(&dep.as_str()) {
+                    dependencies.insert(dep);
+                }
+            }
+        }
+
+        // Stage 3: map dependencies
+        for dll in dependencies {
+            let filepath = self.cfg.get_maps_folder(&dll);
+            log::debug!("mapping depenency {}", &filepath);
+            let (base, pe64) = self.map_dll_pe64(&filepath);
+            let lib = Lib {
+                pe64,
+                base,
+                name: dll.to_string(),
+            };
+            metadata.push(lib);
+        }
+
+        // Stage 3: dynamic linking base + deps
+        for dll in &metadata {
+            log::debug!("dynamic linking {}", &dll.name);
+            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_off(), &dll.name, self);
+        }
+
+        // Stage 3: IAT Binding  base + deps
+        for dll in metadata.iter_mut() {
+            log::debug!("iat binding {}", &dll.name);
+            dll.pe64.iat_binding(self, dll.base);
+            dll.pe64.delay_load_binding(self, dll.base);
+        }
+        log::debug!("win32 64bits base libs ok.");
+
         let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
         peb64::update_peb_image_base(self, ntdll_base);
-
-        winapi64::kernel32::load_library(self, "kernel32.dll");
-        winapi64::kernel32::load_library(self, "kernelbase.dll");
-        winapi64::kernel32::load_library(self, "iphlpapi.dll");
-        winapi64::kernel32::load_library(self, "ws2_32.dll");
-        winapi64::kernel32::load_library(self, "advapi32.dll");
-        winapi64::kernel32::load_library(self, "comctl32.dll");
-        winapi64::kernel32::load_library(self, "winhttp.dll");
-        winapi64::kernel32::load_library(self, "wininet.dll");
-        winapi64::kernel32::load_library(self, "dnsapi.dll");
-        winapi64::kernel32::load_library(self, "shell32.dll");
-        winapi64::kernel32::load_library(self, "shlwapi.dll");
 
         let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);

@@ -25,5 +25,5 @@ pub fn RaiseException(emu: &mut emu::Emu) {
     }
 
     emu.regs_mut().rax = 0;
-    //std::process::exit(1);
+    //emu.stop();
 }

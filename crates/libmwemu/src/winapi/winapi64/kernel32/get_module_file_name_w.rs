@@ -30,11 +30,11 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
     // Determine which module name to use based on handle
     let module_name = if module_handle == 0 {
         // NULL handle means current process executable
-        constants::MODULE_NAME // or constants::EXE_NAME if you have it
+        emu.cfg.module_name.clone()
     } else {
         // TODO: Look up actual module by handle
         // For now, just use the default module name
-        constants::MODULE_NAME
+        emu.cfg.module_name.clone()
     };
 
     let name_chars = module_name.chars().count();
@@ -58,7 +58,7 @@ pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
         emu.regs_mut().rax = n_size as u64; // Return buffer size when truncated
     } else {
         // Buffer is large enough
-        emu.maps.write_wide_string(lp_filename, module_name);
+        emu.maps.write_wide_string(lp_filename, &module_name);
 
         log_red!(
             emu,

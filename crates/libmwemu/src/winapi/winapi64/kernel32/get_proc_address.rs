@@ -4,8 +4,8 @@ use crate::peb::peb64;
 pub fn GetProcAddress(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
     let func_ptr = emu.regs().rdx;
-
     let func = emu.maps.read_string(func_ptr).to_lowercase();
+    /*
     if func == "zwcopyfilechunk" {
         emu.regs_mut().rax = 0x7ff7e0001337;
         log_red!(
@@ -16,7 +16,7 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
             emu.regs().rax
         );
         return;
-    }
+    }*/
 
     let mut flink = peb64::Flink::new(emu);
     flink.load(emu);

@@ -33,12 +33,14 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         constants::NR64_EXIT => {
             log::info!(
-                "{}** {} syscall exit()  {}",
+                "{}** {} syscall exit()  {} {}",
                 emu.colors.light_red,
                 emu.pos,
+                emu.regs().rdi,
                 emu.colors.nc
             );
-            std::process::exit(emu.regs().rdi as i32);
+            emu.stop();
+            return;
         }
 
         constants::NR64_FORK => {

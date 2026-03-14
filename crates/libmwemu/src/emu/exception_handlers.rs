@@ -99,13 +99,19 @@ impl Emu {
 
         */
 
+        self.fault_count += 1;
+
         let addr: u64;
         let next: u64;
 
         // hook
-        let handle_exception: bool = match self.hooks.hook_on_exception {
-            Some(hook_fn) => hook_fn(self, self.regs().rip, ex_type),
-            None => true,
+        let handle_exception: bool = if let Some(mut hook_fn) = self.hooks.hook_on_exception.take() {
+            let rip = self.regs().rip;
+            let result = hook_fn(self, rip, ex_type);
+            self.hooks.hook_on_exception = Some(hook_fn);
+            result
+        } else {
+            true
         };
 
         // No handled exceptions

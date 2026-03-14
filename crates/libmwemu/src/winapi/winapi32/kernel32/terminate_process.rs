@@ -1,3 +1,4 @@
+use crate::constants;
 use crate::emu;
 
 pub fn TerminateProcess(emu: &mut emu::Emu) {
@@ -19,5 +20,10 @@ pub fn TerminateProcess(emu: &mut emu::Emu) {
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
+
+    if hndl == constants::CURRENT_PROCESS_HANDLE as u32 {
+        emu.stop();
+        return;
+    }
     emu.regs_mut().rax = 1;
 }

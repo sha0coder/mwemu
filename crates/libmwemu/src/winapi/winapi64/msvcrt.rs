@@ -9,6 +9,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     match api.as_str() {
         "__set_app_type" => __set_app_type(emu),
         "malloc" => malloc(emu),
+        "_errno" => _errno(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -69,4 +70,9 @@ fn malloc(emu: &mut emu::Emu) {
     } else {
         emu.regs_mut().rax = 0x1337; // weird msvcrt has to return a random unallocated pointer, and the program has to do free() on it
     }
+}
+
+fn _errno(emu: &mut emu::Emu) {
+    log_red!(emu, "msvcrt!_errno =0");
+    emu.regs_mut().rax = 0;
 }

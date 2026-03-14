@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static COLOR_ENABLED: AtomicBool = AtomicBool::new(true);
@@ -178,4 +179,11 @@ macro_rules! color {
             LightPurple, LightCyan, White, nc, ClearScreen"
         ))
     };
+}
+
+pub fn filename_no_ext(path: &str) -> Option<String> {
+    Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
 }

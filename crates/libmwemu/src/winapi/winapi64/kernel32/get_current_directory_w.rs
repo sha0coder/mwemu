@@ -4,7 +4,7 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     let buff_len = emu.regs().rcx as u32;
     let buff_ptr = emu.regs().rdx;
 
-    let current_dir = constants::CWD_PATH;
+    let current_dir = emu.cfg.cwd_path.clone();
     let dir_char_count = current_dir.chars().count(); // Use chars().count() for proper Unicode handling
 
     log_red!(
@@ -30,7 +30,7 @@ pub fn GetCurrentDirectoryW(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the directory
-    emu.maps.write_wide_string(buff_ptr, current_dir);
+    emu.maps.write_wide_string(buff_ptr, &current_dir);
 
     log_red!(
         emu,

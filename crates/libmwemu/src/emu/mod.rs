@@ -107,5 +107,7 @@ pub struct Emu {
     pub last_error: u32,
     pub is_api_run: bool,
     pub is_break_on_api: bool, // this value will only be modify internally for python use case
+    pub instruction_count: u64,
+    pub fault_count: u32,
     pub handle_management: HandleManagement,
 }

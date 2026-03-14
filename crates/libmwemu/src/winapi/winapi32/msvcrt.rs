@@ -25,7 +25,9 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "free" => free(emu),
         "realloc" => realloc(emu),
         "strtok" => strtok(emu),
+        "exit" => exit(emu),
         "__set_app_type" => __set_app_type(emu),
+        "_errno" => _errno(emu),
 
         _ => {
             if emu.cfg.skip_unimplemented == false {
@@ -379,4 +381,18 @@ fn __set_app_type(emu: &mut emu::Emu) {
         .expect("msvcrt!__set_app_type error reading app_type");
 
     log_red!(emu, "msvcrt!__set_app_type  app_type: 0x{:x}", app_type);
+}
+
+fn exit(emu: &mut emu::Emu) {
+    let status = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("msvcrt!exit error reading param status.");
+    log_red!(emu, "msvcrt!exit {}", status);
+    emu.stop();
+}
+
+fn _errno(emu: &mut emu::Emu) {
+    log_red!(emu, "msvcrt!_errno =0");
+    emu.regs_mut().rax = 0;
 }

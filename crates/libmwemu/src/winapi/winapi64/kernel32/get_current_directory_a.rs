@@ -11,7 +11,7 @@ pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
         buff_ptr
     );
 
-    let current_dir = constants::CWD_PATH;
+    let current_dir = emu.cfg.cwd_path.clone();
     let dir_byte_count = current_dir.len(); // Use len() for byte count in ANSI strings
 
     // When buffer length is 0 or buffer is null, return required size INCLUDING null terminator
@@ -30,7 +30,7 @@ pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the directory
-    emu.maps.write_string(buff_ptr, current_dir);
+    emu.maps.write_string(buff_ptr, &current_dir);
 
     log_red!(
         emu,
