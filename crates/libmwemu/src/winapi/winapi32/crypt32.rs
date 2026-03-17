@@ -10,7 +10,8 @@ use crate::console;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "PkiInitializeCriticalSection" => PkiInitializeCriticalSection(emu),
         "CryptStringToBinaryA" => CryptStringToBinaryA(emu),
 
@@ -23,7 +24,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                     );
                 }
 
-                unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
+                unimplemented!("attempt to call unimplemented API 0x{:x} {}", addr, api);
             }
             log::warn!(
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
@@ -31,7 +32,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 

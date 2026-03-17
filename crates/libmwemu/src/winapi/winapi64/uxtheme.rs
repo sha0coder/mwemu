@@ -4,7 +4,8 @@ use crate::winapi::winapi64;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "IsAppThemed" => IsAppThemed(emu),
         "IsThemeActive" => IsThemeActive(emu),
         "GetThemeAppProperties" => GetThemeAppProperties(emu),
@@ -25,7 +26,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
     String::new()

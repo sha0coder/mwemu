@@ -9,7 +9,8 @@ use std::sync::Mutex;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "WsaStartup" => WsaStartup(emu),
         "WsaSocketA" => WsaSocketA(emu),
         "socket" => socket(emu),
@@ -52,7 +53,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 

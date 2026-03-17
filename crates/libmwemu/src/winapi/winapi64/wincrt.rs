@@ -5,7 +5,8 @@ use crate::winapi::winapi64;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "_initialize_onexit_table" => _initialize_onexit_table(emu),
         "_register_onexit_function" => _register_onexit_function(emu),
         "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
@@ -34,7 +35,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 
