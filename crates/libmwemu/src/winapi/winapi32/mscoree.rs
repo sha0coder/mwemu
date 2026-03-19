@@ -4,7 +4,8 @@ use crate::winapi::winapi32::kernel32;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "_CorExeMain" => _CorExeMain(emu),
 
         _ => {
@@ -24,7 +25,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 

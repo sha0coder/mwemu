@@ -6,7 +6,8 @@ use crate::winapi::winapi64;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "StartServiceCtrlDispatcherA" => StartServiceCtrlDispatcherA(emu),
         "StartServiceCtrlDispatcherW" => StartServiceCtrlDispatcherW(emu),
         "RegOpenKeyExA" => RegOpenKeyExA(emu),
@@ -32,7 +33,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 
@@ -236,8 +237,7 @@ fn GetUserNameW(emu: &mut emu::Emu) {
     }
 
     // Buffer is large enough, write the username
-    emu.maps
-        .write_wide_string(out_username, &user_name);
+    emu.maps.write_wide_string(out_username, &user_name);
 
     log_red!(
         emu,

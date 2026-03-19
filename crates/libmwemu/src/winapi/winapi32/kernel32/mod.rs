@@ -1787,7 +1787,8 @@ pub use zombify_act_ctx_worker::*;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
         "AreFileApisANSI" => AreFileApisANSI(emu),
         "CloseHandle" => CloseHandle(emu),
@@ -2563,7 +2564,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 
@@ -2777,7 +2778,14 @@ pub fn guess_api_name(emu: &mut emu::Emu, addr: u32) -> String {
                 let ordinal = flink.get_function_ordinal(emu, i);
 
                 if ordinal.func_va == addr as u64 {
-                    return ordinal.func_name.clone();
+                    let lib = flink
+                        .mod_name
+                        .rsplit_once('.')
+                        .map(|(name, _)| name)
+                        .unwrap_or(&flink.mod_name);
+
+                    let s = format!("{}!{}", lib, ordinal.func_name);
+                    return s;
                 }
             }
         }
@@ -2789,7 +2797,7 @@ pub fn guess_api_name(emu: &mut emu::Emu, addr: u32) -> String {
         }
     }
 
-    "function not found".to_string()
+    "".to_string()
 }
 
 pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
