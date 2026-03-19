@@ -6,7 +6,7 @@ use crate::emu;
 use crate::pe::pe32::{
     DelayLoadDirectory, HintNameItem, ImageDataDirectory, ImageDosHeader, ImageExportDirectory,
     ImageFileHeader, ImageImportDescriptor, ImageImportDirectory, ImageNtHeaders,
-    ImageSectionHeader, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
+    ImageSectionHeader, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
     IMAGE_DIRECTORY_ENTRY_IAT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_DIRECTORY_ENTRY_TLS,
     IMAGE_NUMBEROF_DIRECTORY_ENTRIES, PE32, SECTION_HEADER_SZ,
 };
@@ -713,57 +713,135 @@ impl PE64 {
         let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, original_first_thunk) as usize;
         let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
         let mut rva = first_thunk;
-        let mut flipflop = false;
 
         loop {
-            if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 8 {
+            if self.raw.len() <= off_name + 8 || self.raw.len() <= off_addr + 8 {
                 break;
             }
 
-            let hint = HintNameItem::load(&self.raw, off_name);
-            let _addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
-            let off2 = PE64::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
+            let thunk_data = read_u64_le!(self.raw, off_name);
+            if thunk_data == 0 {
+                break;
+            }
+
+            let is_ordinal = (thunk_data & 0x80000000_00000000) != 0;
+            if is_ordinal {
+                let _ordinal = (thunk_data & 0xFFFF) as u16;
+                // println!("---- ordinal: {}", _ordinal);
+                // unimplemented!("iat_binding_original ordinal binding");
+                off_name += 8;
+                off_addr += 8;
+                rva += 8;
+                continue;
+            }
+
+            let func_name_addr = (thunk_data & 0x00000000_7fffffff) as u32;
+            let off2 = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
 
             if off2 == 0 {
-                off_name += HintNameItem::size();
+                off_name += 8;
                 off_addr += 8;
                 rva += 8;
-                if flipflop {
-                    break;
-                }
-                flipflop = true;
                 continue;
             }
-            flipflop = false;
+
             let func_name = PE64::read_string(&self.raw, off2 + 2);
-            //println!("resolving func_name: {}", func_name);
             let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
-            if real_addr == 0 {
-                off_name += HintNameItem::size();
-                off_addr += 8;
-                rva += 8;
-                continue;
+
+            if real_addr != 0 {
+                // patch inside the object
+                write_u64_le!(self.raw, off_addr, real_addr);
+                // patch in the mapped memory
+                let patch_addr = base_addr + rva as u64;
+                if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
+                    mem.force_write_qword(patch_addr, real_addr);
+                }
             }
 
-            /*if emu.cfg.verbose >= 1 {
-                log::info!("binded 0x{:x} {}", real_addr, func_name);
-            }*/
-
-            // let fake_addr = read_u64_le!(self.raw, off_addr);
-
-            //println!("writing real_addr: 0x{:x} {} 0x{:x} -> 0x{:x} ", off_addr, func_name, fake_addr, real_addr);
-
-            // patch inside the elf64 object
-            write_u64_le!(self.raw, off_addr, real_addr);
-            // patch in the mapped memory
-            let patch_addr = base_addr + rva as u64;
-            if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
-                mem.force_write_qword(patch_addr, real_addr);
-            }
-
-            off_name += HintNameItem::size();
+            off_name += 8;
             off_addr += 8;
             rva += 8;
+        }
+    }
+
+    pub fn apply_relocations(&mut self, emu: &mut emu::Emu, base_addr: u64) {
+        if self.opt.data_directory.len() <= IMAGE_DIRECTORY_ENTRY_BASERELOC {
+            return;
+        }
+        let reloc_dir = &self.opt.data_directory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+        let reloc_va = reloc_dir.virtual_address;
+        let reloc_sz = reloc_dir.size;
+
+        if reloc_va == 0 || reloc_sz == 0 {
+            // log::info!("No relocations found.");
+            return;
+        }
+
+        let delta = base_addr.wrapping_sub(self.opt.image_base);
+        if delta == 0 {
+            // log::info!("Relocations not needed, mapped at ImageBase.");
+            return;
+        }
+
+        let mut off = PE64::vaddr_to_off(&self.sect_hdr, reloc_va) as usize;
+        if off == 0 {
+            return;
+        }
+
+        let end_off = off + reloc_sz as usize;
+
+        if emu.cfg.verbose >= 1 {
+            log::info!("Applying base relocations...");
+        }
+
+        while off < end_off && off + 8 <= self.raw.len() {
+            let page_va = read_u32_le!(self.raw, off);
+            let block_sz = read_u32_le!(self.raw, off + 4);
+
+            if page_va == 0 && block_sz == 0 {
+                break;
+            }
+            if block_sz < 8 {
+                break; // Invalid block
+            }
+
+            let entries_count = (block_sz - 8) / 2;
+            let mut entry_off = off + 8;
+
+            for _ in 0..entries_count {
+                if entry_off + 2 > self.raw.len() {
+                    break;
+                }
+                let entry = read_u16_le!(self.raw, entry_off);
+                let reloc_type = entry >> 12;
+                let reloc_offset = entry & 0x0FFF;
+
+                // IMAGE_REL_BASED_DIR64 is 10
+                if reloc_type == 10 {
+                    let target_rva = page_va + reloc_offset as u32;
+                    let target_off = PE64::vaddr_to_off(&self.sect_hdr, target_rva) as usize;
+
+                    if target_off > 0 && target_off + 8 <= self.raw.len() {
+                        let original_val = read_u64_le!(self.raw, target_off);
+                        let new_val = original_val.wrapping_add(delta);
+
+                        // patch inside the object
+                        write_u64_le!(self.raw, target_off, new_val);
+
+                        // patch in the mapped memory
+                        let patch_addr = base_addr + target_rva as u64;
+                        if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
+                            mem.force_write_qword(patch_addr, new_val);
+                        }
+                    }
+                }
+                entry_off += 2;
+            }
+
+            off += block_sz as usize;
+        }
+        if emu.cfg.verbose >= 1 {
+            log::info!("Base Relocations applied successfully.");
         }
     }
 
@@ -785,29 +863,30 @@ impl PE64 {
 
             //log::info!("----> 0x{:x}", iim.first_thunk);
             let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, iim.first_thunk) as usize;
-            //off_addr += 8;
 
             loop {
-                if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 8 {
+                if self.raw.len() <= off_name + 8 || self.raw.len() <= off_addr + 8 {
                     break;
                 }
 
-                let hint = HintNameItem::load(&self.raw, off_name);
-                let addr = read_u32_le!(self.raw, off_addr); // & 0b01111111_11111111_11111111_11111111;
-                let off2 = PE64::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
-                if off2 == 0 {
-                    //|| addr < 0x100 {
-                    off_name += HintNameItem::size();
-                    //off_addr += 8;
-                    continue;
+                let thunk_data = read_u64_le!(self.raw, off_name);
+                if thunk_data == 0 {
+                    break;
                 }
 
-                if addr == paddr as u32 {
-                    let func_name = PE32::read_string(&self.raw, off2 + 2);
-                    return func_name;
+                let addr = read_u64_le!(self.raw, off_addr);
+                
+                let is_ordinal = (thunk_data & 0x80000000_00000000) != 0;
+                if !is_ordinal {
+                    let func_name_addr = (thunk_data & 0x00000000_7fffffff) as u32;
+                    let off2 = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
+                    if off2 != 0 && addr == paddr {
+                        let func_name = PE64::read_string(&self.raw, off2 + 2);
+                        return func_name;
+                    }
                 }
 
-                off_name += HintNameItem::size();
+                off_name += 8;
                 off_addr += 8;
             }
         }

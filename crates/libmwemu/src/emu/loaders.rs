@@ -339,6 +339,7 @@ impl Emu {
         if set_entry || self.cfg.emulate_winapi {
             // 2. pe binding
             if !is_maps || self.cfg.emulate_winapi {
+                pe64.apply_relocations(self, base);
                 pe64.iat_binding(self, base);
                 pe64.delay_load_binding(self, base);
                 self.base = base;
