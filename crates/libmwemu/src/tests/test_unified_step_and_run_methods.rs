@@ -17,7 +17,7 @@ pub fn test_unified_step_and_run_methods() {
     let code = vec![0x90, 0x90, 0x90]; // 3 NOP instructions
     emu.maps
         .create_map("code", 0x1000, 0x1000, Permission::READ_WRITE_EXECUTE);
-    emu.maps.write_bytes(0x1000, code);
+    emu.maps.write_bytes(0x1000, &code);
     emu.regs_mut().rip = 0x1000;
 
     // Test step() in single-threaded mode
@@ -47,7 +47,7 @@ pub fn test_unified_step_and_run_methods() {
     emu2.maps
         .create_map("code", 0x1000, 0x1000, Permission::READ_WRITE_EXECUTE);
     let code32 = vec![0x90, 0x90, 0xC3]; // 2 NOPs and RET
-    emu2.maps.write_bytes(0x1000, code32);
+    emu2.maps.write_bytes(0x1000, &code32);
     emu2.regs_mut().set_eip(0x1000);
 
     // Create a minimal stack for the RET instruction

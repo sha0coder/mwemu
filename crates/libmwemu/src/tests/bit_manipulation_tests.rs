@@ -56,7 +56,7 @@ fn test_bit_ops() {
 
     code_builder.push(0xc3); // ret
 
-    emu.maps.write_bytes(code_addr, code_builder);
+    emu.maps.write_bytes(code_addr, &code_builder);
     emu.regs_mut().rip = code_addr;
     emu.regs_mut().rsp = 0x8000;
 

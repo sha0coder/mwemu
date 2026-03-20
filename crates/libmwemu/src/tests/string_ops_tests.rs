@@ -19,7 +19,7 @@ fn test_scasb() {
 
     // Write "Hello World\0"
     let s = b"Hello World\0";
-    emu.maps.write_bytes(string_addr, s.to_vec());
+    emu.maps.write_bytes(string_addr, s);
 
     // We want to scan for 'W' (0x57)
 
@@ -61,7 +61,7 @@ fn test_scasb() {
     code_builder.extend_from_slice(&[0x48, 0xc7, 0xc3, 0x01, 0x00, 0x00, 0x00]);
     code_builder.push(0xc3); // ret
 
-    emu.maps.write_bytes(code_addr, code_builder);
+    emu.maps.write_bytes(code_addr, &code_builder);
     emu.regs_mut().rip = code_addr;
     emu.regs_mut().rsp = 0x8000;
 

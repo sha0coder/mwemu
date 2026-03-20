@@ -284,7 +284,7 @@ impl Emu {
                                 self.alloc("static_tls_array", size, Permission::READ_WRITE);
 
                             // Initialize to null pointers
-                            self.maps.write_bytes(tls_array, vec![0; size as usize]);
+                            self.maps.write_bytes(tls_array, &vec![0; size as usize]);
 
                             tls_array
                         }
@@ -913,7 +913,7 @@ impl Emu {
 
                 let mut bytes: Vec<u8> = vec![0; 32];
                 value.to_little_endian(&mut bytes);
-                self.maps.write_bytes(mem_addr, bytes);
+                self.maps.write_bytes(mem_addr, &bytes);
             }
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };

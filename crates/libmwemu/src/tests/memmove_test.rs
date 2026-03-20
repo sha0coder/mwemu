@@ -355,7 +355,7 @@ fn setup_memmove_emulator() -> (emu::Emu, u64, usize) {
         memmove_code_len as u64 + 0x100,
         Permission::READ_WRITE_EXECUTE,
     );
-    emu.maps.write_bytes(code_addr, memmove_code);
+    emu.maps.write_bytes(code_addr, &memmove_code);
 
     (emu, code_addr, memmove_code_len)
 }
@@ -376,7 +376,7 @@ fn memmove_non_overlapping_copy() {
 
     // Initialize source with pattern
     let test_pattern = b"Hello, World! This is a test pattern.";
-    emu.maps.write_bytes(src_addr, test_pattern.to_vec());
+    emu.maps.write_bytes(src_addr, test_pattern);
 
     // Set up registers for memmove(dest, src, len)
     emu.regs_mut().rdx = dest_addr;
@@ -425,7 +425,7 @@ fn memmove_overlapping_forward() {
 
     emu.maps
         .create_map("overlap", overlap_src, 0x100, Permission::READ_WRITE);
-    emu.maps.write_bytes(overlap_src, test_data.clone());
+    emu.maps.write_bytes(overlap_src, &test_data);
 
     // Set up for overlapping copy
     emu.regs_mut().rdx = overlap_dest;
@@ -458,7 +458,7 @@ fn memmove_overlapping_backward() {
 
     emu.maps
         .create_map("overlap2", 0x800000, 0x100, Permission::READ_WRITE);
-    emu.maps.write_bytes(overlap_src, test_data.clone());
+    emu.maps.write_bytes(overlap_src, &test_data);
 
     // Set up for backward overlapping copy
     emu.regs_mut().rdx = overlap_dest;
@@ -499,7 +499,7 @@ fn memmove_large_buffer() {
     for i in 0..large_size {
         pattern.push((i % 256) as u8);
     }
-    emu.maps.write_bytes(large_src, pattern.clone());
+    emu.maps.write_bytes(large_src, &pattern);
 
     // Set up for large copy
     emu.regs_mut().rdx = large_dest;
@@ -564,7 +564,7 @@ fn memmove_unaligned_addresses() {
         .create_map("unaligned_src", 0xB00000, 0x100, Permission::READ_WRITE);
     emu.maps
         .create_map("unaligned_dest", 0xC00000, 0x100, Permission::READ_WRITE);
-    emu.maps.write_bytes(unaligned_src, test_data.to_vec());
+    emu.maps.write_bytes(unaligned_src, test_data);
 
     emu.regs_mut().rdx = unaligned_dest;
     emu.regs_mut().rcx = unaligned_src;
@@ -608,7 +608,7 @@ fn memmove_exact_page_boundary() {
 
     // Create pattern that crosses page boundary
     let pattern: Vec<u8> = (0..test_size).map(|i| (i % 256) as u8).collect();
-    emu.maps.write_bytes(page_boundary - 0x800, pattern.clone());
+    emu.maps.write_bytes(page_boundary - 0x800, &pattern);
 
     emu.regs_mut().rdx = page_boundary + 0x800;
     emu.regs_mut().rcx = page_boundary - 0x800;
@@ -651,7 +651,7 @@ fn memmove_alignment_boundary_sizes() {
         );
 
         let pattern: Vec<u8> = (0..size).map(|j| ((i + j) % 256) as u8).collect();
-        emu.maps.write_bytes(src_base, pattern.clone());
+        emu.maps.write_bytes(src_base, &pattern);
 
         emu.regs_mut().rdx = dest_base;
         emu.regs_mut().rcx = src_base;
@@ -690,7 +690,7 @@ fn memmove_stress_overlapping_patterns() {
 
     // Initialize with a recognizable pattern
     let original_pattern: Vec<u8> = (0..buffer_size).map(|i| ((i * 7) % 256) as u8).collect();
-    emu.maps.write_bytes(base_addr, original_pattern.clone());
+    emu.maps.write_bytes(base_addr, &original_pattern);
 
     let overlap_tests = vec![
         (1, 100),    // 1-byte offset, 100 bytes
@@ -701,7 +701,7 @@ fn memmove_stress_overlapping_patterns() {
 
     for (offset, copy_size) in overlap_tests {
         // Reset buffer
-        emu.maps.write_bytes(base_addr, original_pattern.clone());
+        emu.maps.write_bytes(base_addr, &original_pattern);
 
         emu.regs_mut().rdx = base_addr + offset;
         emu.regs_mut().rcx = base_addr;
@@ -755,7 +755,7 @@ fn memmove_performance_threshold_boundary() {
         for j in 0..size {
             pattern.push(((j / 256) % 256) as u8);
         }
-        emu.maps.write_bytes(src_addr, pattern.clone());
+        emu.maps.write_bytes(src_addr, &pattern);
 
         emu.regs_mut().rdx = dest_addr;
         emu.regs_mut().rcx = src_addr;

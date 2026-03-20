@@ -25,7 +25,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let rbx = emu.regs().rbx;
         let rcx_rbx = ((rcx as u128) << 64) | (rbx as u128);
 
-        emu.maps.write_bytes(addr, rcx_rbx.to_le_bytes().to_vec());
+        emu.maps.write_bytes(addr, &rcx_rbx.to_le_bytes());
     } else {
         emu.flags_mut().f_zf = false;
 

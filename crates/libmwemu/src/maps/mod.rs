@@ -300,25 +300,37 @@ impl Maps {
     }
 
     pub fn write_bytes_slice(&mut self, addr: u64, data: &[u8]) -> bool {
+        self.write_bytes(addr, data)
+    }
+
+    pub fn write_bytes(&mut self, addr: u64, data: &[u8]) -> bool {
         if data.is_empty() {
             return true;
         }
 
-        // Write byte by byte to handle any boundary issues
-        for (i, &byte) in data.iter().enumerate() {
-            if !self.write_byte(addr + i as u64, byte) {
+        let end_addr = addr + data.len() as u64 - 1;
+        let banzai = self.banzai;
+
+        // Fast path: if all data fits in a single memory map, use bulk copy
+        match self.get_mem_by_addr_mut(addr) {
+            Some(mem) if mem.inside(end_addr) => {
+                mem.write_bytes(addr, data);
+                return true;
+            }
+            Some(_) => {
+                // Data spans multiple maps, fall through to byte-by-byte
+            }
+            None => {
+                if banzai {
+                    log::warn!("Writing bytes to unmapped region at 0x{:x}", addr);
+                } else {
+                    panic!("Writing bytes to unmapped region at 0x{:x}", addr);
+                }
                 return false;
             }
         }
-        true
-    }
 
-    pub fn write_bytes(&mut self, addr: u64, data: Vec<u8>) -> bool {
-        if data.is_empty() {
-            return true;
-        }
-
-        // Write byte by byte to handle any boundary issues
+        // Slow path: write byte by byte to handle boundary crossings
         for (i, &byte) in data.iter().enumerate() {
             if !self.write_byte(addr + i as u64, byte) {
                 return false;
@@ -329,13 +341,11 @@ impl Maps {
     }
 
     pub fn write_128bits_le(&mut self, addr: u64, value: u128) -> bool {
-        let bytes = value.to_le_bytes().to_vec();
-        self.write_bytes(addr, bytes)
+        self.write_bytes(addr, &value.to_le_bytes())
     }
 
     pub fn write_128bits_be(&mut self, addr: u64, value: u128) -> bool {
-        let bytes = value.to_be_bytes().to_vec();
-        self.write_bytes(addr, bytes)
+        self.write_bytes(addr, &value.to_be_bytes())
     }
 
     pub fn read_128bits_be(&self, addr: u64) -> Option<u128> {
@@ -346,7 +356,7 @@ impl Maps {
                 let b = self
                     .read_bytes_option(addr, 16)
                     .expect("fail to read 128bits");
-                Some(u128::from_le_bytes(b.to_vec().try_into().unwrap()))
+                Some(u128::from_be_bytes(b.try_into().unwrap()))
             }
             None if banzai => {
                 log::warn!("Reading word from unmapped region at 0x{:x}", addr);
@@ -519,7 +529,7 @@ impl Maps {
             None => return false,
             Some(b) => b.to_vec(),
         };
-        self.write_bytes(to, b);
+        self.write_bytes(to, &b);
         true
     }
 
@@ -544,7 +554,7 @@ impl Maps {
         //log::debug!("write_string 0x{:x}: `{}`", to, from);
         let bs: Vec<u8> = from.bytes().collect();
 
-        self.write_bytes(to, bs.clone());
+        self.write_bytes(to, &bs);
         self.write_byte(to + bs.len() as u64, 0x00);
     }
 

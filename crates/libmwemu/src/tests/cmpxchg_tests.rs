@@ -108,7 +108,7 @@ pub fn test_cmpxchg16b_equal() {
 
     // Setup memory: [0x1000] = 0x112233445566778899AABBCCDDEEFF00
     let mem_val: u128 = 0x112233445566778899AABBCCDDEEFF00;
-    emu.maps.write_bytes(0x1000, mem_val.to_le_bytes().to_vec());
+    emu.maps.write_bytes(0x1000, &mem_val.to_le_bytes());
 
     // Setup RDX:RAX = 0x112233445566778899AABBCCDDEEFF00
     emu.regs_mut().rdx = 0x1122334455667788;
@@ -152,7 +152,7 @@ pub fn test_cmpxchg16b_not_equal() {
 
     // Setup memory: [0x1000] = 0x1234567890ABCDEF1234567890ABCDEF
     let mem_val: u128 = 0x1234567890ABCDEF1234567890ABCDEF;
-    emu.maps.write_bytes(0x1000, mem_val.to_le_bytes().to_vec());
+    emu.maps.write_bytes(0x1000, &mem_val.to_le_bytes());
 
     // Setup RDX:RAX = Different
     emu.regs_mut().rdx = 0x0;

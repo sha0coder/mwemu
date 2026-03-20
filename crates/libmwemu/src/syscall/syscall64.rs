@@ -90,7 +90,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                                 lib_buff = lib_buff[0..lib_buff.len() - overflow as usize].to_vec();
                             }
 
-                            emu.maps.write_bytes(buff, lib_buff);
+                            emu.maps.write_bytes(buff, &lib_buff);
                             emu.regs_mut().rax = sz;
                         }
                         Err(_) => {
@@ -812,7 +812,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let ptr = emu.regs().rdi;
 
             if emu.maps.is_valid_ptr(ptr) {
-                emu.maps.write_bytes(ptr, constants::UTSNAME.to_vec());
+                emu.maps.write_bytes(ptr, &constants::UTSNAME);
                 emu.regs_mut().rax = 0;
             } else {
                 emu.regs_mut().rax = constants::EINVAL;
@@ -925,7 +925,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                                 lib_buff = lib_buff[0..lib_buff.len() - overflow as usize].to_vec();
                             }
 
-                            emu.maps.write_bytes(addr, lib_buff);
+                            emu.maps.write_bytes(addr, &lib_buff);
                             emu.regs_mut().rax = sz;
                         }
                         Err(_) => {
