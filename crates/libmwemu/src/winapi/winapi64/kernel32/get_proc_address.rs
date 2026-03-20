@@ -30,7 +30,7 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
                 }
                 let ordinal = flink.get_function_ordinal(emu, i);
 
-                // log::info!("func name {}!{}", flink.mod_name, ordinal.func_name);
+                // log::trace!("func name {}!{}", flink.mod_name, ordinal.func_name);
 
                 if ordinal.func_name.to_lowercase() == func {
                     emu.regs_mut().rax = ordinal.func_va;

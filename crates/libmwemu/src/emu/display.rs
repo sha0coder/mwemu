@@ -11,9 +11,9 @@ impl Emu {
         self.regs().show_edx(&self.maps, 0);
         self.regs().show_esi(&self.maps, 0);
         self.regs().show_edi(&self.maps, 0);
-        log::info!("\tesp: 0x{:x}", self.regs().get_esp() as u32);
-        log::info!("\tebp: 0x{:x}", self.regs().get_ebp() as u32);
-        log::info!("\teip: 0x{:x}", self.regs().get_eip() as u32);
+        log::trace!("\tesp: 0x{:x}", self.regs().get_esp() as u32);
+        log::trace!("\tebp: 0x{:x}", self.regs().get_ebp() as u32);
+        log::trace!("\teip: 0x{:x}", self.regs().get_eip() as u32);
     }
 
     /// display 64bits main registers
@@ -24,9 +24,9 @@ impl Emu {
         self.regs().show_rdx(&self.maps, 0);
         self.regs().show_rsi(&self.maps, 0);
         self.regs().show_rdi(&self.maps, 0);
-        log::info!("\trsp: 0x{:x}", self.regs().rsp);
-        log::info!("\trbp: 0x{:x}", self.regs().rbp);
-        log::info!("\trip: 0x{:x}", self.regs().rip);
+        log::trace!("\trsp: 0x{:x}", self.regs().rsp);
+        log::trace!("\trbp: 0x{:x}", self.regs().rbp);
+        log::trace!("\trip: 0x{:x}", self.regs().rip);
         self.regs().show_r8(&self.maps, 0);
         self.regs().show_r9(&self.maps, 0);
         self.regs().show_r10(&self.maps, 0);
@@ -46,9 +46,9 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!("{} 0x{:x}: {} ; {}", self.pos, ins.ip(), out, comment);
+                log::trace!("{} 0x{:x}: {} ; {}", self.pos, ins.ip(), out, comment);
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {} ; {}{}",
                     color,
                     self.pos,
@@ -71,9 +71,9 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), out);
+                log::trace!("{} 0x{:x}: {}", self.pos, ins.ip(), out);
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {}{}",
                     color,
                     self.pos,
@@ -95,7 +95,7 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!(
+                log::trace!(
                     "{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x}",
                     self.pos,
                     ins.ip(),
@@ -104,7 +104,7 @@ impl Emu {
                     self.regs().rax
                 );
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {} ; ret-addr: 0x{:x} ret-value: 0x{:x} {}",
                     color,
                     self.pos,
@@ -128,9 +128,9 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!("{} 0x{:x}: {} ;0x{:x}", self.pos, ins.ip(), out, value);
+                log::trace!("{} 0x{:x}: {} ;0x{:x}", self.pos, ins.ip(), out, value);
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {} ;0x{:x} {}",
                     color,
                     self.pos,
@@ -153,9 +153,9 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!("{} 0x{:x}: {} taken", self.pos, ins.ip(), out);
+                log::trace!("{} 0x{:x}: {} taken", self.pos, ins.ip(), out);
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {} taken {}",
                     color,
                     self.pos,
@@ -176,9 +176,9 @@ impl Emu {
         self.formatter.format(ins, &mut out);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
-                log::info!("{} 0x{:x}: {} not taken", self.pos, ins.ip(), out);
+                log::trace!("{} 0x{:x}: {} not taken", self.pos, ins.ip(), out);
             } else {
-                log::info!(
+                log::trace!(
                     "{}{} 0x{:x}: {} not taken {}",
                     color,
                     self.pos,

@@ -20,7 +20,7 @@ pub fn GetLocalTime(emu: &mut emu::Emu) {
     buffer[1] = minutes as u8;
     buffer[2] = seconds as u8;
 
-    emu.maps.write_bytes(ptr, buffer.to_vec());
+    emu.maps.write_bytes(ptr, &buffer);
 
     log_red!(emu, "kernel32!GetLocalTime");
 }

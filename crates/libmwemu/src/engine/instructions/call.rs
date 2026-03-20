@@ -15,7 +15,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     if emu.cfg.trace_calls {
-        log::info!(
+        log::trace!(
             "{} 0x{:x} CALL 0x{:x} (0x{:x}, 0x{:x}, 0x{:x})",
             emu.pos,
             emu.regs().rip,
@@ -28,7 +28,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.regs_mut().rip == addr - 5 {
         if emu.cfg.verbose >= 1 {
-            log::info!("call next instruction, prolly call/pop");
+            log::trace!("call next instruction, prolly call/pop");
         }
         //emu.stack_lvl[emu.stack_lvl_idx] -= 1;
     } /*else {

@@ -13,7 +13,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
     match emu.regs().get_eax() {
         0 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall restart_syscall {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -22,7 +22,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         1 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall exit() {}  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -34,7 +34,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         2 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fork()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -48,7 +48,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let buff = emu.regs().rcx;
             let sz = emu.regs().rdx;
             emu.regs_mut().rax = buff;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall read() fd: {} buf: 0x{:x} sz: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -64,7 +64,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let buff = emu.regs().rcx;
             let sz = emu.regs().rdx;
             emu.regs_mut().rax = sz;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall write() fd: {} buf: 0x{:x} sz: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -79,7 +79,7 @@ pub fn gateway(emu: &mut emu::Emu) {
             let file_path = emu.maps.read_string(emu.regs().rbx);
             let fd = helper::socket_create();
             emu.regs_mut().rax = fd;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall open() file: {} fd:{} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -91,7 +91,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         6 => {
             let fd = emu.regs().rbx;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall close() fd: {}  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -103,7 +103,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         7 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall waitpid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -112,7 +112,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         8 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall creat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -121,7 +121,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         9 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall link()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -130,7 +130,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         10 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall unlink()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -140,7 +140,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         11 => {
             let cmd = emu.maps.read_string(emu.regs().rbx);
-            log::info!(
+            log::trace!(
                 "{}** {} syscall execve()  cmd: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -152,7 +152,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         12 => {
             let path = emu.maps.read_string(emu.regs().rbx);
-            log::info!(
+            log::trace!(
                 "{}** {} syscall chdir() path: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -162,7 +162,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         13 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall time()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -171,7 +171,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         14 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mknod()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -182,7 +182,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         15 => {
             let file_path = emu.maps.read_string(emu.regs().rbx);
             let perm = emu.regs().rcx;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall chmod() file: {} perm: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -193,7 +193,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         16 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lchown()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -202,7 +202,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         17 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall break()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -211,7 +211,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         18 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall oldstat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -221,7 +221,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         19 => {
             let fd = emu.regs().rbx;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lseek()  fd: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -231,7 +231,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         20 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getpid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -240,7 +240,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         21 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mount()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -249,7 +249,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         22 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall umount()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -258,7 +258,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         23 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -267,7 +267,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         24 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -276,7 +276,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         25 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall stime()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -285,7 +285,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         26 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ptrace()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -294,7 +294,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         27 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall alarm()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -303,7 +303,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         28 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall oldfstat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -312,7 +312,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         29 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall pause()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -321,7 +321,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         30 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall utime()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -330,7 +330,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         31 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall stty()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -339,7 +339,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         32 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall gtty()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -348,7 +348,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         33 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall access()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -357,7 +357,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         34 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall nice()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -366,7 +366,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         35 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ftime()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -375,7 +375,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         36 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sync()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -386,7 +386,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         37 => {
             let pid = emu.regs().rbx;
             let sig = emu.regs().rcx;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall kill() pid: {} sig: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -397,7 +397,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         38 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rename()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -406,7 +406,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         39 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mkdir()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -415,7 +415,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         40 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rmdir()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -425,7 +425,7 @@ pub fn gateway(emu: &mut emu::Emu) {
 
         41 => {
             let fd = emu.regs().rbx;
-            log::info!(
+            log::trace!(
                 "{}** {} syscall dup() fd: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -435,7 +435,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         42 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall pipe()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -444,7 +444,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         43 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall times()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -453,7 +453,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         44 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall prof()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -462,7 +462,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         45 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall brk()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -471,7 +471,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         46 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -480,7 +480,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         47 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -489,7 +489,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         48 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall signal()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -498,7 +498,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         49 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall geteuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -507,7 +507,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         50 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getegid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -516,7 +516,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         51 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall acct()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -525,7 +525,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         52 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall umount2()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -534,7 +534,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         53 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lock()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -543,7 +543,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         54 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ioctl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -552,7 +552,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         55 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fcntl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -561,7 +561,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         56 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mpx()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -570,7 +570,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         57 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setpgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -579,7 +579,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         58 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ulimit()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -588,7 +588,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         59 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall oldolduname()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -597,7 +597,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         60 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall umask()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -606,7 +606,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         61 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall chroot()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -615,7 +615,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         62 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ustat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -626,7 +626,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         63 => {
             let old_fd = emu.regs().get_ebx();
             let new_fd = emu.regs().get_ecx();
-            log::info!(
+            log::trace!(
                 "{}** {} syscall dup2() oldfd: {} newfd: {} {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -637,7 +637,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         64 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getppid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -646,7 +646,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         65 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getpgrp()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -655,7 +655,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         66 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setsid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -664,7 +664,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         67 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigaction()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -673,7 +673,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         68 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sgetmask()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -682,7 +682,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         69 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ssetmask()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -691,7 +691,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         70 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setreuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -700,7 +700,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         71 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setregid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -709,7 +709,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         72 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigsuspend()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -718,7 +718,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         73 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigpending()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -727,7 +727,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         74 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sethostname()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -736,7 +736,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         75 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setrlimit()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -745,7 +745,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         76 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getrlimit()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -754,7 +754,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         77 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getrusage()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -763,7 +763,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         78 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall gettimeofday()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -772,7 +772,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         79 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall settimeofday()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -781,7 +781,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         80 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getgroups()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -790,7 +790,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         81 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setgroups()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -799,7 +799,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         82 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall select()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -808,7 +808,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         83 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall symlink()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -817,7 +817,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         84 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall oldlstat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -826,7 +826,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         85 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall readlink()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -835,7 +835,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         86 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall uselib()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -844,7 +844,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         87 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall swapon()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -853,7 +853,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         88 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall reboot()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -862,7 +862,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         89 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall readdir()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -871,7 +871,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         90 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mmap()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -880,7 +880,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         91 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall munmap()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -889,7 +889,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         92 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall truncate()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -898,7 +898,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         93 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ftruncate()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -907,7 +907,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         94 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fchmod()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -916,7 +916,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         95 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fchown()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -925,7 +925,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         96 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getpriority()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -934,7 +934,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         97 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setpriority()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -943,7 +943,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         98 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall profil()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -952,7 +952,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         99 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall statfs()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -961,7 +961,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         100 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fstatfs()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -970,7 +970,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         101 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ioperm()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -995,7 +995,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         .read_dword(emu.regs().get_esp() + 8)
                         .expect("socket() cannot read proto");
 
-                    log::info!("{}** {} syscall socketcall socket()  fam: {} type: {} proto: {} sock: {} {}", emu.colors.light_red, emu.pos, fam, typ, proto, sock, emu.colors.nc);
+                    log::trace!("{}** {} syscall socketcall socket()  fam: {} type: {} proto: {} sock: {} {}", emu.colors.light_red, emu.pos, fam, typ, proto, sock, emu.colors.nc);
                     emu.regs_mut().rax = sock;
                 }
 
@@ -1034,7 +1034,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         (ip & 0xff000000) >> 24
                     );
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall bind() sock: {} fam: {} {}:{} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1046,7 +1046,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                     } else {
                         emu.regs_mut().rax = 0;
@@ -1088,7 +1088,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         (ip & 0xff000000) >> 24
                     );
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall connect() sock: {} fam: {} {}:{} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1100,7 +1100,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                         return;
                     }
@@ -1108,9 +1108,9 @@ pub fn gateway(emu: &mut emu::Emu) {
                     /*
                     if emu.cfg.endpoint {
                         if endpoint::sock_connect(sip.as_str(), port) {
-                            log::info!("\tconnected to the endpoint.");
+                            log::trace!("\tconnected to the endpoint.");
                         } else {
-                            log::info!("\tcannot connect. dont use -e");
+                            log::trace!("\tcannot connect. dont use -e");
                         }
                     }*/
 
@@ -1127,7 +1127,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         .read_dword(emu.regs().get_esp() + 4)
                         .expect("listen() cannot read num of conns");
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall listen() sock: {} conns: {} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1137,7 +1137,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                     } else {
                         emu.regs_mut().rax = 0;
@@ -1166,7 +1166,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         emu.maps.write_dword((sockaddr + 4) as u64, incoming_ip);
                     }
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall accept() {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1174,7 +1174,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                     } else {
                         emu.regs_mut().rax = 0;
@@ -1186,7 +1186,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         .maps
                         .read_dword(emu.regs().get_esp())
                         .expect("getsockname() cannot read sock");
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall getsockname() sock: {} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1197,7 +1197,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_GETPEERNAME => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall getpeername()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1206,7 +1206,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_SOCKETPAIR => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall socketpair()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1232,7 +1232,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         .read_dword(emu.regs().get_esp() + 12)
                         .expect("send() cannot read flags");
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall send() sock: {} buff: {} len: {} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1243,7 +1243,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                         return;
                     }
@@ -1252,7 +1252,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     if emu.cfg.endpoint {
                         let buffer = emu.maps.read_buffer(buf as u64, len as usize);
                         let n = endpoint::sock_send(&buffer);
-                        log::info!("\tsent {} bytes.", n);
+                        log::trace!("\tsent {} bytes.", n);
                         emu.regs_mut().rax = n as u64;
                     } else {
                         emu.regs_mut().rax = len as u64;
@@ -1279,7 +1279,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         .read_dword(emu.regs().get_esp() + 12)
                         .expect("recv() cannot read flags");
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall recv() sock: {} buff: {} len: {}  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1290,7 +1290,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                         return;
                     }
@@ -1300,7 +1300,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         let mut rbuff: Vec<u8> = vec![0; len as usize];
                         let n = endpoint::sock_recv(&mut rbuff);
                         emu.maps.write_buffer(buf as u64, &rbuff);
-                        log::info!("\nreceived {} bytes from the endpoint.", n);
+                        log::trace!("\nreceived {} bytes from the endpoint.", n);
                         emu.regs_mut().rax = n as u64;
                     } else {
                         emu.regs_mut().rax = len as u64; //TODO: avoid loops
@@ -1357,9 +1357,9 @@ pub fn gateway(emu: &mut emu::Emu) {
                             (ip & 0xff000000) >> 24
                         );
 
-                        log::info!("{}** {} syscall socketcall sendto() sock: {} buff: {} len: {} fam: {} {}:{} {}", emu.colors.light_red, emu.pos, sock, buf, len, fam, sip, port, emu.colors.nc);
+                        log::trace!("{}** {} syscall socketcall sendto() sock: {} buff: {} len: {} fam: {} {}:{} {}", emu.colors.light_red, emu.pos, sock, buf, len, fam, sip, port, emu.colors.nc);
                     } else {
-                        log::info!(
+                        log::trace!(
                             "{}** {} syscall socketcall sendto() sock: {} buff: {} len: {} {}",
                             emu.colors.light_red,
                             emu.pos,
@@ -1371,7 +1371,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     }
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                     } else {
                         emu.regs_mut().rax = len as u64;
@@ -1413,7 +1413,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                         emu.maps.write_dword((sockaddr + 4) as u64, incoming_ip);
                     }
 
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall recvfrom() sock: {} buff: {} len: {} {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1424,7 +1424,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                     );
 
                     if !helper::socket_exist(sock as u64) {
-                        log::info!("\tbad socket/");
+                        log::trace!("\tbad socket/");
                         emu.regs_mut().rax = constants::ENOTSOCK;
                     } else {
                         emu.regs_mut().rax = len as u64; //TODO: avoid loops
@@ -1432,7 +1432,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_SHUTDOWN => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall shutdown()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1442,7 +1442,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_SETSOCKOPT => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall setsockopt()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1451,7 +1451,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_GETSOCKOPT => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall getsockopt()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1460,7 +1460,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_SENDMSG => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall sendmsg()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1469,7 +1469,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_RECVMSG => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall recvmsg()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1478,7 +1478,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_ACCEPT4 => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall accept4()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1487,7 +1487,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_RECVMMSG => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall recvmsg()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1496,7 +1496,7 @@ pub fn gateway(emu: &mut emu::Emu) {
                 }
 
                 constants::SYS_SENDMMSG => {
-                    log::info!(
+                    log::trace!(
                         "{}** {} syscall socketcall sendmsg()  {}",
                         emu.colors.light_red,
                         emu.pos,
@@ -1509,7 +1509,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         103 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall syslog()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1518,7 +1518,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         104 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setitimer()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1527,7 +1527,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         105 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getitimer()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1536,7 +1536,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         106 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall stat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1545,7 +1545,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         107 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lstat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1554,7 +1554,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         108 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fstat()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1563,7 +1563,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         109 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall olduname()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1572,7 +1572,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         110 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall iopl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1581,7 +1581,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         111 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall vhanghup()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1590,7 +1590,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         112 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall idle()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1599,7 +1599,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         113 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall vm86old()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1608,7 +1608,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         114 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall wait4()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1617,7 +1617,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         115 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall swapoff()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1626,7 +1626,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         116 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sysinfo()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1635,7 +1635,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         117 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ipc()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1644,7 +1644,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         118 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fsync()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1653,7 +1653,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         119 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigreturn()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1662,7 +1662,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         120 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall clone()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1671,7 +1671,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         121 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setdomainname()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1680,7 +1680,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         122 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall uname()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1689,7 +1689,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         123 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall modify_ltd()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1698,7 +1698,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         124 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall adjtimex()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1707,7 +1707,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         125 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mprotect()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1716,7 +1716,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         126 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigprocmask()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1725,7 +1725,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         127 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall create_module()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1734,7 +1734,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         128 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall init_module()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1743,7 +1743,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         129 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall delete_module()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1752,7 +1752,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         130 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall get_kernel_syms()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1761,7 +1761,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         131 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall quotactl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1770,7 +1770,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         132 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getpgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1779,7 +1779,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         133 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fchdir()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1788,7 +1788,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         134 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall bdflush()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1797,7 +1797,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         135 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sysfs()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1806,7 +1806,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         136 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall personality()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1815,7 +1815,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         137 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall afs_syscall()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1824,7 +1824,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         138 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setfsuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1833,7 +1833,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         139 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setfsgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1842,7 +1842,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         140 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall _llseek()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1851,7 +1851,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         141 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getdents()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1860,7 +1860,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         142 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall _newselect()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1869,7 +1869,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         143 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall flock()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1878,7 +1878,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         144 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall msync()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1887,7 +1887,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         145 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall readv()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1896,7 +1896,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         146 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall writev()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1905,7 +1905,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         147 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getsid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1914,7 +1914,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         148 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fdatasync()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1923,7 +1923,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         149 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall _sysctl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1932,7 +1932,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         150 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mlock()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1941,7 +1941,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         151 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall munlock()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1950,7 +1950,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         152 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mlockall()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1959,7 +1959,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         153 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall munlockall()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1968,7 +1968,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         154 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_setparam()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1977,7 +1977,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         155 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_getparam()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1986,7 +1986,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         156 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_setscheduler()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -1995,7 +1995,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         157 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_getscheduler()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2004,7 +2004,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         158 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_yield()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2013,7 +2013,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         159 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_get_priority_max()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2022,7 +2022,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         160 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_get_priority_min()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2031,7 +2031,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         161 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sched_rr_get_inverval()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2040,7 +2040,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         162 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall nanosleep()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2049,7 +2049,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         163 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mremap()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2058,7 +2058,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         164 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setresuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2067,7 +2067,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         165 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getresuid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2076,7 +2076,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         166 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall vm86()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2085,7 +2085,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         167 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall query_module()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2094,7 +2094,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         168 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall poll()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2103,7 +2103,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         169 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall nfsservctrl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2112,7 +2112,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         170 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setresgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2121,7 +2121,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         171 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getresgid()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2130,7 +2130,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         172 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall prctl()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2139,7 +2139,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         173 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigreturn()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2148,7 +2148,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         174 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigcation()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2157,7 +2157,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         175 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigprocmask()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2166,7 +2166,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         176 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigpending()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2175,7 +2175,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         177 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigtimedwait()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2184,7 +2184,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         178 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigqueueinfo()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2193,7 +2193,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         179 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall rt_sigsuspend()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2202,7 +2202,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         180 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall pread64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2211,7 +2211,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         181 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall pwrite64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2220,7 +2220,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         182 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall chown()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2229,7 +2229,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         183 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getcwd()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2238,7 +2238,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         184 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall capget()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2247,7 +2247,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         185 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall capset()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2256,7 +2256,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         186 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sigaltstack()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2265,7 +2265,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         187 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall sendfile()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2274,7 +2274,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         188 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getpmsg()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2283,7 +2283,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         189 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall putpmsg()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2292,7 +2292,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         190 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall vfork()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2301,7 +2301,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         191 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ugetrlimit()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2310,7 +2310,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         192 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall mmap2()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2319,7 +2319,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         193 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall truncate64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2328,7 +2328,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         194 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall ftruncate64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2337,7 +2337,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         195 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall stat64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2346,7 +2346,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         196 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lstat64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2355,7 +2355,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         197 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fstat64()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2364,7 +2364,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         198 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall lchown32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2373,7 +2373,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         199 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2382,7 +2382,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         200 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getgid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2391,7 +2391,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         201 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall geteuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2400,7 +2400,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         202 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getegid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2409,7 +2409,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         203 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getreuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2418,7 +2418,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         204 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getregid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2427,7 +2427,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         205 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getgrups32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2436,7 +2436,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         206 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setgroups32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2445,7 +2445,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         207 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall fchown32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2454,7 +2454,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         208 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setresuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2463,7 +2463,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         209 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getresuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2472,7 +2472,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         210 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setresgid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2481,7 +2481,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         211 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall getresgid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2490,7 +2490,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         212 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall chown32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2499,7 +2499,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         213 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setuid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2508,7 +2508,7 @@ pub fn gateway(emu: &mut emu::Emu) {
         }
 
         214 => {
-            log::info!(
+            log::trace!(
                 "{}** {} syscall setgid32()  {}",
                 emu.colors.light_red,
                 emu.pos,
@@ -2958,14 +2958,14 @@ pub fn gateway(emu: &mut emu::Emu) {
                 "process_mrelease".to_string(),
             ];
             if emu.regs().rax >= data.len() as u64 {
-                log::info!(
+                log::trace!(
                     "{}** interrupt 0x80 bad rax value 0x{:x} {}",
                     emu.colors.light_red,
                     emu.regs().rax,
                     emu.colors.nc
                 );
             } else {
-                log::info!(
+                log::trace!(
                     "{}** interrupt 0x80 function:{} {}",
                     emu.colors.light_red,
                     data[emu.regs().rax as usize],

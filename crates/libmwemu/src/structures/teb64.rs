@@ -135,6 +135,6 @@ impl TEB64 {
     }
 
     pub fn print(&self) {
-        log::info!("{:#x?}", self);
+        log::trace!("{:#x?}", self);
     }
 }

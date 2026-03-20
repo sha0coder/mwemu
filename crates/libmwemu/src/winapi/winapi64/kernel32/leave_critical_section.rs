@@ -19,7 +19,7 @@ pub fn LeaveCriticalSection(emu: &mut emu::Emu) {
             if thread.id == wake_tid {
                 thread.blocked_on_cs = None;
                 thread.wake_tick = 0; // Make it runnable immediately
-                log::info!("  Waking thread 0x{:x}", wake_tid);
+                log::trace!("  Waking thread 0x{:x}", wake_tid);
                 break;
             }
         }

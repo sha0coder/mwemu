@@ -11,7 +11,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().rsi) {
             Some(v) => v,
             None => {
-                log::info!("lodsb: memory read error");
+                log::trace!("lodsb: memory read error");
                 Console::spawn_console(emu);
                 0
             }
@@ -27,7 +27,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().get_esi()) {
             Some(v) => v,
             None => {
-                log::info!("lodsb: memory read error");
+                log::trace!("lodsb: memory read error");
                 Console::spawn_console(emu);
                 0
             }

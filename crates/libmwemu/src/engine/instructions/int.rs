@@ -30,25 +30,25 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
 
             0x29 => {
-                log::info!("call_stack = {:?}", emu.call_stack());
-                log::info!("int 0x29: __fastfail {}", emu.regs().rcx);
+                log::trace!("call_stack = {:?}", emu.call_stack());
+                log::trace!("int 0x29: __fastfail {}", emu.regs().rcx);
                 emu.stop();
                 return false;
             }
 
             0x03 => {
                 emu.show_instruction(color!("Red"), ins);
-                log::info!("/!\\ int 0x3 sigtrap!!!!");
+                log::trace!("/!\\ int 0x3 sigtrap!!!!");
                 emu.exception(exception_type::ExceptionType::Int3);
                 return false;
             }
 
             0xdc => {
-                log::info!("/!\\ direct syscall: NtAlpcSendWaitReceivePort");
+                log::trace!("/!\\ direct syscall: NtAlpcSendWaitReceivePort");
             }
 
             _ => {
-                log::info!("unimplemented interrupt {}", interrupt);
+                log::trace!("unimplemented interrupt {}", interrupt);
                 return false;
             }
         }

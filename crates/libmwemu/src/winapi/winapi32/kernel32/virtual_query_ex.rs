@@ -28,7 +28,7 @@ pub fn VirtualQueryEx(emu: &mut emu::Emu) {
     );
 
     if size < 30 {
-        log::info!("buffer to short: {}", size);
+        log::trace!("buffer to short: {}", size);
         emu.regs_mut().rax = 0;
     } else {
         let mbi = structures::MemoryBasicInformation::guess(addr, &mut emu.maps);

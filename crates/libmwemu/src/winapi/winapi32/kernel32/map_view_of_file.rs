@@ -51,7 +51,7 @@ pub fn MapViewOfFile(emu: &mut emu::Emu) {
     );
 
     if off > 0 {
-        log::info!("the non-zero offset is not implemented for now");
+        log::trace!("the non-zero offset is not implemented for now");
     }
 
     for _ in 0..5 {

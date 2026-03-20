@@ -10,7 +10,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             let source = match emu.get_operand_xmm_value_128(ins, 1, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error reading memory xmm 1 source operand");
+                    log::trace!("error reading memory xmm 1 source operand");
                     return false;
                 }
             };
@@ -22,7 +22,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             let source = match emu.get_operand_ymm_value_256(ins, 1, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error reading memory ymm 1 source operand");
+                    log::trace!("error reading memory ymm 1 source operand");
                     return false;
                 }
             };

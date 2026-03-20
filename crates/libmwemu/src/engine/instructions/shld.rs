@@ -24,7 +24,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if value0 == 0xde2f && value1 == 0x4239 && counter == 0x3c && sz == 16 {
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ shld undefined behaviour");
+            log::trace!("/!\\ shld undefined behaviour");
         }
         let result = 0x9de2;
         // TODO: flags?

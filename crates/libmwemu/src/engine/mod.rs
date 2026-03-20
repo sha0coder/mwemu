@@ -372,7 +372,7 @@ pub fn emulate_instruction(
         Mnemonic::Ud2 => instructions::ud::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Hlt => instructions::hlt::execute(emu, ins, instruction_sz, rep_step),
         _ => {
-            log::info!(
+            log::trace!(
                 "{} Unimplemented instruction: {:?}",
                 emu.pos,
                 ins.mnemonic()

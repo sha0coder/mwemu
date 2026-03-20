@@ -36,14 +36,14 @@ macro_rules! to32 {
 macro_rules! log_red {
     ($emu:expr, $($arg:tt)*) => {
         if $emu.cfg.nocolors {
-            log::info!(
+            log::trace!(
                 "** {}:{:x} {}",
                 $emu.pos,
                 $emu.regs().rip,
                 format!($($arg)*)
             );
         } else {
-            log::info!(
+            log::trace!(
                 "{}** {}:{:x} {}{}",
                 $emu.colors.light_red,
                 $emu.pos,

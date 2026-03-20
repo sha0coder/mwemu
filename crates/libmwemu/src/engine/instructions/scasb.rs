@@ -14,7 +14,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let value0: u64 = match emu.maps.read_byte(emu.regs().rdi) {
         Some(value) => value.into(),
         None => {
-            log::info!("/!\\ error reading byte on rdi 0x{:x}", emu.regs().rdi);
+            log::trace!("/!\\ error reading byte on rdi 0x{:x}", emu.regs().rdi);
             return false;
         }
     };

@@ -32,7 +32,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     } else if sz == 16 {
         value1 = 0;
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ bswap of 16bits has undefined behaviours");
+            log::trace!("/!\\ bswap of 16bits has undefined behaviours");
         }
     } else {
         unimplemented!("bswap <16bits makes no sense, isn't it?");

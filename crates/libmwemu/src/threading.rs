@@ -91,7 +91,7 @@ impl ThreadScheduler {
         }
 
         if next_wake != usize::MAX && next_wake > current_tick {
-            log::info!(
+            log::trace!(
                 "⏰ Advancing tick from {} to {} (all threads sleeping)",
                 current_tick,
                 next_wake
@@ -105,7 +105,7 @@ impl ThreadScheduler {
 
     /// Log the current state of all threads for debugging
     pub fn log_thread_states(emu: &Emu) {
-        log::info!("=== Thread States ===");
+        log::trace!("=== Thread States ===");
         for (i, thread) in emu.threads.iter().enumerate() {
             let status = Self::get_thread_status_string(emu, i);
             let marker = if i == emu.current_thread_id {
@@ -114,7 +114,7 @@ impl ThreadScheduler {
                 "   "
             };
 
-            log::info!(
+            log::trace!(
                 "{} Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
                 marker,
                 i,
@@ -123,7 +123,7 @@ impl ThreadScheduler {
                 status
             );
         }
-        log::info!("Current tick: {}", emu.tick);
+        log::trace!("Current tick: {}", emu.tick);
     }
 
     /// Get a human-readable status string for a thread
@@ -189,7 +189,7 @@ impl ThreadScheduler {
         let code = match emu.maps.get_mem_by_addr(rip) {
             Some(c) => c,
             None => {
-                log::info!(
+                log::trace!(
                     "Thread {} (ID: 0x{:x}) RIP 0x{:x} points to unmapped memory",
                     thread_id,
                     emu.threads[thread_id].id,
@@ -273,7 +273,7 @@ impl ThreadScheduler {
 
         // Check exit condition
         if emu.cfg.exit_position != 0 && emu.pos == emu.cfg.exit_position {
-            log::info!("Exit position reached");
+            log::trace!("Exit position reached");
             Self::handle_exit(emu);
             return false;
         }

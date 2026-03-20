@@ -344,7 +344,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     }
 
     emu.maps
-        .write_bytes(USER_KUSER_SHARED_ADDR, memory.to_vec());
+        .write_bytes(USER_KUSER_SHARED_ADDR, &memory);
 
     USER_KUSER_SHARED_ADDR
 }

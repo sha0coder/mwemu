@@ -11,7 +11,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let value = match emu.get_operand_value(ins, 1, true) {
         Some(v) => v,
         None => {
-            log::info!("error reading second operand");
+            log::trace!("error reading second operand");
             return false;
         }
     };

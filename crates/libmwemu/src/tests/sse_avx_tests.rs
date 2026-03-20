@@ -72,7 +72,7 @@ fn test_sse_floats() {
     // ret
     code_builder.push(0xc3);
 
-    emu.maps.write_bytes(code_addr, code_builder);
+    emu.maps.write_bytes(code_addr, &code_builder);
 
     // Write Data (Data is 16-byte aligned in typical use, ensure addresses are aligned)
     // 1.0 = 0x3f800000
@@ -81,12 +81,12 @@ fn test_sse_floats() {
     // 4.0 = 0x40800000
     let floats1: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0];
     let bytes1: Vec<u8> = floats1.iter().flat_map(|f| f.to_le_bytes()).collect();
-    emu.maps.write_bytes(data1_addr, bytes1);
+    emu.maps.write_bytes(data1_addr, &bytes1);
 
     // 0.5 = 0x3f000000
     let floats2: Vec<f32> = vec![0.5, 0.5, 0.5, 0.5];
     let bytes2: Vec<u8> = floats2.iter().flat_map(|f| f.to_le_bytes()).collect();
-    emu.maps.write_bytes(data2_addr, bytes2);
+    emu.maps.write_bytes(data2_addr, &bytes2);
 
     emu.regs_mut().rip = code_addr;
     emu.regs_mut().rsp = 0x7000; // Safe stack
@@ -161,17 +161,17 @@ fn test_sse_integers() {
     // ret
     code_builder.push(0xc3);
 
-    emu.maps.write_bytes(code_addr, code_builder);
+    emu.maps.write_bytes(code_addr, &code_builder);
 
     // Data1: [10, 20, 30, 40] (u32)
     let ints1: Vec<u32> = vec![10, 20, 30, 40];
     let bytes1: Vec<u8> = ints1.iter().flat_map(|i| i.to_le_bytes()).collect();
-    emu.maps.write_bytes(data1_addr, bytes1);
+    emu.maps.write_bytes(data1_addr, &bytes1);
 
     // Data2: [1, 2, 3, 4] (u32)
     let ints2: Vec<u32> = vec![1, 2, 3, 4];
     let bytes2: Vec<u8> = ints2.iter().flat_map(|i| i.to_le_bytes()).collect();
-    emu.maps.write_bytes(data2_addr, bytes2);
+    emu.maps.write_bytes(data2_addr, &bytes2);
 
     emu.regs_mut().rip = code_addr;
     emu.regs_mut().rsp = 0x7000;

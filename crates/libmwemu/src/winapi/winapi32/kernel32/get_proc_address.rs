@@ -12,7 +12,7 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
         .expect("kernel32!GetProcAddress cannot read the func name") as u64;
     let func = emu.maps.read_string(func_ptr).to_lowercase();
 
-    //log::info!("looking for '{}'", func);
+    //log::trace!("looking for '{}'", func);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);
@@ -31,7 +31,7 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
                 }
                 let ordinal = flink.get_function_ordinal(emu, i);
 
-                //log::info!("func name {}!{}", flink.mod_name, ordinal.func_name);
+                //log::trace!("func name {}!{}", flink.mod_name, ordinal.func_name);
 
                 if ordinal.func_name.to_lowercase() == func {
                     emu.regs_mut().rax = ordinal.func_va;

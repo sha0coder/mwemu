@@ -154,7 +154,7 @@ impl Flink {
     }
 
     pub fn print(&self) {
-        log::info!("{:#x?}", self);
+        log::trace!("{:#x?}", self);
     }
 
     pub fn get_ptr(&self) -> u64 {
@@ -214,7 +214,7 @@ impl Flink {
             return;
         }
 
-        //log::info!("mod_base 0x{:x} pe_hdr 0x{:x}", self.mod_base, self.pe_hdr);
+        //log::trace!("mod_base 0x{:x} pe_hdr 0x{:x}", self.mod_base, self.pe_hdr);
 
         self.export_table_rva = match emu.maps.read_dword(self.mod_base + self.pe_hdr + 0x88) {
             Some(rva) => rva as u64,
@@ -230,16 +230,16 @@ impl Flink {
         ////////
         /*
         emu.maps.print_maps();
-        log::info!("rva: 0x{:x} = 0x{:x} + 0x{:x} + 0x88 -> 0x{:x}",
+        log::trace!("rva: 0x{:x} = 0x{:x} + 0x{:x} + 0x88 -> 0x{:x}",
             self.mod_base+self.pe_hdr+0x88,
             self.mod_base,
             self.pe_hdr,
             self.export_table_rva);
-        log::info!("export_table: 0x{:x} = 0x{:x} + 0x{:x}",
+        log::trace!("export_table: 0x{:x} = 0x{:x} + 0x{:x}",
             self.export_table,
             self.mod_base,
             self.export_table_rva);
-        log::info!("num_of_funcs [0x{:x} + 0x18] = [0x{:x}]",
+        log::trace!("num_of_funcs [0x{:x} + 0x18] = [0x{:x}]",
             self.export_table,
             self.export_table+0x18);
         */
@@ -326,7 +326,7 @@ pub fn get_module_base(libname: &str, emu: &mut emu::Emu) -> Option<u64> {
 
     let first_flink = flink.get_ptr();
     loop {
-        //log::info!("{} == {}", libname2, flink.mod_name);
+        //log::trace!("{} == {}", libname2, flink.mod_name);
 
         if libname.to_string().to_lowercase() == flink.mod_name.to_string().to_lowercase()
             || libname2 == flink.mod_name.to_string().to_lowercase()
@@ -357,7 +357,7 @@ pub fn show_linked_modules(emu: &mut emu::Emu) {
             .maps
             .read_byte(flink.mod_base + flink.pe_hdr + 1)
             .unwrap_or_default();
-        log::info!(
+        log::trace!(
             "0x{:x} {} flink:{:x} blink:{:x} base:{:x} pe_hdr:{:x} {:x}{:x}",
             flink.get_ptr(),
             flink.mod_name,
@@ -390,7 +390,7 @@ pub fn dynamic_unlink_module(libname: &str, emu: &mut emu::Emu) {
     let mut flink = Flink::new(emu);
     flink.load(emu);
     while flink.mod_name != libname {
-        log::info!("{}", flink.mod_name);
+        log::trace!("{}", flink.mod_name);
         prev_flink = flink.get_ptr();
         flink.next(emu);
     }
@@ -399,12 +399,12 @@ pub fn dynamic_unlink_module(libname: &str, emu: &mut emu::Emu) {
     let next_flink: u64 = flink.get_ptr();
 
     // previous flink
-    log::info!("prev_flink: 0x{:x}", prev_flink);
+    log::trace!("prev_flink: 0x{:x}", prev_flink);
     //emu.maps.write_qword(prev_flink, next_flink);
     emu.maps.write_qword(prev_flink, 0);
 
     // next blink
-    log::info!("next_flink: 0x{:x}", next_flink);
+    log::trace!("next_flink: 0x{:x}", next_flink);
     emu.maps.write_qword(next_flink + 4, prev_flink);
 
     show_linked_modules(emu);
@@ -414,7 +414,7 @@ pub fn dynamic_link_module(base: u64, pe_off: u32, libname: &str, emu: &mut emu:
     /*
      * LoadLibary* family triggers this.
      */
-    //log::info!("************ dynamic_link_module {}", libname);
+    //log::trace!("************ dynamic_link_module {}", libname);
     let mut last_flink: u64;
     let mut flink = Flink::new(emu);
     flink.load(emu);
@@ -430,7 +430,7 @@ pub fn dynamic_link_module(base: u64, pe_off: u32, libname: &str, emu: &mut emu:
     }
     let next_flink: u64 = flink.get_ptr();
 
-    //log::info!("last: {} {:x}", flink.mod_name, next_flink);
+    //log::trace!("last: {} {:x}", flink.mod_name, next_flink);
 
     //let space_addr = create_ldr_entry(emu, base, pe_off, libname, last_flink, first_flink);
     let space_addr = create_ldr_entry(

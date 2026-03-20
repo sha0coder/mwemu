@@ -82,14 +82,14 @@ pub fn FindResourceA(emu: &mut emu::Emu) {
     }
 
     if x.is_none() {
-        log::info!("{} resource not found!", emu.pos);
+        log::trace!("{} resource not found!", emu.pos);
         emu.regs_mut().rax = 0;
         return;
     }
 
     let (addr, size) = x.unwrap();
 
-    log::info!("resource addr: 0x{:x} sz: {}", addr, size);
+    log::trace!("resource addr: 0x{:x} sz: {}", addr, size);
     let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
 
     emu.regs_mut().rax = hndl;

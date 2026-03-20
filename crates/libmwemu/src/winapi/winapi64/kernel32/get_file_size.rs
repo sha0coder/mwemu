@@ -18,7 +18,7 @@ pub fn GetFileSize(emu: &mut emu::Emu) {
         let size = std::fs::metadata("/Users/jesus/Downloads/enigma/surprise.dll")
             .unwrap()
             .len();
-        log::info!(
+        log::trace!(
             "** {} kernel32!GetFileSize {:x} {:x} size: {}",
             emu.pos,
             h_file,

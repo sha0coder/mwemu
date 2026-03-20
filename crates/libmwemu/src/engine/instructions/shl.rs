@@ -44,7 +44,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             _ => panic!("weird size"),
         };
 
-        //log::info!("0x{:x}: 0x{:x} SHL 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, result);
+        //log::trace!("0x{:x}: 0x{:x} SHL 0x{:x} = 0x{:x}", ins.ip32(), value0, value1, result);
 
         if !emu.set_operand_value(ins, 0, result) {
             return false;

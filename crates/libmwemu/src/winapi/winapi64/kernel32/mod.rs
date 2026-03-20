@@ -656,7 +656,7 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
                 }
 
                 let ordinal = flink.get_function_ordinal(emu, i);
-                log::info!(
+                log::trace!(
                     "0x{:x} {}!{}",
                     ordinal.func_va,
                     &flink.mod_name,
@@ -723,7 +723,7 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
         }
         flink.next(emu);
 
-        //log::info!("flink: 0x{:x} first_ptr: 0x{:x}", flink.get_ptr(), first_ptr);
+        //log::trace!("flink: 0x{:x} first_ptr: 0x{:x}", flink.get_ptr(), first_ptr);
 
         if flink.get_ptr() == first_ptr {
             break;
@@ -826,7 +826,7 @@ pub fn is_library_loaded(emu: &mut emu::Emu, libname: &str) -> bool {
 }
 
 pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
-    // log::info!("kern32!load_library: {}", libname);
+    // log::trace!("kern32!load_library: {}", libname);
 
     let mut dll = libname.to_string().to_lowercase();
 
@@ -847,7 +847,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
         Some(base) => {
             // already linked
             if emu.cfg.verbose > 0 {
-                log::info!("dll {} already linked.", dll);
+                log::trace!("dll {} already linked.", dll);
             }
             base
         }
@@ -858,7 +858,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 peb64::dynamic_link_module(base, pe_off, &dll, emu);
                 base
             } else {
-                log::info!("dll {} not found.", dll_path);
+                log::trace!("dll {} not found.", dll_path);
                 0
             }
         }
@@ -866,7 +866,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
 }
 
 pub fn get_library_handle(emu: &mut emu::Emu, libname: &str) -> u64 {
-    // log::info!("kern32!load_library: {}", libname);
+    // log::trace!("kern32!load_library: {}", libname);
 
     let mut dll = libname.to_string().to_lowercase();
 

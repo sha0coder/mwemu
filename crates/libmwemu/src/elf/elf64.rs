@@ -143,7 +143,7 @@ impl Elf64 {
                 && phdr.p_vaddr > 0
                 && (phdr.p_vaddr <= addr || addr <= (phdr.p_vaddr + phdr.p_memsz))
             {
-                //log::info!("vaddr 0x{:x}", phdr.p_vaddr);
+                //log::trace!("vaddr 0x{:x}", phdr.p_vaddr);
                 return true;
             }
         }
@@ -162,7 +162,7 @@ impl Elf64 {
 
     pub fn sym_get_addr_from_name(&self, name: &str) -> Option<u64> {
         for sym in self.elf_dynsym.iter() {
-            log::info!("{} == {}", &sym.st_dynstr_name, name);
+            log::trace!("{} == {}", &sym.st_dynstr_name, name);
             if sym.st_dynstr_name == name {
                 return Some(sym.st_value);
             }
@@ -288,7 +288,7 @@ impl Elf64 {
 
             let sname = self.get_section_name(sh_name as usize);
 
-            //log::info!("loading elf64 section {}", sname);
+            //log::trace!("loading elf64 section {}", sname);
             if sname == ".comment"
                 || sname.starts_with(".note")
                 || sname == ".interp"
@@ -343,7 +343,7 @@ impl Elf64 {
                 }
 
                 if sh_size == 0 {
-                    log::info!("section {} size is zero, skipping.", sname);
+                    log::trace!("section {} size is zero, skipping.", sname);
                     continue;
                 }
 
@@ -368,11 +368,11 @@ impl Elf64 {
                 }
 
                 if sh_offset > end_off as u64 {
-                    log::info!("invalid section {}: sh_offset > end_off", sname);
+                    log::trace!("invalid section {}: sh_offset > end_off", sname);
                     continue;
                 }
                 if end_off as u64 - sh_offset > sh_size {
-                    log::info!(
+                    log::trace!(
                         "no room at sh_size for all the data in the section, skipping {}",
                         sname
                     );
@@ -392,10 +392,10 @@ impl Elf64 {
             if sym_name.contains("libc") {
                 sym_addr += constants::LIBC_BASE;
             }
-            log::info!("crafting got 0x{:x} <- 0x{:x} {}", addr, sym_addr, sym_name);
+            log::trace!("crafting got 0x{:x} <- 0x{:x} {}", addr, sym_addr, sym_name);
             got.write_qword(addr, sym_addr);
         } else {
-            log::info!("crafting got error, no symbol {}", sym_name);
+            log::trace!("crafting got error, no symbol {}", sym_name);
         }
     }
 
@@ -440,7 +440,7 @@ impl Elf64 {
                 }
 
                 if off_strtab == 0 {
-                    log::info!("dt_strtab not found");
+                    log::trace!("dt_strtab not found");
                     return libs;
                 }
 
@@ -465,7 +465,7 @@ impl Elf64 {
                         let lib_name =
                             std::str::from_utf8(&self.bin[off_lib..off_lib + off_lib_end])
                                 .expect("libname on DT_STRTAB is not utf-8");
-                        log::info!("lib: {}", lib_name);
+                        log::trace!("lib: {}", lib_name);
                         libs.push(lib_name.to_string());
                     }
                     off += 16;
@@ -479,7 +479,7 @@ impl Elf64 {
     }
 
     pub fn is_elf64(filename: &str) -> bool {
-        //log::info!("checking if elf64: {}", filename);
+        //log::trace!("checking if elf64: {}", filename);
         let mut fd = File::open(filename).expect("file not found");
         let mut raw = vec![0u8; 5];
         let r = fd.read_exact(&mut raw);

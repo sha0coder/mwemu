@@ -280,7 +280,7 @@ impl SystemModule {
         maps.write_word(addr + 34, self.unknown);
         maps.write_word(addr + 36, self.load_count);
         maps.write_word(addr + 38, self.module_name_offset);
-        maps.write_bytes(addr + 40, self.image_name.to_vec());
+        maps.write_bytes(addr + 40, &self.image_name);
     }
 }
 
@@ -696,7 +696,7 @@ impl EThread {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.data.to_vec());
+        maps.write_bytes(addr, &self.data);
     }
 }
 
@@ -725,7 +725,7 @@ impl EProcess {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.data.to_vec());
+        maps.write_bytes(addr, &self.data);
     }
 }
 
@@ -754,7 +754,7 @@ impl KEVent {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.data.to_vec());
+        maps.write_bytes(addr, &self.data);
     }
 }
 
@@ -783,7 +783,7 @@ impl Mutant {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.data.to_vec());
+        maps.write_bytes(addr, &self.data);
     }
 }
 
@@ -836,7 +836,7 @@ impl RtlOsVersionInfoW {
         maps.write_dword(addr + 8, self.dw_minor_version);
         maps.write_dword(addr + 12, self.dw_build_number);
         maps.write_dword(addr + 16, self.dw_platform_id);
-        maps.write_bytes(addr + 20, self.sz_csd_version.to_vec());
+        maps.write_bytes(addr + 20, &self.sz_csd_version);
     }
 }
 
@@ -904,7 +904,7 @@ impl RtlOsVersionInfoExW {
         maps.write_dword(addr + 8, self.dw_minor_version);
         maps.write_dword(addr + 12, self.dw_build_number);
         maps.write_dword(addr + 16, self.dw_platform_id);
-        maps.write_bytes(addr + 20, self.sz_csd_version.to_vec());
+        maps.write_bytes(addr + 20, &self.sz_csd_version);
         maps.write_word(addr + 276, self.w_service_pack_major);
         maps.write_word(addr + 278, self.w_service_pack_minor);
         maps.write_word(addr + 280, self.w_suite_mask);
@@ -1426,7 +1426,7 @@ impl IoStackLocation {
         maps.write_byte(addr + 1, self.minor_function);
         maps.write_byte(addr + 2, self.flags);
         maps.write_byte(addr + 3, self.control);
-        maps.write_bytes(addr + 4, self._padding.to_vec());
+        maps.write_bytes(addr + 4, &self._padding);
         self.parameters.device_io_control.save(addr + 12, maps);
         maps.write_qword(
             addr + 12 + DeviceIoControl::size() as u64,
@@ -1581,7 +1581,7 @@ impl TailOverlay {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr + 24, self.padding.to_vec());
+        maps.write_bytes(addr + 24, &self.padding);
         maps.write_qword(addr + 32, self.reserved1[0]);
         maps.write_qword(addr + 40, self.reserved1[1]);
         self.list_entry.save(addr + 48, maps);
@@ -1861,22 +1861,18 @@ impl Teb {
         maps.write_dword(addr + 116, self.count_of_owned_critical_sections);
         maps.write_qword(addr + 120, self.csr_client_thread);
         maps.write_qword(addr + 128, self.win32_thread_info);
-        maps.write_bytes(
-            addr + 136,
-            self.user32_reserved
+        let user32_bytes: Vec<u8> = self.user32_reserved
                 .iter()
                 .copied()
                 .flat_map(|v| v.to_le_bytes())
-                .collect(),
-        );
-        maps.write_bytes(
-            addr + 240,
-            self.user_reserved
+                .collect();
+        maps.write_bytes(addr + 136, &user32_bytes);
+        let user_bytes: Vec<u8> = self.user_reserved
                 .iter()
                 .copied()
                 .flat_map(|v| v.to_le_bytes())
-                .collect(),
-        );
+                .collect();
+        maps.write_bytes(addr + 240, &user_bytes);
         maps.write_qword(addr + 260, self.wow32_reserved);
         maps.write_dword(addr + 268, self.current_locale);
     }
@@ -2128,14 +2124,12 @@ impl RtlUserProcessParameters {
     }
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.reserved1.to_vec());
-        maps.write_bytes(
-            addr + 16,
-            self.reserved2
+        maps.write_bytes(addr, &self.reserved1);
+        let reserved2_bytes: Vec<u8> = self.reserved2
                 .iter()
                 .flat_map(|v| v.to_le_bytes())
-                .collect(),
-        );
+                .collect();
+        maps.write_bytes(addr + 16, &reserved2_bytes);
         self.image_path_name.save(addr + 56, maps);
         self.command_line.save(addr + 64, maps);
     }

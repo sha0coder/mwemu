@@ -31,7 +31,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         if emu.cfg.is_64bits {
             if arg % 8 != 0 {
-                log::info!("weird ret argument!");
+                log::trace!("weird ret argument!");
                 return false;
             }
 
@@ -39,7 +39,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             //emu.stack_lvl[emu.stack_lvl_idx] -= arg as i32 / 8;
         } else {
             if arg % 4 != 0 {
-                log::info!("weird ret argument!");
+                log::trace!("weird ret argument!");
                 return false;
             }
 

@@ -12,7 +12,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.regs_mut().rcx = 1; // core id
                             //
     if emu.cfg.verbose >= 1 {
-        log::info!(
+        log::trace!(
             "\t{}:0x{:x} rdtscp value: {} {}",
             emu.pos,
             emu.regs().rip,

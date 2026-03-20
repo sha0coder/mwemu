@@ -17,7 +17,7 @@ impl ImageResourceDirectoryEntry {
     }
 
     pub fn print(&self) {
-        log::info!(
+        log::trace!(
             "name_or_id: {:x} data_or_directory: {:x}",
             self.name_or_id,
             self.data_or_directory

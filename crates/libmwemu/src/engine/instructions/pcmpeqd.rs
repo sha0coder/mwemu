@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Green"), ins);
     if emu.get_operand_sz(ins, 0) != 128 || emu.get_operand_sz(ins, 1) != 128 {
-        log::info!("unimplemented");
+        log::trace!("unimplemented");
         return false;
     }
 

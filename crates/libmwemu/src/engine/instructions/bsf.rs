@@ -22,7 +22,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.flags_mut().f_zf = true;
 
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ undefined behavior on BSF with src == 0");
+            log::trace!("/!\\ undefined behavior on BSF with src == 0");
         }
     } else {
         emu.flags_mut().f_zf = false;
@@ -35,7 +35,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     // cf flag undefined behavior apple mac x86_64 problem
     if emu.regs_mut().rip == 0x144ed424a {
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ f_cf undefined behaviour");
+            log::trace!("/!\\ f_cf undefined behaviour");
         }
         emu.flags_mut().f_cf = false;
     }
@@ -44,7 +44,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     if src == 0 {
         emu.flags_mut().f_zf = true;
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ bsf src == 0 is undefined behavior");
+            log::trace!("/!\\ bsf src == 0 is undefined behavior");
         }
     } else {
         let sz = emu.get_operand_sz(&ins, 0);
