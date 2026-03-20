@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::emu;
 
 pub fn GetTempPathW(emu: &mut emu::Emu) {
     /*
@@ -17,7 +17,7 @@ pub fn GetTempPathW(emu: &mut emu::Emu) {
         lp_buffer
     );
 
-    let temp_path = constants::TEMP_PATH;
+    let temp_path = emu.cfg.temp_path.clone();
     let required_length = temp_path.len() as u32 + 1; // +1 for null terminator
 
     // If buffer length is 0 or buffer is null, return required length
@@ -34,7 +34,7 @@ pub fn GetTempPathW(emu: &mut emu::Emu) {
     }
 
     // Write the temp path to the buffer
-    emu.maps.write_wide_string(lp_buffer, temp_path);
+    emu.maps.write_wide_string(lp_buffer, &temp_path);
 
     // Return the number of characters copied (excluding null terminator)
     emu.regs_mut().rax = (required_length - 1) as u64;

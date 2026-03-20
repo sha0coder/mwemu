@@ -1,5 +1,5 @@
 use crate::maps::mem64::Permission;
-use crate::{constants, emu};
+use crate::emu;
 
 pub fn GetCommandLineA(emu: &mut emu::Emu) {
     log_red!(emu, "kernel32!GetCommandLineA");
@@ -8,6 +8,7 @@ pub fn GetCommandLineA(emu: &mut emu::Emu) {
     let name = format!("alloc_{:x}", addr);
     emu.maps
         .create_map(&name, addr, 1024, Permission::READ_WRITE);
-    emu.maps.write_string(addr, constants::EXE_NAME);
+    let exe_name = emu.cfg.exe_name.clone();
+    emu.maps.write_string(addr, &exe_name);
     emu.regs_mut().rax = addr;
 }

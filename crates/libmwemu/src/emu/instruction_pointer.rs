@@ -30,7 +30,7 @@ impl Emu {
                     if self.cfg.emulate_winapi {
                         let rip = self.regs().rip;
                         let api_name = winapi64::kernel32::guess_api_name(self, addr);
-                        log::trace!("{}:{} emulating {}", self.pos, rip, api_name);
+                        log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
                         self.regs_mut().rip = addr;
                         return true;
                     }
@@ -81,7 +81,9 @@ impl Emu {
             if self.cfg.emulate_winapi {
                 let rip = self.regs().rip;
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
-                log::trace!("{}:{} emulating {}", self.pos, rip, api_name);
+                if !api_name.is_empty() {
+                    log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
+                }
                 self.regs_mut().rip = addr;
                 return true;
             }
@@ -94,10 +96,15 @@ impl Emu {
             self.gateway_return = self.stack_pop64(false).unwrap_or(0);
             self.regs_mut().rip = self.gateway_return;
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
-            };
+            let handle_winapi: bool =
+                if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                    let rip = self.regs().rip;
+                    let result = hook_fn(self, rip, addr);
+                    self.hooks.hook_on_winapi_call = Some(hook_fn);
+                    result
+                } else {
+                    true
+                };
 
             if handle_winapi {
                 let name = self
@@ -137,7 +144,7 @@ impl Emu {
                     if self.cfg.emulate_winapi {
                         let eip = self.regs().get_eip();
                         let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
-                        log::trace!("{}:{} emulating {}", self.pos, eip, api_name);
+                        log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
                         self.regs_mut().set_eip(addr);
                         return true;
                     }
@@ -182,7 +189,9 @@ impl Emu {
             if self.cfg.emulate_winapi {
                 let eip = self.regs().get_eip();
                 let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
-                log::trace!("{}:{} emulating {}", self.pos, eip, api_name);
+                if !api_name.is_empty() {
+                    log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
+                }
                 self.regs_mut().set_eip(addr);
                 return true;
             }
@@ -196,10 +205,15 @@ impl Emu {
             let gateway_return = self.gateway_return;
             self.regs_mut().set_eip(gateway_return);
 
-            let handle_winapi: bool = match self.hooks.hook_on_winapi_call {
-                Some(hook_fn) => hook_fn(self, self.regs().rip, addr),
-                None => true,
-            };
+            let handle_winapi: bool =
+                if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                    let rip = self.regs().rip;
+                    let result = hook_fn(self, rip, addr);
+                    self.hooks.hook_on_winapi_call = Some(hook_fn);
+                    result
+                } else {
+                    true
+                };
 
             if handle_winapi {
                 let name = self.maps.get_addr_name(addr).unwrap();

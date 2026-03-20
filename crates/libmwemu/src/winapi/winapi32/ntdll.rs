@@ -25,7 +25,8 @@ const PAGE_NOCACHE: u32 = 0x200;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
-    match api.as_str() {
+    let api = api.split("!").last().unwrap_or(&api);
+    match api {
         "NtAllocateVirtualMemory" => NtAllocateVirtualMemory(emu),
         "NtGetContextThread" => NtGetContextThread(emu),
         "RtlVectoredExceptionHandler" => RtlVectoredExceptionHandler(emu),
@@ -77,7 +78,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api;
+            return api.to_ascii_lowercase();
         }
     }
 

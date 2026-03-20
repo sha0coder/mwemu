@@ -1044,6 +1044,11 @@ impl PE32 {
             if dld.name.is_empty() {
                 continue;
             }
+
+            /*            if dld.name.starts_with("api-ms-win-") {
+                dld = "kernelbase".to_string();
+            }*/
+
             if winapi32::kernel32::load_library(emu, &dld.name) == 0 {
                 panic!(
                     "cannot found the library `{}` on {}",

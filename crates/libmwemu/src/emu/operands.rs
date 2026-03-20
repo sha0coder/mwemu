@@ -307,8 +307,10 @@ impl Emu {
                 log::debug!("  Dereferencing: mem_addr=0x{:x}, size={} bits", mem_addr, sz);
             }*/
 
-            if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                hook_fn(self, self.regs().rip, mem_addr, sz)
+            if let Some(mut hook_fn) = self.hooks.hook_on_memory_read.take() {
+                let rip = self.regs().rip;
+                hook_fn(self, rip, mem_addr, sz);
+                self.hooks.hook_on_memory_read = Some(hook_fn);
             }
 
             value = match sz {
@@ -561,11 +563,13 @@ impl Emu {
 
                 let sz = self.get_operand_sz(ins, noperand);
 
-                let value2 = match self.hooks.hook_on_memory_write {
-                    Some(hook_fn) => {
-                        hook_fn(self, self.regs().rip, mem_addr, sz, value as u128) as u64
-                    }
-                    None => value,
+                let value2 = if let Some(mut hook_fn) = self.hooks.hook_on_memory_write.take() {
+                    let rip = self.regs().rip;
+                    let result = hook_fn(self, rip, mem_addr, sz, value as u128) as u64;
+                    self.hooks.hook_on_memory_write = Some(hook_fn);
+                    result
+                } else {
+                    value
                 };
 
                 let old_value = if self.cfg.trace_mem {
@@ -774,8 +778,10 @@ impl Emu {
                 };
 
                 if do_derref {
-                    if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                        hook_fn(self, self.regs().rip, mem_addr, 128)
+                    if let Some(mut hook_fn) = self.hooks.hook_on_memory_read.take() {
+                        let rip = self.regs().rip;
+                        hook_fn(self, rip, mem_addr, 128);
+                        self.hooks.hook_on_memory_read = Some(hook_fn);
                     }
 
                     let value: u128 = match self.maps.read_128bits_le(mem_addr) {
@@ -816,9 +822,13 @@ impl Emu {
                     }
                 };
 
-                let value2 = match self.hooks.hook_on_memory_write {
-                    Some(hook_fn) => hook_fn(self, self.regs().rip, mem_addr, 128, value),
-                    None => value,
+                let value2 = if let Some(mut hook_fn) = self.hooks.hook_on_memory_write.take() {
+                    let rip = self.regs().rip;
+                    let result = hook_fn(self, rip, mem_addr, 128, value);
+                    self.hooks.hook_on_memory_write = Some(hook_fn);
+                    result
+                } else {
+                    value
                 };
 
                 for (i, b) in value2.to_le_bytes().iter().enumerate() {
@@ -862,8 +872,10 @@ impl Emu {
                 };
 
                 if do_derref {
-                    if let Some(hook_fn) = self.hooks.hook_on_memory_read {
-                        hook_fn(self, self.regs().rip, mem_addr, 256)
+                    if let Some(mut hook_fn) = self.hooks.hook_on_memory_read.take() {
+                        let rip = self.regs().rip;
+                        hook_fn(self, rip, mem_addr, 256);
+                        self.hooks.hook_on_memory_read = Some(hook_fn);
                     }
 
                     let bytes = self.maps.read_bytes(mem_addr, 32);
@@ -906,9 +918,13 @@ impl Emu {
 
                 // ymm dont support value modification from hook, for now
                 let value_u128: u128 = ((value.0[1] as u128) << 64) | value.0[0] as u128;
-                let value2 = match self.hooks.hook_on_memory_write {
-                    Some(hook_fn) => hook_fn(self, self.regs().rip, mem_addr, 256, value_u128),
-                    None => value_u128,
+                let value2 = if let Some(mut hook_fn) = self.hooks.hook_on_memory_write.take() {
+                    let rip = self.regs().rip;
+                    let result = hook_fn(self, rip, mem_addr, 256, value_u128);
+                    self.hooks.hook_on_memory_write = Some(hook_fn);
+                    result
+                } else {
+                    value_u128
                 };
 
                 let mut bytes: Vec<u8> = vec![0; 32];

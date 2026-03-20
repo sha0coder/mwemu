@@ -1,4 +1,3 @@
-use crate::constants;
 use crate::emu;
 use crate::peb;
 use crate::winapi::helper;
@@ -13,6 +12,7 @@ pub fn GetModuleHandleA(emu: &mut emu::Emu) {
 
     if mod_name_ptr == 0 {
         let caller_rip = emu.regs().rip;
+        let exe_name = emu.cfg.exe_name.clone();
         mod_name = match emu.maps.get_addr_name(caller_rip) {
             Some(n) => n,
             None => {
@@ -20,7 +20,7 @@ pub fn GetModuleHandleA(emu: &mut emu::Emu) {
                     "kernel32!GetModuleHandleA called from weird place 0x{:x}",
                     caller_rip
                 );
-                constants::EXE_NAME
+                &exe_name
             }
         }
         .to_string();

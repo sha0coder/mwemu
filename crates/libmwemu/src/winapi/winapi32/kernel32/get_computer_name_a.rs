@@ -1,4 +1,3 @@
-use crate::constants;
 use crate::emu;
 
 pub fn GetComputerNameA(emu: &mut emu::Emu) {
@@ -11,8 +10,9 @@ pub fn GetComputerNameA(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp() + 4)
         .expect("kernel32!GetComputerNameA cannot read size param") as u64;
 
+    let host_name = emu.cfg.host_name.clone();
     if buff_ptr > 0 {
-        emu.maps.write_string(buff_ptr, constants::HOST_NAME);
+        emu.maps.write_string(buff_ptr, &host_name);
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -23,7 +23,7 @@ pub fn GetComputerNameA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 1;
     }
 
-    log_red!(emu, "kernel32!GetComputerName '{}'", constants::HOST_NAME);
+    log_red!(emu, "kernel32!GetComputerName '{}'", host_name);
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

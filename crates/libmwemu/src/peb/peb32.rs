@@ -1,5 +1,4 @@
 use crate::console::Console;
-use crate::constants;
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::structures::LdrDataTableEntry;
@@ -19,7 +18,8 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     emu.maps
         .create_map("ldr", ldr_addr, ldr_sz as u64, Permission::READ_WRITE)
         .expect("cannot create ldr map");
-    let module_entry = create_ldr_entry(emu, 0, 0, constants::EXE_NAME, 0, 0) as u32;
+    let exe_name = emu.cfg.exe_name.clone();
+    let module_entry = create_ldr_entry(emu, 0, 0, &exe_name, 0, 0) as u32;
     let mut ldr = PebLdrData::new();
     ldr.initializated = 1;
     ldr.in_load_order_module_list.flink = module_entry;
