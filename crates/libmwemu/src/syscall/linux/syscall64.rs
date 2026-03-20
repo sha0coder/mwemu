@@ -1062,6 +1062,50 @@ pub fn gateway(emu: &mut emu::Emu) {
             );
         }
 
+        constants::NR64_NANOSLEEP => {
+            let req = emu.regs().rdi;
+            let rem = emu.regs().rsi;
+
+            let tv_sec = emu.maps.read_qword(req).unwrap_or(0);
+            let tv_nsec = emu.maps.read_qword(req + 8).unwrap_or(0);
+
+            log::info!(
+                "{}** {} syscall nanosleep(tv_sec: 0x{:x}, tv_nsec: 0x{:x}) {}",
+                emu.colors.light_red,
+                emu.pos,
+                tv_sec,
+                tv_nsec,
+                emu.colors.nc
+            );
+
+            // TODO: implement actual sleep
+            emu.regs_mut().rax = 0;
+        }
+
+        constants::NR64_MREMAP => {
+            let old_addr = emu.regs().rdi;
+            let old_sz = emu.regs().rsi;
+            let new_sz = emu.regs().rdx;
+            let flags = emu.regs().r10;
+            let new_addr = emu.regs().r8;
+
+            log::info!(
+                "{}** {} syscall mremap(old_addr: 0x{:x}, old_sz: 0x{:x}, new_sz: 0x{:x}, flags: 0x{:x}, new_addr: 0x{:x}) ={} {}",
+                emu.colors.light_red,
+                emu.pos,
+                old_addr,
+                old_sz,
+                new_sz,
+                flags,
+                new_addr,
+                emu.regs().rax,
+                emu.colors.nc
+            );
+
+            // TODO: implement actual mremap
+            emu.regs_mut().rax = 0;
+        }
+
         _ => {
             let data: Vec<String> = vec![
                 "read".to_string(),

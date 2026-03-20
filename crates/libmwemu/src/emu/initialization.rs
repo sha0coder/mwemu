@@ -576,11 +576,25 @@ impl Emu {
         teb.save(teb_map);
 
         let heap_sz = 0x885900 - 0x4b5000;
-        self.heap_addr = self.maps.alloc(heap_sz).expect("cannot allocate heap");
+        self.heap_addr = 0x520000; // Hardcoded in PEB64
         let heap = self
             .maps
             .create_map(".heap", self.heap_addr, heap_sz, Permission::READ_WRITE)
             .expect("cannot create heap map");
+
+        // Native ntdll!RtlAllocateHeap expects SegmentSignature at offset 0x10
+        self.maps.write_dword(self.heap_addr + 0x10, 0x0DDEEDDEE);
+        
+        // ntdll!RtlAllocateHeap accesses FreeLists/BlocksIndex. If 0, it crashes dereferencing NULL.
+        // We put a self-referential or valid pointer so it doesn't crash on [r10+2].
+        // At 0x5203D8 (rsi+rcx*8+80h) it expects a pointer to something. We point it to 0x520400.
+        self.maps.write_qword(self.heap_addr + 0x3D8, self.heap_addr + 0x400);
+
+        // Later accesses [0x520480] and passes it as locking structure. Needs to be != 0 to avoid [0x10] unmapped array
+        self.maps.write_qword(self.heap_addr + 0x480, self.heap_addr + 0x500);
+
+        // At 0x520418 it checks [rdi] == rdi to see if list is empty
+        self.maps.write_qword(self.heap_addr + 0x418, self.heap_addr + 0x418);
 
         self.heap_management = Some(Box::new(
             O1Heap::new(self.heap_addr, heap_sz as u32)

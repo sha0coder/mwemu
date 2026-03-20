@@ -346,5 +346,9 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     emu.maps
         .write_bytes(USER_KUSER_SHARED_ADDR, &memory);
 
+    // RtlAllocateHeap checks [0x7ffe0380]. If 0, it falls back to STATUS_NO_MEMORY (error).
+    emu.maps
+        .write_byte(USER_KUSER_SHARED_ADDR + 0x380, 1);
+
     USER_KUSER_SHARED_ADDR
 }

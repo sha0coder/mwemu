@@ -1,2 +1,2 @@
-pub mod syscall32;
-pub mod syscall64;
+pub mod linux;
+pub mod windows;
