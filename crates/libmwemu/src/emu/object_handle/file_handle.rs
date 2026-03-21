@@ -7,10 +7,11 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use dunce::canonicalize;
 use soft_canonicalize::soft_canonicalize;
+use crate::emu::object_handle::windows_path::WindowsPath;
 
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Storage::FileSystem::GetLogicalDrives;
-use crate::emu::object_handle::windows_path::WindowsPath;
+
 
 /*
 * Example of used:
