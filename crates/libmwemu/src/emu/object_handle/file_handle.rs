@@ -435,10 +435,63 @@ impl FileSystem {
     }
 
     /// Converts a local path to a WindowsPath relative to the filesystem root
+    ///
+    /// Given:
+    /// - root: `/tmp/vfs`
+    /// - local_path: `/tmp/vfs/c/Windows/System32`
+    ///
+    /// Returns: `c:\Windows\System32`
     pub fn local_to_windows_path<P: AsRef<Path>>(&self, local_path: P) -> Result<WindowsPath, Box<dyn std::error::Error>> {
         let local_path = local_path.as_ref();
-        let windows_absolute_path = WindowsPath::from_path(&Self::absolute(local_path)?)?;
-        Ok(windows_absolute_path)
+        
+        // Handle empty path
+        if local_path.as_os_str().is_empty() {
+            return Err("Path is empty".into());
+        }
+        
+        // On Windows with empty root, convert directly
+        #[cfg(target_os = "windows")]
+        if self.root.as_os_str().is_empty() {
+            return Ok(WindowsPath::from_path(local_path)?);
+        }
+        
+        // Get the absolute path
+        let abs_local_path = Self::absolute(local_path)?;
+        let abs_root = Self::absolute(&self.root)?;
+        
+        // Strip the root prefix to get the relative path
+        let relative = abs_local_path.strip_prefix(&abs_root)
+            .map_err(|_| format!("Path {:?} is not under root {:?}", abs_local_path, abs_root))?;
+        
+        // Get the components of the relative path
+        let mut components = relative.components();
+        
+        // The first component should be the drive letter
+        let drive = components.next()
+            .and_then(|c| c.as_os_str().to_str())
+            .and_then(|s| s.chars().next())
+            .ok_or("Path does not contain a drive letter component")?;
+        
+        // Validate that the drive is a single alphabetic character
+        if !drive.is_ascii_alphabetic() {
+            return Err(format!("Invalid drive letter: {}", drive).into());
+        }
+        
+        // Build the Windows path string from remaining components
+        let mut path_str = format!("{}:", drive.to_ascii_lowercase());
+        for component in components {
+            if let Some(s) = component.as_os_str().to_str() {
+                path_str.push('\\');
+                path_str.push_str(s);
+            }
+        }
+        
+        // If there are no additional components, add the root slash
+        if !path_str.contains('\\') {
+            path_str.push('\\');
+        }
+        
+        Ok(WindowsPath::from_string(&path_str))
     }
 
     /// Maps a WindowsPath to a local filesystem path
