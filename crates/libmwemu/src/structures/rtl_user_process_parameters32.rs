@@ -30,7 +30,7 @@ impl RtlUserProcessParameters32 {
     }
 
     pub fn save(&mut self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.reserved1.to_vec());
+        maps.write_bytes(addr, &self.reserved1);
         for (i, val) in self.reserved2.iter().enumerate() {
             maps.write_dword(addr + 16 + (i * 4) as u64, *val);
         }

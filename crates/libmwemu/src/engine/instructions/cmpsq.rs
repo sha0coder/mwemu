@@ -16,14 +16,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let value0: u64 = match emu.maps.read_qword(emu.regs().rsi) {
         Some(v) => v,
         None => {
-            log::info!("cannot read rsi");
+            log::trace!("cannot read rsi");
             return false;
         }
     };
     let value1: u64 = match emu.maps.read_qword(emu.regs().rdi) {
         Some(v) => v,
         None => {
-            log::info!("cannot read rdi");
+            log::trace!("cannot read rdi");
             return false;
         }
     };
@@ -40,11 +40,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.cfg.verbose >= 2 {
         if value0 > value1 {
-            log::info!("\tcmp: 0x{:x} > 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} > 0x{:x}", value0, value1);
         } else if value0 < value1 {
-            log::info!("\tcmp: 0x{:x} < 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} < 0x{:x}", value0, value1);
         } else {
-            log::info!("\tcmp: 0x{:x} == 0x{:x}", value0, value1);
+            log::trace!("\tcmp: 0x{:x} == 0x{:x}", value0, value1);
         }
     }
     true

@@ -26,7 +26,7 @@ impl Default for Console {
 
 impl Console {
     pub fn new() -> Console {
-        log::info!("--- console ---");
+        log::trace!("--- console ---");
         Console {}
     }
 
@@ -89,85 +89,85 @@ impl Console {
     }*/
 
     pub fn help(&self) {
-        log::info!("--- help ---");
-        log::info!("q ...................... quit");
-        log::info!("cls .................... clear screen");
-        log::info!("h ...................... help");
-        log::info!("s ...................... stack");
-        log::info!("v ...................... vars");
-        log::info!("sv ..................... set verbose level 0, 1 or 2");
-        log::info!("r ...................... register show all");
-        log::info!("r reg .................. show reg");
-        log::info!("rc ..................... register change");
-        log::info!("f ...................... show all flags");
-        log::info!("fc ..................... clear all flags");
-        log::info!("fz ..................... toggle flag zero");
-        log::info!("fs ..................... toggle flag sign");
-        log::info!("c ...................... continue");
-        log::info!("b ...................... breakpoint list");
-        log::info!("ba ..................... breakpoint on address");
-        log::info!("bi ..................... breakpoint on instruction number");
-        log::info!("bmr .................... breakpoint on read memory");
-        log::info!("bmw .................... breakpoint on write memory");
-        log::info!("bmx .................... breakpoint on execute memory");
-        log::info!("bcmp ................... break on next cmp or test instruction");
-        log::info!("bc ..................... clear breakpoint");
-        log::info!("n ...................... next instruction");
-        log::info!("eip .................... change eip");
-        log::info!("rip .................... change rip");
-        log::info!("push ................... push dword to the stack");
-        log::info!("pop .................... pop dword from stack");
-        log::info!("fpu .................... fpu view");
-        log::info!("md5 .................... check the md5 of a memory map");
-        log::info!("seh .................... view SEH");
-        log::info!("veh .................... view vectored execption pointer");
-        log::info!("m ...................... memory maps");
-        log::info!("ms ..................... memory filtered by keyword string");
-        log::info!("ma ..................... memory allocs");
-        log::info!("mc ..................... memory create map");
-        log::info!("mn ..................... memory name of an address");
-        log::info!("ml ..................... memory load file content to map");
-        log::info!("mr ..................... memory read, speficy ie: dword ptr [esi]");
-        log::info!(
+        log::trace!("--- help ---");
+        log::trace!("q ...................... quit");
+        log::trace!("cls .................... clear screen");
+        log::trace!("h ...................... help");
+        log::trace!("s ...................... stack");
+        log::trace!("v ...................... vars");
+        log::trace!("sv ..................... set verbose level 0, 1 or 2");
+        log::trace!("r ...................... register show all");
+        log::trace!("r reg .................. show reg");
+        log::trace!("rc ..................... register change");
+        log::trace!("f ...................... show all flags");
+        log::trace!("fc ..................... clear all flags");
+        log::trace!("fz ..................... toggle flag zero");
+        log::trace!("fs ..................... toggle flag sign");
+        log::trace!("c ...................... continue");
+        log::trace!("b ...................... breakpoint list");
+        log::trace!("ba ..................... breakpoint on address");
+        log::trace!("bi ..................... breakpoint on instruction number");
+        log::trace!("bmr .................... breakpoint on read memory");
+        log::trace!("bmw .................... breakpoint on write memory");
+        log::trace!("bmx .................... breakpoint on execute memory");
+        log::trace!("bcmp ................... break on next cmp or test instruction");
+        log::trace!("bc ..................... clear breakpoint");
+        log::trace!("n ...................... next instruction");
+        log::trace!("eip .................... change eip");
+        log::trace!("rip .................... change rip");
+        log::trace!("push ................... push dword to the stack");
+        log::trace!("pop .................... pop dword from stack");
+        log::trace!("fpu .................... fpu view");
+        log::trace!("md5 .................... check the md5 of a memory map");
+        log::trace!("seh .................... view SEH");
+        log::trace!("veh .................... view vectored execption pointer");
+        log::trace!("m ...................... memory maps");
+        log::trace!("ms ..................... memory filtered by keyword string");
+        log::trace!("ma ..................... memory allocs");
+        log::trace!("mc ..................... memory create map");
+        log::trace!("mn ..................... memory name of an address");
+        log::trace!("ml ..................... memory load file content to map");
+        log::trace!("mr ..................... memory read, speficy ie: dword ptr [esi]");
+        log::trace!(
             "mw ..................... memory write, speficy ie: dword ptr [esi]  and then: 1af"
         );
-        log::info!("mwb .................... memory write bytes, input spaced bytes");
-        log::info!("md ..................... memory dump");
-        log::info!("mrd .................... memory read dwords");
-        log::info!("mrq .................... memory read qwords");
-        log::info!("mds .................... memory dump string");
-        log::info!("mdw .................... memory dump wide string");
-        log::info!("mdd .................... memory dump to disk");
-        log::info!("mdda ................... memory dump all allocations to disk");
-        log::info!("mt ..................... memory test");
-        log::info!("r2 [addr] .............. spawn radare2 console if it's isntalled");
-        log::info!("ss ..................... search string in a specific map");
-        log::info!("sb ..................... search bytes in a specific map");
-        log::info!("sba .................... search bytes in all the maps");
-        log::info!("ssa .................... search string in all the maps");
-        log::info!("ll ..................... linked list walk");
-        log::info!("d ...................... dissasemble");
-        log::info!("dt ..................... dump structure");
-        log::info!("pos .................... print current position");
-        log::info!("enter .................. step into");
-        log::info!("tr ..................... trace reg");
-        log::info!("trc .................... trace regs clear");
-        log::info!("ldr .................... show ldr linked list");
-        log::info!("iat .................... find api name in all iat's ");
-        log::info!("iatx ................... addr to api name");
-        log::info!("iatd ................... dump the iat of specific module");
-        log::info!("dump ................... dump current state to disk");
+        log::trace!("mwb .................... memory write bytes, input spaced bytes");
+        log::trace!("md ..................... memory dump");
+        log::trace!("mrd .................... memory read dwords");
+        log::trace!("mrq .................... memory read qwords");
+        log::trace!("mds .................... memory dump string");
+        log::trace!("mdw .................... memory dump wide string");
+        log::trace!("mdd .................... memory dump to disk");
+        log::trace!("mdda ................... memory dump all allocations to disk");
+        log::trace!("mt ..................... memory test");
+        log::trace!("r2 [addr] .............. spawn radare2 console if it's isntalled");
+        log::trace!("ss ..................... search string in a specific map");
+        log::trace!("sb ..................... search bytes in a specific map");
+        log::trace!("sba .................... search bytes in all the maps");
+        log::trace!("ssa .................... search string in all the maps");
+        log::trace!("ll ..................... linked list walk");
+        log::trace!("d ...................... dissasemble");
+        log::trace!("dt ..................... dump structure");
+        log::trace!("pos .................... print current position");
+        log::trace!("enter .................. step into");
+        log::trace!("tr ..................... trace reg");
+        log::trace!("trc .................... trace regs clear");
+        log::trace!("ldr .................... show ldr linked list");
+        log::trace!("iat .................... find api name in all iat's ");
+        log::trace!("iatx ................... addr to api name");
+        log::trace!("iatd ................... dump the iat of specific module");
+        log::trace!("dump ................... dump current state to disk");
 
-        //log::info!("o ...................... step over");
-        log::info!("");
-        log::info!("---");
+        //log::trace!("o ...................... step over");
+        log::trace!("");
+        log::trace!("---");
     }
 
     pub fn spawn_radare2(addr: u64, emu: &mut Emu) {
         let mem = match emu.maps.get_mem_by_addr(addr) {
             Some(m) => m,
             None => {
-                log::info!("address not found on any map");
+                log::trace!("address not found on any map");
                 return;
             }
         };
@@ -212,7 +212,7 @@ impl Console {
             "-n", "-a", "x86", "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,
         ];
 
-        log::info!("spawning radare2 software.");
+        log::trace!("spawning radare2 software.");
 
         match Command::new("radare2")
             .args(&r2args)
@@ -271,18 +271,18 @@ impl Console {
                 "r rdx" => emu.regs().show_rdx(&emu.maps, 0),
                 "r rsi" => emu.regs().show_rsi(&emu.maps, 0),
                 "r rdi" => emu.regs().show_rdi(&emu.maps, 0),
-                "r rbp" => log::info!("\trbp: 0x{:x}", emu.regs().rbp),
-                "r rsp" => log::info!("\trsp: 0x{:x}", emu.regs().rsp),
-                "r rip" => log::info!("\trip: 0x{:x}", emu.regs().rip),
+                "r rbp" => log::trace!("\trbp: 0x{:x}", emu.regs().rbp),
+                "r rsp" => log::trace!("\trsp: 0x{:x}", emu.regs().rsp),
+                "r rip" => log::trace!("\trip: 0x{:x}", emu.regs().rip),
                 "r eax" => emu.regs().show_eax(&emu.maps, 0),
                 "r ebx" => emu.regs().show_ebx(&emu.maps, 0),
                 "r ecx" => emu.regs().show_ecx(&emu.maps, 0),
                 "r edx" => emu.regs().show_edx(&emu.maps, 0),
                 "r esi" => emu.regs().show_esi(&emu.maps, 0),
                 "r edi" => emu.regs().show_edi(&emu.maps, 0),
-                "r esp" => log::info!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
-                "r ebp" => log::info!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
-                "r eip" => log::info!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
+                "r esp" => log::trace!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
+                "r ebp" => log::trace!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
+                "r eip" => log::trace!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
                 "r r8" => emu.regs().show_r8(&emu.maps, 0),
                 "r r9" => emu.regs().show_r9(&emu.maps, 0),
                 "r r10" => emu.regs().show_r10(&emu.maps, 0),
@@ -315,38 +315,38 @@ impl Console {
                 "r r13l" => emu.regs().show_r13l(&emu.maps, 0),
                 "r r14l" => emu.regs().show_r14l(&emu.maps, 0),
                 "r r15l" => emu.regs().show_r15l(&emu.maps, 0),
-                "r xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs().xmm0),
-                "r xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs().xmm1),
-                "r xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs().xmm2),
-                "r xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs().xmm3),
-                "r xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs().xmm4),
-                "r xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs().xmm5),
-                "r xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs().xmm6),
-                "r xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs().xmm7),
-                "r xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs().xmm8),
-                "r xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs().xmm9),
-                "r xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs().xmm10),
-                "r xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs().xmm11),
-                "r xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs().xmm12),
-                "r xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs().xmm13),
-                "r xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs().xmm14),
-                "r xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs().xmm15),
-                "r ymm0" => log::info!("\tymm0: 0x{:x}", emu.regs().ymm0),
-                "r ymm1" => log::info!("\tymm1: 0x{:x}", emu.regs().ymm1),
-                "r ymm2" => log::info!("\tymm2: 0x{:x}", emu.regs().ymm2),
-                "r ymm3" => log::info!("\tymm3: 0x{:x}", emu.regs().ymm3),
-                "r ymm4" => log::info!("\tymm4: 0x{:x}", emu.regs().ymm4),
-                "r ymm5" => log::info!("\tymm5: 0x{:x}", emu.regs().ymm5),
-                "r ymm6" => log::info!("\tymm6: 0x{:x}", emu.regs().ymm6),
-                "r ymm7" => log::info!("\tymm7: 0x{:x}", emu.regs().ymm7),
-                "r ymm8" => log::info!("\tymm8: 0x{:x}", emu.regs().ymm8),
-                "r ymm9" => log::info!("\tymm9: 0x{:x}", emu.regs().ymm9),
-                "r ymm10" => log::info!("\tymm10: 0x{:x}", emu.regs().ymm10),
-                "r ymm11" => log::info!("\tymm11: 0x{:x}", emu.regs().ymm11),
-                "r ymm12" => log::info!("\tymm12: 0x{:x}", emu.regs().ymm12),
-                "r ymm13" => log::info!("\tymm13: 0x{:x}", emu.regs().ymm13),
-                "r ymm14" => log::info!("\tymm14: 0x{:x}", emu.regs().ymm14),
-                "r ymm15" => log::info!("\tymm15: 0x{:x}", emu.regs().ymm15),
+                "r xmm0" => log::trace!("\txmm0: 0x{:x}", emu.regs().xmm0),
+                "r xmm1" => log::trace!("\txmm1: 0x{:x}", emu.regs().xmm1),
+                "r xmm2" => log::trace!("\txmm2: 0x{:x}", emu.regs().xmm2),
+                "r xmm3" => log::trace!("\txmm3: 0x{:x}", emu.regs().xmm3),
+                "r xmm4" => log::trace!("\txmm4: 0x{:x}", emu.regs().xmm4),
+                "r xmm5" => log::trace!("\txmm5: 0x{:x}", emu.regs().xmm5),
+                "r xmm6" => log::trace!("\txmm6: 0x{:x}", emu.regs().xmm6),
+                "r xmm7" => log::trace!("\txmm7: 0x{:x}", emu.regs().xmm7),
+                "r xmm8" => log::trace!("\txmm8: 0x{:x}", emu.regs().xmm8),
+                "r xmm9" => log::trace!("\txmm9: 0x{:x}", emu.regs().xmm9),
+                "r xmm10" => log::trace!("\txmm10: 0x{:x}", emu.regs().xmm10),
+                "r xmm11" => log::trace!("\txmm11: 0x{:x}", emu.regs().xmm11),
+                "r xmm12" => log::trace!("\txmm12: 0x{:x}", emu.regs().xmm12),
+                "r xmm13" => log::trace!("\txmm13: 0x{:x}", emu.regs().xmm13),
+                "r xmm14" => log::trace!("\txmm14: 0x{:x}", emu.regs().xmm14),
+                "r xmm15" => log::trace!("\txmm15: 0x{:x}", emu.regs().xmm15),
+                "r ymm0" => log::trace!("\tymm0: 0x{:x}", emu.regs().ymm0),
+                "r ymm1" => log::trace!("\tymm1: 0x{:x}", emu.regs().ymm1),
+                "r ymm2" => log::trace!("\tymm2: 0x{:x}", emu.regs().ymm2),
+                "r ymm3" => log::trace!("\tymm3: 0x{:x}", emu.regs().ymm3),
+                "r ymm4" => log::trace!("\tymm4: 0x{:x}", emu.regs().ymm4),
+                "r ymm5" => log::trace!("\tymm5: 0x{:x}", emu.regs().ymm5),
+                "r ymm6" => log::trace!("\tymm6: 0x{:x}", emu.regs().ymm6),
+                "r ymm7" => log::trace!("\tymm7: 0x{:x}", emu.regs().ymm7),
+                "r ymm8" => log::trace!("\tymm8: 0x{:x}", emu.regs().ymm8),
+                "r ymm9" => log::trace!("\tymm9: 0x{:x}", emu.regs().ymm9),
+                "r ymm10" => log::trace!("\tymm10: 0x{:x}", emu.regs().ymm10),
+                "r ymm11" => log::trace!("\tymm11: 0x{:x}", emu.regs().ymm11),
+                "r ymm12" => log::trace!("\tymm12: 0x{:x}", emu.regs().ymm12),
+                "r ymm13" => log::trace!("\tymm13: 0x{:x}", emu.regs().ymm13),
+                "r ymm14" => log::trace!("\tymm14: 0x{:x}", emu.regs().ymm14),
+                "r ymm15" => log::trace!("\tymm15: 0x{:x}", emu.regs().ymm15),
 
                 "rc" => {
                     con.print("register name");
@@ -355,7 +355,7 @@ impl Console {
                     let value = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
@@ -368,11 +368,11 @@ impl Console {
                     let value = match emu.memory_read(operand.as_str()) {
                         Some(v) => v,
                         None => {
-                            log::info!("bad address.");
+                            log::trace!("bad address.");
                             continue;
                         }
                     };
-                    log::info!("0x{:x}: 0x{:x}", to32!(addr), value);
+                    log::trace!("0x{:x}: 0x{:x}", to32!(addr), value);
                 }
                 "mw" | "wm" => {
                     con.print("memory argument");
@@ -381,14 +381,14 @@ impl Console {
                     let value = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
                     if emu.memory_write(operand.as_str(), value) {
-                        log::info!("done.");
+                        log::trace!("done.");
                     } else {
-                        log::info!("cannot write there.");
+                        log::trace!("cannot write there.");
                     }
                 }
                 "mwb" => {
@@ -396,14 +396,14 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(a) => a,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
                     con.print("spaced bytes");
                     let bytes = con.cmd();
                     emu.maps.write_spaced_bytes(addr, &bytes);
-                    log::info!("done.");
+                    log::trace!("done.");
                 }
                 "b" => {
                     emu.bp.show();
@@ -413,7 +413,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -424,7 +424,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -435,7 +435,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -446,7 +446,7 @@ impl Console {
                     let num = match con.cmd_num() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad instruction number.");
+                            log::trace!("bad instruction number.");
                             continue;
                         }
                     };
@@ -460,7 +460,7 @@ impl Console {
                 "bcmp" => {
                     emu.break_on_next_cmp = true;
                 }
-                "cls" => log::info!("{}", emu.colors.clear_screen),
+                "cls" => log::trace!("{}", emu.colors.clear_screen),
                 "s" => {
                     if emu.cfg.is_64bits {
                         emu.maps.dump_qwords(emu.regs().rsp, 10);
@@ -483,7 +483,7 @@ impl Console {
                     emu.cfg.verbose = match con.cmd_num() {
                         Ok(v) => to32!(v),
                         Err(_) => {
-                            log::info!("incorrect verbose level, set 0, 1 or 2");
+                            log::trace!("incorrect verbose level, set 0, 1 or 2");
                             continue;
                         }
                     };
@@ -499,7 +499,7 @@ impl Console {
                     emu.cfg.reg_names.clear();
                 }
                 "pos" => {
-                    log::info!("pos = 0x{:x}", emu.pos);
+                    log::trace!("pos = 0x{:x}", emu.pos);
                 }
                 "c" => {
                     emu.exp += 1;
@@ -522,7 +522,7 @@ impl Console {
                     let sz = match con.cmd_num() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad size.");
+                            log::trace!("bad size.");
                             continue;
                         }
                     };
@@ -530,14 +530,14 @@ impl Console {
                     let addr = match emu.maps.alloc(sz) {
                         Some(a) => a,
                         None => {
-                            log::info!("memory full");
+                            log::trace!("memory full");
                             continue;
                         }
                     };
                     emu.maps
                         .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mc");
-                    log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
+                    log::trace!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }
                 "mca" => {
                     con.print("name ");
@@ -546,7 +546,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad size.");
+                            log::trace!("bad size.");
                             continue;
                         }
                     };
@@ -555,7 +555,7 @@ impl Console {
                     let sz = match con.cmd_num() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad size.");
+                            log::trace!("bad size.");
                             continue;
                         }
                     };
@@ -563,7 +563,7 @@ impl Console {
                     emu.maps
                         .create_map(&name, addr, sz, Permission::READ_WRITE_EXECUTE)
                         .expect("cannot create map from console mca");
-                    log::info!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
+                    log::trace!("allocated {} at 0x{:x} sz: {}", name, addr, sz);
                 }
                 "ml" => {
                     con.print("map name");
@@ -577,7 +577,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -585,7 +585,7 @@ impl Console {
                         Some(n) => n,
                         None => {
                             if !emu.cfg.skip_unimplemented {
-                                log::info!("address not found on any map");
+                                log::trace!("address not found on any map");
                                 continue;
                             }
 
@@ -598,7 +598,7 @@ impl Console {
                         .get_mem_by_addr(addr)
                         .expect("address not found on any map");
                     if emu.cfg.is_64bits {
-                        log::info!(
+                        log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
                             mem.get_base(),
@@ -606,7 +606,7 @@ impl Console {
                             mem.size()
                         );
                     } else {
-                        log::info!(
+                        log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
                             to32!(mem.get_base()),
@@ -623,7 +623,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -634,7 +634,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -645,7 +645,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -656,14 +656,14 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
                     if emu.cfg.is_64bits {
-                        log::info!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
                     } else {
-                        log::info!("0x{:x}: '{}'", to32!(addr), emu.maps.read_string(addr));
+                        log::trace!("0x{:x}: '{}'", to32!(addr), emu.maps.read_string(addr));
                     }
                 }
                 "mdw" => {
@@ -671,14 +671,14 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
                     if emu.cfg.is_64bits {
-                        log::info!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
                     } else {
-                        log::info!("0x{:x}: '{}'", to32!(addr), emu.maps.read_wide_string(addr));
+                        log::trace!("0x{:x}: '{}'", to32!(addr), emu.maps.read_wide_string(addr));
                     }
                 }
                 "mdd" => {
@@ -686,7 +686,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -694,7 +694,7 @@ impl Console {
                     let sz = match con.cmd_num() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad numeric decimal value.");
+                            log::trace!("bad numeric decimal value.");
                             continue;
                         }
                     };
@@ -711,9 +711,9 @@ impl Console {
                 }
                 "mt" => {
                     if emu.maps.mem_test() {
-                        log::info!("mem test passed ok.");
+                        log::trace!("mem test passed ok.");
                     } else {
-                        log::info!("memory errors.");
+                        log::trace!("memory errors.");
                     }
                 }
                 "eip" => {
@@ -721,7 +721,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
@@ -735,7 +735,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
@@ -750,7 +750,7 @@ impl Console {
                         let value = match con.cmd_hex64() {
                             Ok(v) => v,
                             Err(_) => {
-                                log::info!("bad hex value");
+                                log::trace!("bad hex value");
                                 continue;
                             }
                         };
@@ -759,21 +759,21 @@ impl Console {
                         let value = match con.cmd_hex32() {
                             Ok(v) => v,
                             Err(_) => {
-                                log::info!("bad hex value");
+                                log::trace!("bad hex value");
                                 continue;
                             }
                         };
                         emu.stack_push32(value);
                     }
-                    log::info!("pushed.");
+                    log::trace!("pushed.");
                 }
                 "pop" => {
                     if emu.cfg.is_64bits {
                         let value = emu.stack_pop64(false).unwrap_or(0);
-                        log::info!("poped value 0x{:x}", value);
+                        log::trace!("poped value 0x{:x}", value);
                     } else {
                         let value = emu.stack_pop32(false).unwrap_or(0);
-                        log::info!("poped value 0x{:x}", value);
+                        log::trace!("poped value 0x{:x}", value);
                     }
                 }
                 "fpu" => {
@@ -784,7 +784,7 @@ impl Console {
                     let mem_name = con.cmd();
                     let mem = emu.maps.get_mem(&mem_name);
                     let md5 = mem.md5();
-                    log::info!("md5sum: {:x}", md5);
+                    log::trace!("md5sum: {:x}", md5);
                 }
                 "ss" => {
                     con.print("map name");
@@ -794,15 +794,15 @@ impl Console {
                     let result = match emu.maps.search_string(&kw, &mem_name) {
                         Some(v) => v,
                         None => {
-                            log::info!("not found.");
+                            log::trace!("not found.");
                             continue;
                         }
                     };
                     for addr in result.iter() {
                         if emu.cfg.is_64bits {
-                            log::info!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
+                            log::trace!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
                         } else {
-                            log::info!(
+                            log::trace!(
                                 "found 0x{:x} '{}'",
                                 *addr as u32,
                                 emu.maps.read_string(*addr)
@@ -817,14 +817,14 @@ impl Console {
                     let sbs = con.cmd();
                     let results = emu.maps.search_spaced_bytes(&sbs, &mem_name);
                     if results.is_empty() {
-                        log::info!("not found.");
+                        log::trace!("not found.");
                     } else if emu.cfg.is_64bits {
                         for addr in results.iter() {
-                            log::info!("found at 0x{:x}", addr);
+                            log::trace!("found at 0x{:x}", addr);
                         }
                     } else {
                         for addr in results.iter() {
-                            log::info!("found at 0x{:x}", to32!(addr));
+                            log::trace!("found at 0x{:x}", to32!(addr));
                         }
                     }
                 }
@@ -833,14 +833,14 @@ impl Console {
                     let sbs = con.cmd();
                     let results = emu.maps.search_spaced_bytes_in_all(&sbs);
                     if results.is_empty() {
-                        log::info!("not found.");
+                        log::trace!("not found.");
                     } else if emu.cfg.is_64bits {
                         for addr in results.iter() {
-                            log::info!("found at 0x{:x}", addr);
+                            log::trace!("found at 0x{:x}", addr);
                         }
                     } else {
                         for addr in results.iter() {
-                            log::info!("found at 0x{:x}", to32!(addr));
+                            log::trace!("found at 0x{:x}", to32!(addr));
                         }
                     }
                 }
@@ -850,23 +850,23 @@ impl Console {
                     emu.maps.search_string_in_all(kw);
                 }
                 "seh" => {
-                    log::info!("0x{:x}", emu.seh());
+                    log::trace!("0x{:x}", emu.seh());
                 }
                 "veh" => {
-                    log::info!("0x{:x}", emu.veh());
+                    log::trace!("0x{:x}", emu.veh());
                 }
                 "ll" => {
                     con.print("ptr");
                     let ptr1 = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
                     let mut ptr = ptr1;
                     loop {
-                        log::info!("- 0x{:x}", ptr);
+                        log::trace!("- 0x{:x}", ptr);
                         ptr = match emu.maps.read_dword(ptr) {
                             Some(v) => v.into(),
                             None => break,
@@ -895,11 +895,11 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
-                    log::info!("{}", emu.disassemble(addr, 10));
+                    log::trace!("{}", emu.disassemble(addr, 10));
                 }
                 "ldr" => {
                     if emu.cfg.is_64bits {
@@ -922,9 +922,9 @@ impl Console {
                     }
 
                     if addr == 0 {
-                        log::info!("api not found");
+                        log::trace!("api not found");
                     } else {
-                        log::info!("found: 0x{:x} {}!{}", addr, lib, name);
+                        log::trace!("found: 0x{:x} {}!{}", addr, lib, name);
                     }
                 }
                 "iatx" => {
@@ -933,7 +933,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value.");
+                            log::trace!("bad hex value.");
                             continue;
                         }
                     };
@@ -945,9 +945,9 @@ impl Console {
                     };
 
                     if name.is_empty() {
-                        log::info!("api addr not found");
+                        log::trace!("api addr not found");
                     } else {
-                        log::info!("found: 0x{:x} {}", addr, name);
+                        log::trace!("found: 0x{:x} {}", addr, name);
                     }
                 }
                 "iatd" => {
@@ -974,7 +974,7 @@ impl Console {
                     let addr = match con.cmd_hex64() {
                         Ok(v) => v,
                         Err(_) => {
-                            log::info!("bad hex value");
+                            log::trace!("bad hex value");
                             continue;
                         }
                     };
@@ -1041,7 +1041,7 @@ impl Console {
                             s.print();
                         }
 
-                        _ => log::info!("unrecognized structure."),
+                        _ => log::trace!("unrecognized structure."),
                     }
                 } // end dt command
 
@@ -1062,10 +1062,10 @@ impl Console {
                                 println!("wrong hexa parameter");
                             }
                         } else {
-                            log::info!("r2 command needs 1 parameter, the an hex address");
+                            log::trace!("r2 command needs 1 parameter, the an hex address");
                         }
                     } else {
-                        log::info!("command not found, type h");
+                        log::trace!("command not found, type h");
                     }
                 }
             } // match commands

@@ -10,7 +10,7 @@ pub fn CloseHandle(emu: &mut emu::Emu) {
     log_red!(emu, "kernel32!CloseHandle 0x{:X}", hndl);
 
     if !helper::handler_close(hndl) {
-        log::info!("\tinvalid handle.")
+        log::trace!("\tinvalid handle.")
     }
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;

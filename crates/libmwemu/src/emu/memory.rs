@@ -27,13 +27,13 @@ impl Emu {
 
             //let inm = self.get_inmediate(spl[0]);
             if self.cfg.verbose >= 1 {
-                log::info!("FS ACCESS TO 0x{:x}", value);
+                log::trace!("FS ACCESS TO 0x{:x}", value);
             }
 
             if value == 0x30 {
                 // PEB
                 if self.cfg.verbose >= 1 {
-                    log::info!("ACCESS TO PEB");
+                    log::trace!("ACCESS TO PEB");
                 }
                 let peb = self.maps.get_mem("peb");
                 return peb.get_base();
@@ -41,7 +41,7 @@ impl Emu {
 
             if value == 0x18 {
                 if self.cfg.verbose >= 1 {
-                    log::info!("ACCESS TO TEB");
+                    log::trace!("ACCESS TO TEB");
                 }
                 let teb = self.maps.get_mem("teb");
                 return teb.get_base();
@@ -49,14 +49,14 @@ impl Emu {
 
             if value == 0x2c {
                 if self.cfg.verbose >= 1 {
-                    log::info!("ACCESS TO CURRENT LOCALE");
+                    log::trace!("ACCESS TO CURRENT LOCALE");
                 }
                 return constants::EN_US_LOCALE as u64;
             }
 
             if value == 0xc0 {
                 if self.cfg.verbose >= 1 {
-                    log::info!("CHECKING IF ITS 32bits (ISWOW64)");
+                    log::trace!("CHECKING IF ITS 32bits (ISWOW64)");
                 }
 
                 if self.cfg.is_64bits {
@@ -105,7 +105,7 @@ impl Emu {
 
             let reg = spl[0];
             let sign = spl[1];
-            //log::info!("disp --> {}  operand:{}", spl[2], operand);
+            //log::trace!("disp --> {}  operand:{}", spl[2], operand);
 
             let disp: u64 = if self.regs().is_reg(spl[2]) {
                 self.regs().get_by_name(spl[2])
@@ -151,7 +151,7 @@ impl Emu {
     pub fn memory_read(&mut self, operand: &str) -> Option<u64> {
         if operand.contains("fs:[0]") {
             if self.cfg.verbose >= 1 {
-                log::info!("{} Reading SEH fs:[0] 0x{:x}", self.pos, self.seh());
+                log::trace!("{} Reading SEH fs:[0] 0x{:x}", self.pos, self.seh());
             }
             return Some(self.seh());
         }
@@ -194,7 +194,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, addr, v, name);
                     }
                     Some(v)
                 }
@@ -218,7 +218,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -242,7 +242,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 16, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 16, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -266,7 +266,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::info!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 8, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 8, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -283,7 +283,7 @@ impl Emu {
     /// The emulator uses much more eficient ways to decode the operands than this.
     pub fn memory_write(&mut self, operand: &str, value: u64) -> bool {
         if operand.contains("fs:[0]") {
-            log::info!("Setting SEH fs:[0]  0x{:x}", value);
+            log::trace!("Setting SEH fs:[0]  0x{:x}", value);
             self.set_seh(value);
             return true;
         }
@@ -298,7 +298,7 @@ impl Emu {
 
         if name == "code" {
             if self.cfg.verbose >= 1 {
-                log::info!("/!\\ polymorfic code, write at 0x{:x}", addr);
+                log::trace!("/!\\ polymorfic code, write at 0x{:x}", addr);
             }
             self.force_break = true;
         }
@@ -323,7 +323,7 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::info!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, value, name);
+            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, value, name);
         }
 
         match bits {

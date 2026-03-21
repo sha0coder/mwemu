@@ -45,6 +45,6 @@ impl ActCtxSectionKeyedData32 {
         maps.write_dword(addr + 32, self.h_act_ctx);
         maps.write_dword(addr + 36, self.ul_assembly_roster_index);
         maps.write_dword(addr + 40, self.ul_flags);
-        maps.write_bytes(addr + 44, self.assembly_metadata.to_vec());
+        maps.write_bytes(addr + 44, &self.assembly_metadata);
     }
 }

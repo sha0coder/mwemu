@@ -52,7 +52,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             let val = match emu.maps.read_dword(emu.regs().get_esi()) {
                 Some(v) => v,
                 None => {
-                    log::info!("cannot read memory at esi");
+                    log::trace!("cannot read memory at esi");
                     return false;
                 }
             };

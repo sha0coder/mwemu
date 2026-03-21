@@ -67,6 +67,6 @@ impl MemoryBasicInformation {
     }
 
     pub fn print(&self) {
-        log::info!("{:#x?}", self);
+        log::trace!("{:#x?}", self);
     }
 }

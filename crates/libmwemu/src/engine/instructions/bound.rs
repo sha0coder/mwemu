@@ -8,24 +8,24 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let array_index = match emu.get_operand_value(ins, 0, true) {
         Some(v) => v,
         None => {
-            log::info!("cannot read first opreand of bound");
+            log::trace!("cannot read first opreand of bound");
             return false;
         }
     };
     let lower_upper_bound = match emu.get_operand_value(ins, 1, true) {
         Some(v) => v,
         None => {
-            log::info!("cannot read second opreand of bound");
+            log::trace!("cannot read second opreand of bound");
             return false;
         }
     };
 
-    log::info!(
+    log::trace!(
         "bound idx:{} lower_upper:{}",
         array_index,
         lower_upper_bound
     );
-    log::info!("Bound unimplemented");
+    log::trace!("Bound unimplemented");
     return false;
     // https://www.felixcloutier.com/x86/bound
     //true

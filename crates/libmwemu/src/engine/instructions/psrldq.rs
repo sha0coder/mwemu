@@ -12,14 +12,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error getting value0");
+                    log::trace!("error getting value0");
                     return false;
                 }
             };
             let mut value1 = match emu.get_operand_value(ins, 1, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error getting value1");
+                    log::trace!("error getting value1");
                     return false;
                 }
             };
@@ -41,14 +41,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             let value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error getting value0");
+                    log::trace!("error getting value0");
                     return false;
                 }
             };
             let mut value2 = match emu.get_operand_value(ins, 2, true) {
                 Some(v) => v,
                 None => {
-                    log::info!("error getting value1");
+                    log::trace!("error getting value1");
                     return false;
                 }
             };

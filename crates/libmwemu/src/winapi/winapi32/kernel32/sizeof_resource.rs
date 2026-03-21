@@ -11,7 +11,7 @@ pub fn SizeofResource(emu: &mut emu::Emu) {
     if helper::handler_exist(hResInfo) {
         let uri = helper::handler_get_uri(hResInfo);
         let size = uri.split("_").last().unwrap().parse::<usize>().unwrap();
-        log::info!(
+        log::trace!(
             "** {} kernel32!SizeofResource {:x} {:x} size: {}",
             emu.pos,
             hModule,

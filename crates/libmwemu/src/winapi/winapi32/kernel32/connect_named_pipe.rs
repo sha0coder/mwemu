@@ -13,7 +13,7 @@ pub fn ConnectNamedPipe(emu: &mut emu::Emu) {
 
     log_red!(emu, "kernel32!ConnectNamedPipe hndl: 0x{:x}", handle);
     if !helper::handler_exist(handle) {
-        log::info!("\tinvalid handle.");
+        log::trace!("\tinvalid handle.");
     }
 
     for _ in 0..2 {

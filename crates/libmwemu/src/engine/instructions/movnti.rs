@@ -17,7 +17,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     /*
     if emu.pos == 189464541 {
         let addr = emu.get_operand_value(ins, 1, false).unwrap();
-        log::info!("-----> [0x{:x}]", addr);
+        log::trace!("-----> [0x{:x}]", addr);
     }*/
 
     if !emu.set_operand_value(ins, 0, value1) {

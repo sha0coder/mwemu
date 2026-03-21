@@ -11,7 +11,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rax = emu.cfg.code_base_addr + 0x42;
         }
         _ => {
-            log::info!("/!\\ unimplemented rdmsr with value {}", emu.regs().rcx);
+            log::trace!("/!\\ unimplemented rdmsr with value {}", emu.regs().rcx);
             return false;
         }
     }

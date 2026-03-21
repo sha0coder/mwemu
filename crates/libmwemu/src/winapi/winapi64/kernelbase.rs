@@ -277,7 +277,7 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
         emu.maps.write_dword(pu_len as u64, 4);
         emu.regs_mut().rax = 1;
     } else {
-        log::info!("VerQueryValueA: Unknown sub_block: {}", sub_block);
+        log::trace!("VerQueryValueA: Unknown sub_block: {}", sub_block);
         emu.regs_mut().rax = 0; // Failure
     }
 }
@@ -374,7 +374,7 @@ pub fn CharLowerBuffW(emu: &mut emu::Emu) {
 fn SetUnhandledExceptionFilter(emu: &mut emu::Emu) {
     let ptr1 = emu.regs().rcx;
 
-    log::info!(
+    log::trace!(
         "{}** {} kernelbase!SetUnhandledExceptionFilter 0x{:x} {}",
         emu.colors.light_red,
         emu.pos,

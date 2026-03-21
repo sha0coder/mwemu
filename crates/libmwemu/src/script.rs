@@ -38,7 +38,7 @@ impl Script {
     }
 
     pub fn load(&mut self, filename: &str) {
-        // log::info!("loading script: {}", filename);
+        // log::trace!("loading script: {}", filename);
         let file = File::open(filename).unwrap();
         let buf = BufReader::new(file);
 
@@ -105,7 +105,7 @@ impl Script {
             let args: Vec<&str> = line.split_whitespace().collect();
 
             if self.trace {
-                log::info!("==> {} {}", i, line);
+                log::trace!("==> {} {}", i, line);
             }
 
             if line == "endif" {
@@ -119,11 +119,11 @@ impl Script {
 
             match args[0] {
                 "pr" => {
-                    log::info!("result: 0x{:x}", self.result);
+                    log::trace!("result: 0x{:x}", self.result);
                 }
                 "p" => {
                     if args.len() < 2 {
-                        log::info!(
+                        log::trace!(
                             "error in line {}, `p` command needs a message to be printed",
                             i
                         );
@@ -136,7 +136,7 @@ impl Script {
                         .collect::<Vec<_>>()
                         .join(" ");
 
-                    log::info!("{}", msg);
+                    log::trace!("{}", msg);
                 }
                 "q" => std::process::exit(1),
                 "r" => {
@@ -156,18 +156,18 @@ impl Script {
                             "rdx" => emu.regs().show_rdx(&emu.maps, 0),
                             "rsi" => emu.regs().show_rsi(&emu.maps, 0),
                             "rdi" => emu.regs().show_rdi(&emu.maps, 0),
-                            "rbp" => log::info!("\trbp: 0x{:x}", emu.regs().rbp),
-                            "rsp" => log::info!("\trsp: 0x{:x}", emu.regs().rsp),
-                            "rip" => log::info!("\trip: 0x{:x}", emu.regs().rip),
+                            "rbp" => log::trace!("\trbp: 0x{:x}", emu.regs().rbp),
+                            "rsp" => log::trace!("\trsp: 0x{:x}", emu.regs().rsp),
+                            "rip" => log::trace!("\trip: 0x{:x}", emu.regs().rip),
                             "eax" => emu.regs().show_eax(&emu.maps, 0),
                             "ebx" => emu.regs().show_ebx(&emu.maps, 0),
                             "ecx" => emu.regs().show_ecx(&emu.maps, 0),
                             "edx" => emu.regs().show_edx(&emu.maps, 0),
                             "esi" => emu.regs().show_esi(&emu.maps, 0),
                             "edi" => emu.regs().show_edi(&emu.maps, 0),
-                            "esp" => log::info!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
-                            "ebp" => log::info!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
-                            "eip" => log::info!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
+                            "esp" => log::trace!("\tesp: 0x{:x}", emu.regs().get_esp() as u32),
+                            "ebp" => log::trace!("\tebp: 0x{:x}", emu.regs().get_ebp() as u32),
+                            "eip" => log::trace!("\teip: 0x{:x}", emu.regs().get_eip() as u32),
                             "r8" => emu.regs().show_r8(&emu.maps, 0),
                             "r9" => emu.regs().show_r9(&emu.maps, 0),
                             "r10" => emu.regs().show_r10(&emu.maps, 0),
@@ -200,29 +200,29 @@ impl Script {
                             "r13l" => emu.regs().show_r13l(&emu.maps, 0),
                             "r14l" => emu.regs().show_r14l(&emu.maps, 0),
                             "r15l" => emu.regs().show_r15l(&emu.maps, 0),
-                            "xmm0" => log::info!("\txmm0: 0x{:x}", emu.regs().xmm0),
-                            "xmm1" => log::info!("\txmm1: 0x{:x}", emu.regs().xmm1),
-                            "xmm2" => log::info!("\txmm2: 0x{:x}", emu.regs().xmm2),
-                            "xmm3" => log::info!("\txmm3: 0x{:x}", emu.regs().xmm3),
-                            "xmm4" => log::info!("\txmm4: 0x{:x}", emu.regs().xmm4),
-                            "xmm5" => log::info!("\txmm5: 0x{:x}", emu.regs().xmm5),
-                            "xmm6" => log::info!("\txmm6: 0x{:x}", emu.regs().xmm6),
-                            "xmm7" => log::info!("\txmm7: 0x{:x}", emu.regs().xmm7),
-                            "xmm8" => log::info!("\txmm8: 0x{:x}", emu.regs().xmm8),
-                            "xmm9" => log::info!("\txmm9: 0x{:x}", emu.regs().xmm9),
-                            "xmm10" => log::info!("\txmm10: 0x{:x}", emu.regs().xmm10),
-                            "xmm11" => log::info!("\txmm11: 0x{:x}", emu.regs().xmm11),
-                            "xmm12" => log::info!("\txmm12: 0x{:x}", emu.regs().xmm12),
-                            "xmm13" => log::info!("\txmm13: 0x{:x}", emu.regs().xmm13),
-                            "xmm14" => log::info!("\txmm14: 0x{:x}", emu.regs().xmm14),
-                            "xmm15" => log::info!("\txmm15: 0x{:x}", emu.regs().xmm15),
-                            _ => log::info!("unknown register r `{}` in line {}", args[1], i),
+                            "xmm0" => log::trace!("\txmm0: 0x{:x}", emu.regs().xmm0),
+                            "xmm1" => log::trace!("\txmm1: 0x{:x}", emu.regs().xmm1),
+                            "xmm2" => log::trace!("\txmm2: 0x{:x}", emu.regs().xmm2),
+                            "xmm3" => log::trace!("\txmm3: 0x{:x}", emu.regs().xmm3),
+                            "xmm4" => log::trace!("\txmm4: 0x{:x}", emu.regs().xmm4),
+                            "xmm5" => log::trace!("\txmm5: 0x{:x}", emu.regs().xmm5),
+                            "xmm6" => log::trace!("\txmm6: 0x{:x}", emu.regs().xmm6),
+                            "xmm7" => log::trace!("\txmm7: 0x{:x}", emu.regs().xmm7),
+                            "xmm8" => log::trace!("\txmm8: 0x{:x}", emu.regs().xmm8),
+                            "xmm9" => log::trace!("\txmm9: 0x{:x}", emu.regs().xmm9),
+                            "xmm10" => log::trace!("\txmm10: 0x{:x}", emu.regs().xmm10),
+                            "xmm11" => log::trace!("\txmm11: 0x{:x}", emu.regs().xmm11),
+                            "xmm12" => log::trace!("\txmm12: 0x{:x}", emu.regs().xmm12),
+                            "xmm13" => log::trace!("\txmm13: 0x{:x}", emu.regs().xmm13),
+                            "xmm14" => log::trace!("\txmm14: 0x{:x}", emu.regs().xmm14),
+                            "xmm15" => log::trace!("\txmm15: 0x{:x}", emu.regs().xmm15),
+                            _ => log::trace!("unknown register r `{}` in line {}", args[1], i),
                         }
                     }
                 }
                 "rc" => {
                     if args.len() != 3 {
-                        log::info!("expected: rc <register> <value>");
+                        log::trace!("expected: rc <register> <value>");
                     } else {
                         let value: u64 = self.resolve(args[2], i, emu);
                         emu.regs_mut().set_by_name(args[1], value);
@@ -230,7 +230,7 @@ impl Script {
                 }
                 "mr" | "rm" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, command `mr` without arguments", i);
+                        log::trace!("error in line {}, command `mr` without arguments", i);
                         return;
                     }
 
@@ -245,18 +245,18 @@ impl Script {
                     let value = match emu.memory_read(&ins) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad address.", i);
+                            log::trace!("error in line {}, bad address.", i);
                             return;
                         }
                     };
                     self.result = value;
-                    log::info!("0x{:x}", value);
+                    log::trace!("0x{:x}", value);
                 }
                 "mw" | "wm" => {
                     // mw 0x11223344 dword ptr [eax + 3]
 
                     if args.len() < 3 {
-                        log::info!("error in line {}, command `mw` without arguments", i);
+                        log::trace!("error in line {}, command `mw` without arguments", i);
                         return;
                     }
 
@@ -270,7 +270,7 @@ impl Script {
                     let value = self.resolve(args[1], i, emu);
 
                     if !emu.memory_write(&ins, value) {
-                        log::info!("error in line {}, cannot write on `{}`", i, args[1]);
+                        log::trace!("error in line {}, cannot write on `{}`", i, args[1]);
                         return;
                     }
                 }
@@ -291,7 +291,7 @@ impl Script {
                 }
                 "ba" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
                     let addr = self.resolve(args[1], i, emu);
@@ -299,7 +299,7 @@ impl Script {
                 }
                 "bmr" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
                     let addr = self.resolve(args[1], i, emu);
@@ -308,7 +308,7 @@ impl Script {
                 }
                 "bmw" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
                     let addr = self.resolve(args[1], i, emu);
@@ -316,13 +316,13 @@ impl Script {
                 }
                 "bi" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, number is missing", i);
+                        log::trace!("error in line {}, number is missing", i);
                         return;
                     }
                     let num = match self.to_int(args[1]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad number", i);
+                            log::trace!("error in line {}, bad number", i);
                             return;
                         }
                     };
@@ -337,7 +337,7 @@ impl Script {
                     emu.break_on_next_cmp = true;
                 }
                 "cls" => {
-                    log::info!("{}", emu.colors.clear_screen);
+                    log::trace!("{}", emu.colors.clear_screen);
                 }
                 "s" => {
                     if emu.cfg.is_64bits {
@@ -358,13 +358,13 @@ impl Script {
                 }
                 "sv" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, number is missing", i);
+                        log::trace!("error in line {}, number is missing", i);
                         return;
                     }
                     let num = match self.to_int(args[1]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad number", i);
+                            log::trace!("error in line {}, bad number", i);
                             return;
                         }
                     };
@@ -372,7 +372,7 @@ impl Script {
                 }
                 "tr" => {
                     if args.len() < 2 {
-                        log::info!("error in line {}, register is missing", i);
+                        log::trace!("error in line {}, register is missing", i);
                         return;
                     }
                     emu.cfg.trace_reg = true;
@@ -383,7 +383,7 @@ impl Script {
                     emu.cfg.reg_names.clear();
                 }
                 "pos" => {
-                    log::info!("pos = 0x{:x}", emu.pos);
+                    log::trace!("pos = 0x{:x}", emu.pos);
                 }
                 "c" => {
                     emu.is_running
@@ -403,50 +403,50 @@ impl Script {
                 "mc" => {
                     // mc mymap 1024
                     if args.len() != 3 {
-                        log::info!("error in line {}, mc <mapname> <size>", i);
+                        log::trace!("error in line {}, mc <mapname> <size>", i);
                         return;
                     }
                     let sz = match self.to_int(args[2]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad size", i);
+                            log::trace!("error in line {}, bad size", i);
                             return;
                         }
                     };
                     let addr = match emu.maps.alloc(sz) {
                         Some(a) => a,
                         None => {
-                            log::info!("error in line {}, memory full", i);
+                            log::trace!("error in line {}, memory full", i);
                             return;
                         }
                     };
                     emu.maps
                         .create_map(args[1], addr, sz, Permission::READ_WRITE_EXECUTE);
-                    log::info!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
+                    log::trace!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
                     self.result = addr;
                 }
                 "mca" => {
                     // mc mymap <addr> <sz>
                     if args.len() != 4 {
-                        log::info!("error in line {}, mc <mapname> <addr> <size>", i);
+                        log::trace!("error in line {}, mc <mapname> <addr> <size>", i);
                         return;
                     }
                     let addr = self.resolve(args[2], i, emu);
                     let sz = match self.to_int(args[3]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad size", i);
+                            log::trace!("error in line {}, bad size", i);
                             return;
                         }
                     };
                     emu.maps
                         .create_map(args[1], addr, sz, Permission::READ_WRITE_EXECUTE);
-                    log::info!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
+                    log::trace!("allocated {} at 0x{:x} sz: {}", &args[1], addr, sz);
                 }
                 "ml" => {
                     // ml <mapname> <file>
                     if args.len() != 3 {
-                        log::info!("error in line {}, `ml` needs mapname and a filename", i);
+                        log::trace!("error in line {}, `ml` needs mapname and a filename", i);
                         return;
                     }
                     emu.maps.get_mem_mut(args[1]).load(args[2]);
@@ -454,7 +454,7 @@ impl Script {
                 "mn" => {
                     // mn <address>
                     if args.len() != 2 {
-                        log::info!("error in line {}, `mn` needs an address", i);
+                        log::trace!("error in line {}, `mn` needs an address", i);
                         return;
                     }
 
@@ -463,7 +463,7 @@ impl Script {
                     let name = match emu.maps.get_addr_name(addr) {
                         Some(n) => n,
                         None => {
-                            log::info!("error in line {}, address not found on any map", i);
+                            log::trace!("error in line {}, address not found on any map", i);
                             return;
                         }
                     };
@@ -473,7 +473,7 @@ impl Script {
                         .get_mem_by_addr(addr)
                         .expect("address not found on any map");
                     if emu.cfg.is_64bits {
-                        log::info!(
+                        log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
                             mem.get_base(),
@@ -481,7 +481,7 @@ impl Script {
                             mem.size()
                         );
                     } else {
-                        log::info!(
+                        log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
                             mem.get_base() as u32,
@@ -496,7 +496,7 @@ impl Script {
                 "md" => {
                     // md <addr>
                     if args.len() != 2 {
-                        log::info!("error in line {}, address missing", i);
+                        log::trace!("error in line {}, address missing", i);
                         return;
                     }
 
@@ -507,7 +507,7 @@ impl Script {
                 "mrd" => {
                     // mrd <addr> <n>
                     if args.len() != 3 {
-                        log::info!("error in line {}, address or number of dwords missing", i);
+                        log::trace!("error in line {}, address or number of dwords missing", i);
                         return;
                     }
 
@@ -516,7 +516,7 @@ impl Script {
                     let num = match self.to_int(args[2]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad number", i);
+                            log::trace!("error in line {}, bad number", i);
                             return;
                         }
                     };
@@ -526,7 +526,7 @@ impl Script {
                 "mrq" => {
                     // mrq <addr> <n>
                     if args.len() != 3 {
-                        log::info!("error in line {}, address or number of qwords missing", i);
+                        log::trace!("error in line {}, address or number of qwords missing", i);
                         return;
                     }
 
@@ -535,7 +535,7 @@ impl Script {
                     let num = match self.to_int(args[2]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad number", i);
+                            log::trace!("error in line {}, bad number", i);
                             return;
                         }
                     };
@@ -545,37 +545,37 @@ impl Script {
                 "mds" => {
                     // mds <addr>
                     if args.len() != 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
 
                     let addr = self.resolve(args[1], i, emu);
 
                     if emu.cfg.is_64bits {
-                        log::info!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
                     } else {
-                        log::info!("0x{:x}: '{}'", addr as u32, emu.maps.read_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr as u32, emu.maps.read_string(addr));
                     }
                 }
                 "mdw" => {
                     // mdw <addr>
                     if args.len() != 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
 
                     let addr = self.resolve(args[1], i, emu);
 
                     if emu.cfg.is_64bits {
-                        log::info!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
                     } else {
-                        log::info!("0x{:x}: '{}'", addr as u32, emu.maps.read_wide_string(addr));
+                        log::trace!("0x{:x}: '{}'", addr as u32, emu.maps.read_wide_string(addr));
                     }
                 }
                 "mdd" => {
                     // mdd <addr> <sz> <filename>
                     if args.len() != 4 {
-                        log::info!("error in line {}, address, size or filename is missing", i);
+                        log::trace!("error in line {}, address, size or filename is missing", i);
                         return;
                     }
 
@@ -584,13 +584,13 @@ impl Script {
                     let sz = match self.to_int(args[2]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad size", i);
+                            log::trace!("error in line {}, bad size", i);
                             return;
                         }
                     };
 
                     if sz <= 0 {
-                        log::info!("error in line {}, bad size", i);
+                        log::trace!("error in line {}, bad size", i);
                         return;
                     }
                     emu.maps.save(addr, sz, args[3].to_string());
@@ -598,22 +598,22 @@ impl Script {
                 "mdda" => {
                     // mdda <folder>
                     if args.len() != 2 {
-                        log::info!("error in line {}, foler is needed", i);
+                        log::trace!("error in line {}, foler is needed", i);
                         return;
                     }
                     emu.maps.save_all_allocs(args[1].to_string());
                 }
                 "mt" => {
                     if emu.maps.mem_test() {
-                        log::info!("mem tests passed ok.");
+                        log::trace!("mem tests passed ok.");
                     } else {
-                        log::info!("memory errors.");
+                        log::trace!("memory errors.");
                     }
                 }
                 "eip" => {
                     // eip <addr>
                     if args.len() != 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
 
@@ -624,7 +624,7 @@ impl Script {
                 "rip" => {
                     // rip <addr>
                     if args.len() != 2 {
-                        log::info!("error in line {}, address is missing", i);
+                        log::trace!("error in line {}, address is missing", i);
                         return;
                     }
 
@@ -635,7 +635,7 @@ impl Script {
                 "push" => {
                     // push <hexvalue>
                     if args.len() != 2 {
-                        log::info!("error in line {}, hex value is missing", i);
+                        log::trace!("error in line {}, hex value is missing", i);
                         return;
                     }
 
@@ -650,17 +650,17 @@ impl Script {
                 "pop" => {
                     // pop
                     if args.len() != 1 {
-                        log::info!("error in line {}, no args required.", i);
+                        log::trace!("error in line {}, no args required.", i);
                         return;
                     }
 
                     if emu.cfg.is_64bits {
                         let value = emu.stack_pop64(false).expect("pop failed");
-                        log::info!("poped value 0x{:x}", value);
+                        log::trace!("poped value 0x{:x}", value);
                         self.result = value;
                     } else {
                         let value = emu.stack_pop32(false).expect("pop failed");
-                        log::info!("poped value 0x{:x}", value);
+                        log::trace!("poped value 0x{:x}", value);
                         self.result = value as u64;
                     }
                 }
@@ -668,18 +668,18 @@ impl Script {
                 "md5" => {
                     // md5 <mapname>
                     if args.len() != 2 {
-                        log::info!("error in line {}, no args required.", i);
+                        log::trace!("error in line {}, no args required.", i);
                         return;
                     }
 
                     let mem = emu.maps.get_mem(args[1]);
                     let md5 = mem.md5();
-                    log::info!("md5sum: {:x}", md5);
+                    log::trace!("md5sum: {:x}", md5);
                 }
                 "ss" => {
                     // ss <mapname> <string>
                     if args.len() < 2 {
-                        log::info!("error in line {}, need map name and string", i);
+                        log::trace!("error in line {}, need map name and string", i);
                         return;
                     }
 
@@ -693,16 +693,16 @@ impl Script {
                     let result = match emu.maps.search_string(&kw, args[1]) {
                         Some(v) => v,
                         None => {
-                            log::info!("string not found");
+                            log::trace!("string not found");
                             return;
                         }
                     };
 
                     for addr in result.iter() {
                         if emu.cfg.is_64bits {
-                            log::info!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
+                            log::trace!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
                         } else {
-                            log::info!(
+                            log::trace!(
                                 "found 0x{:x} '{}'",
                                 *addr as u32,
                                 emu.maps.read_string(*addr)
@@ -713,7 +713,7 @@ impl Script {
                 "sb" => {
                     // sb <map> <spaced bytes>
                     if args.len() < 2 {
-                        log::info!("error in line {}, need map name and spaced bytes", i);
+                        log::trace!("error in line {}, need map name and spaced bytes", i);
                         return;
                     }
 
@@ -725,7 +725,7 @@ impl Script {
                         .join(" ");
 
                     if emu.maps.search_spaced_bytes(&bytes, args[1]).len() == 0 {
-                        log::info!("bytes not found.");
+                        log::trace!("bytes not found.");
                     }
                 }
                 "sba" => {
@@ -740,7 +740,7 @@ impl Script {
 
                     let results = emu.maps.search_spaced_bytes_in_all(&bytes);
                     for addr in results.iter() {
-                        log::info!("found at 0x{:x}", addr);
+                        log::trace!("found at 0x{:x}", addr);
                         self.result = *addr;
                     }
                 }
@@ -757,17 +757,17 @@ impl Script {
                     emu.maps.search_string_in_all(s);
                 }
                 "seh" => {
-                    log::info!("0x{:x}", emu.seh());
+                    log::trace!("0x{:x}", emu.seh());
                 }
                 "veh" => {
-                    log::info!("0x{:x}", emu.veh());
+                    log::trace!("0x{:x}", emu.veh());
                 }
                 "ll" => {
                     // ll <addr>
                     let addr = self.resolve(args[1], i, emu);
                     let mut ptr = addr;
                     loop {
-                        log::info!("- 0x{:x}", ptr);
+                        log::trace!("- 0x{:x}", ptr);
                         ptr = match emu.maps.read_dword(ptr) {
                             Some(v) => v.into(),
                             None => break,
@@ -786,7 +786,7 @@ impl Script {
                 "ms" => {
                     // ms <keyword>
                     if args.len() != 2 {
-                        log::info!("error in line {}, `ms` command needs a keyword", i);
+                        log::trace!("error in line {}, `ms` command needs a keyword", i);
                         return;
                     }
                     emu.maps.print_maps_keyword(args[1]);
@@ -794,7 +794,7 @@ impl Script {
                 "d" => {
                     // d <addr> <sz>
                     if args.len() != 3 {
-                        log::info!("error in line {}, `d` command needs an address to disasemble and amount of bytes", i);
+                        log::trace!("error in line {}, `d` command needs an address to disasemble and amount of bytes", i);
                         return;
                     }
 
@@ -803,7 +803,7 @@ impl Script {
                     let sz = match self.to_int(args[2]) {
                         Some(v) => v,
                         None => {
-                            log::info!("error in line {}, bad size", i);
+                            log::trace!("error in line {}, bad size", i);
                             return;
                         }
                     };
@@ -821,7 +821,7 @@ impl Script {
                 "iat" => {
                     // iat <keyword>
                     if args.len() != 2 {
-                        log::info!("error in line {}, keyword expected", i);
+                        log::trace!("error in line {}, keyword expected", i);
                         return;
                     }
 
@@ -835,16 +835,16 @@ impl Script {
                     }
 
                     if addr == 0 {
-                        log::info!("api not found on iat.");
+                        log::trace!("api not found on iat.");
                     } else {
-                        log::info!("found: 0x{:x} {}!{}", addr, lib, name);
+                        log::trace!("found: 0x{:x} {}!{}", addr, lib, name);
                     }
                 }
                 "iatx" => {
                     // iatx <api>
                     //TODO: implement this well
                     if args.len() != 2 {
-                        log::info!("error in line {}, api expected", i);
+                        log::trace!("error in line {}, api expected", i);
                         return;
                     }
 
@@ -858,15 +858,15 @@ impl Script {
                     }
 
                     if addr == 0 {
-                        log::info!("api not found on iat.");
+                        log::trace!("api not found on iat.");
                     } else {
-                        log::info!("found: 0x{:x} {}!{}", addr, lib, name);
+                        log::trace!("found: 0x{:x} {}!{}", addr, lib, name);
                     }
                 }
                 "iatd" => {
                     // iatd <module>
                     if args.len() != 2 {
-                        log::info!("error in line {}, module expected", i);
+                        log::trace!("error in line {}, module expected", i);
                         return;
                     }
                     if emu.cfg.is_64bits {
@@ -878,7 +878,7 @@ impl Script {
                 "dt" => {
                     // dt <structure> <address>
                     if args.len() != 3 {
-                        log::info!("error in line {}, structure and address expected", i);
+                        log::trace!("error in line {}, structure and address expected", i);
                         return;
                     }
 
@@ -938,7 +938,7 @@ impl Script {
                             s.print();
                         }
 
-                        _ => log::info!("unrecognized structure."),
+                        _ => log::trace!("unrecognized structure."),
                     }
                 }
                 "if" => {
@@ -946,7 +946,7 @@ impl Script {
                     // if rbx > 0x123
 
                     if args.len() != 4 {
-                        log::info!("error in line {}, incomplete `if`", i);
+                        log::trace!("error in line {}, incomplete `if`", i);
                         return;
                     }
 
@@ -978,7 +978,7 @@ impl Script {
                             self.skip = true;
                         }
                     } else {
-                        log::info!("error in line {}, if with worng operator", i);
+                        log::trace!("error in line {}, if with worng operator", i);
                         return;
                     }
                 }

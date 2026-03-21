@@ -203,7 +203,7 @@ impl Emu {
             None => {
                 self.entropy = 0.0;
                 if self.entropy != prev_entropy {
-                    log::info!(
+                    log::trace!(
                         "{}:0x{:x} entropy changed {} ->  {}",
                         self.pos,
                         self.regs().rip,
@@ -220,7 +220,7 @@ impl Emu {
         if data.is_empty() {
             self.entropy = 0.0;
             if self.entropy != prev_entropy {
-                log::info!(
+                log::trace!(
                     "{}:0x{:x} entropy changed {} ->  {}",
                     self.pos,
                     self.regs().rip,
@@ -249,7 +249,7 @@ impl Emu {
         );
 
         if self.entropy != prev_entropy {
-            log::info!(
+            log::trace!(
                 "{}:0x{:x} entropy changed {} ->  {}",
                 self.pos,
                 self.regs().rip,
@@ -274,7 +274,7 @@ impl Emu {
 
         // exit
         if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
-            log::info!("exit position reached");
+            log::trace!("exit position reached");
 
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
                 serialization::Serialization::dump_to_file(
@@ -299,7 +299,7 @@ impl Emu {
         let code = match self.maps.get_mem_by_addr(rip) {
             Some(c) => c,
             None => {
-                log::info!(
+                log::trace!(
                     "redirecting code flow to non maped address 0x{:x}",
                     self.regs().rip
                 );
@@ -390,7 +390,7 @@ impl Emu {
 
         // exit
         if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
-            log::info!("exit position reached");
+            log::trace!("exit position reached");
 
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
                 serialization::Serialization::dump_to_file(
@@ -416,8 +416,8 @@ impl Emu {
 
         // Debug logging for threading
         if num_threads > 1 {
-            /*log::info!("=== THREAD SCHEDULER DEBUG ===");
-            log::info!("Step {}: {} threads, current_thread_id={}, tick={}",
+            /*log::trace!("=== THREAD SCHEDULER DEBUG ===");
+            log::trace!("Step {}: {} threads, current_thread_id={}, tick={}",
                     self.pos, num_threads, self.current_thread_id, current_tick);
 
             for (i, thread) in self.threads.iter().enumerate() {
@@ -432,7 +432,7 @@ impl Emu {
                 };
 
                 let marker = if i == self.current_thread_id { ">>> " } else { "    " };
-                log::info!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
+                log::trace!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
                         marker, i, thread.id, thread.regs.rip, status);
             }*/
         }
@@ -461,9 +461,9 @@ impl Emu {
                 {
                     // Found a runnable thread, execute it
                     if thread_idx != self.current_thread_id {
-                        /*log::info!("🔄 THREAD SWITCH: {} -> {} (step {})",
+                        /*log::trace!("🔄 THREAD SWITCH: {} -> {} (step {})",
                                 self.current_thread_id, thread_idx, self.pos);
-                        log::info!("   From RIP: 0x{:x} -> To RIP: 0x{:x}",
+                        log::trace!("   From RIP: 0x{:x} -> To RIP: 0x{:x}",
                                 self.threads[self.current_thread_id].regs.rip,
                                 thread.regs.rip);*/
                     }
@@ -498,7 +498,7 @@ impl Emu {
         if next_wake != usize::MAX && next_wake > current_tick {
             // Advance time to next wake point
             self.tick = next_wake;
-            log::info!(
+            log::trace!(
                 "⏰ All threads blocked, advancing tick from {} to {}",
                 current_tick,
                 next_wake
@@ -508,11 +508,11 @@ impl Emu {
         }
 
         // All threads are permanently blocked or suspended
-        log::info!("💀 All threads are blocked/suspended, cannot continue execution");
+        log::trace!("💀 All threads are blocked/suspended, cannot continue execution");
         if num_threads > 1 {
-            log::info!("Final thread states:");
+            log::trace!("Final thread states:");
             for (i, thread) in self.threads.iter().enumerate() {
-                log::info!(
+                log::trace!(
                     "  Thread[{}]: ID=0x{:x}, suspended={}, wake_tick={}, blocked={}",
                     i,
                     thread.id,
@@ -579,7 +579,7 @@ impl Emu {
         match self.maps.get_mem_by_addr(self.regs().rip) {
             Some(mem) => {}
             None => {
-                log::info!("Cannot start emulation, pc pointing to unmapped area");
+                log::trace!("Cannot start emulation, pc pointing to unmapped area");
                 return Err(MwemuError::new(
                     "program counter pointing to unmapped memory",
                 ));
@@ -591,7 +591,7 @@ impl Emu {
 
         if self.enabled_ctrlc {
             ctrlc::set_handler(move || {
-                log::info!("Ctrl-C detected, spawning console");
+                log::trace!("Ctrl-C detected, spawning console");
                 is_running2.store(0, atomic::Ordering::Relaxed);
             })
             .expect("ctrl-c handler failed");
@@ -604,11 +604,11 @@ impl Emu {
 
         /*
         if end_addr.is_none() && self.max_pos.is_none() {
-            log::info!(" ----- emulation -----");
+            log::trace!(" ----- emulation -----");
         } else if !self.max_pos.is_none() {
-            log::info!(" ----- emulation to {} -----", self.max_pos.unwrap());
+            log::trace!(" ----- emulation to {} -----", self.max_pos.unwrap());
         } else {
-            log::info!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
+            log::trace!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
         }*/
 
         //self.pos = 0;
@@ -621,13 +621,13 @@ impl Emu {
         self.instruction_cache = InstructionCache::new();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                //log::info!("reloading rip 0x{:x}", self.regs().rip);
+                //log::trace!("reloading rip 0x{:x}", self.regs().rip);
 
                 let rip = self.regs().rip;
                 let code = match self.maps.get_mem_by_addr(rip) {
                     Some(c) => c,
                     None => {
-                        log::info!("redirecting code flow to non mapped address 0x{:x}", rip);
+                        log::trace!("redirecting code flow to non mapped address 0x{:x}", rip);
                         Console::spawn_console(self);
                         return Err(MwemuError::new("cannot read program counter"));
                     }
@@ -734,7 +734,7 @@ impl Emu {
                     }
 
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
-                        log::info!("exit position reached");
+                        log::trace!("exit position reached");
 
                         if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
                             serialization::Serialization::dump_to_file(
@@ -767,8 +767,8 @@ impl Emu {
                         if self.cfg.verbose >= 2 {
                             let mut output = String::new();
                             self.formatter.format(&ins, &mut output);
-                            log::info!("-------");
-                            log::info!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
+                            log::trace!("-------");
+                            log::trace!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
                         }
                         Console::spawn_console(self);
                         if self.force_break {
@@ -786,7 +786,7 @@ impl Emu {
                         //prev_prev_addr = prev_addr;
                         prev_addr = addr;
                         if repeat_counter == 100 {
-                            log::info!(
+                            log::trace!(
                                 "infinite loop!  opcode: {}",
                                 ins.op_code().op_code_string()
                             );
@@ -803,7 +803,7 @@ impl Emu {
                                 }
                             }
                             if count > 2 {
-                                log::info!("    loop: {} interations", count);
+                                log::trace!("    loop: {} interations", count);
                             }
                             /*
                             if count > self.loop_limit {
@@ -893,7 +893,7 @@ impl Emu {
 
                     if let Some(rep_count) = self.rep {
                         if self.cfg.verbose >= 3 {
-                            log::info!("    rcx: {}", self.regs().rcx);
+                            log::trace!("    rcx: {}", self.regs().rcx);
                         }
                         if self.regs().rcx > 0 {
                             self.regs_mut().rcx -= 1;

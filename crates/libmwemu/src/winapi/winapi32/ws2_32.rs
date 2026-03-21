@@ -200,13 +200,13 @@ fn getaddrinfo(emu: &mut emu::Emu) {
     // Store the result pointer in the ppResult parameter
     emu.maps.write_qword(result_ptr_ptr as u64, addrinfo_addr);
 
-    log::info!(
+    log::trace!(
         "\tcreated dummy ADDRINFO for {}:{} at 0x{:x}",
         node_name,
         service_name,
         addrinfo_addr
     );
-    log::info!(
+    log::trace!(
         "\tsockaddr at 0x{:x}, canonname at 0x{:x}",
         sockaddr_addr,
         canonname_addr
@@ -327,16 +327,16 @@ fn connect(emu: &mut emu::Emu) {
     if emu.cfg.endpoint {
         /*
         if endpoint::sock_connect(sip.as_str(), port) {
-            log::info!("\tconnected to the endpoint.");
+            log::trace!("\tconnected to the endpoint.");
         } else {
-            log::info!("\tcannot connect. dont use -e");
+            log::trace!("\tcannot connect. dont use -e");
         }*/
         emu.regs_mut().rax = 0;
     } else {
         // offline mode
 
         if !helper::socket_exist(sock) {
-            log::info!("\tinvalid socket.");
+            log::trace!("\tinvalid socket.");
             emu.regs_mut().rax = 1;
         } else {
             emu.regs_mut().rax = 0;
@@ -369,7 +369,7 @@ fn recv(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
         return;
     }
@@ -381,7 +381,7 @@ fn recv(emu: &mut emu::Emu) {
 
         emu.maps.write_buffer(buff, &rbuff);
 
-        log::info!("\nreceived {} bytes from the endpoint.", n);
+        log::trace!("\nreceived {} bytes from the endpoint.", n);
         emu.regs_mut().rax = n as u64;
         */
     } else {
@@ -399,7 +399,7 @@ fn recv(emu: &mut emu::Emu) {
             } else {
                 if emu.maps.overflow_predicted(buff, len) {
                     if emu.cfg.verbose > 0 {
-                        log::info!(
+                        log::trace!(
                             "/!\\ on this asm, the recv overflows the buffer, canceled the write!"
                         );
                     }
@@ -440,7 +440,7 @@ fn send(emu: &mut emu::Emu) {
     log_red!(emu, "ws2_32!send {{{}}}", bytes);
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 0;
         return;
     }
@@ -449,7 +449,7 @@ fn send(emu: &mut emu::Emu) {
         /*
         let buffer = emu.maps.read_buffer(buff, len as usize);
         let n = endpoint::sock_send(&buffer);
-        log::info!("\tsent {} bytes.", n);
+        log::trace!("\tsent {} bytes.", n);
         emu.regs_mut().rax = n as u64;
         */
     } else {
@@ -511,7 +511,7 @@ fn bind(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tbad socket.");
+        log::trace!("\tbad socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -535,7 +535,7 @@ fn listen(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -569,7 +569,7 @@ fn accept(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -632,7 +632,7 @@ fn setsockopt(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -670,7 +670,7 @@ fn getsockopt(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;
@@ -713,7 +713,7 @@ fn WsaAccept(emu: &mut emu::Emu) {
     }
 
     if !helper::socket_exist(sock) {
-        log::info!("\tinvalid socket.");
+        log::trace!("\tinvalid socket.");
         emu.regs_mut().rax = 1;
     } else {
         emu.regs_mut().rax = 0;

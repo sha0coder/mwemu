@@ -29,7 +29,7 @@ impl RtlUserProcessParameters64 {
     }
 
     pub fn save(&mut self, addr: u64, maps: &mut Maps) {
-        maps.write_bytes(addr, self.reserved1.to_vec());
+        maps.write_bytes(addr, &self.reserved1);
         for (i, val) in self.reserved2.iter().enumerate() {
             maps.write_qword(addr + 16 + (i * 8) as u64, *val);
         }

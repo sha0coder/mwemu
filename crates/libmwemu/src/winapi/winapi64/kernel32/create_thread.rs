@@ -5,32 +5,32 @@ use crate::{constants, emu};
 
 pub fn CreateThread(emu: &mut emu::Emu) {
     // Add comprehensive debugging
-    log::info!("=== CreateThread Debug Info ===");
-    log::info!("Current RIP: 0x{:x}", emu.regs().rip);
-    log::info!("Current RSP: 0x{:x}", emu.regs().rsp);
-    log::info!("Is 64-bit: {}", emu.cfg.is_64bits);
+    log::trace!("=== CreateThread Debug Info ===");
+    log::trace!("Current RIP: 0x{:x}", emu.regs().rip);
+    log::trace!("Current RSP: 0x{:x}", emu.regs().rsp);
+    log::trace!("Is 64-bit: {}", emu.cfg.is_64bits);
 
     // Log all register values
-    log::info!("RCX (lpThreadAttributes): 0x{:x}", emu.regs().rcx);
-    log::info!("RDX (dwStackSize): 0x{:x}", emu.regs().rdx);
-    log::info!("R8 (lpStartAddress): 0x{:x}", emu.regs().r8);
-    log::info!("R9 (lpParameter): 0x{:x}", emu.regs().r9);
+    log::trace!("RCX (lpThreadAttributes): 0x{:x}", emu.regs().rcx);
+    log::trace!("RDX (dwStackSize): 0x{:x}", emu.regs().rdx);
+    log::trace!("R8 (lpStartAddress): 0x{:x}", emu.regs().r8);
+    log::trace!("R9 (lpParameter): 0x{:x}", emu.regs().r9);
 
     // Check if RSP is mapped and dump stack area
     let rsp = emu.regs().rsp;
-    log::info!("RSP mapped: {}", emu.maps.is_mapped(rsp));
+    log::trace!("RSP mapped: {}", emu.maps.is_mapped(rsp));
 
     if emu.maps.is_mapped(rsp) {
-        log::info!("Stack dump around RSP:");
+        log::trace!("Stack dump around RSP:");
         for i in 0..8 {
             let addr = rsp + (i * 8);
             if emu.maps.is_mapped(addr) {
                 match emu.maps.read_qword(addr) {
-                    Some(value) => log::info!("  [RSP+0x{:02x}] = 0x{:x}", i * 8, value),
-                    None => log::info!("  [RSP+0x{:02x}] = None (banzai mode)", i * 8),
+                    Some(value) => log::trace!("  [RSP+0x{:02x}] = 0x{:x}", i * 8, value),
+                    None => log::trace!("  [RSP+0x{:02x}] = None (banzai mode)", i * 8),
                 }
             } else {
-                log::info!("  [RSP+0x{:02x}] = UNMAPPED", i * 8);
+                log::trace!("  [RSP+0x{:02x}] = UNMAPPED", i * 8);
             }
         }
     }
@@ -39,18 +39,18 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     let flags_addr = emu.regs().rsp + 0x20;
     let tid_ptr_addr = emu.regs().rsp + 0x28;
 
-    log::info!("Trying to read flags from 0x{:x}", flags_addr);
-    log::info!("Flags address mapped: {}", emu.maps.is_mapped(flags_addr));
+    log::trace!("Trying to read flags from 0x{:x}", flags_addr);
+    log::trace!("Flags address mapped: {}", emu.maps.is_mapped(flags_addr));
 
-    log::info!("Trying to read tid_ptr from 0x{:x}", tid_ptr_addr);
-    log::info!(
+    log::trace!("Trying to read tid_ptr from 0x{:x}", tid_ptr_addr);
+    log::trace!(
         "Tid_ptr address mapped: {}",
         emu.maps.is_mapped(tid_ptr_addr)
     );
 
     let flags = match emu.maps.read_qword(flags_addr) {
         Some(f) => {
-            log::info!("Successfully read flags: 0x{:x}", f);
+            log::trace!("Successfully read flags: 0x{:x}", f);
             f
         }
         None => {
@@ -63,7 +63,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
 
     let tid_ptr = match emu.maps.read_qword(tid_ptr_addr) {
         Some(t) => {
-            log::info!("Successfully read tid_ptr: 0x{:x}", t);
+            log::trace!("Successfully read tid_ptr: 0x{:x}", t);
             t
         }
         None => {
@@ -76,26 +76,26 @@ pub fn CreateThread(emu: &mut emu::Emu) {
 
     // Check if tid_ptr points to valid memory
     if tid_ptr > 0 {
-        log::info!(
+        log::trace!(
             "Checking if tid_ptr 0x{:x} is mapped: {}",
             tid_ptr,
             emu.maps.is_mapped(tid_ptr)
         );
 
         // Try to find what memory region this might be in
-        log::info!("Memory maps around tid_ptr:");
+        log::trace!("Memory maps around tid_ptr:");
         // You might want to add a method to dump nearby memory regions
     }
 
     // Check if the thread start address is mapped
     let start_addr = emu.regs().r8;
-    log::info!(
+    log::trace!(
         "Thread start address 0x{:x} mapped: {}",
         start_addr,
         emu.maps.is_mapped(start_addr)
     );
 
-    log::info!("==============================");
+    log::trace!("==============================");
 
     // Original CreateThread logic with better error handling
     let sec_attr = emu.regs().rcx;
@@ -124,7 +124,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
                     Permission::READ_WRITE,
                 )
                 .ok();
-            log::info!(
+            log::trace!(
                 "Allocated stack: 0x{:x} - 0x{:x}",
                 stack_base,
                 stack_base + stack_sz
@@ -140,10 +140,10 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     // Set suspended state if CREATE_SUSPENDED flag is set
     if (flags & constants::CREATE_SUSPENDED) != 0 {
         new_thread.suspended = true;
-        log::info!("Thread created in suspended state (flags: 0x{:x})", flags);
+        log::trace!("Thread created in suspended state (flags: 0x{:x})", flags);
     } else {
         new_thread.suspended = false;
-        log::info!("Thread created in running state (flags: 0x{:x})", flags);
+        log::trace!("Thread created in running state (flags: 0x{:x})", flags);
     }
 
     emu.threads.push(new_thread);
@@ -151,7 +151,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     // Write thread ID with detailed logging
     if tid_ptr > 0 {
         if emu.maps.is_mapped(tid_ptr) {
-            log::info!("Writing thread ID {} to 0x{:x}", new_thread_id, tid_ptr);
+            log::trace!("Writing thread ID {} to 0x{:x}", new_thread_id, tid_ptr);
             emu.maps.write_dword(tid_ptr, new_thread_id as u32);
         } else {
             panic!(
@@ -160,7 +160,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
             );
         }
     } else {
-        log::info!("tid_ptr is NULL, not writing thread ID");
+        log::trace!("tid_ptr is NULL, not writing thread ID");
     }
 
     log_red!(
@@ -171,9 +171,9 @@ pub fn CreateThread(emu: &mut emu::Emu) {
         flags
     );
 
-    log::info!("THREAD ARRAY STATE:");
+    log::trace!("THREAD ARRAY STATE:");
     for (idx, thread) in emu.threads.iter().enumerate() {
-        log::info!(
+        log::trace!(
             "  threads[{}]: ID=0x{:x}, suspended={}, RIP=0x{:x}",
             idx,
             thread.id,
@@ -181,8 +181,8 @@ pub fn CreateThread(emu: &mut emu::Emu) {
             thread.regs.rip
         );
     }
-    log::info!("current_thread_id = {}", emu.current_thread_id);
+    log::trace!("current_thread_id = {}", emu.current_thread_id);
 
     emu.regs_mut().rax = helper::handler_create(&format!("tid://0x{:x}", new_thread_id));
-    log::info!("Returning handle: 0x{:x}", emu.regs().rax);
+    log::trace!("Returning handle: 0x{:x}", emu.regs().rax);
 }

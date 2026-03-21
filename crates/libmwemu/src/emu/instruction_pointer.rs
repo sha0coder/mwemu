@@ -11,7 +11,7 @@ impl Emu {
         self.force_reload = true;
 
         if addr == constants::RETURN_THREAD as u64 {
-            log::info!("/!\\ Thread returned, continuing the main thread");
+            log::trace!("/!\\ Thread returned, continuing the main thread");
             self.regs_mut().rip = self.main_thread_cont;
             Console::spawn_console(self);
             self.force_break = true;
@@ -30,7 +30,7 @@ impl Emu {
                     if self.cfg.emulate_winapi {
                         let rip = self.regs().rip;
                         let api_name = winapi64::kernel32::guess_api_name(self, addr);
-                        log::info!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
+                        log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
                         self.regs_mut().rip = addr;
                         return true;
                     }
@@ -65,7 +65,7 @@ impl Emu {
                 let rip = self.regs().rip;
                 let prev = self.maps.get_addr_name(rip).unwrap_or("??");
                 if prev != name {
-                    log::info!("{}:0x{:x} map change  {} -> {}", self.pos, rip, prev, name);
+                    log::trace!("{}:0x{:x} map change  {} -> {}", self.pos, rip, prev, name);
                 }
             }
 
@@ -74,7 +74,7 @@ impl Emu {
             self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
         } else {
             if self.cfg.verbose >= 1 {
-                log::info!("/!\\ changing RIP to {} ", name);
+                log::trace!("/!\\ changing RIP to {} ", name);
             }
 
             // emulate winapi
@@ -82,7 +82,7 @@ impl Emu {
                 let rip = self.regs().rip;
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
                 if !api_name.is_empty() {
-                    log::info!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
+                    log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
                 }
                 self.regs_mut().rip = addr;
                 return true;
@@ -125,7 +125,7 @@ impl Emu {
         self.force_reload = true;
 
         if addr == constants::RETURN_THREAD as u64 {
-            log::info!("/!\\ Thread returned, continuing the main thread");
+            log::trace!("/!\\ Thread returned, continuing the main thread");
             self.regs_mut().rip = self.main_thread_cont;
             Console::spawn_console(self);
             self.force_break = true;
@@ -144,7 +144,7 @@ impl Emu {
                     if self.cfg.emulate_winapi {
                         let eip = self.regs().get_eip();
                         let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
-                        log::info!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
+                        log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
                         self.regs_mut().set_eip(addr);
                         return true;
                     }
@@ -175,14 +175,14 @@ impl Emu {
                 let eip = self.regs().get_eip();
                 let prev = self.maps.get_addr_name(eip).unwrap_or("??");
                 if prev != name {
-                    log::info!("{}:0x{:x} map change  {} -> {}", self.pos, eip, prev, name);
+                    log::trace!("{}:0x{:x} map change  {} -> {}", self.pos, eip, prev, name);
                 }
             }
 
             self.regs_mut().set_eip(addr);
         } else {
             if self.cfg.verbose >= 1 {
-                log::info!("/!\\ changing EIP to {} 0x{:x}", name, addr);
+                log::trace!("/!\\ changing EIP to {} 0x{:x}", name, addr);
             }
 
             // winapi emulation case
@@ -190,7 +190,7 @@ impl Emu {
                 let eip = self.regs().get_eip();
                 let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
                 if !api_name.is_empty() {
-                    log::info!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
+                    log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
                 }
                 self.regs_mut().set_eip(addr);
                 return true;

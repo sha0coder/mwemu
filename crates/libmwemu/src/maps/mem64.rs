@@ -238,9 +238,7 @@ impl Mem64 {
     }
 
     pub fn extend(&mut self, amount: usize) {
-        for i in 0..amount {
-            self.mem.push(0);
-        }
+        self.mem.resize(self.mem.len() + amount, 0);
         self.bottom_addr += amount as u64;
     }
 
@@ -468,7 +466,6 @@ impl Mem64 {
         }
 
         let idx = (addr - self.base_addr) as usize;
-        let r = (self.mem[idx] as u16) + ((self.mem[idx + 1] as u16) << 8);
         let r = u16::from_le_bytes(self.mem[idx..idx + 2].try_into().expect("incorrect length"));
         if cfg!(feature = "log_mem_read") {
             emu_context::with_current_emu(|emu| {
@@ -632,7 +629,7 @@ impl Mem64 {
     #[inline(always)]
     pub fn force_write_word(&mut self, addr: u64, value: u16) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 2].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -652,7 +649,7 @@ impl Mem64 {
     #[inline(always)]
     pub fn force_write_dword(&mut self, addr: u64, value: u32) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 4].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -672,7 +669,7 @@ impl Mem64 {
     #[inline(always)]
     pub fn force_write_qword(&mut self, addr: u64, value: u64) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 8].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -692,7 +689,7 @@ impl Mem64 {
     #[inline(always)]
     pub fn force_write_oword(&mut self, addr: u64, value: u128) {
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 16].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -793,7 +790,7 @@ impl Mem64 {
         }
 
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 2].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 2].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -827,7 +824,7 @@ impl Mem64 {
         }
 
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 4].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 4].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -861,7 +858,7 @@ impl Mem64 {
         }
 
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 8].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 8].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -895,15 +892,15 @@ impl Mem64 {
         }
 
         let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 16].copy_from_slice(value.to_le_bytes().to_vec().as_ref());
+        self.mem[idx..idx + 16].copy_from_slice(&value.to_le_bytes());
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
                     log_red!(
                         emu,
-                        "mem_trace: write_qword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 8),
+                        "mem_trace: write_oword: 0x{:x?} = 0x{:x}",
+                        self.build_addresses(addr, 16),
                         value
                     );
                 }
@@ -990,7 +987,7 @@ impl Mem64 {
             })
             .unwrap();
         }
-        String::from_utf8(s).expect("invalid utf-8")
+        String::from_utf8_lossy(&s).into_owned()
     }
 
     #[inline(always)]
@@ -1125,11 +1122,11 @@ impl Mem64 {
     }
 
     pub fn print_bytes(&self) {
-        log::info!("---mem---");
+        log::trace!("---mem---");
         for b in self.mem.iter() {
             print!("{}", b);
         }
-        log::info!("---");
+        log::trace!("---");
     }
 
     pub fn print_dwords(&self) {
@@ -1137,12 +1134,12 @@ impl Mem64 {
     }
 
     pub fn print_dwords_from_to(&self, from: u64, to: u64) {
-        log::info!("---mem---");
+        log::trace!("---mem---");
         for addr in (from..to).step_by(4) {
-            log::info!("0x{:x}", self.read_dword(addr))
+            log::trace!("0x{:x}", self.read_dword(addr))
         }
 
-        log::info!("---");
+        log::trace!("---");
     }
 
     pub fn md5(&self) -> md5::Digest {
@@ -1157,7 +1154,7 @@ impl Mem64 {
     }
 
     pub fn load_chunk(&mut self, filename: &str, off: u64, sz: usize) -> bool {
-        // log::info!("loading chunk: {} {} {}", filename, off, sz);
+        // log::trace!("loading chunk: {} {} {}", filename, off, sz);
         let mut f = match File::open(filename) {
             Ok(f) => f,
             Err(_) => {
@@ -1178,7 +1175,7 @@ impl Mem64 {
     }
 
     pub fn load(&mut self, filename: &str) -> bool {
-        // log::info!("loading map: {}", filename);
+        // log::trace!("loading map: {}", filename);
         let f = match File::open(filename) {
             Ok(f) => f,
             Err(_) => {

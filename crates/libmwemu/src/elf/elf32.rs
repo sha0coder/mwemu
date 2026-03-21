@@ -83,7 +83,7 @@ impl Elf32 {
                             let end = self.bin.iter().skip(off)
                                 .position(|&x| x == 0x00).unwrap_or(0) + off;
                             let name = std::str::from_utf8(&self.bin[off..end]).unwrap();
-                            log::info!("la seccion {} es pt_load", &name);
+                            log::trace!("la seccion {} es pt_load", &name);
 
                     }
                 }*/
@@ -97,9 +97,9 @@ impl Elf32 {
                     )
                     .expect("cannot create code map from load_programs elf32");
                 if phdr.p_filesz > phdr.p_memsz {
-                    log::info!("p_filesz > p_memsz bigger in file than in memory.");
+                    log::trace!("p_filesz > p_memsz bigger in file than in memory.");
                 }
-                log::info!(
+                log::trace!(
                     "segment {} - {}",
                     phdr.p_offset,
                     (phdr.p_offset + phdr.p_filesz)

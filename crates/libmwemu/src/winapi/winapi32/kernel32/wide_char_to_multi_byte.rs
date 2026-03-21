@@ -34,7 +34,7 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
             .read_dword(emu.regs().rsp + 28)
             .expect("kernel32!WideCharToMultiByte error reading param") as u64;
 
-    //log::info!("default_char_ptr 0x{:x}", in_default_char);
+    //log::trace!("default_char_ptr 0x{:x}", in_default_char);
     //let default_char = emu.maps.read_byte(in_default_char)
     //    .expect("kernel32!WideCharToMultiByte error reading default char");
 

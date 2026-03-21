@@ -16,7 +16,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if value1 == 0 {
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ bsr src == 0 is undefined behavior");
+            log::trace!("/!\\ bsr src == 0 is undefined behavior");
         }
         emu.flags_mut().f_zf = true;
         return true;

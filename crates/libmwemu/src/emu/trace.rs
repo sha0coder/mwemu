@@ -229,7 +229,7 @@ impl Emu {
             comments = comments
         ).expect("failed to write to trace file");*/
 
-        log::info!(
+        log::trace!(
             r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#,
             index = index + 1,
             address = pre_op_regs.rip,
@@ -251,9 +251,9 @@ impl Emu {
             "rdx" => self.regs().show_rdx(&self.maps, self.pos),
             "rsi" => self.regs().show_rsi(&self.maps, self.pos),
             "rdi" => self.regs().show_rdi(&self.maps, self.pos),
-            "rbp" => log::info!("\t{} rbp: 0x{:x}", self.pos, self.regs().rbp),
-            "rsp" => log::info!("\t{} rsp: 0x{:x}", self.pos, self.regs().rsp),
-            "rip" => log::info!("\t{} rip: 0x{:x}", self.pos, self.regs().rip),
+            "rbp" => log::trace!("\t{} rbp: 0x{:x}", self.pos, self.regs().rbp),
+            "rsp" => log::trace!("\t{} rsp: 0x{:x}", self.pos, self.regs().rsp),
+            "rip" => log::trace!("\t{} rip: 0x{:x}", self.pos, self.regs().rip),
             "r8" => self.regs().show_r8(&self.maps, self.pos),
             "r9" => self.regs().show_r9(&self.maps, self.pos),
             "r10" => self.regs().show_r10(&self.maps, self.pos),
@@ -270,10 +270,10 @@ impl Emu {
             "edx" => self.regs().show_edx(&self.maps, self.pos),
             "esi" => self.regs().show_esi(&self.maps, self.pos),
             "edi" => self.regs().show_edi(&self.maps, self.pos),
-            "esp" => log::info!("\t{} esp: 0x{:x}", self.pos, self.regs().get_esp() as u32),
-            "ebp" => log::info!("\t{} ebp: 0x{:x}", self.pos, self.regs().get_ebp() as u32),
-            "eip" => log::info!("\t{} eip: 0x{:x}", self.pos, self.regs().get_eip() as u32),
-            "xmm1" => log::info!("\t{} xmm1: 0x{:x}", self.pos, self.regs().xmm1),
+            "esp" => log::trace!("\t{} esp: 0x{:x}", self.pos, self.regs().get_esp() as u32),
+            "ebp" => log::trace!("\t{} ebp: 0x{:x}", self.pos, self.regs().get_ebp() as u32),
+            "eip" => log::trace!("\t{} eip: 0x{:x}", self.pos, self.regs().get_eip() as u32),
+            "xmm1" => log::trace!("\t{} xmm1: 0x{:x}", self.pos, self.regs().xmm1),
             _ => panic!("invalid register."),
         }
     }
@@ -282,7 +282,7 @@ impl Emu {
         let s = self.maps.read_string(self.cfg.string_addr);
 
         if s.len() >= 2 && s.len() < 80 {
-            log::info!(
+            log::trace!(
                 "\t{} trace string -> 0x{:x}: '{}'",
                 self.pos,
                 self.cfg.string_addr,
@@ -294,7 +294,7 @@ impl Emu {
                 return;
             }
             if w.len() < 80 {
-                log::info!(
+                log::trace!(
                     "\t{} trace wide string -> 0x{:x}: '{}'",
                     self.pos,
                     self.cfg.string_addr,
@@ -302,7 +302,7 @@ impl Emu {
                 );
             } else {
 
-                //log::info!("\t{} trace wide string -> 0x{:x}: ''", self.pos, self.cfg.string_addr);
+                //log::trace!("\t{} trace wide string -> 0x{:x}: ''", self.pos, self.cfg.string_addr);
             }
         }
     }
@@ -320,7 +320,7 @@ impl Emu {
         let bytes = self
             .maps
             .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE);
-        log::info!(
+        log::trace!(
             "\tmem_inspect: rip = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
             self.regs().rip,
             addr,

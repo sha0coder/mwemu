@@ -15,12 +15,12 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().rsi) {
             Some(v) => v,
             None => {
-                log::info!("cannot read memory on rsi");
+                log::trace!("cannot read memory on rsi");
                 return false;
             }
         };
         if !emu.maps.write_byte(emu.regs().rdi, val) {
-            log::info!("cannot write memoryh on rdi");
+            log::trace!("cannot write memoryh on rdi");
             return false;
         }
 
@@ -35,12 +35,12 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().get_esi()) {
             Some(v) => v,
             None => {
-                log::info!("cannot read memory on esi");
+                log::trace!("cannot read memory on esi");
                 return false;
             }
         };
         if !emu.maps.write_byte(emu.regs().get_edi(), val) {
-            log::info!("cannot write memory on edi");
+            log::trace!("cannot write memory on edi");
             return false;
         }
 

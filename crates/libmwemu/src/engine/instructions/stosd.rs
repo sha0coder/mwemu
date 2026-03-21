@@ -6,11 +6,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
             emu.show_instruction(color!("LightCyan"), ins);
-            log::info!("    rdi: 0x{:x}", emu.regs().rdi);
+            log::trace!("    rdi: 0x{:x}", emu.regs().rdi);
         }
     } else {
         emu.show_instruction(color!("LightCyan"), ins);
-        log::info!("    rdi: 0x{:x}", emu.regs().rdi);
+        log::trace!("    rdi: 0x{:x}", emu.regs().rdi);
     }
 
     if emu.cfg.is_64bits {

@@ -258,7 +258,7 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
                     .read_qword(current_ptr)
                     .expect("wincrt!__stdio_common_vfprintf cannot read_qword arg");
                 current_ptr += 8; // Move to next arg
-                log::info!("arg: {:016x}", arg);
+                log::trace!("arg: {:016x}", arg);
             }
             "str" => {
                 let str_ptr = emu
@@ -267,7 +267,7 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
                     .expect("wincrt!__stdio_common_vfprintf cannot read_qword str_ptr");
                 let string = emu.maps.read_string(str_ptr);
                 current_ptr += 8;
-                log::info!("string: {}", string);
+                log::trace!("string: {}", string);
             }
             _ => {
                 unimplemented!(

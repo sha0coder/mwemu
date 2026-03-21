@@ -9,7 +9,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if st0 < 0.0 {
         if emu.cfg.verbose >= 1 {
-            log::info!("/!\\ sqrt of negative float");
+            log::trace!("/!\\ sqrt of negative float");
         }
         emu.fpu_mut().set_st_u80(0, F80::QNaN().get());
     } else {

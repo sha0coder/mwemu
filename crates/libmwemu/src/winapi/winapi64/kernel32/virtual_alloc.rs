@@ -76,7 +76,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         } else if status_error {
             base = 0;
         } else if status_other {
-            log::info!("Weird flags on VirtualAlloc");
+            log::trace!("Weird flags on VirtualAlloc");
             base = 0;
         }
 

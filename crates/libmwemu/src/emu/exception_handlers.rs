@@ -116,7 +116,7 @@ impl Emu {
 
         // No handled exceptions
         if self.seh() == 0 && self.veh() == 0 && self.uef() == 0 {
-            log::info!(
+            log::trace!(
                 "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                 self.pos,
                 self.regs().rip
@@ -126,7 +126,7 @@ impl Emu {
 
         // hook replaced handler
         if !handle_exception {
-            log::info!("cancelled exception handling from hook.");
+            log::trace!("cancelled exception handling from hook.");
             return;
         }
 
@@ -153,7 +153,7 @@ impl Emu {
                 next = match self.maps.read_dword(self.seh()) {
                     Some(value) => value.into(),
                     None => {
-                        log::info!("exception wihout correct SEH");
+                        log::trace!("exception wihout correct SEH");
                         return;
                     }
                 };
@@ -161,7 +161,7 @@ impl Emu {
                 addr = match self.maps.read_dword(self.seh() + 4) {
                     Some(value) => value.into(),
                     None => {
-                        log::info!("exception without correct SEH.");
+                        log::trace!("exception without correct SEH.");
                         return;
                     }
                 };
