@@ -13,9 +13,15 @@ rustflags = ["-C", "target-cpu=skylake"]
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-cpu=skylake"]
 
-#[target.x86_64-apple-darwin]
-#rustflags = ["-C", "target-cpu=skylake"]
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-undefined",
+  "-C", "link-arg=dynamic_lookup",
+]
 
-# You can add similar sections for other architectures if needed
-# [target.aarch64-unknown-linux-gnu]
-# rustflags = ["-C", "target-cpu=cortex-a72"] # Example for ARM
+# Also for x86_64 if you build universal binaries
+[target.x86_64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-undefined",
+  "-C", "link-arg=dynamic_lookup",
+]
