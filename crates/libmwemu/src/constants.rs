@@ -368,6 +368,8 @@ pub const MEMORY_INFORMATION_CLASS_MEMORY_PRIVILEGED_BASIC_INFORMATION: u64 = 8;
 
 /// `PROCESSINFOCLASS` for `NtQueryInformationProcess` (`ProcessBasicInformation` = 0).
 pub const PROCESS_INFORMATION_CLASS_PROCESS_BASIC_INFORMATION: u64 = 0;
+/// `ProcessCookie` (see Windows SDK `PROCESSINFOCLASS`).
+pub const PROCESS_INFORMATION_CLASS_PROCESS_COOKIE: u64 = 0x24;
 
 
 // Windows NT syscalls x64 — numbers from j00ru/windows-syscalls nt.csv

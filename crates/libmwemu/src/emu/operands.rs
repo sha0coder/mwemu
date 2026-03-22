@@ -218,6 +218,20 @@ impl Emu {
 
         if gs {
             let value1: u64 = match mem_addr {
+                0x0 => {
+                    // NtTib.ExceptionList — NULL in normal user threads (`cmp` / probes often use gs:[0]).
+                    if self.cfg.verbose >= 1 {
+                        log::trace!("{} gs:[0] ExceptionList -> 0", self.pos);
+                    }
+                    0
+                }
+                0x2 => {
+                    // TEB+2: within the exception-list pointer bytes; typically 0 (see ntdll probes).
+                    if self.cfg.verbose >= 1 {
+                        log::trace!("{} gs:[2] TEB byte -> 0", self.pos);
+                    }
+                    0
+                }
                 0x60 => {
                     let peb = self.maps.get_mem("peb");
                     if self.cfg.verbose >= 1 {
