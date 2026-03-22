@@ -196,6 +196,8 @@ pub mod win_exec;
 pub mod write_console_w;
 pub mod write_file;
 pub mod write_process_memory;
+mod GetFileSize;
+mod get_file_size_ex;
 
 // Re-export all functions
 pub use activate_act_ctx::ActivateActCtx;
@@ -387,6 +389,7 @@ pub use win_exec::WinExec;
 pub use write_console_w::WriteConsoleW;
 pub use write_file::WriteFile;
 pub use write_process_memory::WriteProcessMemory;
+use crate::winapi::winapi64::kernel32::get_file_size_ex::GetFileSizeEx;
 // a in RCX, b in RDX, c in R8, d in R9, then e pushed on stack
 
 pub fn clear_last_error(emu: &mut emu::Emu) {
@@ -465,6 +468,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetFileAttributesA" => GetFileAttributesA(emu),
         "GetFileAttributesW" => GetFileAttributesW(emu),
         "GetFileSize" => GetFileSize(emu),
+        "GetFileSizeEx" => GetFileSizeEx(emu),
         "GetFileType" => GetFileType(emu),
         "GetFullPathNameA" => GetFullPathNameA(emu),
         "GetFullPathNameW" => GetFullPathNameW(emu),
@@ -840,7 +844,6 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     }
 
     let mut dll_path = emu.cfg.maps_folder.clone();
-    dll_path.push('/');
     dll_path.push_str(&dll);
 
     match peb64::get_module_base(&dll, emu) {
@@ -853,7 +856,8 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
         }
         None => {
             // do link
-            if std::path::Path::new(&dll_path).exists() {
+            let path =  std::path::Path::new(&dll_path);
+            if path.try_exists().unwrap() {
                 let (base, pe_off) = emu.load_pe64(&dll_path, false, 0);
                 peb64::dynamic_link_module(base, pe_off, &dll, emu);
                 base

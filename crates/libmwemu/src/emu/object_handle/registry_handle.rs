@@ -3,7 +3,7 @@ use crate::emu::object_handle::hive_parser::{
 };
 use ahash::AHashMap;
 use byteorder::ReadBytesExt;
-use std::io::Seek;
+use std::io::{Read, Seek};
 use std::path::Path;
 
 #[derive(Debug)]
@@ -32,10 +32,10 @@ impl RootRegistryManager {
         // Get the root key from the parser
         let root_key_block = {
             let main_key_offset = parser.base_offset + 0x20;
-            KeyBlock::read_from_file(&mut parser.file, main_key_offset)?
+            KeyBlock::read_from_reader(&mut parser.reader, main_key_offset)?
         };
 
-        let mut root_hive_key = HiveKey::new(root_key_block, parser.base_offset, &mut parser.file);
+        let mut root_hive_key = HiveKey::new(root_key_block, parser.base_offset, &mut parser.reader);
 
         // Build the registry tree starting from root
         let root_manager = Self::build_register_manager_from_hive_key(&mut root_hive_key)?;
@@ -50,8 +50,8 @@ impl RootRegistryManager {
     }
 
     /// Build a RegisterManager from a HiveKey (recursive)
-    fn build_register_manager_from_hive_key(
-        hive_key: &mut HiveKey,
+    fn build_register_manager_from_hive_key<R: Read + Seek>(
+        hive_key: &mut HiveKey<R>,
     ) -> Result<RegisterManager, HiveError> {
         let key_name = hive_key.key_block.get_name()?;
 
@@ -71,8 +71,8 @@ impl RootRegistryManager {
     }
 
     /// Load all values from a HiveKey into a RegisterManager
-    fn load_key_values(
-        hive_key: &mut HiveKey,
+    fn load_key_values<R: Read + Seek>(
+        hive_key: &mut HiveKey<R>,
         reg_mgr: &mut RegisterManager,
     ) -> Result<(), HiveError> {
         let value_names = hive_key.keys_list()?;
@@ -90,8 +90,8 @@ impl RootRegistryManager {
     }
 
     /// Load all subkeys recursively
-    fn load_subkeys(
-        hive_key: &mut HiveKey,
+    fn load_subkeys<R: Read + Seek>(
+        hive_key: &mut HiveKey<R>,
         reg_mgr: &mut RegisterManager,
     ) -> Result<(), HiveError> {
         let subkey_names = hive_key.subkeys_list()?;
@@ -189,7 +189,7 @@ impl RootRegistryManager {
 }
 
 // Add helper methods to HiveKey for better integration
-impl<'a> HiveKey<'a> {
+impl<'a, R: Read + Seek> HiveKey<'a, R> {
     /// Non-generic version to get RegistryValue directly
     pub fn get_key_value_as_registry(
         &mut self,
@@ -200,29 +200,29 @@ impl<'a> HiveKey<'a> {
     }
 
     /// Get a subkey by name
-    pub fn get_subkey_by_name(&mut self, name: &str) -> Result<Option<HiveKey<'_>>, HiveError> {
+    pub fn get_subkey_by_name(&mut self, name: &str) -> Result<Option<HiveKey<R>>, HiveError> {
         let offsets_offset = self.base_offset + self.key_block.subkeys_offset as u64;
         let offsets = crate::emu::object_handle::hive_parser::Offsets::read_from_file(
-            self.file,
+            self.reader,
             offsets_offset,
         )?;
 
         for i in 0..self.key_block.subkey_count {
             let offset_entry_offset = offsets_offset + 16 + (i as u64 * 8);
-            self.file
+            self.reader
                 .seek(std::io::SeekFrom::Start(offset_entry_offset))?;
-            let subkey_offset = self.file.read_i32::<byteorder::LittleEndian>()? as u64;
+            let subkey_offset = self.reader.read_i32::<byteorder::LittleEndian>()? as u64;
 
             if subkey_offset == 0 {
                 continue;
             }
 
             let subkey_abs_offset = self.base_offset + subkey_offset;
-            let subkey = KeyBlock::read_from_file(self.file, subkey_abs_offset)?;
+            let subkey = KeyBlock::read_from_reader(self.reader, subkey_abs_offset)?;
 
             let subkey_name = subkey.get_name()?;
             if subkey_name == name {
-                return Ok(Some(HiveKey::new(subkey, self.base_offset, self.file)));
+                return Ok(Some(HiveKey::new(subkey, self.base_offset, self.reader)));
             }
         }
 
@@ -231,14 +231,14 @@ impl<'a> HiveKey<'a> {
 }
 
 // Add this method to HiveParser to expose the root key
-impl HiveParser {
-    pub fn get_root_key(&mut self) -> Result<HiveKey<'_>, HiveError> {
+impl<R: Read + Seek> HiveParser<R> {
+    pub fn get_root_key(&mut self) -> Result<HiveKey<R>, HiveError> {
         let main_key_offset = self.base_offset + 0x20;
-        let root_key_block = KeyBlock::read_from_file(&mut self.file, main_key_offset)?;
+        let root_key_block = KeyBlock::read_from_reader(&mut self.reader, main_key_offset)?;
         Ok(HiveKey::new(
             root_key_block,
             self.base_offset,
-            &mut self.file,
+            &mut self.reader,
         ))
     }
 }

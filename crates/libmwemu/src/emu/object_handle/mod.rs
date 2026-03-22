@@ -1,7 +1,6 @@
 pub(crate) use file_handle::FileHandle;
 pub(crate) use mapping_handle::MappingHandle;
 use slab::Slab;
-use std::sync::{Arc, Mutex};
 
 pub mod file_handle;
 mod hive_parser;
@@ -15,13 +14,6 @@ handle id to get the right handle. In the document, it doesn't specific that the
 
 */
 
-pub static HANDLE_MANGEMENT: std::sync::LazyLock<
-        Arc<Mutex<crate::emu::object_handle::HandleManagement>>,
-    > = std::sync::LazyLock::new(|| {
-    Arc::new(Mutex::new(
-        crate::emu::object_handle::HandleManagement::new(),
-    ))
-});
 enum HandleType {
     FileHandle(FileHandle),
     MappingHandle(MappingHandle),
@@ -82,6 +74,8 @@ impl HandleManagement {
 
     // Method to remove a FileHandle (useful for CloseHandle)
     pub fn remove_file_handle(&mut self, key: u32) -> Option<FileHandle> {
+        let file_handle = self.get_mut_file_handle(key)?;
+        file_handle.close();
         if let Some(handle_type) = self.handle_types.try_remove(key as usize) {
             match handle_type {
                 HandleType::FileHandle(fh) => {

@@ -1,10 +1,11 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use thiserror::Error;
+use std::fmt;
 
 #[derive(Error, Debug)]
 pub enum HiveError {
@@ -54,7 +55,7 @@ pub(crate) struct ValueBlock {
     name_len: i16,
     size: i32,
     data_offset: i32,
-    value_type: i32,
+    value_type: RegType,
     name: [u8; 255],
 }
 
@@ -66,10 +67,59 @@ pub enum RegistryValue {
     MultiString(Vec<String>),
 }
 
-pub struct HiveKey<'a> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u32)]
+pub enum RegType {
+    None = 0,                  // REG_NONE
+    Sz = 1,                    // REG_SZ - Unicode null-terminated string
+    ExpandSz = 2,              // REG_EXPAND_SZ - String with env vars (%PATH%)
+    Binary = 3,                // REG_BINARY - Binary data
+    DWord = 4,                 // REG_DWORD / REG_DWORD_LITTLE_ENDIAN - 32-bit LE integer
+    DWordBigEndian = 5,        // REG_DWORD_BIG_ENDIAN - 32-bit BE integer
+    Link = 6,                  // REG_LINK - Symbolic link (Unicode string)
+    MultiSz = 7,               // REG_MULTI_SZ - Multiple Unicode strings (double-null terminated)
+    ResourceList = 8,          // REG_RESOURCE_LIST - Plug and Play resource list
+    FullResourceDescriptor = 9,// REG_FULL_RESOURCE_DESCRIPTOR - Full resource descriptor
+    ResourceRequirementsList = 10, // REG_RESOURCE_REQUIREMENTS_LIST
+    QWord = 11,                // REG_QWORD / REG_QWORD_LITTLE_ENDIAN - 64-bit LE integer
+}
+
+impl TryFrom<u32> for RegType {
+    type Error = RegTypeError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::None),
+            1 => Ok(Self::Sz),
+            2 => Ok(Self::ExpandSz),
+            3 => Ok(Self::Binary),
+            4 => Ok(Self::DWord),
+            5 => Ok(Self::DWordBigEndian),
+            6 => Ok(Self::Link),
+            7 => Ok(Self::MultiSz),
+            8 => Ok(Self::ResourceList),
+            9 => Ok(Self::FullResourceDescriptor),
+            10 => Ok(Self::ResourceRequirementsList),
+            11 => Ok(Self::QWord),
+            _ => Err(RegTypeError(value)),
+        }
+    }
+}
+
+/// Error returned when an invalid registry type value is encountered
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RegTypeError(pub u32);
+
+impl fmt::Display for RegTypeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid registry type value: {}", self.0)
+    }
+}
+
+pub struct HiveKey<'a, R: Read + Seek> {
     pub(crate) key_block: KeyBlock,
     pub(crate) base_offset: u64,
-    pub(crate) file: &'a mut File,
+    pub(crate) reader: &'a mut R,
 }
 
 #[derive(Debug, Clone)]
@@ -83,22 +133,24 @@ struct HiveCache {
     main_key_offset: u64,
     subpaths: Vec<HiveSubpath>,
 }
-
-pub struct HiveParser {
-    pub(crate) file: File, // Own the file instead of referencing it
+pub struct HiveParser<R: Read + Seek> {
+    pub(crate) reader: R, // Own the file instead of referencing it
     pub(crate) base_offset: u64,
     subkey_cache: HashMap<String, HiveCache>,
 }
 
 impl Offsets {
-    pub(crate) fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
-        file.seek(SeekFrom::Start(offset))?;
+    pub(crate) fn read_from_file<R: Read + Seek>(
+        reader: &mut R,
+        offset: u64
+    ) -> Result<Self, HiveError> {
+        reader.seek(SeekFrom::Start(offset))?;
 
-        let block_size = file.read_i32::<LittleEndian>()?;
-        let block_type = [file.read_u8()?, file.read_u8()?];
-        let count = file.read_i16::<LittleEndian>()?;
-        let first = file.read_i32::<LittleEndian>()?;
-        let hash = file.read_i32::<LittleEndian>()?;
+        let block_size = reader.read_i32::<LittleEndian>()?;
+        let block_type = [reader.read_u8()?, reader.read_u8()?];
+        let count = reader.read_i16::<LittleEndian>()?;
+        let first = reader.read_i32::<LittleEndian>()?;
+        let hash = reader.read_i32::<LittleEndian>()?;
 
         Ok(Self {
             block_size,
@@ -111,43 +163,42 @@ impl Offsets {
 }
 
 impl KeyBlock {
-    pub(crate) fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
-        file.seek(SeekFrom::Start(offset))?;
+    pub(crate) fn read_from_reader<R: Read + Seek>(reader: &mut R, offset: u64) -> Result<Self, HiveError> {
+        reader.seek(SeekFrom::Start(offset))?;
 
-        let block_size = file.read_i32::<LittleEndian>()?;
-        let block_type = [file.read_u8()?, file.read_u8()?];
+        let block_size = reader.read_i32::<LittleEndian>()?;
+        let block_type = [reader.read_u8()?, reader.read_u8()?];
 
         // Skip dummy data (18 bytes)
         let mut dummy = [0u8; 18];
-        file.read_exact(&mut dummy)?;
+        reader.read_exact(&mut dummy)?;
 
-        let subkey_count = file.read_i32::<LittleEndian>()?;
-
-        // Skip dummy data (4 bytes)
-        let mut dummy = [0u8; 4];
-        file.read_exact(&mut dummy)?;
-
-        let subkeys_offset = file.read_i32::<LittleEndian>()?;
+        let subkey_count = reader.read_i32::<LittleEndian>()?;
 
         // Skip dummy data (4 bytes)
         let mut dummy = [0u8; 4];
-        file.read_exact(&mut dummy)?;
+        reader.read_exact(&mut dummy)?;
+        let subkeys_offset = reader.read_i32::<LittleEndian>()?;
 
-        let value_count = file.read_i32::<LittleEndian>()?;
-        let offsets_offset = file.read_i32::<LittleEndian>()?;
+        // Skip dummy data (4 bytes)
+        let mut dummy = [0u8; 4];
+        reader.read_exact(&mut dummy)?;
+
+        let value_count = reader.read_i32::<LittleEndian>()?;
+        let offsets_offset = reader.read_i32::<LittleEndian>()?;
 
         // Skip dummy data (28 bytes)
         let mut dummy = [0u8; 28];
-        file.read_exact(&mut dummy)?;
+        reader.read_exact(&mut dummy)?;
 
-        let name_len = file.read_i16::<LittleEndian>()?;
+        let name_len = reader.read_i16::<LittleEndian>()?;
 
         // Skip dummy data (2 bytes)
         let mut dummy = [0u8; 2];
-        file.read_exact(&mut dummy)?;
+        reader.read_exact(&mut dummy)?;
 
         let mut name = [0u8; 255];
-        file.read_exact(&mut name)?;
+        reader.read_exact(&mut name)?;
 
         Ok(Self {
             block_size,
@@ -172,22 +223,22 @@ impl KeyBlock {
 }
 
 impl ValueBlock {
-    fn read_from_file(file: &mut File, offset: u64) -> Result<Self, HiveError> {
-        file.seek(SeekFrom::Start(offset))?;
+    fn read_from_reader<R: Read + Seek>(reader: &mut R, offset: u64) -> Result<Self, HiveError> {
+        reader.seek(SeekFrom::Start(offset))?;
 
-        let block_size = file.read_i32::<LittleEndian>()?;
-        let block_type = [file.read_u8()?, file.read_u8()?];
-        let name_len = file.read_i16::<LittleEndian>()?;
-        let size = file.read_i32::<LittleEndian>()?;
-        let data_offset = file.read_i32::<LittleEndian>()?;
-        let value_type = file.read_i32::<LittleEndian>()?;
+        let block_size = reader.read_i32::<LittleEndian>()?;
+        let block_type = [reader.read_u8()?, reader.read_u8()?];
+        let name_len = reader.read_i16::<LittleEndian>()?;
+        let size = reader.read_i32::<LittleEndian>()?;
+        let data_offset = reader.read_i32::<LittleEndian>()?;
+        let value_type = (reader.read_i32::<LittleEndian>()? as u32).try_into().unwrap();
 
         // Skip flags and dummy (4 bytes)
         let mut dummy = [0u8; 4];
-        file.read_exact(&mut dummy)?;
+        reader.read_exact(&mut dummy)?;
 
         let mut name = [0u8; 255];
-        file.read_exact(&mut name)?;
+        reader.read_exact(&mut name)?;
 
         Ok(Self {
             block_size,
@@ -210,18 +261,18 @@ impl ValueBlock {
     }
 }
 
-impl<'a> HiveKey<'a> {
-    pub fn new(key_block: KeyBlock, base_offset: u64, file: &'a mut File) -> Self {
+impl<'a, R: Read + Seek> HiveKey<'a, R> {
+    pub fn new(key_block: KeyBlock, base_offset: u64, reader: &'a mut R) -> Self {
         Self {
             key_block,
             base_offset,
-            file,
+            reader,
         }
     }
 
     pub fn subkeys_list(&mut self) -> Result<Vec<String>, HiveError> {
         let offsets_offset = self.base_offset + self.key_block.subkeys_offset as u64;
-        let offsets = Offsets::read_from_file(self.file, offsets_offset)?;
+        let offsets = Offsets::read_from_file(self.reader, offsets_offset)?;
 
         // Check block type ('f' or 'h')
         if offsets.block_type[1] != b'f' && offsets.block_type[1] != b'h' {
@@ -233,15 +284,15 @@ impl<'a> HiveKey<'a> {
         for i in 0..self.key_block.subkey_count {
             // Read the offset from the offsets table
             let offset_entry_offset = offsets_offset + 16 + (i as u64 * 8); // 16 = size of Offsets struct before 'first'
-            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
-            let subkey_offset = self.file.read_i32::<LittleEndian>()? as u64;
+            self.reader.seek(SeekFrom::Start(offset_entry_offset))?;
+            let subkey_offset = self.reader.read_i32::<LittleEndian>()? as u64;
 
             if subkey_offset == 0 {
                 continue;
             }
 
-            let subkey_abs_offset = self.base_offset + subkey_offset as u64;
-            let subkey = KeyBlock::read_from_file(self.file, subkey_abs_offset)?;
+            let subkey_abs_offset = self.base_offset + subkey_offset;
+            let subkey = KeyBlock::read_from_reader(self.reader, subkey_abs_offset)?;
 
             let name = subkey.get_name()?;
             result.push(name);
@@ -262,15 +313,15 @@ impl<'a> HiveKey<'a> {
 
         for i in 0..self.key_block.value_count {
             let offset_entry_offset = offsets_base + (i as u64 * 4);
-            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
-            let value_offset = self.file.read_i32::<LittleEndian>()? as u64;
+            self.reader.seek(SeekFrom::Start(offset_entry_offset))?;
+            let value_offset = self.reader.read_i32::<LittleEndian>()? as u64;
 
             if value_offset == 0 {
                 continue;
             }
 
-            let value_abs_offset = self.base_offset + value_offset as u64;
-            let value = ValueBlock::read_from_file(self.file, value_abs_offset)?;
+            let value_abs_offset = self.base_offset + value_offset;
+            let value = ValueBlock::read_from_reader(self.reader, value_abs_offset)?;
 
             let name = value.get_name()?;
             result.push(name);
@@ -291,15 +342,15 @@ impl<'a> HiveKey<'a> {
 
         for i in 0..self.key_block.value_count {
             let offset_entry_offset = offsets_base + (i as u64 * 4);
-            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
-            let value_offset = self.file.read_i32::<LittleEndian>()? as u64;
+            self.reader.seek(SeekFrom::Start(offset_entry_offset))?;
+            let value_offset = self.reader.read_i32::<LittleEndian>()? as u64;
 
             if value_offset == 0 {
                 continue;
             }
 
-            let value_abs_offset = self.base_offset + value_offset as u64;
-            let value = ValueBlock::read_from_file(self.file, value_abs_offset)?;
+            let value_abs_offset = self.base_offset + value_offset;
+            let value = ValueBlock::read_from_reader(self.reader, value_abs_offset)?;
 
             let value_name = value.get_name()?;
             if value_name != name {
@@ -327,15 +378,15 @@ impl<'a> HiveKey<'a> {
 
         for i in 0..self.key_block.value_count {
             let offset_entry_offset = offsets_base + (i as u64 * 4);
-            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
-            let value_offset = self.file.read_i32::<LittleEndian>()? as u64;
+            self.reader.seek(SeekFrom::Start(offset_entry_offset))?;
+            let value_offset = self.reader.read_i32::<LittleEndian>()? as u64;
 
             if value_offset == 0 {
                 continue;
             }
 
-            let value_abs_offset = self.base_offset + value_offset as u64;
-            let value = ValueBlock::read_from_file(self.file, value_abs_offset)?;
+            let value_abs_offset = self.base_offset + value_offset;
+            let value = ValueBlock::read_from_reader(self.reader, value_abs_offset)?;
 
             let value_name = value.get_name()?;
             if value_name != name {
@@ -367,31 +418,31 @@ impl<'a> HiveKey<'a> {
 
         // External data - stored at the data offset
         let data_offset = self.base_offset + value.data_offset as u64 + 4;
-        self.file.seek(SeekFrom::Start(data_offset))?;
+        self.reader.seek(SeekFrom::Start(data_offset))?;
 
         match value.value_type {
-            1 | 2 => {
+            RegType::Sz | RegType::ExpandSz => {
                 // REG_SZ, REG_EXPAND_SZ
                 let mut buffer = vec![0u8; data_size as usize];
-                self.file.read_exact(&mut buffer)?;
+                self.reader.read_exact(&mut buffer)?;
                 let text = String::from_utf8_lossy(&buffer).into_owned();
                 Ok(RegistryValue::String(text))
             }
-            3 => {
+            RegType::Binary => {
                 // REG_BINARY
                 let mut buffer = vec![0u8; data_size as usize];
-                self.file.read_exact(&mut buffer)?;
+                self.reader.read_exact(&mut buffer)?;
                 Ok(RegistryValue::Binary(buffer))
             }
-            4 => {
+            RegType::DWord => {
                 // REG_DWORD
-                let dword = self.file.read_u32::<LittleEndian>()?;
+                let dword = self.reader.read_u32::<LittleEndian>()?;
                 Ok(RegistryValue::Dword(dword))
             }
-            7 => {
+            RegType::MultiSz => {
                 // REG_MULTI_SZ
                 let mut buffer = vec![0u8; data_size as usize];
-                self.file.read_exact(&mut buffer)?;
+                self.reader.read_exact(&mut buffer)?;
 
                 let mut strings = Vec::new();
                 let mut current = String::new();
@@ -418,13 +469,11 @@ impl<'a> HiveKey<'a> {
     }
 }
 
-impl HiveParser {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, HiveError> {
-        let mut file = File::open(path)?;
-
+impl<R: Read + Seek> HiveParser<R> {
+    pub fn from_reader(mut reader: R) -> Result<Self, HiveError> {
         // Check signature
         let mut signature = [0u8; 4];
-        file.read_exact(&mut signature)?;
+        reader.read_exact(&mut signature)?;
         if &signature != b"regf" {
             return Err(HiveError::InvalidSignature);
         }
@@ -434,10 +483,10 @@ impl HiveParser {
 
         // Main key block is at 0x1020 from the start of the file
         let main_key_offset = base_offset + 0x20;
-        let main_key = KeyBlock::read_from_file(&mut file, main_key_offset)?;
+        let main_key = KeyBlock::read_from_reader(&mut reader, main_key_offset)?;
 
         let mut parser = Self {
-            file, // Now we move the file into the struct
+            reader,
             base_offset,
             subkey_cache: HashMap::new(),
         };
@@ -445,16 +494,26 @@ impl HiveParser {
         parser.build_cache("", main_key_offset)?;
         Ok(parser)
     }
+}
 
+impl HiveParser<File> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, HiveError> {
+        let file = File::open(path)?;
+        Self::from_reader(file)
+    }
+}
+
+
+impl<R: Read + Seek> HiveParser<R> {
     fn build_cache(&mut self, current_path: &str, key_offset: u64) -> Result<(), HiveError> {
-        let key = KeyBlock::read_from_file(&mut self.file, key_offset)?;
+        let key = KeyBlock::read_from_reader(&mut self.reader, key_offset)?;
 
         if key.subkey_count == 0 {
             return Ok(());
         }
 
         let offsets_offset = self.base_offset + key.subkeys_offset as u64;
-        let offsets = Offsets::read_from_file(&mut self.file, offsets_offset)?;
+        let offsets = Offsets::read_from_file(&mut self.reader, offsets_offset)?;
 
         if offsets.block_type[1] != b'f' && offsets.block_type[1] != b'h' {
             return Err(HiveError::InvalidBlockType);
@@ -464,15 +523,15 @@ impl HiveParser {
 
         for i in 0..key.subkey_count {
             let offset_entry_offset = offsets_offset + 16 + (i as u64 * 8);
-            self.file.seek(SeekFrom::Start(offset_entry_offset))?;
-            let subkey_offset = self.file.read_i32::<LittleEndian>()? as u64;
+            self.reader.seek(SeekFrom::Start(offset_entry_offset))?;
+            let subkey_offset = self.reader.read_i32::<LittleEndian>()? as u64;
 
             if subkey_offset == 0 {
                 continue;
             }
 
-            let subkey_abs_offset = self.base_offset + subkey_offset as u64;
-            let subkey = KeyBlock::read_from_file(&mut self.file, subkey_abs_offset)?;
+            let subkey_abs_offset = self.base_offset + subkey_offset;
+            let subkey = KeyBlock::read_from_reader(&mut self.reader, subkey_abs_offset)?;
 
             let subkey_name = subkey.get_name()?;
             let full_path = if current_path.is_empty() {
@@ -512,19 +571,15 @@ impl HiveParser {
         Ok(())
     }
 
-    pub fn get_subkey(
-        &mut self,
-        key_name: &str,
-        path: &str,
-    ) -> Result<Option<HiveKey<'_>>, HiveError> {
+    pub fn get_subkey(&mut self, key_name: &str, path: &str) -> Result<Option<HiveKey<R>>, HiveError> {
         if let Some(cache) = self.subkey_cache.get(key_name) {
             for subpath in &cache.subpaths {
                 if subpath.path == path {
-                    let key_block = KeyBlock::read_from_file(&mut self.file, subpath.key_offset)?;
+                    let key_block = KeyBlock::read_from_reader(&mut self.reader, subpath.key_offset)?;
                     return Ok(Some(HiveKey::new(
                         key_block,
                         self.base_offset,
-                        &mut self.file,
+                        &mut self.reader,
                     )));
                 }
             }
@@ -579,5 +634,274 @@ impl TryFrom<RegistryValue> for Vec<String> {
             RegistryValue::MultiString(s) => Ok(s),
             _ => Err(HiveError::InvalidValueType),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::convert::TryInto;
+    use super::*;
+    use std::io::Cursor;
+    #[test]
+    fn test_key_block_get_name() {
+        let mut name_buffer = [0u8; 255];
+        let test_name = "TestKeyName";
+        let name_bytes = test_name.as_bytes();
+        name_buffer[..name_bytes.len()].copy_from_slice(name_bytes);
+
+        let key_block = KeyBlock {
+            block_size: 4096,
+            block_type: [b'n', b'k'],
+            subkey_count: 0,
+            subkeys_offset: 0,
+            value_count: 0,
+            offsets_offset: 0,
+            name_len: test_name.len() as i16,
+            name: name_buffer,
+        };
+
+        let result = key_block.get_name();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), test_name);
+    }
+
+    #[test]
+    fn test_key_block_get_name_overflow() {
+        let name_buffer = [0u8; 255];
+
+        let key_block = KeyBlock {
+            block_size: 4096,
+            block_type: [b'n', b'k'],
+            subkey_count: 0,
+            subkeys_offset: 0,
+            value_count: 0,
+            offsets_offset: 0,
+            name_len: 300, // Greater than buffer size
+            name: name_buffer,
+        };
+
+        let result = key_block.get_name();
+        assert!(result.is_err());
+        assert!(matches!(result.err().unwrap(), HiveError::NameBufferOverflow));
+    }
+
+    #[test]
+    fn test_registry_value_conversions() {
+        // Test String conversion
+        let string_val = RegistryValue::String("test".to_string());
+        let converted_string: String = string_val.try_into().unwrap();
+        assert_eq!(converted_string, "test");
+
+        // Test Dword conversion
+        let dword_val = RegistryValue::Dword(12345);
+        let converted_dword: u32 = dword_val.try_into().unwrap();
+        assert_eq!(converted_dword, 12345);
+
+        // Test Binary conversion
+        let binary_val = RegistryValue::Binary(vec![1, 2, 3, 4]);
+        let converted_binary: Vec<u8> = binary_val.try_into().unwrap();
+        assert_eq!(converted_binary, vec![1, 2, 3, 4]);
+
+        // Test MultiString conversion
+        let multi_val = RegistryValue::MultiString(vec!["one".to_string(), "two".to_string()]);
+        let converted_multi: Vec<String> = multi_val.try_into().unwrap();
+        assert_eq!(converted_multi, vec!["one".to_string(), "two".to_string()]);
+
+        // Test invalid conversions
+        let string_val = RegistryValue::String("test".to_string());
+        let result: Result<u32, _> = string_val.try_into();
+        assert!(result.is_err());
+        assert!(matches!(result.err().unwrap(), HiveError::InvalidValueType));
+    }
+
+    #[test]
+    fn test_value_block_get_name() {
+        let mut name_buffer = [0u8; 255];
+        let test_name = "TestValueName";
+        let name_bytes = test_name.as_bytes();
+        name_buffer[..name_bytes.len()].copy_from_slice(name_bytes);
+
+        let value_block = ValueBlock {
+            block_size: 512,
+            block_type: [b'v', b'k'],
+            name_len: test_name.len() as i16,
+            size: 4,
+            data_offset: 1024,
+            value_type: 3.try_into().unwrap(), // REG_BINARY
+            name: name_buffer,
+        };
+
+        let result = value_block.get_name();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), test_name);
+    }
+
+    #[test]
+    fn test_hive_error_display() {
+        let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "test");
+        let hive_error: HiveError = io_error.into();
+        assert!(hive_error.to_string().contains("IO error"));
+
+        assert_eq!(
+            HiveError::InvalidSignature.to_string(),
+            "Invalid hive signature"
+        );
+        assert_eq!(HiveError::FileTooSmall.to_string(), "File too small");
+        assert_eq!(HiveError::InvalidBlockType.to_string(), "Invalid block type");
+        assert_eq!(HiveError::KeyNotFound.to_string(), "Key not found");
+        assert_eq!(HiveError::ValueNotFound.to_string(), "Value not found");
+        assert_eq!(HiveError::InvalidValueType.to_string(), "Invalid value type");
+        assert_eq!(HiveError::NameBufferOverflow.to_string(), "Name buffer overflow");
+    }
+
+    // Test with minimal valid hive structure
+    fn create_minimal_hive_data() -> Vec<u8> {
+        let mut data = Vec::new();
+
+        // 1. Header (4096 bytes)
+        // Signature "regf"
+        data.extend_from_slice(b"regf");
+        // Fill the rest of header with zeros
+        data.resize(4096, 0);
+
+        // 2. Root key block at offset 0x1020 (4128)
+        data.resize(4128, 0);
+
+        // Write root key block structure
+        let root_key_offset = 4128;
+
+        // Block size (4096)
+        data.extend_from_slice(&4096i32.to_le_bytes());
+        // Block type "nk" (0x6B, 0x6E)
+        data.extend_from_slice(&[0x6B, 0x6E]);
+        // Skip 18 bytes dummy
+        data.extend_from_slice(&[0u8; 18]);
+        // Subkey count (0)
+        data.extend_from_slice(&0i32.to_le_bytes());
+        // Skip 4 bytes dummy
+        data.extend_from_slice(&[0u8; 4]);
+        // Subkeys offset (0)
+        data.extend_from_slice(&0i32.to_le_bytes());
+        // Skip 4 bytes dummy
+        data.extend_from_slice(&[0u8; 4]);
+        // Value count (1)
+        data.extend_from_slice(&1i32.to_le_bytes());
+        // Value offsets offset
+        data.extend_from_slice(&100i32.to_le_bytes());
+        // Skip 28 bytes dummy
+        data.extend_from_slice(&[0u8; 28]);
+        // Name length (0 for root)
+        data.extend_from_slice(&0i16.to_le_bytes());
+        // Skip 2 bytes dummy
+        data.extend_from_slice(&[0u8; 2]);
+        // Name (empty)
+        data.extend_from_slice(&[0u8; 255]);
+
+        // Pad to 4096 bytes
+        data.resize(root_key_offset + 4096, 0);
+
+        // 3. Value block at offset 100 from root (4228)
+        let value_offset = 4228;
+        // Block size
+        data.extend_from_slice(&512i32.to_le_bytes());
+        // Block type "vk"
+        data.extend_from_slice(&[0x6B, 0x76]);
+        // Name length (11)
+        data.extend_from_slice(&11i16.to_le_bytes());
+        // Size (4, with inline flag set)
+        data.extend_from_slice(&(4i32 | (1i32 << 31i32)).to_le_bytes());
+        // Data offset (0x12345678 - will be used as inline data)
+        data.extend_from_slice(&0x78563412i32.to_le_bytes()); // Little endian of 0x12345678
+        // Value type (REG_DWORD = 4)
+        data.extend_from_slice(&4i32.to_le_bytes());
+        // Skip 4 bytes
+        data.extend_from_slice(&[0u8; 4]);
+        // Name "TestValue"
+        let name = b"TestValue\0\0";
+        data.extend_from_slice(name);
+        data.resize(data.len() + 255 - name.len(), 0);
+
+        data
+    }
+
+    #[test]
+    fn test_offsets_read() {
+        let mut data = Vec::new();
+        data.extend_from_slice(&4096i32.to_le_bytes()); // block_size
+        data.extend_from_slice(&[b'l', b'f']); // block_type
+        data.extend_from_slice(&10i16.to_le_bytes()); // count
+        data.extend_from_slice(&100i32.to_le_bytes()); // first
+        data.extend_from_slice(&200i32.to_le_bytes()); // hash
+
+        let mut cursor = Cursor::new(data);
+        let result = Offsets::read_from_file(&mut cursor, 0);
+
+        assert!(result.is_ok());
+        let offsets = result.unwrap();
+        assert_eq!(offsets.block_size, 4096);
+        assert_eq!(offsets.block_type, [b'l', b'f']);
+        assert_eq!(offsets.count, 10);
+        assert_eq!(offsets.first, 100);
+        assert_eq!(offsets.hash, 200);
+    }
+
+    #[test]
+    fn test_key_block_read() {
+        let mut data = Vec::new();
+        data.extend_from_slice(&4096i32.to_le_bytes()); // block_size
+        data.extend_from_slice(&[b'n', b'k']); // block_type
+        data.extend_from_slice(&[0u8; 18]); // dummy
+        data.extend_from_slice(&5i32.to_le_bytes()); // subkey_count
+        data.extend_from_slice(&[0u8; 4]); // dummy
+        data.extend_from_slice(&1000i32.to_le_bytes()); // subkeys_offset
+        data.extend_from_slice(&[0u8; 4]); // dummy
+        data.extend_from_slice(&3i32.to_le_bytes()); // value_count
+        data.extend_from_slice(&2000i32.to_le_bytes()); // offsets_offset
+        data.extend_from_slice(&[0u8; 28]); // dummy
+        data.extend_from_slice(&8i16.to_le_bytes()); // name_len
+        data.extend_from_slice(&[0u8; 2]); // dummy
+        data.extend_from_slice(b"TestKey\0"); // name
+        data.resize(data.len() + 255 - 8, 0); // pad to 255
+
+        let mut cursor = Cursor::new(data);
+        let result = KeyBlock::read_from_reader(&mut cursor, 0);
+
+        assert!(result.is_ok());
+        let key_block = result.unwrap();
+        assert_eq!(key_block.block_size, 4096);
+        assert_eq!(key_block.block_type, [b'n', b'k']);
+        assert_eq!(key_block.subkey_count, 5);
+        assert_eq!(key_block.subkeys_offset, 1000);
+        assert_eq!(key_block.value_count, 3);
+        assert_eq!(key_block.offsets_offset, 2000);
+        assert_eq!(key_block.name_len, 8);
+        assert_eq!(key_block.get_name().unwrap().into_bytes(), b"TestKey\0");
+    }
+
+    #[test]
+    fn test_value_block_read() {
+        let mut data = Vec::new();
+        data.extend_from_slice(&512i32.to_le_bytes()); // block_size
+        data.extend_from_slice(&[b'v', b'k']); // block_type
+        data.extend_from_slice(&9i16.to_le_bytes()); // name_len
+        data.extend_from_slice(&4i32.to_le_bytes()); // size
+        data.extend_from_slice(&1024i32.to_le_bytes()); // data_offset
+        data.extend_from_slice(&4i32.to_le_bytes()); // value_type (REG_DWORD)
+        data.extend_from_slice(&[0u8; 4]); // flags and dummy
+        data.extend_from_slice(b"MyValue\0\0"); // name
+        data.resize(data.len() + 255 - 9, 0); // pad to 255
+
+        let mut cursor = Cursor::new(data);
+        let result = ValueBlock::read_from_reader(&mut cursor, 0);
+
+        assert!(result.is_ok());
+        let value_block = result.unwrap();
+        assert_eq!(value_block.block_size, 512);
+        assert_eq!(value_block.block_type, [b'v', b'k']);
+        assert_eq!(value_block.name_len, 9);
+        assert_eq!(value_block.size, 4);
+        assert_eq!(value_block.data_offset, 1024);
+        assert_eq!(value_block.value_type, 4.try_into().unwrap());
+        assert_eq!(value_block.get_name().unwrap().into_bytes(), b"MyValue\0\0");
     }
 }

@@ -1,6 +1,5 @@
 use crate::emu;
 use crate::emu::object_handle::file_handle::INVALID_HANDLE_VALUE;
-use crate::emu::object_handle::{HANDLE_MANGEMENT};
 
 pub fn ReadFile(emu: &mut emu::Emu) {
     let h_file = emu.regs().rcx as usize; // Handle to the file
@@ -28,8 +27,7 @@ pub fn ReadFile(emu: &mut emu::Emu) {
     }
 
     // Get the file handle from the handle management system
-    let mut handle_mgmt = HANDLE_MANGEMENT.lock().unwrap();
-    let file_handle_ref = match handle_mgmt.get_mut_file_handle(h_file as u32) {
+    let file_handle_ref = match emu.handle_management.get_mut_file_handle(h_file as u32) {
         Some(fh) => fh,
         None => {
             log_red!(
@@ -153,13 +151,6 @@ pub fn ReadFile(emu: &mut emu::Emu) {
             emu.regs_mut().rax = 0; // FALSE
             return;
         }
-    }
-
-    // If overlapped and bytes read is 0 but not EOF, return pending
-    if bytes_read == 0 && !file_handle_ref.is_eof() {
-        emu.last_error = 997; // ERROR_IO_PENDING
-        emu.regs_mut().rax = 0; // FALSE
-        return;
     }
 
     // Success!

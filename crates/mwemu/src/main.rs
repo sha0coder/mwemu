@@ -7,9 +7,11 @@ use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::serialization;
 use std::{panic, process};
+use std::path::PathBuf;
 //use libmwemu::definitions;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 use fast_log::Config;
+use libmwemu::emu::object_handle::file_handle::init_file_system;
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -504,6 +506,13 @@ fn main() {
 
     // load code
     emu.load_code(&filename);
+
+    // Initialize file system in order to call the create file stuff
+    let result_ok = init_file_system(None as Option<PathBuf>);
+    if result_ok.is_err() {
+        log::error!("Cannot initialize file system. Please check if fileroot folder exists.");
+        return;
+    }
 
     // override all from dump?
     if matches.is_present("dump") {
