@@ -455,9 +455,10 @@ impl FileSystem {
             return Ok(WindowsPath::from_path(local_path)?);
         }
         
-        // Get the absolute path
-        let abs_local_path = Self::absolute(local_path)?;
-        let abs_root = Self::absolute(&self.root)?;
+        // Get the absolute path (use soft_canonicalize to resolve symlinks consistently)
+        // This is important on macOS where /var is a symlink to /private/var
+        let abs_local_path = soft_canonicalize(local_path)?;
+        let abs_root = soft_canonicalize(&self.root)?;
         
         // Strip the root prefix to get the relative path
         let relative = abs_local_path.strip_prefix(&abs_root)
@@ -676,7 +677,8 @@ mod tests {
 
         // Verify global state
         let fs = FILE_SYSTEM.get().expect("FS should be set");
-        assert_eq!(fs.root(), &root_path.canonicalize().unwrap());
+        assert_eq!(fs.root(), &canonicalize(&root_path).unwrap());
+
 
         // Second initialization should fail (OnceLock already set)
         let result = init_file_system(Some(&root_path));
