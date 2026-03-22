@@ -404,24 +404,24 @@ fn main() {
         .expect("invalid position");
     }
 
-    // stack trace
+    // stack trace (push/pop logging in stack.rs)
     if matches.is_present("stack_trace") {
-        emu.cfg.stack_trace = false;
+        emu.cfg.stack_trace = true;
     }
 
     // test mode
     if matches.is_present("test_mode") {
-        emu.cfg.test_mode = false;
+        emu.cfg.test_mode = true;
     }
 
     // trace fpu
     if matches.is_present("fpu") {
-        emu.fpu_mut().trace = false;
+        emu.fpu_mut().trace = true;
     }
 
     // trace flags
     if matches.is_present("flags") {
-        emu.cfg.trace_flags = false;
+        emu.cfg.trace_flags = true;
     }
 
     // cmd
@@ -551,6 +551,12 @@ fn main() {
         libmwemu::emu_context::clear_current_emu();
 
         log::logger().flush();
-        result.unwrap();
+        if let Err(e) = result {
+            let msg = e.to_string();
+            if msg != "empty code block" {
+                log::error!("{}", msg);
+            }
+            process::exit(1);
+        }
     }
 }

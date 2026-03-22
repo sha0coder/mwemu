@@ -1,5 +1,6 @@
 use crate::console::Console;
 use crate::emu::Emu;
+use crate::winapi::{winapi32, winapi64};
 use crate::{color, exception};
 use iced_x86::Instruction;
 
@@ -15,6 +16,26 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             None => return false,
         }
     };
+
+    if emu.cfg.trace_calls {
+        let dest_sym = if emu.cfg.is_64bits {
+            winapi64::kernel32::guess_api_name(emu, ret_addr)
+        } else {
+            winapi32::kernel32::guess_api_name(emu, ret_addr as u32)
+        };
+        let dest_note = if dest_sym.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", dest_sym)
+        };
+        log::trace!(
+            "{} 0x{:x} RET 0x{:x}{}",
+            emu.pos,
+            ins.ip(),
+            ret_addr,
+            dest_note
+        );
+    }
 
     emu.show_instruction_ret(color!("Yellow"), ins, ret_addr);
 

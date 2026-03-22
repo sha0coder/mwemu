@@ -648,7 +648,7 @@ impl Emu {
                     }
                     if zeros > 100 {
                         if self.cfg.verbose > 0 {
-                            log::error!("{} empty code block at 0x{:x}", self.pos, rip);
+                            log::trace!("{} empty code block at 0x{:x}", self.pos, rip);
                         }
                         return Err(MwemuError::new("empty code block"));
                     }
