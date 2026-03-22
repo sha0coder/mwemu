@@ -200,7 +200,7 @@ impl<'a, R: Read + Seek> HiveKey<'a, R> {
     }
 
     /// Get a subkey by name
-    pub fn get_subkey_by_name(&mut self, name: &str) -> Result<Option<HiveKey<R>>, HiveError> {
+    pub fn get_subkey_by_name(&mut self, name: &str) -> Result<Option<HiveKey<'_, R>>, HiveError> {
         let offsets_offset = self.base_offset + self.key_block.subkeys_offset as u64;
         let offsets = crate::emu::object_handle::hive_parser::Offsets::read_from_file(
             self.reader,
@@ -232,7 +232,7 @@ impl<'a, R: Read + Seek> HiveKey<'a, R> {
 
 // Add this method to HiveParser to expose the root key
 impl<R: Read + Seek> HiveParser<R> {
-    pub fn get_root_key(&mut self) -> Result<HiveKey<R>, HiveError> {
+    pub fn get_root_key(&mut self) -> Result<HiveKey<'_, R>, HiveError> {
         let main_key_offset = self.base_offset + 0x20;
         let root_key_block = KeyBlock::read_from_reader(&mut self.reader, main_key_offset)?;
         Ok(HiveKey::new(

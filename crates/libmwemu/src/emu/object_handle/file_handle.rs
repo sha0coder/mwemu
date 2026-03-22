@@ -114,6 +114,9 @@ pub fn init_file_system<P: AsRef<Path>>(file_root: Option<P>) -> io::Result<()> 
         exe_dir.join("file_root")
     };
 
+    if !root.as_os_str().is_empty() {
+        fs::create_dir_all(&root)?;
+    }
 
     // Build filesystem without hardcoded mappings (add them dynamically if needed)
     let builder = FileSystemBuilder::new()
@@ -667,12 +670,9 @@ mod tests {
     fn test_init_with_absolute_path() {
         let temp_dir = tempdir().unwrap();
         let root_path = temp_dir.path().join("vfs_absolute");
+        assert!(!root_path.exists());
 
-        // NOTE: Since you removed create_dir_all, the directory must exist
-        // before FileSystem::new() calls canonicalize()
-        fs::create_dir_all(&root_path).unwrap();
-
-        // First initialization should succeed
+        // First initialization should succeed (creates root if missing)
         assert!(init_file_system(Some(&root_path)).is_ok());
 
         // Verify global state

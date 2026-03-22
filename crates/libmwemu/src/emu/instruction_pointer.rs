@@ -1,6 +1,6 @@
 use crate::{
-    console::Console, constants, emu::Emu, exception_type::ExceptionType, to32, winapi::winapi32,
-    winapi::winapi64,
+    console::Console, constants, emu::Emu, exception_type::ExceptionType, log_red, to32,
+    winapi::winapi32, winapi::winapi64,
 };
 
 impl Emu {
@@ -28,9 +28,8 @@ impl Emu {
                 if !api_name.is_empty() {
                     // emulate winapi
                     if self.cfg.emulate_winapi {
-                        let rip = self.regs().rip;
                         let api_name = winapi64::kernel32::guess_api_name(self, addr);
-                        log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
+                        log_red!(self, "emulating {}", api_name);
                         self.regs_mut().rip = addr;
                         return true;
                     }
@@ -79,10 +78,9 @@ impl Emu {
 
             // emulate winapi
             if self.cfg.emulate_winapi {
-                let rip = self.regs().rip;
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
                 if !api_name.is_empty() {
-                    log::trace!("{}:0x{:x} emulating {}", self.pos, rip, api_name);
+                    log_red!(self, "emulating {}", api_name);
                 }
                 self.regs_mut().rip = addr;
                 return true;
@@ -142,9 +140,8 @@ impl Emu {
                 if !api_name.is_empty() {
                     // winapi emulation case
                     if self.cfg.emulate_winapi {
-                        let eip = self.regs().get_eip();
                         let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
-                        log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
+                        log_red!(self, "emulating {}", api_name);
                         self.regs_mut().set_eip(addr);
                         return true;
                     }
@@ -187,10 +184,9 @@ impl Emu {
 
             // winapi emulation case
             if self.cfg.emulate_winapi {
-                let eip = self.regs().get_eip();
                 let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
                 if !api_name.is_empty() {
-                    log::trace!("{}:0x{:x} emulating {}", self.pos, eip, api_name);
+                    log_red!(self, "emulating {}", api_name);
                 }
                 self.regs_mut().set_eip(addr);
                 return true;

@@ -510,7 +510,7 @@ fn main() {
     // Initialize file system in order to call the create file stuff
     let result_ok = init_file_system(None as Option<PathBuf>);
     if result_ok.is_err() {
-        log::error!("Cannot initialize file system. Please check if fileroot folder exists.");
+        log::error!("Cannot initialize file system (see error above).");
         return;
     }
 
