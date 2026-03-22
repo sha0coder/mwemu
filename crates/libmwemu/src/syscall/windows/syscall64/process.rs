@@ -15,7 +15,7 @@ pub fn nt_query_information_process(emu: &mut Emu) {
         .read_qword(rsp + 0x28)
         .expect("NtQueryInformationProcess: ReturnLength");
 
-    log_red!(emu, "nt_query_information_process process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}", process_handle, process_information_class, process_information, process_information_length, return_length_ptr);
+    log_red!(emu, "NtQueryInformationProcess process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}", process_handle, process_information_class, process_information, process_information_length, return_length_ptr);
 
     if process_information_class != PROCESS_INFORMATION_CLASS_PROCESS_BASIC_INFORMATION {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
