@@ -878,8 +878,8 @@ impl Emu {
                         self.hooks.hook_on_memory_read = Some(hook_fn);
                     }
 
-                    let bytes = self.maps.read_bytes(mem_addr, 32);
-                    let value = regs64::U256::from_little_endian(bytes);
+                    let bytes = self.maps.read_bytes_array::<32>(mem_addr);
+                    let value = regs64::U256::from_little_endian(&bytes);
 
                     value
                 } else {

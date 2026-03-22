@@ -49,7 +49,7 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
     // Read exact number of bytes specified
     if utf8_ptr > 0 {
         let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
-        utf8 = String::from_utf8_lossy(&bytes).to_string();
+        utf8 = String::from_utf8_lossy(bytes).to_string();
     }
 
     log_red!(

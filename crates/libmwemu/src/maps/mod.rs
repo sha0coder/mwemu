@@ -168,26 +168,13 @@ impl Maps {
     }
 
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
-        let banzai = self.banzai;
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(addr) => {
+            Some(mem) if mem.inside(addr) && mem.can_write() => {
                 mem.write_byte(addr, value);
                 true
             }
-            Some(_) => {
-                if banzai {
-                    log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing byte to unmapped region at 0x{:x}", addr);
-                }
-                false
-            }
-            None => {
-                if banzai {
-                    log::warn!("Writing byte to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing byte to unmapped region at 0x{:x}", addr);
-                }
+            _ => {
+                log::warn!("Writing byte to unmapped or non-writable region at 0x{:x}", addr);
                 false
             }
         }
@@ -196,7 +183,7 @@ impl Maps {
     pub fn read_byte(&self, addr: u64) -> Option<u8> {
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
-            Some(mem) => Some(mem.read_byte(addr)),
+            Some(mem) if mem.inside(addr) && mem.can_read() => Some(mem.read_byte(addr)),
             None if banzai => {
                 log::warn!("Reading byte from unmapped region at 0x{:x}", addr);
                 None
@@ -223,26 +210,13 @@ impl Maps {
 
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
         let end_addr = addr + 7;
-        let banzai = self.banzai;
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) => {
+            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
                 mem.write_qword(addr, value);
                 true
             }
-            Some(_) => {
-                if banzai {
-                    log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing qword to unmapped region at 0x{:x}", addr);
-                }
-                false
-            }
-            None => {
-                if banzai {
-                    log::warn!("Writing qword to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing qword to unmapped region at 0x{:x}", addr);
-                }
+            _ => {
+                log::warn!("Writing qword to unmapped or non-writable region at 0x{:x}", addr);
                 false
             }
         }
@@ -250,26 +224,13 @@ impl Maps {
 
     pub fn write_dword(&mut self, addr: u64, value: u32) -> bool {
         let end_addr = addr + 3;
-        let banzai = self.banzai;
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) => {
+            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
                 mem.write_dword(addr, value);
                 true
             }
-            Some(_) => {
-                if banzai {
-                    log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing dword to unmapped region at 0x{:x}", addr);
-                }
-                false
-            }
-            None => {
-                if banzai {
-                    log::warn!("Writing dword to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing dword to unmapped region at 0x{:x}", addr);
-                }
+            _ => {
+                log::warn!("Writing dword to unmapped or non-writable region at 0x{:x}", addr);
                 false
             }
         }
@@ -277,27 +238,14 @@ impl Maps {
 
     pub fn write_word(&mut self, addr: u64, value: u16) -> bool {
         let end_addr = addr + 1;
-        let banzai = self.banzai;
 
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) => {
+            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
                 mem.write_word(addr, value);
                 true
             }
-            Some(_) => {
-                if banzai {
-                    log::warn!("Writing word to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing word to unmapped region at 0x{:x}", addr);
-                }
-                false
-            }
-            None => {
-                if banzai {
-                    log::warn!("Writing word to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing word to unmapped region at 0x{:x}", addr);
-                }
+            _ => {
+                log::warn!("Writing word to unmapped or non-writable region at 0x{:x}", addr);
                 false
             }
         }
@@ -313,11 +261,10 @@ impl Maps {
         }
 
         let end_addr = addr + data.len() as u64 - 1;
-        let banzai = self.banzai;
 
         // Fast path: if all data fits in a single memory map, use bulk copy
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) => {
+            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
                 mem.write_bytes(addr, data);
                 return true;
             }
@@ -325,11 +272,7 @@ impl Maps {
                 // Data spans multiple maps, fall through to byte-by-byte
             }
             None => {
-                if banzai {
-                    log::warn!("Writing bytes to unmapped region at 0x{:x}", addr);
-                } else {
-                    panic!("Writing bytes to unmapped region at 0x{:x}", addr);
-                }
+                log::warn!("Writing bytes to unmapped region at 0x{:x}", addr);
                 return false;
             }
         }
@@ -353,36 +296,18 @@ impl Maps {
     }
 
     pub fn read_128bits_be(&self, addr: u64) -> Option<u128> {
-        let end_addr = addr + 15;
-        let banzai = self.banzai;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) => {
-                let b = self
-                    .read_bytes_option(addr, 16)
-                    .expect("fail to read 128bits");
-                Some(u128::from_be_bytes(b.try_into().unwrap()))
-            }
-            None if banzai => {
-                log::warn!("Reading word from unmapped region at 0x{:x}", addr);
-                None
-            }
-            _ => {
-                panic!("Reading oword to unmapped region at 0x{:x}", addr);
-            }
-        }
+        let b = self.try_read_bytes(addr, 16)?;
+        let arr: [u8; 16] = b.try_into().ok()?;
+        Some(u128::from_be_bytes(arr))
     }
 
     pub fn read_128bits_le(&self, addr: u64) -> Option<u128> {
         let end_addr = addr + 15;
-        let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) => Some(mem.read_oword(addr)),
-            None if banzai => {
-                log::warn!("Reading oword from unmapped region at 0x{:x}", addr);
-                None
-            }
+            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_oword(addr)),
             _ => {
-                panic!("Reading oword to unmapped region at 0x{:x}", addr);
+                log::warn!("Reading oword from unmapped or non-readable region at 0x{:x}", addr);
+                None
             }
         }
     }
@@ -391,14 +316,12 @@ impl Maps {
         let end_addr = addr + 7;
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) => Some(mem.read_qword(addr)),
+            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_qword(addr)),
             None if banzai => {
                 log::warn!("Reading qword from unmapped region at 0x{:x}", addr);
                 None
             }
-            _ => {
-                panic!("Reading qword to unmapped region at 0x{:x}", addr);
-            }
+            _ => None,
         }
     }
 
@@ -406,15 +329,12 @@ impl Maps {
         let end_addr = addr + 3;
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) => Some(mem.read_dword(addr)),
+            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_dword(addr)),
             None if banzai => {
                 log::warn!("Reading dword from unmapped region at 0x{:x}", addr);
                 None
             }
-            _ => {
-                log::warn!("Reading dword to unmapped region at 0x{:x}", addr);
-                None
-            }
+            _ => None,
         }
     }
 
@@ -422,14 +342,12 @@ impl Maps {
         let end_addr = addr + 1;
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) => Some(mem.read_word(addr)),
+            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_word(addr)),
             None if banzai => {
-                log::warn!("Reading dword from unmapped region at 0x{:x}", addr);
+                log::warn!("Reading word from unmapped region at 0x{:x}", addr);
                 None
             }
-            _ => {
-                panic!("Reading dword to unmapped region at 0x{:x}", addr);
-            }
+            _ => None,
         }
     }
 
@@ -542,9 +460,10 @@ impl Maps {
         let mut counter: usize = 0;
 
         for i in (0..MAX_STR_LEN).step_by(2) {
-            let b = self
-                .read_word(unicode_str_ptr + i as u64)
-                .expect("maps.sizeof_wide controlled overflow");
+            let b = match self.read_word(unicode_str_ptr + i as u64) {
+                Some(w) => w,
+                None => return counter,
+            };
             if b == 0 {
                 return counter;
             }
@@ -563,10 +482,15 @@ impl Maps {
     }
 
     pub fn write_wide_string(&mut self, to: u64, from: &str) {
-        //log::debug!("write_wide_string 0x{:x}: `{}`", to, from);
-        self.get_mem_by_addr_mut(to)
-            .expect(format!("Cannot write wide string: Memory {} doesn't exists", to).as_str())
-            .write_wide_string(to, from);
+        let Some(mem) = self.get_mem_by_addr_mut(to) else {
+            log::warn!("Cannot write wide string: no map at 0x{:x}", to);
+            return;
+        };
+        if !mem.can_write() {
+            log::warn!("Cannot write wide string: non-writable at 0x{:x}", to);
+            return;
+        }
+        mem.write_wide_string(to, from);
     }
 
     #[inline(always)]
@@ -575,19 +499,13 @@ impl Maps {
     }
 
     pub fn read_bytes_buff(&self, buff: &mut [u8], addr: u64) {
-        let mem = match self.get_mem_by_addr(addr) {
-            Some(v) => v,
-            None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
-        };
         let len = buff.len();
-        buff.copy_from_slice(mem.read_bytes(addr, len));
+        buff.copy_from_slice(self.read_bytes(addr, len));
     }
 
     #[inline(always)]
     pub fn read_buffer(&mut self, from: u64, sz: usize) -> Vec<u8> {
-        self.read_bytes_option(from, sz)
-            .expect(format!("Fail to read buffer: from address doesn't exists {}", from).as_str())
-            .to_vec()
+        self.read_bytes(from, sz).to_vec()
     }
 
     pub fn print_maps_keyword(&self, kw: &str) {
@@ -816,22 +734,64 @@ impl Maps {
         }
     }
 
-    pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
-        let mem = match self.get_mem_by_addr(addr) {
-            Some(v) => v,
-            None => panic!("Cannot read bytes: Memory {} doesn't exists", addr),
-        };
-        mem.read_bytes(addr, sz)
+    /// Returns `None` if the range is not fully mapped or not readable.
+    pub fn try_read_bytes(&self, addr: u64, sz: usize) -> Option<&[u8]> {
+        if sz == 0 {
+            return Some(&[]);
+        }
+        let end_addr = addr + sz as u64 - 1;
+        let mem = self.get_mem_by_addr(addr)?;
+        if !mem.inside(end_addr) || !mem.can_read() {
+            log::warn!(
+                "Reading {} bytes from unmapped or non-readable region at 0x{:x}",
+                sz,
+                addr
+            );
+            return None;
+        }
+        Some(mem.read_bytes(addr, sz))
     }
 
+    /// Borrows `sz` bytes from mapped readable memory. Length is always `sz` (for `sz > 0`), so
+    /// callers can use `.try_into()` into fixed arrays like before.
+    ///
+    /// If the range is not readable, logs a warning and returns `sz` zeroed bytes via a small
+    /// [`Box::leak`] (avoids panicking; rare bad reads may accumulate leaked memory).
+    pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
+        match self.try_read_bytes(addr, sz) {
+            Some(s) => s,
+            None => {
+                if sz == 0 {
+                    return &[];
+                }
+                Box::leak(vec![0u8; sz].into_boxed_slice())
+            }
+        }
+    }
+
+    #[inline(always)]
     pub fn read_bytes_option(&self, addr: u64, sz: usize) -> Option<&[u8]> {
-        self.get_mem_by_addr(addr)
-            .map(|mem| mem.read_bytes(addr, sz))
+        self.try_read_bytes(addr, sz)
+    }
+
+    /// Like [`read_bytes`], but copies into a fixed-size array; uses zeros if the read fails.
+    pub fn read_bytes_array<const N: usize>(&self, addr: u64) -> [u8; N] {
+        match self.try_read_bytes(addr, N) {
+            Some(slice) if slice.len() == N => {
+                let mut out = [0u8; N];
+                out.copy_from_slice(slice);
+                out
+            }
+            _ => [0u8; N],
+        }
     }
 
     pub fn read_string_of_bytes(&mut self, addr: u64, sz: usize) -> String {
         let mut svec: Vec<String> = Vec::new();
-        let bytes = self.read_bytes(addr, sz);
+        let bytes = match self.try_read_bytes(addr, sz) {
+            Some(b) => b,
+            None => return String::new(),
+        };
         for bs in bytes.iter() {
             svec.push(format!("{:02x} ", bs));
         }
@@ -883,9 +843,14 @@ impl Maps {
         if addr == 0 {
             return "".to_string();
         }
-        let mem = self
-            .get_mem_by_addr(addr)
-            .expect(format!("No memory map found at 0x{:x}", addr).as_str());
+        let Some(mem) = self.get_mem_by_addr(addr) else {
+            log::warn!("read_wide_string: no map at 0x{:x}", addr);
+            return String::new();
+        };
+        if !mem.can_read() {
+            log::warn!("read_wide_string: non-readable map at 0x{:x}", addr);
+            return String::new();
+        }
         mem.read_wide_string(addr)
     }
 
@@ -894,9 +859,14 @@ impl Maps {
             return "".to_string();
         }
 
-        let mem = self
-            .get_mem_by_addr(addr)
-            .expect(format!("No memory map found at 0x{:x}", addr).as_str());
+        let Some(mem) = self.get_mem_by_addr(addr) else {
+            log::warn!("read_wide_string_n: no map at 0x{:x}", addr);
+            return String::new();
+        };
+        if !mem.can_read() {
+            log::warn!("read_wide_string_n: non-readable map at 0x{:x}", addr);
+            return String::new();
+        }
         mem.read_wide_string_n(addr, max_chars)
     }
 

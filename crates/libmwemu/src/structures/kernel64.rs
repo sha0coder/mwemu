@@ -266,7 +266,7 @@ impl SystemModule {
             unknown: maps.read_word(addr + 34).unwrap(),
             load_count: maps.read_word(addr + 36).unwrap(),
             module_name_offset: maps.read_word(addr + 38).unwrap(),
-            image_name: maps.read_bytes(addr + 40, 256).try_into().unwrap(),
+            image_name: maps.read_bytes_array::<256>(addr + 40),
         }
     }
 
@@ -691,7 +691,7 @@ impl EThread {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> EThread {
-        let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
+        let buf = maps.read_bytes_array::<4096>(addr);
         EThread { data: buf }
     }
 
@@ -720,7 +720,7 @@ impl EProcess {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> EProcess {
-        let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
+        let buf = maps.read_bytes_array::<4096>(addr);
         EProcess { data: buf }
     }
 
@@ -749,7 +749,7 @@ impl KEVent {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> KEVent {
-        let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
+        let buf = maps.read_bytes_array::<4096>(addr);
         KEVent { data: buf }
     }
 
@@ -778,7 +778,7 @@ impl Mutant {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> Mutant {
-        let buf = maps.read_bytes(addr, 4096).try_into().unwrap();
+        let buf = maps.read_bytes_array::<4096>(addr);
         Mutant { data: buf }
     }
 
@@ -819,7 +819,7 @@ impl RtlOsVersionInfoW {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> RtlOsVersionInfoW {
-        let buf = maps.read_bytes(addr + 20, 256).try_into().unwrap();
+        let buf = maps.read_bytes_array::<256>(addr + 20);
         RtlOsVersionInfoW {
             dw_os_version_info_size: maps.read_dword(addr).unwrap(),
             dw_major_version: maps.read_dword(addr + 4).unwrap(),
@@ -882,7 +882,7 @@ impl RtlOsVersionInfoExW {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> RtlOsVersionInfoExW {
-        let buf = maps.read_bytes(addr + 20, 256).try_into().unwrap();
+        let buf = maps.read_bytes_array::<256>(addr + 20);
         RtlOsVersionInfoExW {
             dw_os_version_info_size: maps.read_dword(addr).unwrap(),
             dw_major_version: maps.read_dword(addr + 4).unwrap(),
@@ -1402,7 +1402,7 @@ impl IoStackLocation {
             minor_function: maps.read_byte(addr + 1).unwrap(),
             flags: maps.read_byte(addr + 2).unwrap(),
             control: maps.read_byte(addr + 3).unwrap(),
-            _padding: maps.read_bytes(addr + 4, 8).try_into().unwrap(),
+            _padding: maps.read_bytes_array::<8>(addr + 4),
             parameters: IoParameters {
                 device_io_control: DeviceIoControl::load(addr + 12, maps),
             },
@@ -1569,7 +1569,7 @@ impl TailOverlay {
     pub fn load(addr: u64, maps: &Maps) -> TailOverlay {
         TailOverlay {
             device_queue_entry: KDeviceQueueEntry::new(),
-            padding: maps.read_bytes(addr + 24, 8).try_into().unwrap(),
+            padding: maps.read_bytes_array::<8>(addr + 24),
             reserved1: [
                 maps.read_qword(addr + 32).unwrap(),
                 maps.read_qword(addr + 40).unwrap(),
@@ -2109,15 +2109,15 @@ impl RtlUserProcessParameters {
     }
 
     pub fn load(addr: u64, maps: &Maps) -> RtlUserProcessParameters {
+        let mut reserved2 = [0u32; 10];
+        if let Some(b) = maps.try_read_bytes(addr + 16, 40) {
+            for (i, c) in b.chunks_exact(4).enumerate().take(10) {
+                reserved2[i] = u32::from_le_bytes(c.try_into().unwrap());
+            }
+        }
         RtlUserProcessParameters {
-            reserved1: maps.read_bytes(addr, 16).try_into().unwrap(),
-            reserved2: maps
-                .read_bytes(addr + 16, 10 * 4)
-                .chunks_exact(4)
-                .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
-                .collect::<Vec<u32>>()
-                .try_into()
-                .unwrap(),
+            reserved1: maps.read_bytes_array::<16>(addr),
+            reserved2,
             image_path_name: UnicodeString::load(addr + 56, maps),
             command_line: UnicodeString::load(addr + 64, maps),
         }

@@ -444,7 +444,7 @@ fn memmove_overlapping_forward() {
     // Verify correct backward copy (to avoid corruption)
     let result = emu.maps.read_bytes(overlap_dest, 32);
     let expected: Vec<u8> = (0..32).collect();
-    assert_eq!(result, expected);
+    assert_eq!(result, expected.as_slice());
 }
 
 #[test]
@@ -477,7 +477,7 @@ fn memmove_overlapping_backward() {
     // Verify correct forward copy
     let result = emu.maps.read_bytes(overlap_dest, 32);
     let expected: Vec<u8> = (0..32).collect();
-    assert_eq!(result, expected);
+    assert_eq!(result, expected.as_slice());
 }
 
 #[test]
@@ -517,7 +517,7 @@ fn memmove_large_buffer() {
 
     // Verify large copy
     let result = emu.maps.read_bytes(large_dest, large_size as usize);
-    assert_eq!(result, pattern);
+    assert_eq!(result, pattern.as_slice());
 }
 
 #[test]
@@ -581,7 +581,7 @@ fn memmove_unaligned_addresses() {
 
     // Verify unaligned copy
     let result = emu.maps.read_bytes(unaligned_dest, test_data.len());
-    assert_eq!(result, test_data);
+    assert_eq!(result, test_data.as_slice());
 }
 
 #[test]
@@ -622,7 +622,7 @@ fn memmove_exact_page_boundary() {
     emu.run(Some(return_addr));
 
     let result = emu.maps.read_bytes(page_boundary + 0x800, test_size);
-    assert_eq!(result, pattern);
+    assert_eq!(result, pattern.as_slice());
 }
 
 #[test]
@@ -665,7 +665,7 @@ fn memmove_alignment_boundary_sizes() {
         emu.run(Some(return_addr));
 
         let result = emu.maps.read_bytes(dest_base, size);
-        assert_eq!(result, pattern, "Failed for size {}", size);
+        assert_eq!(result, pattern.as_slice(), "Failed for size {}", size);
 
         // Reset RIP for next iteration
         emu.regs_mut().rip = code_addr;
