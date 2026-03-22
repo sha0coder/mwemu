@@ -3,6 +3,7 @@ target/
 shellcodes32/
 shellcodes64/
 .DS_Store
+prompt.md
 x
 *.txt
 *.swp
