@@ -17,6 +17,7 @@ pub mod elf;
 pub mod emu;
 pub mod emu_context;
 pub mod engine;
+pub mod gdb;
 pub mod err;
 pub mod exception;
 pub mod flags;

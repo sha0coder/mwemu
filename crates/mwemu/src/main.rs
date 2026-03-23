@@ -140,6 +140,9 @@ fn main() {
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
         .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
         .arg(clap_arg!("ssdt", "", "ssdt", "emulate winapi, use ssdt syscall implementation instead"))
+        .arg(clap_arg!("gdb", "g", "gdb", "enable GDB remote debugging server"))
+        .arg(clap_arg!("gdb_port", "P", "gdb-port", "set GDB server port (default: 9001)", "PORT"))
+        .arg(clap_arg!("gdb_wait", "W", "gdb-wait", "wait for GDB connection before starting"))
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -539,6 +542,28 @@ fn main() {
 
         // Clear the current emu
         libmwemu::emu_context::clear_current_emu();
+    } else if matches.is_present("gdb") {
+        // GDB server mode
+        let port: u16 = matches
+            .value_of("gdb_port")
+            .map(|p| p.parse().expect("invalid port number"))
+            .unwrap_or(9001);
+
+        log::info!("Starting GDB remote debugging server...");
+
+        let mut server = libmwemu::gdb::GdbServer::new(port, emu.cfg.is_64bits);
+        match server.run(&mut emu) {
+            Ok(()) => {
+                log::info!("GDB session ended normally");
+            }
+            Err(e) => {
+                log::error!("GDB server error: {}", e);
+            }
+        }
+
+        // Clear the current emu
+        libmwemu::emu_context::clear_current_emu();
+        log::logger().flush();
     } else {
         if matches.is_present("handle") {
             emu.cfg.console_enabled = true;

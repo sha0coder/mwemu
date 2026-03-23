@@ -122,6 +122,39 @@ impl Breakpoints {
             .collect();
         log::trace!("break on memory write: [{}]", mem_write_str.join(", "));
     }
+
+    /// Remove a breakpoint by address. Returns true if found and removed.
+    #[inline]
+    pub fn remove_bp_by_addr(&mut self, addr: u64) -> bool {
+        if let Some(pos) = self.addr.iter().position(|&a| a == addr) {
+            self.addr.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Remove a memory read breakpoint by address. Returns true if found and removed.
+    #[inline]
+    pub fn remove_mem_read_by_addr(&mut self, addr: u64) -> bool {
+        if let Some(pos) = self.mem_read_addr.iter().position(|&a| a == addr) {
+            self.mem_read_addr.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Remove a memory write breakpoint by address. Returns true if found and removed.
+    #[inline]
+    pub fn remove_mem_write_by_addr(&mut self, addr: u64) -> bool {
+        if let Some(pos) = self.mem_write_addr.iter().position(|&a| a == addr) {
+            self.mem_write_addr.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Default for Breakpoint {
