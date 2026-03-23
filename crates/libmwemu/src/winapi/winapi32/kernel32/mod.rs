@@ -2633,6 +2633,13 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
 }
 
 pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) -> u64 {
+    // API set DLL names (api-ms-win-*, ext-ms-*) are virtual contracts.
+    // Resolve by function name globally like 64-bit path does.
+    let module_lc = module.to_lowercase();
+    if module_lc.starts_with("api-ms-win-") || module_lc.starts_with("ext-ms-") {
+        return resolve_api_name(emu, name);
+    }
+
     let mut flink = peb32::Flink::new(emu);
     flink.load(emu);
     let first_ptr = flink.get_ptr();
@@ -2812,6 +2819,15 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
         dll.push_str(".dll");
     }
 
+    // API set DLLs are virtual; map them to a real provider to avoid hard failure.
+    if dll.starts_with("api-ms-win-") || dll.starts_with("ext-ms-") {
+        let base = load_library(emu, "kernelbase.dll");
+        if base != 0 {
+            return base;
+        }
+        return load_library(emu, "kernel32.dll");
+    }
+
     let mut dll_path = emu.cfg.maps_folder.clone();
     dll_path.push('/');
     dll_path.push_str(&dll);
@@ -2833,7 +2849,8 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 emu.library_loaded = true; // Signal to GDB that library list changed
                 base as u64
             } else {
-                panic!("dll {} not found, have you loaded maps?", dll_path);
+                log::trace!("dll {} not found.", dll_path);
+                0
             }
         }
     }

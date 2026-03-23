@@ -225,8 +225,11 @@ fn main() {
         .expect("invalid address");
     }
 
-    // emualte winapi
+    // emulate winapi via syscall dispatcher (currently x64 only)
     if matches.is_present("ssdt") {
+        if !emu.cfg.is_64bits {
+            panic!("SSDT mode is not supported in 32-bit mode yet.");
+        }
         emu.cfg.emulate_winapi = true;
     }
 
