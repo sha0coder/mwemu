@@ -39,6 +39,7 @@ pub fn gateway(addr: u64, name: &str, emu: &mut emu::Emu) {
         "shlwapi.text" => shlwapi::gateway(addr, emu),
         "urlmon.text" => urlmon::gateway(addr, emu),
         "kernelbase.text" => kernelbase::gateway(addr, emu),
+        "kernelbase.rdata" => kernelbase::gateway(addr, emu),
         "oleaut32.text" => oleaut32::gateway(addr, emu),
         "uxtheme.text" => uxtheme::gateway(addr, emu),
         "gdi32.text" => gdi32::gateway(addr, emu),

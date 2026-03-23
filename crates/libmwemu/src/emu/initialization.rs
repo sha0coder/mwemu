@@ -135,17 +135,20 @@ impl Emu {
         let esp = self.regs().get_esp();
         let ebp = self.regs().get_ebp();
 
-        let stack = self
-            .maps
-            .create_map(
-                "stack",
-                self.cfg.stack_addr,
-                0x030000,
-                Permission::READ_WRITE,
-            )
-            .expect("cannot create stack map");
-        let stack_base = stack.get_base();
-        let stack_bottom = stack.get_bottom();
+        let (stack_base, stack_bottom) = if let Some(stack) = self.maps.get_map_by_name("stack") {
+            (stack.get_base(), stack.get_bottom())
+        } else {
+            let stack = self
+                .maps
+                .create_map(
+                    "stack",
+                    self.cfg.stack_addr,
+                    0x030000,
+                    Permission::READ_WRITE,
+                )
+                .expect("cannot create stack map");
+            (stack.get_base(), stack.get_bottom())
+        };
 
         // Now do all the assertions using the local variables
         assert!(esp < ebp);
@@ -153,8 +156,8 @@ impl Emu {
         assert!(esp < stack_bottom);
         assert!(ebp > stack_base);
         assert!(ebp < stack_bottom);
-        assert!(stack.inside(esp));
-        assert!(stack.inside(ebp));
+        assert!(esp >= stack_base && esp < stack_bottom);
+        assert!(ebp >= stack_base && ebp < stack_bottom);
     }
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
@@ -174,17 +177,20 @@ impl Emu {
         let rbp = self.regs().rbp;
 
         // Add extra buffer beyond rbp to ensure it's strictly less than bottom
-        let stack = self
-            .maps
-            .create_map(
-                "stack",
-                self.cfg.stack_addr,
-                stack_size + 0x2000,
-                Permission::READ_WRITE,
-            ) // Increased size
-            .expect("cannot create stack map");
-        let stack_base = stack.get_base();
-        let stack_bottom = stack.get_bottom();
+        let (stack_base, stack_bottom) = if let Some(stack) = self.maps.get_map_by_name("stack") {
+            (stack.get_base(), stack.get_bottom())
+        } else {
+            let stack = self
+                .maps
+                .create_map(
+                    "stack",
+                    self.cfg.stack_addr,
+                    stack_size + 0x2000,
+                    Permission::READ_WRITE,
+                ) // Increased size
+                .expect("cannot create stack map");
+            (stack.get_base(), stack.get_bottom())
+        };
 
         // Now do all the assertions using the local variables
         assert!(rsp < rbp);
@@ -192,8 +198,8 @@ impl Emu {
         assert!(rsp < stack_bottom);
         assert!(rbp > stack_base);
         assert!(rbp < stack_bottom);
-        assert!(stack.inside(rsp));
-        assert!(stack.inside(rbp));
+        assert!(rsp >= stack_base && rsp < stack_bottom);
+        assert!(rbp >= stack_base && rbp < stack_bottom);
     }
 
     //TODO: tests only in tests.rs
