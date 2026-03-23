@@ -116,6 +116,7 @@ impl Emu {
             instruction_count: 0,
             fault_count: 0,
             handle_management: HandleManagement::new(),
+            library_loaded: false,
         }
     }
 

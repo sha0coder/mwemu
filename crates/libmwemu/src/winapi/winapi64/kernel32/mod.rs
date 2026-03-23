@@ -860,6 +860,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             if path.try_exists().unwrap() {
                 let (base, pe_off) = emu.load_pe64(&dll_path, false, 0);
                 peb64::dynamic_link_module(base, pe_off, &dll, emu);
+                emu.library_loaded = true; // Signal to GDB that library list changed
                 base
             } else {
                 log::trace!("dll {} not found.", dll_path);

@@ -110,4 +110,5 @@ pub struct Emu {
     pub instruction_count: u64,
     pub fault_count: u32,
     pub handle_management: HandleManagement,
+    pub library_loaded: bool,  // Flag for GDB to detect library load events
 }

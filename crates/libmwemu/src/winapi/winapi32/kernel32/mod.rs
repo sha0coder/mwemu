@@ -2830,6 +2830,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             if std::path::Path::new(dll_path.as_str()).exists() {
                 let (base, pe_off) = emu.load_pe32(&dll_path, false, 0);
                 peb32::dynamic_link_module(base as u64, pe_off, &dll, emu);
+                emu.library_loaded = true; // Signal to GDB that library list changed
                 base as u64
             } else {
                 panic!("dll {} not found, have you loaded maps?", dll_path);

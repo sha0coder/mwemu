@@ -4,6 +4,7 @@ members = [
   #"crates/pymwemu", # uncomment to build. Builds from x86 linux but can also be used from mac using pip
     "crates/libmwemu",
     "crates/mwemu",
+    "crates/mwemu-test",
 ]
 
 [profile.release]

@@ -1,0 +1,9 @@
+[package]
+name = "mwemu-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libmwemu = { path = "../libmwemu" }
+iced-x86 = "1.21.0"
+rayon = "1.10"
