@@ -11,8 +11,20 @@ pub fn gateway(emu: &mut Emu) {
     let nr = emu.regs().rax;
     log::info!("nr: 0x{:x}", nr);
     match nr {
+        WIN64_NTALLOCATEVIRTUALMEMORY => memory::nt_allocate_virtual_memory(emu),
+        WIN64_NTFREEVIRTUALMEMORY => memory::nt_free_virtual_memory(emu),
+        WIN64_NTPROTECTVIRTUALMEMORY => memory::nt_protect_virtual_memory(emu),
         WIN64_NTQUERYVIRTUALMEMORY => memory::nt_query_virtual_memory(emu),
+        WIN64_NTREADVIRTUALMEMORY => memory::nt_read_virtual_memory(emu),
+        WIN64_NTWRITEVIRTUALMEMORY => memory::nt_write_virtual_memory(emu),
+        WIN64_NTMAPVIEWOFSECTION => memory::nt_map_view_of_section(emu),
+        WIN64_NTUNMAPVIEWOFSECTION => memory::nt_unmap_view_of_section(emu),
         WIN64_NTQUERYINFORMATIONPROCESS => process::nt_query_information_process(emu),
+        WIN64_NTQUERYINFORMATIONTHREAD => process::nt_query_information_thread(emu),
+        WIN64_NTSETINFORMATIONPROCESS => process::nt_set_information_process(emu),
+        WIN64_NTSETINFORMATIONTHREAD => process::nt_set_information_thread(emu),
+        WIN64_NTOPENPROCESS => process::nt_open_process(emu),
+        WIN64_NTTERMINATEPROCESS => process::nt_terminate_process(emu),
         _ => {
             let name = what_syscall(nr);
             log_red!(

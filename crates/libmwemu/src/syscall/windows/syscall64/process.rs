@@ -1,7 +1,13 @@
 
+use std::sync::atomic::Ordering;
+
 use crate::constants::*;
 use crate::emu::Emu;
 use crate::structures::ProcessBasicInformation64;
+
+fn is_current_process_handle(h: u64) -> bool {
+    h == !0 || h == 0xffff_ffff_ffff_fffe
+}
 
 /// `NtQueryInformationProcess` — x64: RCX..R9 + 5th arg (`ReturnLength`) at `[rsp+0x28]`.
 pub fn nt_query_information_process(emu: &mut Emu) {
@@ -82,5 +88,171 @@ pub fn nt_query_information_process(emu: &mut Emu) {
         return;
     }
 
+    if process_information_class == PROCESS_INFORMATION_CLASS_PROCESS_DEBUG_PORT {
+        if process_information_length < 8 {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        if !emu.maps.is_mapped(process_information) {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        if !emu.maps.write_qword(process_information, 0) {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        if return_length_ptr != 0 {
+            if !emu.maps.write_qword(return_length_ptr, 8) {
+                emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+                return;
+            }
+        }
+        emu.regs_mut().rax = STATUS_SUCCESS;
+        return;
+    }
+
     emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+}
+
+/// `NtQueryInformationThread` — x64: 5th arg at `[rsp+0x28]`.
+pub fn nt_query_information_thread(emu: &mut Emu) {
+    let _thread_handle = emu.regs().rcx;
+    let thread_class = emu.regs().rdx;
+    let thread_info = emu.regs().r8;
+    let thread_info_len = emu.regs().r9;
+    let rsp = emu.regs().rsp;
+    let return_length_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+
+    log_red!(
+        emu,
+        "NtQueryInformationThread class: 0x{:x}, out: 0x{:x}, len: 0x{:x}",
+        thread_class,
+        thread_info,
+        thread_info_len
+    );
+
+    if thread_info == 0 && thread_info_len > 0 {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    if thread_class == THREAD_INFORMATION_CLASS_THREAD_BASIC_INFORMATION {
+        const TBI_SIZE: u64 = 48;
+        if thread_info_len < TBI_SIZE {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        if !emu.maps.is_mapped(thread_info) {
+            emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+            return;
+        }
+        for i in 0..TBI_SIZE {
+            let _ = emu.maps.write_byte(thread_info + i, 0);
+        }
+        let teb_base = emu.maps.get_mem("teb").get_base();
+        let _ = emu.maps.write_qword(thread_info + 8, teb_base);
+        if return_length_ptr != 0 {
+            let _ = emu.maps.write_qword(return_length_ptr, TBI_SIZE);
+        }
+        emu.regs_mut().rax = STATUS_SUCCESS;
+        return;
+    }
+
+    if thread_class == THREAD_INFORMATION_CLASS_THREAD_QUERY_SET_WIN32_START_ADDRESS {
+        if thread_info_len < 8 {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        if !emu.maps.is_mapped(thread_info) {
+            emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+            return;
+        }
+        let start = emu.regs().rip;
+        let _ = emu.maps.write_qword(thread_info, start);
+        if return_length_ptr != 0 {
+            let _ = emu.maps.write_qword(return_length_ptr, 8);
+        }
+        emu.regs_mut().rax = STATUS_SUCCESS;
+        return;
+    }
+
+    emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+}
+
+/// `NtSetInformationProcess` — x64: four arguments in RCX..R9.
+pub fn nt_set_information_process(emu: &mut Emu) {
+    let process_handle = emu.regs().rcx;
+    let class = emu.regs().rdx;
+
+    log_red!(
+        emu,
+        "NtSetInformationProcess h: 0x{:x} class: 0x{:x}",
+        process_handle,
+        class
+    );
+
+    if !is_current_process_handle(process_handle) {
+        emu.regs_mut().rax = STATUS_ACCESS_DENIED;
+        return;
+    }
+
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtSetInformationThread` — x64: four arguments in RCX..R9.
+pub fn nt_set_information_thread(emu: &mut Emu) {
+    let thread_handle = emu.regs().rcx;
+    let class = emu.regs().rdx;
+
+    log_red!(
+        emu,
+        "NtSetInformationThread h: 0x{:x} class: 0x{:x}",
+        thread_handle,
+        class
+    );
+
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtOpenProcess` — x64: PHANDLE, ACCESS_MASK, OBJECT_ATTRIBUTES, CLIENT_ID in RCX..R9.
+pub fn nt_open_process(emu: &mut Emu) {
+    let handle_out = emu.regs().rcx;
+    let _desired_access = emu.regs().rdx;
+    let _obj_attr = emu.regs().r8;
+    let _client_id = emu.regs().r9;
+
+    log_red!(emu, "NtOpenProcess out: 0x{:x}", handle_out);
+
+    if handle_out == 0 {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let fake = 0x4u64;
+    if emu.maps.write_qword(handle_out, fake) {
+        emu.regs_mut().rax = STATUS_SUCCESS;
+    } else {
+        emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+    }
+}
+
+/// `NtTerminateProcess` — x64: ProcessHandle, ExitStatus.
+pub fn nt_terminate_process(emu: &mut Emu) {
+    let process_handle = emu.regs().rcx;
+    let exit_status = emu.regs().rdx;
+
+    log_red!(
+        emu,
+        "NtTerminateProcess h: 0x{:x} status: 0x{:x}",
+        process_handle,
+        exit_status
+    );
+
+    if process_handle != !0 && process_handle != 0 {
+        emu.regs_mut().rax = STATUS_ACCESS_DENIED;
+        return;
+    }
+
+    emu.is_running.store(0, Ordering::Relaxed);
+    emu.regs_mut().rax = STATUS_SUCCESS;
 }

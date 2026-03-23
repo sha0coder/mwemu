@@ -50,6 +50,7 @@ mod serialization_tests;
 mod shl2p8_bug_trigger;
 mod shl2p8_edge_cases_should_not_panic;
 mod should_serialize;
+mod ssdt_win64_tests;
 mod sse_avx_tests;
 mod stack32_test;
 mod stack64_test;

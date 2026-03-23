@@ -143,6 +143,8 @@ pub const MEM_RESERVE: u32 = 0x2000;
 pub const MEM_IMAGE: u32 = 0x1000000;
 pub const MEM_MAPPED: u32 = 0x40000;
 pub const MEM_PRIVATE: u32 = 0x20000;
+pub const MEM_DECOMMIT: u32 = 0x4000;
+pub const MEM_RELEASE: u32 = 0x8000;
 
 // CryptAquireContext Flags
 pub const CRYPT_VERIFYCONTEXT: u32 = 0xF0000000;
@@ -370,6 +372,12 @@ pub const MEMORY_INFORMATION_CLASS_MEMORY_PRIVILEGED_BASIC_INFORMATION: u64 = 8;
 pub const PROCESS_INFORMATION_CLASS_PROCESS_BASIC_INFORMATION: u64 = 0;
 /// `ProcessCookie` (see Windows SDK `PROCESSINFOCLASS`).
 pub const PROCESS_INFORMATION_CLASS_PROCESS_COOKIE: u64 = 0x24;
+/// `ProcessDebugPort` — query returns 0 when no debugger (see Windows SDK).
+pub const PROCESS_INFORMATION_CLASS_PROCESS_DEBUG_PORT: u64 = 7;
+
+/// `THREADINFOCLASS` (`ThreadBasicInformation` = 0).
+pub const THREAD_INFORMATION_CLASS_THREAD_BASIC_INFORMATION: u64 = 0;
+pub const THREAD_INFORMATION_CLASS_THREAD_QUERY_SET_WIN32_START_ADDRESS: u64 = 9;
 
 
 // Windows NT syscalls x64 — numbers from j00ru/windows-syscalls nt.csv
