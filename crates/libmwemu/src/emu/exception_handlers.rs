@@ -1,4 +1,9 @@
-use crate::{console::Console, emu::Emu, exception, exception_type::ExceptionType};
+use crate::{
+    console::Console,
+    emu::Emu,
+    exception::{self, HandlerKind},
+    exception_type::ExceptionType,
+};
 
 impl Emu {
     pub fn veh(&self) -> u64 {
@@ -134,7 +139,7 @@ impl Emu {
         if self.veh() > 0 {
             addr = self.veh();
 
-            exception::enter(self, ex_type);
+            exception::enter_for_handler(self, ex_type, HandlerKind::Veh);
 
             if self.cfg.is_64bits {
                 self.set_rip(addr, false);
@@ -170,7 +175,7 @@ impl Emu {
             let con = Console::new();
             if self.running_script {
                 self.set_seh(next);
-                exception::enter(self, ex_type);
+                exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
                 } else {
@@ -183,7 +188,7 @@ impl Emu {
             let cmd = con.cmd();
             if cmd == "y" {
                 self.set_seh(next);
-                exception::enter(self, ex_type);
+                exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
                 if self.cfg.is_64bits {
                     self.set_rip(addr, false);
                 } else {
@@ -195,7 +200,7 @@ impl Emu {
 
             addr = self.uef();
 
-            exception::enter(self, ex_type);
+            exception::enter_for_handler(self, ex_type, HandlerKind::Uef);
             if self.cfg.is_64bits {
                 self.set_rip(addr, false);
             } else {

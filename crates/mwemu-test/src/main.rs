@@ -21,7 +21,6 @@ struct TestCase {
 
 #[derive(Debug)]
 struct InstructionTest {
-    address: u64,
     bytes: Vec<u8>,
     assembly: String,
     test_cases: Vec<TestCase>,
@@ -73,7 +72,7 @@ fn parse_test_line(line: &str) -> Option<TestCase> {
     Some(TestCase { inputs, outputs })
 }
 
-fn parse_instruction_line(line: &str) -> Option<(u64, Vec<u8>, String)> {
+fn parse_instruction_line(line: &str) -> Option<(Vec<u8>, String)> {
     if !line.starts_with("instr:") {
         return None;
     }
@@ -84,7 +83,7 @@ fn parse_instruction_line(line: &str) -> Option<(u64, Vec<u8>, String)> {
         return None;
     }
 
-    let address = u64::from_str_radix(parts[0].trim_start_matches("0x"), 16).unwrap_or(CODE_ADDR);
+    let _address = u64::from_str_radix(parts[0].trim_start_matches("0x"), 16).unwrap_or(CODE_ADDR);
     let bytes_str = parts[1].trim_start_matches('#');
     let bytes: Vec<u8> = (0..bytes_str.len())
         .step_by(2)
@@ -92,7 +91,7 @@ fn parse_instruction_line(line: &str) -> Option<(u64, Vec<u8>, String)> {
         .collect();
     let assembly = parts[2].to_string();
 
-    Some((address, bytes, assembly))
+    Some((bytes, assembly))
 }
 
 fn parse_test_file(path: &Path) -> Vec<InstructionTest> {
@@ -109,14 +108,13 @@ fn parse_test_file(path: &Path) -> Vec<InstructionTest> {
     let mut current_test: Option<InstructionTest> = None;
 
     for line in reader.lines().flatten() {
-        if let Some((addr, bytes, asm)) = parse_instruction_line(&line) {
+        if let Some((bytes, asm)) = parse_instruction_line(&line) {
             if let Some(test) = current_test.take() {
                 if !test.test_cases.is_empty() {
                     tests.push(test);
                 }
             }
             current_test = Some(InstructionTest {
-                address: addr,
                 bytes,
                 assembly: asm,
                 test_cases: Vec::new(),

@@ -3,7 +3,6 @@ use crate::*;
 
 #[test]
 // context objects for exception recovering
-#[ignore]
 pub fn exception_handler32() {
     helpers::setup();
 

@@ -64,3 +64,22 @@ pub fn exception_type_code(ex_type: ExceptionType) -> u32 {
         ExceptionType::ReadingXmmOperand => return constants::STATUS_READING_XMM_OPERAND,
     }
 }
+
+pub fn exception_type_from_code(code: u32) -> ExceptionType {
+    match code {
+        constants::STATUS_BREAKPOINT => ExceptionType::Int3,
+        constants::STATUS_INTEGER_DIVIDE_BY_ZERO => ExceptionType::Div0,
+        constants::STATUS_INTEGER_OVERFLOW => ExceptionType::SignChangeOnDivision,
+        constants::STATUS_POPF_CANNOT_READ_STACK => ExceptionType::PopfCannotReadStack,
+        constants::STATUS_WRITING_WORD => ExceptionType::WritingWord,
+        constants::STATUS_READING_RIP => ExceptionType::SettingRipToNonMappedAddr,
+        constants::STATUS_QWORD_DEREFERENCING => ExceptionType::QWordDereferencing,
+        constants::STATUS_DWORD_DEREFERENCING => ExceptionType::DWordDereferencing,
+        constants::STATUS_WORD_DEREFERENCING => ExceptionType::WordDereferencing,
+        constants::STATUS_BYTE_DEREFERENCING => ExceptionType::ByteDereferencing,
+        constants::STATUS_BAD_ADDRESS_DEREFERENCING => ExceptionType::BadAddressDereferencing,
+        constants::STATUS_SETTING_XMM_OPERAND => ExceptionType::SettingXmmOperand,
+        constants::STATUS_READING_XMM_OPERAND => ExceptionType::ReadingXmmOperand,
+        _ => ExceptionType::BadAddressDereferencing,
+    }
+}

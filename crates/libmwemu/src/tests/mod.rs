@@ -18,6 +18,7 @@ mod elf64lin_syscall64;
 mod emulator_initialization;
 mod error_conditions;
 mod exception_handler32;
+mod exception_handler64;
 mod exe32win_minecraft;
 mod exe64win_enigma;
 mod exe64win_msgbox;
