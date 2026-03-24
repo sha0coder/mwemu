@@ -266,13 +266,23 @@ fn NtQueryVirtualMemory(emu: &mut emu::Emu) {
     }
 
     let base = emu.maps.get_addr_base(addr).unwrap_or(0);
-
-    let mut mem_info = structures::MemoryBasicInformation::load(out_meminfo_ptr, &emu.maps);
-    mem_info.base_address = base as u32; //addr & 0xfff;
-    mem_info.allocation_base = base as u32; //  addr & 0xfff;
-    mem_info.allocation_protect = constants::PAGE_EXECUTE | constants::PAGE_READWRITE;
-    mem_info.state = constants::MEM_COMMIT;
-    mem_info.typ = constants::MEM_PRIVATE;
+    let region_size = emu
+        .maps
+        .get_mem_by_addr(addr)
+        .map(|m| m.size() as u64)
+        .unwrap_or(0);
+    let alloc_protect = constants::PAGE_EXECUTE | constants::PAGE_READWRITE;
+    let mem_info = structures::MemoryBasicInformation64 {
+        base_address: base,
+        allocation_base: base,
+        allocation_protect: alloc_protect,
+        partition_id: 0,
+        reserved: 0,
+        region_size,
+        state: constants::MEM_COMMIT,
+        protect: alloc_protect,
+        typ: constants::MEM_PRIVATE,
+    };
     mem_info.save(out_meminfo_ptr, &mut emu.maps);
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;

@@ -32,15 +32,18 @@ fn nt_query_virtual_memory_success_writes_output() {
     emu.regs_mut().r8 = MEMORY_INFORMATION_CLASS_MEMORY_BASIC_INFORMATION;
     emu.regs_mut().r9 = 0x500100; // MEMORY_BASIC_INFORMATION output
     emu.maps
-        .write_qword(emu.regs().rsp + 0x28, 0x30); // out length
+        .write_qword(emu.regs().rsp + 0x28, crate::structures::MemoryBasicInformation64::SIZE); // out length
     emu.maps
         .write_qword(emu.regs().rsp + 0x30, 0x500080); // return length ptr
 
     syscall64::gateway(&mut emu);
 
     assert_eq!(emu.regs().rax, STATUS_SUCCESS);
-    assert_eq!(emu.maps.read_qword(0x500080).unwrap_or(0), 30);
-    assert_eq!(emu.maps.read_dword(0x500100).unwrap_or(0) as u64, 0x400000);
+    assert_eq!(
+        emu.maps.read_qword(0x500080).unwrap_or(0),
+        crate::structures::MemoryBasicInformation64::SIZE
+    );
+    assert_eq!(emu.maps.read_qword(0x500100).unwrap_or(0), 0x400000);
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use crate::constants::*;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
-use crate::structures::MemoryBasicInformation;
+use crate::structures::MemoryBasicInformation64;
 
 fn nt_page_protection_to_permission(protect: u32) -> Permission {
     const PAGE_READONLY: u32 = 0x02;
@@ -75,7 +75,7 @@ pub fn nt_query_virtual_memory(emu: &mut Emu) {
         return;
     }
 
-    if memory_information_length < MemoryBasicInformation::size() {
+    if memory_information_length < MemoryBasicInformation64::SIZE {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
         return;
     }
@@ -91,23 +91,30 @@ pub fn nt_query_virtual_memory(emu: &mut Emu) {
     }
 
     let base = emu.maps.get_addr_base(base_address).unwrap_or(0);
-    let mut mem_info = MemoryBasicInformation::load(memory_information, &emu.maps);
-    mem_info.base_address = base as u32;
-    mem_info.allocation_base = base as u32;
-    mem_info.allocation_protect = PAGE_EXECUTE | PAGE_READWRITE;
-    mem_info.state = MEM_COMMIT;
-    mem_info.typ = MEM_PRIVATE;
-    if let Some(mem) = emu.maps.get_mem_by_addr(base_address) {
-        mem_info.region_size = mem.size() as u32;
-    }
-    mem_info.protect = mem_info.allocation_protect;
+    let region_size = emu
+        .maps
+        .get_mem_by_addr(base_address)
+        .map(|m| m.size() as u64)
+        .unwrap_or(0);
+    let alloc_protect = PAGE_EXECUTE | PAGE_READWRITE;
+    let mem_info = MemoryBasicInformation64 {
+        base_address: base,
+        allocation_base: base,
+        allocation_protect: alloc_protect,
+        partition_id: 0,
+        reserved: 0,
+        region_size,
+        state: MEM_COMMIT,
+        protect: alloc_protect,
+        typ: MEM_PRIVATE,
+    };
 
     mem_info.save(memory_information, &mut emu.maps);
 
     if return_length_ptr != 0 {
         if !emu
             .maps
-            .write_qword(return_length_ptr, MemoryBasicInformation::size())
+            .write_qword(return_length_ptr, MemoryBasicInformation64::SIZE)
         {
             emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
             return;
