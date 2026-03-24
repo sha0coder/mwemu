@@ -72,7 +72,7 @@ impl Emu {
         } else if self.linux {
             self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
         } else {
-            if self.cfg.verbose >= 1 {
+            if self.cfg.verbose >= 1 && !self.cfg.emulate_winapi {
                 log::trace!("/!\\ changing RIP to {} ", name);
             }
 
@@ -178,7 +178,7 @@ impl Emu {
 
             self.regs_mut().set_eip(addr);
         } else {
-            if self.cfg.verbose >= 1 {
+            if self.cfg.verbose >= 1 && !self.cfg.emulate_winapi {
                 log::trace!("/!\\ changing EIP to {} 0x{:x}", name, addr);
             }
 

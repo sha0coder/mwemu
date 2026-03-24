@@ -25,6 +25,7 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTSETINFORMATIONTHREAD => process::nt_set_information_thread(emu),
         WIN64_NTOPENPROCESS => process::nt_open_process(emu),
         WIN64_NTTERMINATEPROCESS => process::nt_terminate_process(emu),
+        WIN64_NTQUERYPERFORMANCECOUNTER => process::nt_query_performance_counter(emu),
         _ => {
             let name = what_syscall(nr);
             log_red!(

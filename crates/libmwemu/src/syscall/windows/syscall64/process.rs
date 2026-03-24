@@ -114,6 +114,44 @@ pub fn nt_query_information_process(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
 }
 
+/// `NtQueryPerformanceCounter` — RCX = counter (PLARGE_INTEGER), RDX = frequency (PLARGE_INTEGER, optional).
+/// Matches the usual x64 syscall stub used from `kernelbase!QueryPerformanceCounter` → ntdll.
+pub fn nt_query_performance_counter(emu: &mut Emu) {
+    let counter_ptr = emu.regs().rcx;
+    let freq_ptr = emu.regs().rdx;
+
+    log_red!(emu, "NtQueryPerformanceCounter counter: 0x{:x} freq: 0x{:x}", counter_ptr, freq_ptr);
+
+    if counter_ptr == 0 {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+    if !emu.maps.is_mapped(counter_ptr) {
+        emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+        return;
+    }
+
+    let counter_value = (emu.tick as u64).saturating_mul(1000);
+    if !emu.maps.write_qword(counter_ptr, counter_value) {
+        emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+        return;
+    }
+
+    if freq_ptr != 0 {
+        if !emu.maps.is_mapped(freq_ptr) {
+            emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+            return;
+        }
+        // Fake ~10 MHz; order of magnitude typical for QPC frequency on Windows.
+        if !emu.maps.write_qword(freq_ptr, 10_000_000) {
+            emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+            return;
+        }
+    }
+
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
 /// `NtQueryInformationThread` — x64: 5th arg at `[rsp+0x28]`.
 pub fn nt_query_information_thread(emu: &mut Emu) {
     let _thread_handle = emu.regs().rcx;

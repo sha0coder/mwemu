@@ -12,6 +12,7 @@ use crate::pe::pe32::{
 };
 use crate::structures;
 use crate::winapi::winapi64;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::str;
@@ -525,6 +526,8 @@ impl PE64 {
 
     pub fn delay_load_binding(&mut self, emu: &mut emu::Emu, base_addr: u64) {
         log::trace!("Delay load binding started ...");
+        // Avoid repeated full-export scans for the same delayed import symbol.
+        let mut resolved_cache: HashMap<String, u64> = HashMap::new();
         for i in 0..self.delay_load_dir.len() {
             let dld = &self.delay_load_dir[i];
             if dld.name.is_empty() {
@@ -560,7 +563,15 @@ impl PE64 {
                 let func_name = PE64::read_string(&self.raw, off2 + 2);
                 //log::trace!("IAT: 0x{:x} {}!{}", addr, iim.name, func_name);
 
-                let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
+                let cache_key = format!("{}!{}", dld.name.to_lowercase(), func_name.to_lowercase());
+                let real_addr = if let Some(cached) = resolved_cache.get(&cache_key) {
+                    *cached
+                } else {
+                    let resolved =
+                        winapi64::kernel32::resolve_api_name_in_module(emu, &dld.name, &func_name);
+                    resolved_cache.insert(cache_key, resolved);
+                    resolved
+                };
                 if real_addr == 0 {
                     break; // otherwise create loops
                     /*
@@ -619,6 +630,8 @@ impl PE64 {
                 self.image_import_descriptor.len()
             );
         }
+        // Cache import resolutions to avoid repeated expensive export scans.
+        let mut resolved_cache: HashMap<String, u64> = HashMap::new();
 
         for i in 0..self.image_import_descriptor.len() {
             let iim = &self.image_import_descriptor[i];
@@ -627,7 +640,9 @@ impl PE64 {
                 continue;
             }
 
-            let libname = iim.name.clone();
+            let import_dll = iim.name.clone();
+            let original_first_thunk = iim.original_first_thunk;
+            let first_thunk = iim.first_thunk;
             /*
             if iim.name.starts_with("api-ms-win-") {
                 libname = "kernelbase".to_string();
@@ -650,16 +665,36 @@ impl PE64 {
             }
             */
 
-            if iim.original_first_thunk == 0 {
-                self.iat_binding_alternative(emu, base_addr, iim.first_thunk);
+            if original_first_thunk == 0 {
+                self.iat_binding_alternative(
+                    emu,
+                    base_addr,
+                    first_thunk,
+                    &import_dll,
+                    &mut resolved_cache,
+                );
             } else {
-                self.iat_binding_original(emu, base_addr, iim.original_first_thunk, iim.first_thunk);
+                self.iat_binding_original(
+                    emu,
+                    base_addr,
+                    original_first_thunk,
+                    first_thunk,
+                    &import_dll,
+                    &mut resolved_cache,
+                );
             }
         }
         log::trace!("IAT Bound.");
     }
 
-    pub fn iat_binding_alternative(&mut self, emu: &mut emu::Emu, base_addr: u64, first_thunk: u32) {
+    pub fn iat_binding_alternative(
+        &mut self,
+        emu: &mut emu::Emu,
+        base_addr: u64,
+        first_thunk: u32,
+        import_dll: &str,
+        resolved_cache: &mut HashMap<String, u64>,
+    ) {
         // this function is called for every DLL that in iat.
 
         let mut rva = first_thunk;
@@ -685,7 +720,16 @@ impl PE64 {
                 let off_name = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
                 let api_name = PE64::read_string(&self.raw, off_name + 2);
 
-                let real_addr = winapi64::kernel32::resolve_api_name(emu, &api_name);
+                let cache_key =
+                    format!("{}!{}", import_dll.to_lowercase(), api_name.to_lowercase());
+                let real_addr = if let Some(cached) = resolved_cache.get(&cache_key) {
+                    *cached
+                } else {
+                    let resolved =
+                        winapi64::kernel32::resolve_api_name_in_module(emu, import_dll, &api_name);
+                    resolved_cache.insert(cache_key, resolved);
+                    resolved
+                };
                 if real_addr > 0 {
                     // patch inside the elf64 object
                     write_u64_le!(self.raw, off, real_addr);
@@ -707,6 +751,8 @@ impl PE64 {
         base_addr: u64,
         original_first_thunk: u32,
         first_thunk: u32,
+        import_dll: &str,
+        resolved_cache: &mut HashMap<String, u64>,
     ) {
         // this function is called for every DLL in iat.
 
@@ -746,7 +792,16 @@ impl PE64 {
             }
 
             let func_name = PE64::read_string(&self.raw, off2 + 2);
-            let real_addr = winapi64::kernel32::resolve_api_name(emu, &func_name);
+            let cache_key =
+                format!("{}!{}", import_dll.to_lowercase(), func_name.to_lowercase());
+            let real_addr = if let Some(cached) = resolved_cache.get(&cache_key) {
+                *cached
+            } else {
+                let resolved =
+                    winapi64::kernel32::resolve_api_name_in_module(emu, import_dll, &func_name);
+                resolved_cache.insert(cache_key, resolved);
+                resolved
+            };
 
             if real_addr != 0 {
                 // patch inside the object

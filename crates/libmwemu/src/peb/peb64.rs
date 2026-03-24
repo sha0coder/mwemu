@@ -124,6 +124,8 @@ pub struct Flink {
     pub pe_hdr: u64,
 
     pub export_table_rva: u64,
+    /// Size of the IMAGE_DIRECTORY_ENTRY_EXPORT region (used to detect forwarded exports).
+    pub export_dir_size: u64,
     pub export_table: u64,
     pub num_of_funcs: u64,
     pub func_name_tbl_rva: u64,
@@ -146,6 +148,7 @@ impl Flink {
             mod_name: String::new(),
             pe_hdr: 0,
             export_table_rva: 0,
+            export_dir_size: 0,
             export_table: 0,
             num_of_funcs: 0,
             func_name_tbl_rva: 0,
@@ -221,6 +224,11 @@ impl Flink {
             None => 0,
         };
 
+        self.export_dir_size = emu
+            .maps
+            .read_dword(self.mod_base + self.pe_hdr + 0x8c)
+            .unwrap_or(0) as u64;
+
         if self.export_table_rva == 0 {
             return;
         }
@@ -256,6 +264,16 @@ impl Flink {
     }
 
     pub fn get_function_ordinal(&self, emu: &mut emu::Emu, function_id: u64) -> OrdinalTable {
+        self.get_function_ordinal_depth(emu, function_id, 0)
+    }
+
+    /// `forward_depth` limits chained PE export forwarders (`DLL.Symbol`).
+    pub fn get_function_ordinal_depth(
+        &self,
+        emu: &mut emu::Emu,
+        function_id: u64,
+        forward_depth: u32,
+    ) -> OrdinalTable {
         let mut ordinal = OrdinalTable::new();
         let func_name_rva = emu
             .maps
@@ -280,7 +298,26 @@ impl Flink {
             .maps
             .read_dword(ordinal.func_addr_tbl + 4 * ordinal.ordinal)
             .expect("error reading func_rva") as u64;
-        ordinal.func_va = ordinal.func_rva + self.mod_base;
+
+        // Forwarded export: RVA falls inside the export directory → ASCII "TARGETDLL.SymbolName".
+        if self.export_dir_size > 0
+            && ordinal.func_rva >= self.export_table_rva
+            && ordinal.func_rva < self.export_table_rva.saturating_add(self.export_dir_size)
+        {
+            let forwarder = emu.maps.read_string(self.mod_base + ordinal.func_rva);
+            let resolved = crate::winapi::winapi64::kernel32::resolve_forwarded_export_string_depth(
+                emu,
+                &forwarder,
+                forward_depth.saturating_add(1),
+            );
+            if resolved != 0 {
+                ordinal.func_va = resolved;
+            } else {
+                ordinal.func_va = ordinal.func_rva + self.mod_base;
+            }
+        } else {
+            ordinal.func_va = ordinal.func_rva + self.mod_base;
+        }
 
         /*
         println!("Function Name RVA: 0x{:x}", func_name_rva);
