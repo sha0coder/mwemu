@@ -46,7 +46,7 @@ pub fn is_emu_set() -> bool {
 }
 
 pub fn log_emu_state(emu: &mut Emu) {
-    log::error!("=== EMULATOR STATE AT PANIC ===");
+    log::error!("=== EMULATOR STATE ===");
     log::error!("Current position: {}", emu.pos);
 
     let mut out: String = String::new();

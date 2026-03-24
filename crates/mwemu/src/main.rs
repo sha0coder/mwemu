@@ -575,13 +575,20 @@ fn main() {
 
         let result = emu.run(None);
 
+        // Dump registers/stack like the panic hook — run() returns Err without panicking.
+        if let Err(ref e) = result {
+            if e.message != "empty code block" {
+                libmwemu::emu_context::log_emu_state(&mut emu);
+            }
+        }
+
         // Clear the current emu
         libmwemu::emu_context::clear_current_emu();
 
         log::logger().flush();
         if let Err(e) = result {
             let msg = e.to_string();
-            if msg != "empty code block" {
+            if e.message != "empty code block" {
                 log::error!("{}", msg);
             }
             process::exit(1);
