@@ -10,7 +10,9 @@ mod cmpxchg_tests;
 mod config_management;
 mod config_tests;
 mod console_control_tests;
+mod emulation_perf;
 mod elf64lin_cpu_arithmetics;
+
 mod elf64lin_flags;
 mod elf64lin_fpu;
 mod elf64lin_static_helloworld;

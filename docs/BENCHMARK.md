@@ -179,4 +179,21 @@ Executed in   32,82 secs    fish           external
    sys time   17,98 secs  194,00 micros   17,98 secs
 
 ``` 
+## currently in M4
+
+cargo test --release
+
+________________________________________________________
+Executed in    4.95 secs    fish           external
+   usr time   25.75 secs    0.35 millis   25.75 secs
+   sys time    0.40 secs    2.11 millis    0.40 secs
+
+
+cargo test
+________________________________________________________
+Executed in   39.29 secs    fish           external
+   usr time  181.62 secs    0.27 millis  181.62 secs
+   sys time    1.27 secs    1.56 millis    1.27 secs
+
+
 

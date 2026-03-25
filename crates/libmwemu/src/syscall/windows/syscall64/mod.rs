@@ -1,11 +1,8 @@
 use crate::emu::Emu;
 use crate::constants::*;
 
-
 mod memory;
 mod process;
-
-
 
 pub fn gateway(emu: &mut Emu) {
     let nr = emu.regs().rax;

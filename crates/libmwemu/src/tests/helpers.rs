@@ -1,4 +1,5 @@
 use std::io::Write as _;
+use std::path::PathBuf;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
@@ -9,6 +10,28 @@ pub fn setup() {
             .format(|buf, record| writeln!(buf, "{}", record.args()))
             .init();
     });
+}
+
+/// `rel` is a filename inside the repo top-level `test/` directory (e.g. `exe64win_msgbox.bin`).
+/// Resolves via `CARGO_MANIFEST_DIR` so tests work even when the current working directory is not `crates/libmwemu`.
+pub fn test_data_path(rel: &str) -> String {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test")
+        .join(rel)
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Maps folder for 64-bit Windows samples (`maps/maps64/`).
+pub fn maps64_folder() -> String {
+    let mut s = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../maps/maps64")
+        .to_string_lossy()
+        .into_owned();
+    if !s.ends_with('/') {
+        s.push('/');
+    }
+    s
 }
 
 pub fn critical_values(bits: u32) -> Vec<u64> {

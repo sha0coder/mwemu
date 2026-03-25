@@ -26,19 +26,17 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     if handle_interrupts {
         match interrupt {
             0x80 => {
-                emu.linux = true;
+                // Do not set `emu.linux` here: it would mis-route later `syscall` on PE/SSDT.
                 if emu.linux {
                     if emu.cfg.is_64bits {
                         linux::syscall64::gateway(emu);
                     } else {
                         linux::syscall32::gateway(emu);
                     }
+                } else if emu.cfg.is_64bits {
+                    windows::syscall64::gateway(emu);
                 } else {
-                    if emu.cfg.is_64bits {
-                        windows::syscall64::gateway(emu);
-                    } else {
-                        windows::syscall32::gateway(emu);
-                    }
+                    windows::syscall32::gateway(emu);
                 }
             }
 
