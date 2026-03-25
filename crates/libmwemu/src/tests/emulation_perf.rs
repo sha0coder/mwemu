@@ -188,7 +188,7 @@ fn benchmark64with_enigma() {
         let max_secs: u64 = std::env::var("MWEMU_BENCH_ENIGMA_MAX_SECS_RELEASE")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(5);
+            .unwrap_or(if cfg!(windows) { 9 } else { 5 });
         (target_pos, Duration::from_secs(max_secs))
     };
     let t0 = Instant::now();

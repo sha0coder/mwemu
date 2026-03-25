@@ -138,6 +138,12 @@ pub fn enter64(
     // +0x00 => handler kind (SEH/VEH/UEF), +0x08 => context ptr
     emu.maps.write_dword(ctx_addr, handler_kind.as_u32());
     emu.maps.write_qword(ctx_addr + 8, emu.eh_ctx() as u64);
+    // Store the exception code at the start of the context area (mirrors enter32),
+    // so exit64 can retrieve it from `eh_ctx()` (offset +0).
+    emu.maps.write_dword(
+        emu.eh_ctx() as u64,
+        exception_type::exception_type_code(ex_type),
+    );
     let ctx = Context64::new(&emu.regs());
     ctx.save(emu.eh_ctx() as u64, &mut emu.maps);
 }
