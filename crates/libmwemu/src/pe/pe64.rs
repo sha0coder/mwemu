@@ -654,16 +654,18 @@ impl PE64 {
                 continue;
             }*/
 
-            /*
-            if winapi64::kernel32::load_library(emu, &libname) == 0 {
-                log::trace!(
-                    "cannot found the library {} on {}",
-                    &iim.name,
-                    emu.cfg.maps_folder
-                );
+            // Ensure the imported module is mapped/linked before trying to resolve its exports.
+            // Otherwise the IAT entry may remain pointing into the image's `.idata` (hint/name RVA),
+            // and indirect calls like `jmp qword ptr [IAT]` will jump to an unmapped address.
+            if winapi64::kernel32::load_library(emu, &import_dll) == 0 {
+                if emu.cfg.verbose >= 1 {
+                    log::trace!(
+                        "cannot find/import library `{}` (IAT binding will skip it)",
+                        &import_dll
+                    );
+                }
                 continue;
             }
-            */
 
             if original_first_thunk == 0 {
                 self.iat_binding_alternative(
@@ -716,7 +718,8 @@ impl PE64 {
                 println!("---- ordinal: {}", ordinal);
                 unimplemented!("third variation of iat binding not implemented");
             } else {
-                let func_name_addr = (func_name_addr_or_ordinal & 0x00000000_7fffffff) as u32;
+                let func_name_addr =
+                    (func_name_addr_or_ordinal & 0x7fff_ffff_ffff_ffff) as u32;
                 let off_name = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
                 let api_name = PE64::read_string(&self.raw, off_name + 2);
 
@@ -730,7 +733,7 @@ impl PE64 {
                     resolved_cache.insert(cache_key, resolved);
                     resolved
                 };
-                if real_addr > 0 {
+            if real_addr > 0 {
                     // patch inside the elf64 object
                     write_u64_le!(self.raw, off, real_addr);
                     // patch in the mapped memory
@@ -738,6 +741,13 @@ impl PE64 {
                     if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                         mem.force_write_qword(patch_addr, real_addr);
                     }
+            } else if emu.cfg.verbose >= 1 {
+                log::trace!(
+                    "unresolved import {}!{} (IAT rva 0x{:x})",
+                    import_dll,
+                    api_name,
+                    rva
+                );
                 }
             }
 
@@ -781,7 +791,7 @@ impl PE64 {
                 continue;
             }
 
-            let func_name_addr = (thunk_data & 0x00000000_7fffffff) as u32;
+            let func_name_addr = (thunk_data & 0x7fff_ffff_ffff_ffff) as u32;
             let off2 = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
 
             if off2 == 0 {
@@ -811,6 +821,13 @@ impl PE64 {
                 if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                     mem.force_write_qword(patch_addr, real_addr);
                 }
+            } else if emu.cfg.verbose >= 1 {
+                log::trace!(
+                    "unresolved import {}!{} (IAT rva 0x{:x})",
+                    import_dll,
+                    func_name,
+                    rva
+                );
             }
 
             /*if emu.cfg.verbose >= 1 {
@@ -917,8 +934,14 @@ impl PE64 {
             }
 
             // Walking function names.
-            let mut off_name =
-                PE64::vaddr_to_off(&self.sect_hdr, iim.original_first_thunk) as usize;
+            // Some binaries omit `OriginalFirstThunk` (it can be 0); in that case, the IAT itself
+            // initially points to IMAGE_IMPORT_BY_NAME entries and we can use `FirstThunk`.
+            let thunk_names_rva = if iim.original_first_thunk != 0 {
+                iim.original_first_thunk
+            } else {
+                iim.first_thunk
+            };
+            let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, thunk_names_rva) as usize;
 
             //log::trace!("----> 0x{:x}", iim.first_thunk);
             let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, iim.first_thunk) as usize;
@@ -937,11 +960,58 @@ impl PE64 {
                 
                 let is_ordinal = (thunk_data & 0x80000000_00000000) != 0;
                 if !is_ordinal {
-                    let func_name_addr = (thunk_data & 0x00000000_7fffffff) as u32;
+                    let func_name_addr = (thunk_data & 0x7fff_ffff_ffff_ffff) as u32;
                     let off2 = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
                     if off2 != 0 && addr == paddr {
                         let func_name = PE64::read_string(&self.raw, off2 + 2);
                         return func_name;
+                    }
+                }
+
+                off_name += 8;
+                off_addr += 8;
+            }
+        }
+
+        String::new()
+    }
+
+    /// Returns the import in `dll!name` form if `paddr` matches an IAT entry.
+    pub fn import_addr_to_dll_and_name(&self, paddr: u64) -> String {
+        if paddr == 0 {
+            return String::new();
+        }
+
+        for iim in &self.image_import_descriptor {
+            if iim.name.is_empty() {
+                continue;
+            }
+
+            let thunk_names_rva = if iim.original_first_thunk != 0 {
+                iim.original_first_thunk
+            } else {
+                iim.first_thunk
+            };
+            let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, thunk_names_rva) as usize;
+            let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, iim.first_thunk) as usize;
+
+            loop {
+                if self.raw.len() <= off_name + 8 || self.raw.len() <= off_addr + 8 {
+                    break;
+                }
+                let thunk_data = read_u64_le!(self.raw, off_name);
+                if thunk_data == 0 {
+                    break;
+                }
+                let addr = read_u64_le!(self.raw, off_addr);
+
+                let is_ordinal = (thunk_data & 0x80000000_00000000) != 0;
+                if !is_ordinal {
+                    let func_name_addr = (thunk_data & 0x7fff_ffff_ffff_ffff) as u32;
+                    let off2 = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
+                    if off2 != 0 && addr == paddr {
+                        let func_name = PE64::read_string(&self.raw, off2 + 2);
+                        return format!("{}!{}", iim.name, func_name);
                     }
                 }
 

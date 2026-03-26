@@ -21,6 +21,36 @@ mod ws2_32;
 
 use crate::emu;
 
+pub fn gateway_by_import(import_dll: &str, api: &str, emu: &mut emu::Emu) {
+    let dll = import_dll.trim().to_lowercase();
+    let api = api.trim();
+
+    if dll.starts_with("api-ms-win-crt-") {
+        let _ = wincrt::gateway_by_name(api, emu);
+        emu.call_stack_mut().pop();
+        return;
+    }
+    if dll == "msvcrt.dll" {
+        let _ = msvcrt::gateway_by_name(api, emu);
+        emu.call_stack_mut().pop();
+        return;
+    }
+
+    // Fallback: if it isn't a CRT api-set, try to resolve it against loaded modules and
+    // execute via the normal gateway mechanism.
+    let resolved = kernel32::resolve_api_name_in_module(emu, &dll, api);
+    if resolved != 0 {
+        let map = emu.maps.get_addr_name(resolved).map(|s| s.to_string());
+        if let Some(map) = map {
+            gateway(resolved, &map, emu);
+            return;
+        }
+    }
+
+    log::warn!("unhandled import {}!{}", import_dll, api);
+    emu.call_stack_mut().pop();
+}
+
 pub fn gateway(addr: u64, name: &str, emu: &mut emu::Emu) {
     emu.regs_mut().sanitize64();
     match name {

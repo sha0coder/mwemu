@@ -6,7 +6,6 @@ mod process;
 
 pub fn gateway(emu: &mut Emu) {
     let nr = emu.regs().rax;
-    log::info!("nr: 0x{:x}", nr);
     match nr {
         WIN64_NTALLOCATEVIRTUALMEMORY => memory::nt_allocate_virtual_memory(emu),
         WIN64_NTFREEVIRTUALMEMORY => memory::nt_free_virtual_memory(emu),
@@ -25,9 +24,9 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTQUERYPERFORMANCECOUNTER => process::nt_query_performance_counter(emu),
         _ => {
             let name = what_syscall(nr);
-            log_red!(
+            log_orange!(
                 emu,
-                "syscall64 {} {} (unimplemented)",
+                "syscall 0x{:x}: {} (unimplemented)",
                 nr,
                 name,
             );

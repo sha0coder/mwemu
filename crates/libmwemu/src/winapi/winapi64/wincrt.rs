@@ -6,18 +6,36 @@ use crate::winapi::winapi64;
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);
     let api = api.split("!").last().unwrap_or(&api);
+    gateway_by_name(api, emu)
+}
+
+pub fn gateway_by_name(api: &str, emu: &mut emu::Emu) -> String {
     match api {
         "_initialize_onexit_table" => _initialize_onexit_table(emu),
         "_register_onexit_function" => _register_onexit_function(emu),
         "_get_initial_narrow_environment" => _get_initial_narrow_environment(emu),
+        "_initialize_narrow_environment" => _initialize_narrow_environment(emu),
+        "_configure_narrow_argv" => _configure_narrow_argv(emu),
         "_set_invalid_parameter_handler" => set_invalid_parameter_handler(emu),
+        "_set_app_type" => _set_app_type(emu),
         "malloc" => malloc(emu),
+        "calloc" => calloc(emu),
+        "free" => free(emu),
         "realloc" => realloc(emu),
         "_crt_atexit" => _crt_atexit(emu),
         "__p___argv" => __p___argv(emu),
         "__p___argc" => __p___argc(emu),
+        "__p__environ" => __p__environ(emu),
         "__acrt_iob_func" => __acrt_iob_func(emu),
+        "__p__commode" => __p__commode(emu),
+        "__p__fmode" => __p__fmode(emu),
         "__stdio_common_vfprintf" => __stdio_common_vfprintf(emu),
+        "puts" => puts(emu),
+        "strlen" => strlen(emu),
+        "strncmp" => strncmp(emu),
+        "memcpy" => memcpy(emu),
+        "abort" => abort(emu),
+        "signal" => signal(emu),
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -27,11 +45,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                     );
                 }
 
-                unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
+                unimplemented!("atemmpt to call unimplemented CRT API {}", api);
             }
             log::warn!(
-                "calling unimplemented API 0x{:x} {} at 0x{:x}",
-                addr,
+                "calling unimplemented CRT API {} at 0x{:x}",
                 api,
                 emu.regs().rip
             );
@@ -40,6 +57,164 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
+}
+
+fn _set_app_type(emu: &mut emu::Emu) {
+    let app_type = emu.regs().rcx;
+    log_red!(emu, "wincrt!_set_app_type app_type: 0x{:x}", app_type);
+    emu.regs_mut().rax = 0;
+}
+
+fn _initialize_narrow_environment(emu: &mut emu::Emu) {
+    log_red!(emu, "wincrt!_initialize_narrow_environment");
+    emu.regs_mut().rax = 0;
+}
+
+fn _configure_narrow_argv(emu: &mut emu::Emu) {
+    let mode = emu.regs().rcx;
+    log_red!(emu, "wincrt!_configure_narrow_argv mode: 0x{:x}", mode);
+    emu.regs_mut().rax = 0;
+}
+
+fn __p__commode(emu: &mut emu::Emu) {
+    // int * __p__commode(void)
+    let p = emu
+        .maps
+        .alloc(4)
+        .expect("wincrt!__p__commode alloc failed");
+    emu.maps
+        .create_map(&format!("alloc_{:x}", p), p, 4, Permission::READ_WRITE)
+        .expect("wincrt!__p__commode cannot create map");
+    let _ = emu.maps.write_dword(p, 0);
+    emu.regs_mut().rax = p;
+}
+
+fn __p__fmode(emu: &mut emu::Emu) {
+    // int * __p__fmode(void)
+    let p = emu
+        .maps
+        .alloc(4)
+        .expect("wincrt!__p__fmode alloc failed");
+    emu.maps
+        .create_map(&format!("alloc_{:x}", p), p, 4, Permission::READ_WRITE)
+        .expect("wincrt!__p__fmode cannot create map");
+    let _ = emu.maps.write_dword(p, 0);
+    emu.regs_mut().rax = p;
+}
+
+fn __p__environ(emu: &mut emu::Emu) {
+    // char *** __p__environ(void)
+    // Return a pointer to a NULL-terminated environment pointer list (empty env).
+    let envp = emu
+        .maps
+        .alloc(8)
+        .expect("wincrt!__p__environ alloc failed");
+    emu.maps
+        .create_map(&format!("alloc_{:x}", envp), envp, 8, Permission::READ_WRITE)
+        .expect("wincrt!__p__environ cannot create map");
+    let _ = emu.maps.write_qword(envp, 0);
+    emu.regs_mut().rax = envp;
+}
+
+fn calloc(emu: &mut emu::Emu) {
+    let nmemb = emu.regs().rcx;
+    let size = emu.regs().rdx;
+    let total = nmemb.saturating_mul(size);
+    if total == 0 {
+        emu.regs_mut().rax = 0;
+        return;
+    }
+    let base = emu.maps.alloc(total).expect("wincrt!calloc out of memory");
+    emu.maps
+        .create_map(
+            &format!("alloc_{:x}", base),
+            base,
+            total,
+            Permission::READ_WRITE,
+        )
+        .expect("wincrt!calloc cannot create map");
+    for i in 0..total {
+        let _ = emu.maps.write_byte(base + i, 0);
+    }
+    log_red!(emu, "wincrt!calloc nmemb:{} size:{} =0x{:x}", nmemb, size, base);
+    emu.regs_mut().rax = base;
+}
+
+fn free(emu: &mut emu::Emu) {
+    let p = emu.regs().rcx;
+    log_red!(emu, "wincrt!free 0x{:x}", p);
+    emu.regs_mut().rax = 0;
+}
+
+fn puts(emu: &mut emu::Emu) {
+    let s = emu.regs().rcx;
+    let msg = emu.maps.read_string(s);
+    log_red!(emu, "wincrt!puts '{}'", msg);
+    emu.regs_mut().rax = 0;
+}
+
+fn strlen(emu: &mut emu::Emu) {
+    let s = emu.regs().rcx;
+    let mut n: u64 = 0;
+    loop {
+        if let Some(b) = emu.maps.read_byte(s + n) {
+            if b == 0 {
+                break;
+            }
+            n += 1;
+        } else {
+            break;
+        }
+        if n > 0x10_0000 {
+            break;
+        }
+    }
+    emu.regs_mut().rax = n;
+}
+
+fn strncmp(emu: &mut emu::Emu) {
+    let s1 = emu.regs().rcx;
+    let s2 = emu.regs().rdx;
+    let n = emu.regs().r8;
+    let mut i: u64 = 0;
+    let mut res: i64 = 0;
+    while i < n {
+        let b1 = emu.maps.read_byte(s1 + i).unwrap_or(0);
+        let b2 = emu.maps.read_byte(s2 + i).unwrap_or(0);
+        if b1 != b2 {
+            res = (b1 as i64) - (b2 as i64);
+            break;
+        }
+        if b1 == 0 {
+            break;
+        }
+        i += 1;
+    }
+    emu.regs_mut().rax = res as u64;
+}
+
+fn memcpy(emu: &mut emu::Emu) {
+    let dst = emu.regs().rcx;
+    let src = emu.regs().rdx;
+    let n = emu.regs().r8;
+    let sz = n.min(usize::MAX as u64) as usize;
+    if let Some(bytes) = emu.maps.try_read_bytes(src, sz).map(|b| b.to_vec()) {
+        let _ = emu.maps.write_bytes(dst, &bytes);
+    }
+    emu.regs_mut().rax = dst;
+}
+
+fn abort(emu: &mut emu::Emu) {
+    log_red!(emu, "wincrt!abort");
+    emu.is_running.store(0, std::sync::atomic::Ordering::Relaxed);
+    emu.regs_mut().rax = 0;
+}
+
+fn signal(emu: &mut emu::Emu) {
+    let sig = emu.regs().rcx;
+    let handler = emu.regs().rdx;
+    log_red!(emu, "wincrt!signal sig:{} handler:0x{:x}", sig, handler);
+    emu.regs_mut().rax = 0;
 }
 
 fn _initialize_onexit_table(emu: &mut emu::Emu) {

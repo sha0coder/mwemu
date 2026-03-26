@@ -18,7 +18,7 @@ pub fn nt_query_information_process(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let return_length_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_red!(emu, "NtQueryInformationProcess process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}", process_handle, process_information_class, process_information, process_information_length, return_length_ptr);
+    log_orange!(emu, "syscall 0x{:x}: NtQueryInformationProcess process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}", WIN64_NTQUERYINFORMATIONPROCESS, process_handle, process_information_class, process_information, process_information_length, return_length_ptr);
 
     if process_information_class == PROCESS_INFORMATION_CLASS_PROCESS_BASIC_INFORMATION {
         if process_information == 0 {
@@ -120,7 +120,7 @@ pub fn nt_query_performance_counter(emu: &mut Emu) {
     let counter_ptr = emu.regs().rcx;
     let freq_ptr = emu.regs().rdx;
 
-    log_red!(emu, "NtQueryPerformanceCounter counter: 0x{:x} freq: 0x{:x}", counter_ptr, freq_ptr);
+    log_orange!(emu, "syscall 0x{:x}: NtQueryPerformanceCounter counter: 0x{:x} freq: 0x{:x}", WIN64_NTQUERYPERFORMANCECOUNTER, counter_ptr, freq_ptr);
 
     if counter_ptr == 0 {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
@@ -161,9 +161,10 @@ pub fn nt_query_information_thread(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let return_length_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtQueryInformationThread class: 0x{:x}, out: 0x{:x}, len: 0x{:x}",
+        "syscall 0x{:x}: NtQueryInformationThread class: 0x{:x}, out: 0x{:x}, len: 0x{:x}",
+        WIN64_NTQUERYINFORMATIONTHREAD,
         thread_class,
         thread_info,
         thread_info_len
@@ -222,9 +223,10 @@ pub fn nt_set_information_process(emu: &mut Emu) {
     let process_handle = emu.regs().rcx;
     let class = emu.regs().rdx;
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtSetInformationProcess h: 0x{:x} class: 0x{:x}",
+        "syscall 0x{:x}: NtSetInformationProcess h: 0x{:x} class: 0x{:x}",
+        WIN64_NTSETINFORMATIONPROCESS,
         process_handle,
         class
     );
@@ -242,9 +244,10 @@ pub fn nt_set_information_thread(emu: &mut Emu) {
     let thread_handle = emu.regs().rcx;
     let class = emu.regs().rdx;
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtSetInformationThread h: 0x{:x} class: 0x{:x}",
+        "syscall 0x{:x}: NtSetInformationThread h: 0x{:x} class: 0x{:x}",
+        WIN64_NTSETINFORMATIONTHREAD,
         thread_handle,
         class
     );
@@ -259,7 +262,7 @@ pub fn nt_open_process(emu: &mut Emu) {
     let _obj_attr = emu.regs().r8;
     let _client_id = emu.regs().r9;
 
-    log_red!(emu, "NtOpenProcess out: 0x{:x}", handle_out);
+    log_orange!(emu, "syscall 0x{:x}: NtOpenProcess out: 0x{:x}", WIN64_NTOPENPROCESS, handle_out);
 
     if handle_out == 0 {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
@@ -279,9 +282,10 @@ pub fn nt_terminate_process(emu: &mut Emu) {
     let process_handle = emu.regs().rcx;
     let exit_status = emu.regs().rdx;
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtTerminateProcess h: 0x{:x} status: 0x{:x}",
+        "syscall 0x{:x}: NtTerminateProcess h: 0x{:x} status: 0x{:x}",
+        WIN64_NTTERMINATEPROCESS,
         process_handle,
         exit_status
     );

@@ -52,9 +52,10 @@ pub fn nt_query_virtual_memory(emu: &mut Emu) {
     let memory_information_length = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
     let return_length_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtQueryVirtualMemory process: 0x{:x}, base: 0x{:x}, class: 0x{:x}, out: 0x{:x}, len: 0x{:x}, ret_len_ptr: 0x{:x}",
+        "syscall 0x{:x}: NtQueryVirtualMemory process: 0x{:x}, base: 0x{:x}, class: 0x{:x}, out: 0x{:x}, len: 0x{:x}, ret_len_ptr: 0x{:x}",
+        WIN64_NTQUERYVIRTUALMEMORY,
         process_handle,
         base_address,
         memory_information_class,
@@ -134,9 +135,10 @@ pub fn nt_allocate_virtual_memory(emu: &mut Emu) {
     let alloc_type = emu.maps.read_dword(rsp + 0x28).unwrap_or(0);
     let protect = emu.maps.read_dword(rsp + 0x30).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtAllocateVirtualMemory h: 0x{:x} base_ptr: 0x{:x} type: 0x{:x} prot: 0x{:x}",
+        "syscall 0x{:x}: NtAllocateVirtualMemory h: 0x{:x} base_ptr: 0x{:x} type: 0x{:x} prot: 0x{:x}",
+        WIN64_NTALLOCATEVIRTUALMEMORY,
         process_handle,
         base_ptr,
         alloc_type,
@@ -222,9 +224,10 @@ pub fn nt_free_virtual_memory(emu: &mut Emu) {
     let region_sz_ptr = emu.regs().r8;
     let free_type = emu.regs().r9 as u32;
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtFreeVirtualMemory h: 0x{:x} base_ptr: 0x{:x} free_type: 0x{:x}",
+        "syscall 0x{:x}: NtFreeVirtualMemory h: 0x{:x} base_ptr: 0x{:x} free_type: 0x{:x}",
+        WIN64_NTFREEVIRTUALMEMORY,
         process_handle,
         base_ptr,
         free_type
@@ -267,9 +270,10 @@ pub fn nt_protect_virtual_memory(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let old_protect_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtProtectVirtualMemory h: 0x{:x} base_ptr: 0x{:x} new_prot: 0x{:x}",
+        "syscall 0x{:x}: NtProtectVirtualMemory h: 0x{:x} base_ptr: 0x{:x} new_prot: 0x{:x}",
+        WIN64_NTPROTECTVIRTUALMEMORY,
         process_handle,
         base_ptr,
         new_protect
@@ -307,9 +311,10 @@ pub fn nt_read_virtual_memory(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let bytes_read_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtReadVirtualMemory h: 0x{:x} from: 0x{:x} to: 0x{:x} len: 0x{:x}",
+        "syscall 0x{:x}: NtReadVirtualMemory h: 0x{:x} from: 0x{:x} to: 0x{:x} len: 0x{:x}",
+        WIN64_NTREADVIRTUALMEMORY,
         process_handle,
         base,
         buffer,
@@ -355,9 +360,10 @@ pub fn nt_write_virtual_memory(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let bytes_written_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtWriteVirtualMemory h: 0x{:x} to: 0x{:x} from: 0x{:x} len: 0x{:x}",
+        "syscall 0x{:x}: NtWriteVirtualMemory h: 0x{:x} to: 0x{:x} from: 0x{:x} len: 0x{:x}",
+        WIN64_NTWRITEVIRTUALMEMORY,
         process_handle,
         base,
         buffer,
@@ -399,9 +405,10 @@ pub fn nt_unmap_view_of_section(emu: &mut Emu) {
     let process_handle = emu.regs().rcx;
     let base = emu.regs().rdx;
 
-    log_red!(
+    log_orange!(
         emu,
-        "NtUnmapViewOfSection h: 0x{:x} base: 0x{:x}",
+        "syscall 0x{:x}: NtUnmapViewOfSection h: 0x{:x} base: 0x{:x}",
+        WIN64_NTUNMAPVIEWOFSECTION,
         process_handle,
         base
     );
@@ -416,6 +423,10 @@ pub fn nt_unmap_view_of_section(emu: &mut Emu) {
 
 /// `NtMapViewOfSection` — minimal stub (many args on stack); returns success.
 pub fn nt_map_view_of_section(emu: &mut Emu) {
-    log_red!(emu, "NtMapViewOfSection (stub)");
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtMapViewOfSection (stub)",
+        WIN64_NTMAPVIEWOFSECTION
+    );
     emu.regs_mut().rax = STATUS_SUCCESS;
 }

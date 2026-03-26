@@ -7,6 +7,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
     let api = api.split("!").last().unwrap_or(&api);
 
+    gateway_by_name(api, emu)
+}
+
+pub fn gateway_by_name(api: &str, emu: &mut emu::Emu) -> String {
     match api {
         "__set_app_type" => __set_app_type(emu),
         "malloc" => malloc(emu),
@@ -20,11 +24,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                     );
                 }
 
-                unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
+                unimplemented!("atemmpt to call unimplemented msvcrt API {}", api);
             }
             log::warn!(
-                "calling unimplemented API 0x{:x} {} at 0x{:x}",
-                addr,
+                "calling unimplemented msvcrt API {} at 0x{:x}",
                 api,
                 emu.regs().rip
             );

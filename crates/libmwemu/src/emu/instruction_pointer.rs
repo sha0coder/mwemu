@@ -24,13 +24,20 @@ impl Emu {
                 if self.linux {
                     return false;
                 }
-                let api_name = self.pe64.as_ref().unwrap().import_addr_to_name(addr);
-                if !api_name.is_empty() {
-                    // emulate winapi
+                let import = self.pe64.as_ref().unwrap().import_addr_to_dll_and_name(addr);
+                if !import.is_empty() {
+                    let (dll, api) = import.split_once('!').unwrap_or(("", ""));
+
+                    // In SSDT mode (`emulate_winapi`), we usually execute the real mapped DLL code.
+                    // But api-set CRT imports are virtual; if they weren't bound, the IAT entry can
+                    // still point into `.idata` (RVA), which is not executable. Handle them
+                    // virtually by name instead of jumping to `addr`.
                     if self.cfg.emulate_winapi {
-                        let api_name = winapi64::kernel32::guess_api_name(self, addr);
-                        log_red!(self, "emulating {}", api_name);
-                        self.regs_mut().rip = addr;
+                        self.gateway_return = self.stack_pop64(false).unwrap_or(0);
+                        self.regs_mut().rip = self.gateway_return;
+                        winapi64::gateway_by_import(dll, api, self);
+                        self.force_break = true;
+                        self.is_api_run = true;
                         return true;
                     }
 

@@ -54,3 +54,26 @@ macro_rules! log_red {
         }
     };
 }
+
+#[macro_export]
+macro_rules! log_orange {
+    ($emu:expr, $($arg:tt)*) => {
+        if $emu.cfg.nocolors {
+            log::trace!(
+                "** {}:{:x} {}",
+                $emu.pos,
+                $emu.regs().rip,
+                format!($($arg)*)
+            );
+        } else {
+            log::trace!(
+                "{}** {}:{:x} {}{}",
+                $emu.colors.orange,
+                $emu.pos,
+                $emu.regs().rip,
+                format!($($arg)*),
+                $emu.colors.nc
+            );
+        }
+    };
+}
