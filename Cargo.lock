@@ -1036,9 +1036,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38031378037bf1dcac3c8798e364a6c7fc2a836858f4249278d54260dd637b77"
+version = "0.24.1"
 dependencies = [
  "ahash",
  "atty",
@@ -1050,9 +1048,11 @@ dependencies = [
  "csv",
  "ctrlc",
  "dunce",
+ "env_logger",
  "fast_log",
  "gdbstub",
  "gdbstub_arch",
+ "hex",
  "iced-x86",
  "lazy_static",
  "log",
@@ -1081,6 +1081,8 @@ dependencies = [
 [[package]]
 name = "libmwemu"
 version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "281cba815c62e654b9b86094e9e1695929a2add6c1905d87308640fe2a990db0"
 dependencies = [
  "ahash",
  "atty",
@@ -1092,11 +1094,9 @@ dependencies = [
  "csv",
  "ctrlc",
  "dunce",
- "env_logger",
  "fast_log",
  "gdbstub",
  "gdbstub_arch",
- "hex",
  "iced-x86",
  "lazy_static",
  "log",
@@ -1467,7 +1467,7 @@ version = "0.11.0"
 dependencies = [
  "env_logger",
  "iced-x86",
- "libmwemu 0.24.0",
+ "libmwemu 0.24.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log",
  "pyo3",
 ]

@@ -18,7 +18,7 @@ default = ["extension-module"]
 
 [dependencies]
 env_logger = "0.11.6"
-libmwemu = "=0.24.0"
+libmwemu = "=0.24.1"
 #libmwemu = { path = "../libmwemu" }
 log = "0.4.22"
 iced-x86 = "1.21.0"
