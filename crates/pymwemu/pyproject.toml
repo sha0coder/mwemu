@@ -4,8 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "pymwemu"
-version = "0.11.0"
+version = "0.11.1"
 readme = "README.md"
+description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Rust",

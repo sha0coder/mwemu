@@ -1,8 +1,11 @@
 [package]
 name = "pymwemu"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
+homepage = "http://mwemu.github.io/#pymwemu"
+repository = "https://github.com/sha0coder/mwemu"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
