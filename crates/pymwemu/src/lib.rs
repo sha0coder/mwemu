@@ -177,6 +177,11 @@ impl Emu {
         self.emu.cfg.loops = false;
     }
 
+    /// Allow emulating zero-filled code blocks (disables the empty block detector).
+    fn allow_empty_code_blocks(&mut self) {
+        self.emu.cfg.allow_empty_code_blocks = true;
+    }
+
     /// enable tracing a string on a specified memory address.
     fn enable_trace_string(&mut self, addr: u64) {
         self.emu.cfg.trace_string = true;
@@ -886,7 +891,7 @@ fn init64() -> PyResult<Emu> {
 
 #[pymodule]
 fn pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+    env_logger::Builder::from_env(Env::default().default_filter_or("trace"))
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
     log::info!("Initialized logging");

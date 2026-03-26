@@ -74,6 +74,10 @@ pub struct Config {
     pub heap_alloc_min_size: u64,
     // HeapFree soft-free: if true, HeapFree marks memory as freed but doesn't deallocate
     pub heap_free_soft: bool,
+
+    /// If true, disable the "empty code block" detector in the main `run()` loop.
+    /// Some samples intentionally execute/scan zero-filled regions.
+    pub allow_empty_code_blocks: bool,
 }
 
 impl Default for Config {
@@ -141,6 +145,7 @@ impl Config {
             short_circuit_sleep: false,
             heap_alloc_min_size: 0,
             heap_free_soft: false,
+            allow_empty_code_blocks: false,
         }
     }
 

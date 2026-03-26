@@ -646,7 +646,7 @@ impl Emu {
                             break;
                         }
                     }
-                    if zeros > 100 {
+                    if !self.cfg.allow_empty_code_blocks && zeros > 100 {
                         if self.cfg.verbose > 0 {
                             log::trace!("{} empty code block at 0x{:x}", self.pos, rip);
                         }
