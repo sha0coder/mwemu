@@ -1,9 +1,10 @@
 [package]
 name = "mwemu-test"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 
 [dependencies]
-libmwemu = { path = "../libmwemu" }
-iced-x86 = "1.21.0"
-rayon = "1.10"
+libmwemu.workspace = true
+iced-x86.workspace = true
+yaxpeax-arm.workspace = true
+rayon.workspace = true
