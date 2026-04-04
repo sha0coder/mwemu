@@ -33,6 +33,7 @@ pub mod disassemble;
 mod display;
 mod exception_handlers;
 mod execution;
+mod execution_aarch64;
 mod flags;
 mod fls;
 mod fpu;
@@ -111,4 +112,6 @@ pub struct Emu {
     pub fault_count: u32,
     pub handle_management: HandleManagement,
     pub library_loaded: bool,  // Flag for GDB to detect library load events
+    // AArch64 state (only populated when arch is Aarch64)
+    pub aarch64_instruction: Option<yaxpeax_arm::armv8::a64::Instruction>,
 }

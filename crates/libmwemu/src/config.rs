@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::arch::Arch;
 use crate::{constants, definitions::Definition};
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +33,7 @@ pub struct Config {
     pub dump_on_exit: bool,
     pub dump_filename: Option<String>,
     pub code_base_addr: u64,
-    pub is_64bits: bool, // 64bits mode
+    pub arch: Arch, // CPU architecture (X86, X86_64, Aarch64)
     pub stack_trace: bool,
     pub test_mode: bool,
     pub console_enabled: bool,
@@ -116,7 +117,7 @@ impl Config {
             dump_on_exit: false, // TODO: a way to make it false/set it through cli + lib
             dump_filename: Some("dumps/emu.bin".to_string()), // TODO: a way to set it through cli + lib
             code_base_addr: constants::CFG_DEFAULT_BASE,
-            is_64bits: false,
+            arch: Arch::X86,
             stack_trace: false,
             test_mode: false,
             console_enabled: false,
@@ -147,6 +148,18 @@ impl Config {
             heap_free_soft: false,
             allow_empty_code_blocks: false,
         }
+    }
+
+    pub fn is_x64(&self) -> bool {
+        self.arch.is_x64()
+    }
+
+    pub fn is_aarch64(&self) -> bool {
+        self.arch.is_aarch64()
+    }
+
+    pub fn is_x86(&self) -> bool {
+        self.arch.is_x86()
     }
 
     pub fn get_maps_folder(&self, filename: &str) -> String {

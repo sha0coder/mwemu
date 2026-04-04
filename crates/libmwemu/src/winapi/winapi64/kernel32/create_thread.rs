@@ -8,7 +8,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     log::trace!("=== CreateThread Debug Info ===");
     log::trace!("Current RIP: 0x{:x}", emu.regs().rip);
     log::trace!("Current RSP: 0x{:x}", emu.regs().rsp);
-    log::trace!("Is 64-bit: {}", emu.cfg.is_64bits);
+    log::trace!("Is 64-bit: {}", emu.cfg.is_x64());
 
     // Log all register values
     log::trace!("RCX (lpThreadAttributes): 0x{:x}", emu.regs().rcx);
@@ -104,7 +104,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     let param = emu.regs().r9;
 
     let new_thread_id = 0x1000 + emu.threads.len();
-    let mut new_thread = ThreadContext::new(new_thread_id as u64);
+    let mut new_thread = ThreadContext::new(new_thread_id as u64, emu.cfg.arch);
 
     // Initialize thread context with entry point and parameter
     new_thread.regs.rip = code;

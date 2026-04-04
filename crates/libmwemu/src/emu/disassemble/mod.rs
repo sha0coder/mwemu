@@ -228,7 +228,7 @@ impl Emu {
         let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
         let block = code.read_from(addr);
 
-        let bits: u32 = if self.cfg.is_64bits { 64 } else { 32 };
+        let bits: u32 = if self.cfg.is_x64() { 64 } else { 32 };
         let mut decoder = Decoder::with_ip(bits, block, addr, DecoderOptions::NONE);
         let mut output = String::new();
         let mut instruction = Instruction::default();
@@ -237,7 +237,7 @@ impl Emu {
             decoder.decode_out(&mut instruction);
             output.clear();
             self.formatter.format(&instruction, &mut output);
-            if self.cfg.is_64bits {
+            if self.cfg.is_x64() {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip(), output));
                 //log::trace!("0x{:x}: {}", instruction.ip(), output);
             } else {

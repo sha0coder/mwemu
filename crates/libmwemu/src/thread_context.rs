@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{eflags::Eflags, flags::Flags, fpu::FPU, regs64::Regs64};
+use crate::{arch::Arch, eflags::Eflags, flags::Flags, fpu::FPU, regs64::Regs64, regs_aarch64::RegsAarch64};
 
 #[derive(Clone)]
 pub struct ThreadContext {
@@ -26,10 +26,12 @@ pub struct ThreadContext {
     pub fs: BTreeMap<u64, u64>,
     pub call_stack: Vec<(u64, u64)>,
     pub handle: u64,
+    // AArch64 state (None when arch is x86/x86_64)
+    pub regs_aarch64: Option<Box<RegsAarch64>>,
 }
 
 impl ThreadContext {
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: u64, arch: Arch) -> Self {
         ThreadContext {
             id,
             suspended: false,
@@ -53,6 +55,7 @@ impl ThreadContext {
             fs: BTreeMap::new(),
             call_stack: Vec::with_capacity(10000),
             handle: 0,
+            regs_aarch64: if arch.is_aarch64() { Some(Box::new(RegsAarch64::new())) } else { None },
         }
     }
 }

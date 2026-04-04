@@ -478,24 +478,31 @@ impl Elf64 {
         libs
     }
 
-    pub fn is_elf64(filename: &str) -> bool {
-        //log::trace!("checking if elf64: {}", filename);
-        let mut fd = File::open(filename).expect("file not found");
-        let mut raw = vec![0u8; 5];
-        let r = fd.read_exact(&mut raw);
-        if r.is_err() {
+    pub fn is_elf64_x64(filename: &str) -> bool {
+        Self::is_elf64_with_machine(filename, 0x3E) // EM_X86_64
+    }
+
+    pub fn is_elf64_aarch64(filename: &str) -> bool {
+        Self::is_elf64_with_machine(filename, 0xB7) // EM_AARCH64
+    }
+
+    fn is_elf64_with_machine(filename: &str, expected_machine: u16) -> bool {
+        let mut fd = match File::open(filename) {
+            Ok(f) => f,
+            Err(_) => return false,
+        };
+        // Read enough for ELF magic (5 bytes) + e_machine at offset 18 (20 bytes total)
+        let mut raw = vec![0u8; 20];
+        if fd.read_exact(&mut raw).is_err() {
             return false;
         }
 
-        if raw[0] == 0x7f
-            && raw[1] == b'E'
-            && raw[2] == b'L'
-            && raw[3] == b'F'
-            && raw[4] == ELFCLASS64
-        {
-            return true;
+        if raw[0] != 0x7f || raw[1] != b'E' || raw[2] != b'L' || raw[3] != b'F' || raw[4] != ELFCLASS64 {
+            return false;
         }
-        false
+
+        let e_machine = u16::from_le_bytes([raw[18], raw[19]]);
+        e_machine == expected_machine
     }
 }
 

@@ -4,6 +4,7 @@
 #![allow(unused_must_use)]
 #![allow(clippy::assertions_on_constants)]
 
+pub mod arch;
 pub mod banzai;
 pub mod breakpoint;
 pub mod colors;
@@ -34,6 +35,7 @@ pub mod ntapi;
 pub mod pe;
 pub mod peb;
 pub mod regs64;
+pub mod regs_aarch64;
 pub mod script;
 pub mod serialization;
 pub mod structures;
@@ -49,25 +51,33 @@ pub use utils::color_enabled;
 #[cfg(test)]
 mod tests;
 mod utils;
+use arch::Arch;
 use config::Config;
 use emu::Emu;
 
 pub fn emu64() -> Emu {
     let mut emu = Emu::new();
     let mut cfg = Config::new();
-    cfg.is_64bits = true;
+    cfg.arch = Arch::X86_64;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
     emu
 }
 
 pub fn emu32() -> Emu {
     let mut emu = Emu::new();
     let mut cfg = Config::new();
-    cfg.is_64bits = false;
+    cfg.arch = Arch::X86;
     emu.set_config(cfg);
     emu.disable_ctrlc();
-    //tracing::init_tracing("/tmp/mwemu-tracing.bin");
+    emu
+}
+
+pub fn emu_aarch64() -> Emu {
+    let mut emu = Emu::new();
+    let mut cfg = Config::new();
+    cfg.arch = Arch::Aarch64;
+    emu.set_config(cfg);
+    emu.disable_ctrlc();
     emu
 }

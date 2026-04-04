@@ -8,7 +8,7 @@ pub fn emulator_initialization() {
 
     // Test 64-bit emulator
     let mut emu64 = emu64();
-    assert!(emu64.cfg.is_64bits);
+    assert!(emu64.cfg.is_x64());
     assert_eq!(emu64.pos, 0);
     assert!(!emu64.force_break);
     assert!(!emu64.force_reload);
@@ -17,7 +17,7 @@ pub fn emulator_initialization() {
 
     // Test 32-bit emulator
     let mut emu32 = emu32();
-    assert!(!emu32.cfg.is_64bits);
+    assert!(!emu32.cfg.is_x64());
     assert_eq!(emu32.pos, 0);
 
     // Don't call init to avoid DLL loading issues

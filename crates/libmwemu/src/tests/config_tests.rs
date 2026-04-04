@@ -1,3 +1,4 @@
+use crate::arch::Arch;
 use crate::config::Config;
 
 #[test]
@@ -5,24 +6,24 @@ fn test_config_default_values() {
     let cfg = Config::new();
 
     // Test default values
-    assert!(!cfg.is_64bits, "Default should be 32-bit mode");
+    assert!(!cfg.is_x64(), "Default should be 32-bit mode");
     assert_eq!(cfg.verbose, 0, "Default verbose should be 0");
 }
 
 #[test]
 fn test_config_64bit_mode() {
     let mut cfg = Config::new();
-    cfg.is_64bits = true;
+    cfg.arch = Arch::X86_64;
 
-    assert!(cfg.is_64bits, "Should be in 64-bit mode");
+    assert!(cfg.is_x64(), "Should be in 64-bit mode");
 }
 
 #[test]
 fn test_config_32bit_mode() {
     let mut cfg = Config::new();
-    cfg.is_64bits = false;
+    cfg.arch = Arch::X86;
 
-    assert!(!cfg.is_64bits, "Should be in 32-bit mode");
+    assert!(!cfg.is_x64(), "Should be in 32-bit mode");
 }
 
 #[test]
@@ -85,13 +86,13 @@ fn test_config_multiple_settings() {
     let mut cfg = Config::new();
 
     // Set multiple configuration options
-    cfg.is_64bits = true;
+    cfg.arch = Arch::X86_64;
     cfg.verbose = 2;
     cfg.console_enabled = false;
     cfg.enable_threading = true;
 
     // Verify all are set correctly
-    assert!(cfg.is_64bits);
+    assert!(cfg.is_x64());
     assert_eq!(cfg.verbose, 2);
     assert!(!cfg.console_enabled);
     assert!(cfg.enable_threading);
@@ -101,14 +102,14 @@ fn test_config_multiple_settings() {
 fn test_emu64_default_config() {
     let emu = crate::emu64();
 
-    assert!(emu.cfg.is_64bits, "emu64() should create 64-bit emulator");
+    assert!(emu.cfg.is_x64(), "emu64() should create 64-bit emulator");
 }
 
 #[test]
 fn test_emu32_default_config() {
     let emu = crate::emu32();
 
-    assert!(!emu.cfg.is_64bits, "emu32() should create 32-bit emulator");
+    assert!(!emu.cfg.is_x64(), "emu32() should create 32-bit emulator");
 }
 
 #[test]

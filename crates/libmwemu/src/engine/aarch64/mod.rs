@@ -1,0 +1,94 @@
+use crate::emu::Emu;
+use yaxpeax_arm::armv8::a64::{Instruction, Opcode};
+
+pub mod helpers;
+pub mod instructions;
+
+/// Emulate a single decoded AArch64 instruction. Returns true on success.
+pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
+    match ins.opcode {
+        // --- Data Processing (register/immediate) ---
+        Opcode::ADD => instructions::add::execute(emu, ins, false),
+        Opcode::ADDS => instructions::add::execute(emu, ins, true),
+        Opcode::SUB => instructions::sub::execute(emu, ins, false),
+        Opcode::SUBS => instructions::sub::execute(emu, ins, true),
+        Opcode::AND => instructions::and::execute(emu, ins, false),
+        Opcode::ANDS => instructions::and::execute(emu, ins, true),
+        Opcode::ORR => instructions::orr::execute(emu, ins),
+        Opcode::EOR => instructions::eor::execute(emu, ins),
+        Opcode::ORN => instructions::orn::execute(emu, ins),
+        Opcode::BIC => instructions::bic::execute(emu, ins),
+        Opcode::MOVZ => instructions::movz::execute(emu, ins),
+        Opcode::MOVK => instructions::movk::execute(emu, ins),
+        Opcode::MOVN => instructions::movn::execute(emu, ins),
+        Opcode::MADD => instructions::madd::execute(emu, ins),
+        Opcode::MSUB => instructions::msub::execute(emu, ins),
+        Opcode::SDIV => instructions::sdiv::execute(emu, ins),
+        Opcode::UDIV => instructions::udiv::execute(emu, ins),
+        Opcode::ADR => instructions::adr::execute(emu, ins),
+        Opcode::ADRP => instructions::adrp::execute(emu, ins),
+        Opcode::CLZ => instructions::clz::execute(emu, ins),
+        Opcode::LSLV => instructions::shift::execute(emu, ins, helpers::ShiftOp::Lsl),
+        Opcode::LSRV => instructions::shift::execute(emu, ins, helpers::ShiftOp::Lsr),
+        Opcode::ASRV => instructions::shift::execute(emu, ins, helpers::ShiftOp::Asr),
+        Opcode::RORV => instructions::shift::execute(emu, ins, helpers::ShiftOp::Ror),
+        Opcode::EXTR => instructions::extr::execute(emu, ins),
+        Opcode::RBIT => instructions::rbit::execute(emu, ins),
+        Opcode::REV => instructions::rev::execute(emu, ins),
+        Opcode::REV16 => instructions::rev16::execute(emu, ins),
+        Opcode::REV32 => instructions::rev32::execute(emu, ins),
+
+        // --- Loads ---
+        Opcode::LDR => instructions::ldr::execute(emu, ins),
+        Opcode::LDRB => instructions::ldrb::execute(emu, ins),
+        Opcode::LDRH => instructions::ldrh::execute(emu, ins),
+        Opcode::LDRSB => instructions::ldrsb::execute(emu, ins),
+        Opcode::LDRSH => instructions::ldrsh::execute(emu, ins),
+        Opcode::LDRSW => instructions::ldrsw::execute(emu, ins),
+        Opcode::LDP => instructions::ldp::execute(emu, ins),
+        Opcode::LDXR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
+        Opcode::LDAR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
+
+        // --- Stores ---
+        Opcode::STR => instructions::str::execute(emu, ins),
+        Opcode::STRB => instructions::strb::execute(emu, ins),
+        Opcode::STRH => instructions::strh::execute(emu, ins),
+        Opcode::STP => instructions::stp::execute(emu, ins),
+        Opcode::STXR => instructions::stxr::execute(emu, ins),
+        Opcode::STLR => instructions::str::execute(emu, ins),  // treat as STR for now
+
+        // --- Branches ---
+        Opcode::B => instructions::b::execute(emu, ins),
+        Opcode::BL => instructions::bl::execute(emu, ins),
+        Opcode::BR => instructions::br::execute(emu, ins),
+        Opcode::BLR => instructions::blr::execute(emu, ins),
+        Opcode::RET => instructions::ret::execute(emu, ins),
+        Opcode::CBZ => instructions::cbz::execute(emu, ins, true),
+        Opcode::CBNZ => instructions::cbz::execute(emu, ins, false),
+        Opcode::TBZ => instructions::tbz::execute(emu, ins, true),
+        Opcode::TBNZ => instructions::tbz::execute(emu, ins, false),
+        Opcode::Bcc(cond) => instructions::bcc::execute(emu, ins, cond),
+
+        // --- Conditional select ---
+        Opcode::CSEL => instructions::csel::execute(emu, ins),
+        Opcode::CSINC => instructions::csinc::execute(emu, ins),
+        Opcode::CSINV => instructions::csinv::execute(emu, ins),
+        Opcode::CSNEG => instructions::csneg::execute(emu, ins),
+
+        // --- System ---
+        Opcode::SVC => instructions::svc::execute(emu, ins),
+        Opcode::MRS => instructions::mrs::execute(emu, ins),
+        Opcode::MSR => instructions::msr::execute(emu, ins),
+        Opcode::HINT => true, // NOP is encoded as HINT
+        Opcode::DMB(_) | Opcode::DSB(_) | Opcode::ISB => true, // barriers are no-ops in emulation
+        Opcode::CLREX => true,
+
+        _ => {
+            log::warn!(
+                "unimplemented aarch64 instruction: {} at 0x{:x}",
+                ins, emu.regs_aarch64().pc
+            );
+            false
+        }
+    }
+}

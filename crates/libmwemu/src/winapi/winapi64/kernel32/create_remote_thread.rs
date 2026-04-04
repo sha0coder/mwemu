@@ -28,7 +28,7 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
         addr
     );
     let new_thread_id = 0x1000 + emu.threads.len();
-    let mut new_thread = ThreadContext::new(new_thread_id as u64);
+    let mut new_thread = ThreadContext::new(new_thread_id as u64, emu.cfg.arch);
 
     // Initialize thread context with entry point and parameter
     new_thread.regs.rip = addr;

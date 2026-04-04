@@ -19,7 +19,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let ax = emu.regs().get_ax();
     emu.flags_mut().sub16(ax, value0);
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         if emu.flags().f_df {
             emu.regs_mut().rdi -= 2;
         } else {

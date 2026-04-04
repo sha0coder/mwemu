@@ -141,7 +141,7 @@ impl Script {
                 "q" => std::process::exit(1),
                 "r" => {
                     if args.len() == 1 {
-                        if emu.cfg.is_64bits {
+                        if emu.cfg.is_x64() {
                             emu.featured_regs64();
                         } else {
                             emu.featured_regs32();
@@ -340,14 +340,14 @@ impl Script {
                     log::trace!("{}", emu.colors.clear_screen);
                 }
                 "s" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
@@ -472,7 +472,7 @@ impl Script {
                         .maps
                         .get_mem_by_addr(addr)
                         .expect("address not found on any map");
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
@@ -551,7 +551,7 @@ impl Script {
 
                     let addr = self.resolve(args[1], i, emu);
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
                     } else {
                         log::trace!("0x{:x}: '{}'", addr as u32, emu.maps.read_string(addr));
@@ -566,7 +566,7 @@ impl Script {
 
                     let addr = self.resolve(args[1], i, emu);
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
                     } else {
                         log::trace!("0x{:x}: '{}'", addr as u32, emu.maps.read_wide_string(addr));
@@ -641,7 +641,7 @@ impl Script {
 
                     let value = self.resolve(args[1], i, emu);
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.stack_push64(value);
                     } else {
                         emu.stack_push32((value & 0xffffffff) as u32);
@@ -654,7 +654,7 @@ impl Script {
                         return;
                     }
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         let value = emu.stack_pop64(false).expect("pop failed");
                         log::trace!("poped value 0x{:x}", value);
                         self.result = value;
@@ -699,7 +699,7 @@ impl Script {
                     };
 
                     for addr in result.iter() {
-                        if emu.cfg.is_64bits {
+                        if emu.cfg.is_x64() {
                             log::trace!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
                         } else {
                             log::trace!(
@@ -812,7 +812,7 @@ impl Script {
                 }
                 "ldr" => {
                     // ldr
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         peb64::show_linked_modules(emu);
                     } else {
                         peb32::show_linked_modules(emu);
@@ -828,7 +828,7 @@ impl Script {
                     let addr: u64;
                     let lib: String;
                     let name: String;
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         (addr, lib, name) = winapi64::kernel32::search_api_name(emu, args[1]);
                     } else {
                         (addr, lib, name) = winapi32::kernel32::search_api_name(emu, args[1]);
@@ -851,7 +851,7 @@ impl Script {
                     let addr: u64;
                     let lib: String;
                     let name: String;
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         (addr, lib, name) = winapi64::kernel32::search_api_name(emu, args[1]);
                     } else {
                         (addr, lib, name) = winapi32::kernel32::search_api_name(emu, args[1]);
@@ -869,7 +869,7 @@ impl Script {
                         log::trace!("error in line {}, module expected", i);
                         return;
                     }
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         winapi64::kernel32::dump_module_iat(emu, args[1]);
                     } else {
                         winapi32::kernel32::dump_module_iat(emu, args[1]);
@@ -996,7 +996,7 @@ impl Script {
                     // push arguments
                     for j in (2..args.len()).rev() {
                         let v = self.resolve(args[j], i, emu);
-                        if emu.cfg.is_64bits {
+                        if emu.cfg.is_x64() {
                             emu.stack_push64(v);
                         } else {
                             emu.stack_push32(v as u32);
@@ -1005,7 +1005,7 @@ impl Script {
 
                     // push return address
                     let retaddr: u64;
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         retaddr = emu.regs().rip;
                         emu.stack_push64(emu.regs().rip);
                     } else {
@@ -1013,7 +1013,7 @@ impl Script {
                         emu.stack_push32(emu.regs().get_eip() as u32);
                     }
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.set_rip(addr, false);
                     } else {
                         emu.set_eip(addr, false);

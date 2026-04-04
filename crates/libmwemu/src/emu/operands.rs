@@ -47,14 +47,14 @@ impl Emu {
                        mem_seg, mem_base, mem_index, do_derref);
         }*/
 
-        let mem_displace = if self.cfg.is_64bits {
+        let mem_displace = if self.cfg.is_x64() {
             ins.memory_displacement64()
         } else {
             ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
         };
 
         /*if self.cfg.verbose >= 3 {
-            log::debug!("  mem_displace=0x{:x} (is_64bits={})", mem_displace, self.cfg.is_64bits);
+            log::debug!("  mem_displace=0x{:x} (is_64bits={})", mem_displace, self.cfg.is_x64());
         }*/
 
         let temp_displace = if mem_index == Register::None {
@@ -86,7 +86,7 @@ impl Emu {
             result
         };
 
-        let displace_result = if !self.cfg.is_64bits {
+        let displace_result = if !self.cfg.is_x64() {
             let masked = displace & 0xffffffff;
             /*if self.cfg.verbose >= 3 {
                 log::debug!("  32-bit mode: displace_result=0x{:x} (masked from 0x{:x})", masked, displace);
@@ -135,7 +135,7 @@ impl Emu {
                     if self.cfg.verbose >= 1 {
                         log::trace!("{} Reading ISWOW64 is 32bits on a 64bits system?", self.pos);
                     }
-                    if self.cfg.is_64bits {
+                    if self.cfg.is_x64() {
                         0
                     } else {
                         1
@@ -278,7 +278,7 @@ impl Emu {
                     if self.cfg.verbose >= 1 {
                         log::trace!("Reading SEH 0x{:x}", self.seh());
                     }
-                    if self.cfg.is_64bits {
+                    if self.cfg.is_x64() {
                         self.maps.get_mem("peb").get_base()
                     } else {
                         let teb = self.maps.get_mem("teb");
@@ -293,7 +293,7 @@ impl Emu {
                         None => {
                             // This should be sized based on the number of modules with .tls sections
                             // For now, allocate space for a few module entries
-                            let size = if self.cfg.is_64bits { 16 * 8 } else { 16 * 4 };
+                            let size = if self.cfg.is_x64() { 16 * 8 } else { 16 * 4 };
                             let tls_array =
                                 self.alloc("static_tls_array", size, Permission::READ_WRITE);
 
@@ -477,7 +477,7 @@ impl Emu {
             OpKind::Memory => {
                 let mem_base = ins.memory_base();
                 let mem_index = ins.memory_index();
-                let mem_displace = if self.cfg.is_64bits {
+                let mem_displace = if self.cfg.is_x64() {
                     ins.memory_displacement64()
                 } else {
                     ins.memory_displacement32() as i32 as u64 // we need this for signed extension from 32bit to 64bi
@@ -549,7 +549,7 @@ impl Emu {
                     result
                 };
 
-                let displace_result = if !self.cfg.is_64bits {
+                let displace_result = if !self.cfg.is_x64() {
                     let masked = displace & 0xffffffff;
                     /*if self.cfg.verbose >= 3 {
                         log::debug!("  32-bit mode: displace_result=0x{:x} (masked from 0x{:x})", masked, displace);

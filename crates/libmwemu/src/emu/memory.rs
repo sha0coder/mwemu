@@ -59,7 +59,7 @@ impl Emu {
                     log::trace!("CHECKING IF ITS 32bits (ISWOW64)");
                 }
 
-                if self.cfg.is_64bits {
+                if self.cfg.is_x64() {
                     return 0;
                 }
 

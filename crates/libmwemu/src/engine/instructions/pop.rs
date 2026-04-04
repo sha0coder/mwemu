@@ -3,7 +3,7 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    let value: u64 = if emu.cfg.is_64bits {
+    let value: u64 = if emu.cfg.is_x64() {
         match emu.stack_pop64(true) {
             Some(v) => v,
             None => return false,

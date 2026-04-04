@@ -12,7 +12,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     }
     emu.pos += 1;
 
-    assert!(emu.cfg.is_64bits);
+    assert!(emu.cfg.is_x64());
 
     let val = emu
         .maps

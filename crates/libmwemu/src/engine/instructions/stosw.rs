@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("LightCyan"), ins);
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         emu.maps
             .write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
 

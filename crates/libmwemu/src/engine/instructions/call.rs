@@ -16,7 +16,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     if emu.cfg.trace_calls {
-        let callee_sym = if emu.cfg.is_64bits {
+        let callee_sym = if emu.cfg.is_x64() {
             winapi64::kernel32::guess_api_name(emu, addr)
         } else {
             winapi32::kernel32::guess_api_name(emu, addr as u32)
@@ -51,7 +51,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let rip = emu.regs().rip;
     emu.call_stack_mut().push((rip, addr));
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         if !emu.stack_push64(emu.regs().rip + instruction_sz as u64) {
             return false;
         }

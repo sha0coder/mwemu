@@ -102,7 +102,7 @@ impl Emu {
             heap_addr: 0,
             rng: RefCell::new(rand::rng()),
             // Initialize with main thread as thread 0
-            threads: vec![ThreadContext::new(0x1000)],
+            threads: vec![ThreadContext::new(0x1000, crate::arch::Arch::X86)],
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
             instruction_cache: InstructionCache::new(),
@@ -117,6 +117,7 @@ impl Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(),
             library_loaded: false,
+            aarch64_instruction: None,
         }
     }
 
@@ -203,6 +204,29 @@ impl Emu {
     }
 
     //TODO: tests only in tests.rs
+    pub fn init_stack_aarch64(&mut self) {
+        let stack_size: u64 = 0x100000;
+
+        if self.cfg.stack_addr == 0 {
+            self.cfg.stack_addr = 0x22a000;
+        }
+
+        let sp = self.cfg.stack_addr + stack_size;
+
+        if self.maps.get_map_by_name("stack").is_none() {
+            self.maps
+                .create_map(
+                    "stack",
+                    self.cfg.stack_addr,
+                    stack_size + 0x2000,
+                    Permission::READ_WRITE,
+                )
+                .expect("cannot create stack map");
+        }
+
+        self.regs_aarch64_mut().sp = sp;
+    }
+
     pub fn init_stack64_tests(&mut self) {
         self.regs_mut().rsp = 0x000000000014F4B0;
         self.regs_mut().rbp = 0x0000000000000000;
@@ -279,20 +303,20 @@ impl Emu {
         //self.regs().rand();
 
         self.regs_mut().rip = self.cfg.entry_point;
-        if self.cfg.is_64bits {
-            self.maps.is_64bits = true;
+        if self.cfg.is_x64() {
+            self.maps.is_64bits = self.cfg.arch.is_64bits();
             self.init_win32_mem64();
             self.init_stack64();
         } else {
             // 32bits
-            self.maps.is_64bits = false;
+            self.maps.is_64bits = self.cfg.arch.is_64bits();
             self.regs_mut().sanitize32();
             self.init_win32_mem32();
             self.init_stack32();
         }
 
         // loading banzai on 32bits
-        if !self.cfg.is_64bits {
+        if !self.cfg.is_x64() {
             let mut rdr = ReaderBuilder::new()
                 .from_path(format!("{}/banzai.csv", self.cfg.maps_folder))
                 .expect("banzai.csv not found on maps folder, please download last mwemu maps");
@@ -312,18 +336,36 @@ impl Emu {
     /// The minimum initializations necessary to emualte asm with no OS simulation.
     pub fn init_cpu(&mut self) {
         self.pos = 0;
+        self.maps.is_64bits = self.cfg.arch.is_64bits();
 
-        if self.cfg.is_64bits {
-            self.maps.is_64bits = true;
+        // Ensure thread context has aarch64 regs if needed
+        if self.cfg.arch.is_aarch64() && self.threads[self.current_thread_id].regs_aarch64.is_none() {
+            self.threads[self.current_thread_id].regs_aarch64 =
+                Some(Box::new(crate::regs_aarch64::RegsAarch64::new()));
+        }
+
+        if self.cfg.arch.is_aarch64() {
+            self.init_stack_aarch64();
+        } else if self.cfg.is_x64() {
             self.init_stack64();
         } else {
-            self.maps.is_64bits = false;
             self.regs_mut().sanitize32();
             self.init_stack32()
         }
     }
 
-    /// Initialize linux simulation, it's called from load_code() if the sample is an ELF.
+    /// Initialize linux aarch64 simulation for ELF loading.
+    pub fn init_linux64_aarch64(&mut self) {
+        // Ensure aarch64 regs exist
+        if self.threads[self.current_thread_id].regs_aarch64.is_none() {
+            self.threads[self.current_thread_id].regs_aarch64 =
+                Some(Box::new(crate::regs_aarch64::RegsAarch64::new()));
+        }
+
+        self.init_stack_aarch64();
+    }
+
+    /// Initialize linux x86_64 simulation, it's called from load_code() if the sample is an ELF.
     pub fn init_linux64(&mut self, dyn_link: bool) {
         //self.regs_mut().clear::<64>();
         self.flags_mut().clear();
@@ -408,7 +450,7 @@ impl Emu {
     pub fn init_win32_mem32(&mut self) {
         log::trace!("loading memory maps");
 
-        self.maps.is_64bits = false;
+        self.maps.is_64bits = self.cfg.arch.is_64bits();
 
         let orig_path = std::env::current_dir().unwrap();
         std::env::set_current_dir(self.cfg.maps_folder.clone());
@@ -511,7 +553,7 @@ impl Emu {
     /// This is called from init(), this setup the 64bits windows memory simulation.
     pub fn init_win32_mem64(&mut self) {
         log::trace!("loading memory maps");
-        self.maps.is_64bits = true;
+        self.maps.is_64bits = self.cfg.arch.is_64bits();
 
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);

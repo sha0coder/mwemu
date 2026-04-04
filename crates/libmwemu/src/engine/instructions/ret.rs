@@ -5,7 +5,7 @@ use crate::{color, exception};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    let ret_addr: u64 = if emu.cfg.is_64bits {
+    let ret_addr: u64 = if emu.cfg.is_x64() {
         match emu.stack_pop64(false) {
             Some(v) => v,
             None => return false,
@@ -18,7 +18,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     if emu.cfg.trace_calls {
-        let dest_sym = if emu.cfg.is_64bits {
+        let dest_sym = if emu.cfg.is_x64() {
             winapi64::kernel32::guess_api_name(emu, ret_addr)
         } else {
             winapi32::kernel32::guess_api_name(emu, ret_addr as u32)
@@ -50,7 +50,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             .expect("weird crash on ret");
         // apply stack compensation of ret operand
 
-        if emu.cfg.is_64bits {
+        if emu.cfg.is_x64() {
             if arg % 8 != 0 {
                 log::trace!("weird ret argument!");
                 return false;
@@ -81,7 +81,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         return true;
     }
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         return emu.set_rip(ret_addr, false);
     } else {
         return emu.set_eip(ret_addr, false);
