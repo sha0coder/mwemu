@@ -2,22 +2,22 @@
 name = "mwemu"
 version = "0.8.1"
 authors = ["sha0coder"]
-edition = "2018"
-rust-version = "1.80.1"
-license = "MIT"
-description = "x86 32/64bits and system internals emulator, for securely emulating malware and other stuff."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description.workspace = true
 documentation = "https://docs.rs/libmwemu"
-repository = "https://github.com/sha0coder/mwemu"
+repository.workspace = true
 
 [dependencies]
-clap = "2.33.3"
-log = "0.4.22"
+clap.workspace = true
+log.workspace = true
 #libmwemu = "0.23.3"
-libmwemu = { path = "../libmwemu" }
-fast_log = { version = "1.7" }
+libmwemu.workspace = true
+fast_log.workspace = true
 
 [dev-dependencies]
-env_logger = "0.11.6"
+env_logger.workspace = true
 
 [features]
 # log_file = []
