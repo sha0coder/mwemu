@@ -15,7 +15,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         None => return false,
     };
 
-    let frameTmp = if emu.cfg.is_64bits {
+    let frameTmp = if emu.cfg.is_x64() {
         emu.stack_push64(emu.regs().rbp);
         emu.regs().rsp
     } else {
@@ -25,7 +25,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if nestingLvl > 1 {
         for i in 1..nestingLvl {
-            if emu.cfg.is_64bits {
+            if emu.cfg.is_x64() {
                 emu.regs_mut().rbp -= 8;
                 emu.stack_push64(emu.regs().rbp);
             } else {
@@ -34,13 +34,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
                 emu.stack_push32(emu.regs().get_ebp() as u32);
             }
         }
-    } else if emu.cfg.is_64bits {
+    } else if emu.cfg.is_x64() {
         emu.stack_push64(frameTmp);
     } else {
         emu.stack_push32(frameTmp as u32);
     }
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         emu.regs_mut().rbp = frameTmp;
         emu.regs_mut().rsp -= allocSZ;
     } else {

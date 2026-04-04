@@ -5,6 +5,7 @@ extern crate clap;
 use clap::{App, Arg};
 use libmwemu::emu32;
 use libmwemu::emu64;
+use libmwemu::emu_aarch64;
 use libmwemu::serialization;
 use std::{panic, process};
 use std::path::PathBuf;
@@ -89,6 +90,7 @@ fn main() {
         .arg(clap_arg!("verbose", "v", "verbose", "-vv for view the assembly, -v only messages, without verbose only see the api calls and goes faster", multiple: true))
         .arg(clap_arg!("verbose_at", "V", "verbose_at", "start displaying assembly at specific position (is like -vv enabled in specific moment)", "NUMBER"))
         .arg(clap_arg!("64bits", "6", "64bits", "enable 64bits architecture emulation"))
+        .arg(clap_arg!("aarch64", "", "aarch64", "enable AArch64/ARM64 architecture emulation"))
         .arg(clap_arg!("trace_memory", "m", "trace_memory", "trace all the memory accesses read and write."))
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
@@ -152,13 +154,13 @@ fn main() {
 
     let mut emu: libmwemu::emu::Emu;
 
-    // 32 or 64 bit
-    if matches.is_present("64bits") {
+    // Architecture selection
+    if matches.is_present("aarch64") {
+        emu = emu_aarch64();
+    } else if matches.is_present("64bits") {
         emu = emu64();
-        emu.cfg.is_64bits = true;
     } else {
         emu = emu32();
-        emu.cfg.is_64bits = false;
     }
 
     emu.running_script = false;
@@ -227,7 +229,7 @@ fn main() {
 
     // emulate winapi via syscall dispatcher (currently x64 only)
     if matches.is_present("ssdt") {
-        if !emu.cfg.is_64bits {
+        if !emu.cfg.is_x64() {
             panic!("SSDT mode is not supported in 32-bit mode yet.");
         }
         emu.cfg.emulate_winapi = true;
@@ -281,7 +283,7 @@ fn main() {
         emu.set_maps_folder(matches.value_of("maps").expect("specify the maps folder"));
     } else {
         // if maps is not selected, by default ...
-        if emu.cfg.is_64bits {
+        if emu.cfg.is_x64() {
             emu.set_maps_folder("maps/maps64/");
         } else {
             emu.set_maps_folder("maps/maps32/");
@@ -554,7 +556,7 @@ fn main() {
 
         log::info!("Starting GDB remote debugging server...");
 
-        let mut server = libmwemu::gdb::GdbServer::new(port, emu.cfg.is_64bits);
+        let mut server = libmwemu::gdb::GdbServer::new(port, emu.cfg.arch.is_64bits());
         match server.run(&mut emu) {
             Ok(()) => {
                 log::info!("GDB session ended normally");

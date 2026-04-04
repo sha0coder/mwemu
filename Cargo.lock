@@ -1093,51 +1093,8 @@ dependencies = [
  "ureq",
  "windows",
  "windows-sys 0.59.0",
+ "yaxpeax-arch",
  "yaxpeax-arm",
- "zip",
-]
-
-[[package]]
-name = "libmwemu"
-version = "0.24.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "281cba815c62e654b9b86094e9e1695929a2add6c1905d87308640fe2a990db0"
-dependencies = [
- "ahash",
- "atty",
- "bitcode",
- "bitfield",
- "bytemuck",
- "byteorder",
- "chrono",
- "csv",
- "ctrlc",
- "dunce",
- "fast_log",
- "gdbstub",
- "gdbstub_arch",
- "iced-x86",
- "lazy_static",
- "log",
- "md5",
- "memmap2",
- "minidump",
- "nohash-hasher",
- "rand 0.9.1",
- "scan_fmt",
- "serde",
- "serde_arrays",
- "serde_yaml",
- "serial_test",
- "slab",
- "soft-canonicalize",
- "tempdir",
- "tempfile",
- "thiserror",
- "uint",
- "ureq",
- "windows",
- "windows-sys 0.59.0",
  "zip",
 ]
 
@@ -1257,7 +1214,7 @@ dependencies = [
  "clap",
  "env_logger",
  "fast_log",
- "libmwemu 0.24.1",
+ "libmwemu",
  "log",
 ]
 
@@ -1266,7 +1223,7 @@ name = "mwemu-test"
 version = "0.1.0"
 dependencies = [
  "iced-x86",
- "libmwemu 0.24.1",
+ "libmwemu",
  "rayon",
  "yaxpeax-arm",
 ]
@@ -1487,7 +1444,7 @@ version = "0.11.1"
 dependencies = [
  "env_logger",
  "iced-x86",
- "libmwemu 0.24.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libmwemu",
  "log",
  "pyo3",
  "yaxpeax-arm",

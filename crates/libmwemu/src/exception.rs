@@ -45,7 +45,7 @@ pub fn enter_for_handler(
     ex_type: exception_type::ExceptionType,
     handler_kind: HandlerKind,
 ) {
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         enter64(emu, ex_type, handler_kind);
     } else {
         enter32(emu, ex_type, handler_kind);
@@ -53,7 +53,7 @@ pub fn enter_for_handler(
 }
 
 pub fn exit(emu: &mut emu::Emu) {
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         exit64(emu);
     } else {
         exit32(emu);

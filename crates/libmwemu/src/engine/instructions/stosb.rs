@@ -11,7 +11,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.show_instruction(color!("LightCyan"), ins);
     }
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         if !emu
             .maps
             .write_byte(emu.regs().rdi, emu.regs().get_al() as u8)

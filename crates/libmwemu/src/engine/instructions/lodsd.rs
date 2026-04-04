@@ -6,7 +6,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.show_instruction(color!("Cyan"), ins);
     //TODO: crash if arrive to zero or max value
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         let val = match emu.maps.read_dword(emu.regs().rsi) {
             Some(v) => v,
             None => return false,

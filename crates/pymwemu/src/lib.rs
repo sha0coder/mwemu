@@ -40,12 +40,12 @@ impl Emu {
 
     /// check if the emulator is in 64bits mode.
     fn is_64bits(&self) -> PyResult<bool> {
-        Ok(self.emu.cfg.is_64bits)
+        Ok(self.emu.cfg.is_x64())
     }
 
     /// check if the emulator is in 32bits mode.
     fn is_32bits(&self) -> PyResult<bool> {
-        Ok(!self.emu.cfg.is_64bits)
+        Ok(!self.emu.cfg.is_x64())
     }
 
     /// change base address on ldr entry of a module
@@ -56,13 +56,13 @@ impl Emu {
     /// Set 64bits mode, it's necessary to load the 64bits maps with load_maps() method.
     /// Or better can use: emu = pymwemu.init64()
     fn set_64bits(&mut self) {
-        self.emu.cfg.is_64bits = true;
+        self.emu.cfg.arch = libmwemu::arch::Arch::X86_64;
     }
 
     /// Set 32bits mode, it's necessary to load the 32bits maps with load_maps() method.
     /// Or better can use: emu = pymwemu.init32()
     fn set_32bits(&mut self) {
-        self.emu.cfg.is_64bits = false;
+        self.emu.cfg.arch = libmwemu::arch::Arch::X86;
     }
 
     /// disable the colored mode for instructions, api calls and other logs.
@@ -872,7 +872,6 @@ impl Emu {
 #[pyfunction]
 fn init32() -> PyResult<Emu> {
     let mut emu = Emu { emu: emu32() };
-    emu.emu.cfg.is_64bits = false;
     emu.emu.cfg.console_enabled = false;
     emu.emu.cfg.verbose = 0;
 
@@ -882,7 +881,6 @@ fn init32() -> PyResult<Emu> {
 #[pyfunction]
 fn init64() -> PyResult<Emu> {
     let mut emu = Emu { emu: emu64() };
-    emu.emu.cfg.is_64bits = true;
     emu.emu.cfg.console_enabled = false;
     emu.emu.cfg.verbose = 0;
 

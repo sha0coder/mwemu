@@ -2,6 +2,7 @@
 use crate::emu::Emu;
 use iced_x86::{Instruction, Mnemonic};
 
+pub mod aarch64;
 pub mod instructions;
 pub mod logic;
 

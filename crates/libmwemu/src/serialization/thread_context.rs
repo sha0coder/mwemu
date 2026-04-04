@@ -87,6 +87,7 @@ impl From<SerializableThreadContext> for ThreadContext {
             fs: serialized.fs,
             call_stack: serialized.call_stack,
             handle: serialized.handle,
+            regs_aarch64: None, // not serialized yet
         }
     }
 }

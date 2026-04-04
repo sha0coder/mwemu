@@ -141,7 +141,7 @@ impl Emu {
 
             exception::enter_for_handler(self, ex_type, HandlerKind::Veh);
 
-            if self.cfg.is_64bits {
+            if self.cfg.is_x64() {
                 self.set_rip(addr, false);
             } else {
                 self.set_eip(addr, false);
@@ -149,7 +149,7 @@ impl Emu {
 
         // SEH
         } else if self.seh() > 0 {
-            if self.cfg.is_64bits {
+            if self.cfg.is_x64() {
                 // 64bits seh
 
                 unimplemented!("check .pdata if exists");
@@ -176,7 +176,7 @@ impl Emu {
             if self.running_script {
                 self.set_seh(next);
                 exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
-                if self.cfg.is_64bits {
+                if self.cfg.is_x64() {
                     self.set_rip(addr, false);
                 } else {
                     self.set_eip(addr, false);
@@ -189,7 +189,7 @@ impl Emu {
             if cmd == "y" {
                 self.set_seh(next);
                 exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
-                if self.cfg.is_64bits {
+                if self.cfg.is_x64() {
                     self.set_rip(addr, false);
                 } else {
                     self.set_eip(addr, false);
@@ -201,7 +201,7 @@ impl Emu {
             addr = self.uef();
 
             exception::enter_for_handler(self, ex_type, HandlerKind::Uef);
-            if self.cfg.is_64bits {
+            if self.cfg.is_x64() {
                 self.set_rip(addr, false);
             } else {
                 self.set_eip(addr, false);

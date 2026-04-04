@@ -1,3 +1,5 @@
+use crate::arch::Arch;
+
 #[test]
 fn test_serialization_module_exists() {
     // Just verify the module is accessible
@@ -10,11 +12,11 @@ fn test_emu_config_preserved() {
     let mut emu = crate::emu64();
 
     emu.cfg.verbose = 3;
-    emu.cfg.is_64bits = true;
+    emu.cfg.arch = Arch::X86_64;
 
     // Verify config can be set
     assert_eq!(emu.cfg.verbose, 3);
-    assert_eq!(emu.cfg.is_64bits, true);
+    assert_eq!(emu.cfg.is_x64(), true);
 }
 
 #[test]

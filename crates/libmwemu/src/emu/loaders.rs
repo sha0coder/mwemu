@@ -1,5 +1,6 @@
 use iced_x86::Register;
 
+use crate::arch::Arch;
 use crate::constants;
 use crate::elf::elf32::Elf32;
 use crate::elf::elf64::Elf64;
@@ -478,7 +479,11 @@ impl Emu {
             dyn_link,
             self.cfg.code_base_addr,
         );
-        self.init_linux64(dyn_link);
+        if self.cfg.arch.is_aarch64() {
+            self.init_linux64_aarch64();
+        } else {
+            self.init_linux64(dyn_link);
+        }
 
         // Get .text addr and size
         let mut text_addr: u64 = 0;
@@ -576,13 +581,10 @@ impl Emu {
         self.filename = filename.to_string();
         self.cfg.filename = self.filename.clone();
 
-        //let map_name = self.filename_to_mapname(filename);
-        //self.cfg.filename = map_name;
-
         // ELF32
         if Elf32::is_elf32(filename) && !self.cfg.shellcode {
             self.linux = true;
-            self.cfg.is_64bits = false;
+            self.cfg.arch = Arch::X86;
 
             log::trace!("elf32 detected.");
             let mut elf32 = Elf32::parse(filename).unwrap();
@@ -591,19 +593,31 @@ impl Emu {
             let stack_sz = 0x30000;
             let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
-            //unimplemented!("elf32 is not supported for now");
 
-            // ELF64
-        } else if Elf64::is_elf64(filename) && !self.cfg.shellcode {
+            // ELF64 AArch64
+        } else if Elf64::is_elf64_aarch64(filename) && !self.cfg.shellcode {
             self.linux = true;
-            self.cfg.is_64bits = true;
+            self.cfg.arch = Arch::Aarch64;
+            self.maps.is_64bits = true;
             self.maps.clear();
 
-            log::trace!("elf64 detected.");
-            let base = self.load_elf64(filename);
+            log::trace!("elf64 aarch64 detected.");
+            self.load_elf64(filename);
+            // load_elf64 → init_linux64_aarch64 sets up stack/regs
+            // Entry point was set in rip by load_elf64 — transfer to PC
+            self.regs_aarch64_mut().pc = self.regs().rip;
+
+            // ELF64 x86_64
+        } else if Elf64::is_elf64_x64(filename) && !self.cfg.shellcode {
+            self.linux = true;
+            self.cfg.arch = Arch::X86_64;
+            self.maps.clear();
+
+            log::trace!("elf64 x86_64 detected.");
+            self.load_elf64(filename);
 
         // PE32
-        } else if !self.cfg.is_64bits && PE32::is_pe32(filename) && !self.cfg.shellcode {
+        } else if !self.cfg.is_x64() && PE32::is_pe32(filename) && !self.cfg.shellcode {
             log::trace!("PE32 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
@@ -623,7 +637,7 @@ impl Emu {
             self.regs_mut().rip = ep;
 
         // PE64
-        } else if self.cfg.is_64bits && PE64::is_pe64(filename) && !self.cfg.shellcode {
+        } else if self.cfg.is_x64() && PE64::is_pe64(filename) && !self.cfg.shellcode {
             log::trace!("PE64 header detected.");
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
@@ -662,7 +676,7 @@ impl Emu {
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.init_win32(clear_registers, clear_flags);
             let exe_name = self.cfg.exe_name.clone();
-            if self.cfg.is_64bits {
+            if self.cfg.is_x64() {
                 let (base, pe_off) = self.load_pe64(
                     &format!("{}/{}", self.cfg.maps_folder, exe_name),
                     false,
@@ -728,6 +742,6 @@ impl Emu {
             .expect("cannot create code map");
         let base = code.get_base();
         code.write_bytes(base, bytes);
-        self.regs_mut().rip = code.get_base();
+        self.set_pc(base);
     }
 }

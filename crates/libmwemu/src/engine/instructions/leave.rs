@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Red"), ins);
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         emu.regs_mut().rsp = emu.regs().rbp;
         emu.regs_mut().rbp = match emu.stack_pop64(true) {
             Some(v) => v,

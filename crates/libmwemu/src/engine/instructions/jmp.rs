@@ -14,7 +14,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         None => return false,
     };
 
-    if emu.cfg.is_64bits {
+    if emu.cfg.is_x64() {
         return emu.set_rip(addr, false);
     } else {
         return emu.set_eip(addr, false);

@@ -221,6 +221,7 @@ impl From<SerializableEmu> for Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(), // TODO: for now, we haven't implement HandleManagement as serializable but in the future maybe
             library_loaded: false,
+            aarch64_instruction: None,
         }
     }
 }

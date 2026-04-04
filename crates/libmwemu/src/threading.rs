@@ -202,7 +202,7 @@ impl ThreadScheduler {
 
         // Read and decode instruction
         let block = code.read_from(rip).to_vec();
-        let ins = if emu.cfg.is_64bits {
+        let ins = if emu.cfg.is_x64() {
             iced_x86::Decoder::with_ip(64, &block, rip, iced_x86::DecoderOptions::NONE).decode()
         } else {
             let eip = emu.regs().get_eip();
@@ -210,7 +210,7 @@ impl ThreadScheduler {
         };
 
         let sz = ins.len();
-        let position = if emu.cfg.is_64bits {
+        let position = if emu.cfg.is_x64() {
             iced_x86::Decoder::with_ip(64, &block, rip, iced_x86::DecoderOptions::NONE).position()
         } else {
             let eip = emu.regs().get_eip();
@@ -257,7 +257,7 @@ impl ThreadScheduler {
             // Don't advance IP if force_reload is set
             // This allows hooks or other code to manually set the IP
             emu.force_reload = false;
-        } else if emu.cfg.is_64bits {
+        } else if emu.cfg.is_x64() {
             // 64-bit mode: advance RIP
             emu.regs_mut().rip += sz as u64;
         } else {

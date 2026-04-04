@@ -1,0 +1,54 @@
+pub mod add;
+pub mod sub;
+pub mod and;
+pub mod orr;
+pub mod eor;
+pub mod orn;
+pub mod bic;
+pub mod movz;
+pub mod movk;
+pub mod movn;
+pub mod madd;
+pub mod msub;
+pub mod sdiv;
+pub mod udiv;
+pub mod adr;
+pub mod adrp;
+pub mod clz;
+pub mod shift;
+pub mod extr;
+pub mod rbit;
+pub mod rev;
+pub mod rev16;
+pub mod rev32;
+
+pub mod ldr;
+pub mod ldrb;
+pub mod ldrh;
+pub mod ldrsb;
+pub mod ldrsh;
+pub mod ldrsw;
+pub mod ldp;
+pub mod str;
+pub mod strb;
+pub mod strh;
+pub mod stp;
+pub mod stxr;
+
+pub mod b;
+pub mod bl;
+pub mod br;
+pub mod blr;
+pub mod ret;
+pub mod cbz;
+pub mod tbz;
+pub mod bcc;
+
+pub mod csel;
+pub mod csinc;
+pub mod csinv;
+pub mod csneg;
+
+pub mod svc;
+pub mod mrs;
+pub mod msr;

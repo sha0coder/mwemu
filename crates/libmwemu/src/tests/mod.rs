@@ -1,3 +1,4 @@
+mod aarch64_basic;
 mod allocator32_test;
 mod allocator64_test;
 mod banzai_mode_tests;

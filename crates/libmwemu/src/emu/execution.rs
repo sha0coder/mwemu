@@ -188,6 +188,9 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn step(&mut self) -> bool {
+        if self.cfg.arch.is_aarch64() {
+            return self.step_aarch64();
+        }
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.step_multi_threaded()
         } else {
@@ -313,7 +316,7 @@ impl Emu {
 
         // decoder
         let mut decoder;
-        if self.cfg.is_64bits {
+        if self.cfg.is_x64() {
             decoder = Decoder::with_ip(64, &block, self.regs().rip, DecoderOptions::NONE);
         } else {
             decoder = Decoder::with_ip(32, &block, self.regs().get_eip(), DecoderOptions::NONE);
@@ -341,7 +344,7 @@ impl Emu {
                 // update eip/rip
                 if self.force_reload {
                     self.force_reload = false;
-                } else if self.cfg.is_64bits {
+                } else if self.cfg.is_x64() {
                     self.regs_mut().rip += sz as u64;
                 } else {
                     let eip = self.regs().get_eip() + sz as u64;
@@ -365,7 +368,7 @@ impl Emu {
         // update eip/rip
         if self.force_reload {
             self.force_reload = false;
-        } else if self.cfg.is_64bits {
+        } else if self.cfg.is_x64() {
             self.regs_mut().rip += sz as u64;
         } else {
             let eip = self.regs().get_eip() + sz as u64;
@@ -542,6 +545,9 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
+        if self.cfg.arch.is_aarch64() {
+            return self.run_aarch64(end_addr);
+        }
         let instruction_cache = InstructionCache::new();
         self.instruction_cache = instruction_cache;
         if self.cfg.enable_threading && self.threads.len() > 1 {
@@ -612,7 +618,7 @@ impl Emu {
         }*/
 
         //self.pos = 0;
-        let arch = if self.cfg.is_64bits { 64 } else { 32 };
+        let arch = if self.cfg.is_x64() { 64 } else { 32 };
         let mut ins: Instruction = Instruction::default();
         // we using a single block to store all the instruction to optimize for without
         // the need of Reallocate everytime
@@ -868,7 +874,7 @@ impl Emu {
                         // if rcx is 0 in first rep step, skip instruction.
                         if self.regs_mut().rcx == 0 {
                             self.rep = None;
-                            if self.cfg.is_64bits {
+                            if self.cfg.is_x64() {
                                 self.regs_mut().rip += sz as u64;
                             } else {
                                 let new_eip = self.regs().get_eip() + sz as u64;
@@ -986,7 +992,7 @@ impl Emu {
                     }
 
                     if self.rep.is_none() {
-                        if self.cfg.is_64bits {
+                        if self.cfg.is_x64() {
                             self.regs_mut().rip += sz as u64;
                         } else {
                             let new_eip = self.regs().get_eip() + sz as u64;

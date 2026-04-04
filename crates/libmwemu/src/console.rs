@@ -179,7 +179,7 @@ impl Console {
         let seek = format!("0x{:x}", addr);
         let bits;
         let precmd: String;
-        if emu.cfg.is_64bits {
+        if emu.cfg.is_x64() {
             bits = "64";
             precmd = format!(
                 "dr rax={}; dr rbx={}; dr rcx={}; dr rdx={}; dr rsi={};
@@ -259,7 +259,7 @@ impl Console {
                 "q" => std::process::exit(1),
                 "h" => con.help(),
                 "r" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.featured_regs64();
                     } else {
                         emu.featured_regs32();
@@ -462,14 +462,14 @@ impl Console {
                 }
                 "cls" => log::trace!("{}", emu.colors.clear_screen),
                 "s" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
@@ -597,7 +597,7 @@ impl Console {
                         .maps
                         .get_mem_by_addr(addr)
                         .expect("address not found on any map");
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!(
                             "map: {} 0x{:x}-0x{:x} ({})",
                             name,
@@ -660,7 +660,7 @@ impl Console {
                             continue;
                         }
                     };
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!("0x{:x}: '{}'", addr, emu.maps.read_string(addr));
                     } else {
                         log::trace!("0x{:x}: '{}'", to32!(addr), emu.maps.read_string(addr));
@@ -675,7 +675,7 @@ impl Console {
                             continue;
                         }
                     };
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         log::trace!("0x{:x}: '{}'", addr, emu.maps.read_wide_string(addr));
                     } else {
                         log::trace!("0x{:x}: '{}'", to32!(addr), emu.maps.read_wide_string(addr));
@@ -746,7 +746,7 @@ impl Console {
                 }
                 "push" => {
                     con.print("value");
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         let value = match con.cmd_hex64() {
                             Ok(v) => v,
                             Err(_) => {
@@ -768,7 +768,7 @@ impl Console {
                     log::trace!("pushed.");
                 }
                 "pop" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         let value = emu.stack_pop64(false).unwrap_or(0);
                         log::trace!("poped value 0x{:x}", value);
                     } else {
@@ -799,7 +799,7 @@ impl Console {
                         }
                     };
                     for addr in result.iter() {
-                        if emu.cfg.is_64bits {
+                        if emu.cfg.is_x64() {
                             log::trace!("found 0x{:x} '{}'", *addr, emu.maps.read_string(*addr));
                         } else {
                             log::trace!(
@@ -818,7 +818,7 @@ impl Console {
                     let results = emu.maps.search_spaced_bytes(&sbs, &mem_name);
                     if results.is_empty() {
                         log::trace!("not found.");
-                    } else if emu.cfg.is_64bits {
+                    } else if emu.cfg.is_x64() {
                         for addr in results.iter() {
                             log::trace!("found at 0x{:x}", addr);
                         }
@@ -834,7 +834,7 @@ impl Console {
                     let results = emu.maps.search_spaced_bytes_in_all(&sbs);
                     if results.is_empty() {
                         log::trace!("not found.");
-                    } else if emu.cfg.is_64bits {
+                    } else if emu.cfg.is_x64() {
                         for addr in results.iter() {
                             log::trace!("found at 0x{:x}", addr);
                         }
@@ -902,7 +902,7 @@ impl Console {
                     log::trace!("{}", emu.disassemble(addr, 10));
                 }
                 "ldr" => {
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         peb64::show_linked_modules(emu);
                     } else {
                         peb32::show_linked_modules(emu);
@@ -915,7 +915,7 @@ impl Console {
                     let lib: String;
                     let name: String;
 
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         (addr, lib, name) = winapi64::kernel32::search_api_name(emu, &kw);
                     } else {
                         (addr, lib, name) = winapi32::kernel32::search_api_name(emu, &kw);
@@ -938,7 +938,7 @@ impl Console {
                         }
                     };
 
-                    let name: String = if emu.cfg.is_64bits {
+                    let name: String = if emu.cfg.is_x64() {
                         winapi64::kernel32::resolve_api_addr_to_name(emu, addr)
                     } else {
                         winapi32::kernel32::resolve_api_addr_to_name(emu, addr)
@@ -953,7 +953,7 @@ impl Console {
                 "iatd" => {
                     con.print("module");
                     let lib = con.cmd2().to_lowercase();
-                    if emu.cfg.is_64bits {
+                    if emu.cfg.is_x64() {
                         winapi64::kernel32::dump_module_iat(emu, &lib);
                     } else {
                         winapi32::kernel32::dump_module_iat(emu, &lib);
