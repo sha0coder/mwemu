@@ -30,6 +30,7 @@ pub mod crit_state;
 pub mod exception_type;
 pub mod global_locks;
 pub mod kuser_shared;
+pub mod linuxapi;
 pub mod macho;
 pub mod macosapi;
 pub mod maps;

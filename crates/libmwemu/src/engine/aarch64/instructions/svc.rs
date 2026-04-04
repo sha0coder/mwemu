@@ -21,7 +21,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
             "SVC #0x{:x} at 0x{:x} (x8=0x{:x} x0=0x{:x})",
             imm, emu.regs_aarch64().pc, emu.regs_aarch64().x[8], emu.regs_aarch64().x[0],
         );
-        todo!("linux aarch64 syscall dispatch");
+        crate::syscall::linux::syscall_aarch64::gateway(emu);
     } else {
         log::warn!(
             "SVC #{} at 0x{:x} but neither macos nor linux is set",
