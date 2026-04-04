@@ -16,6 +16,7 @@ repository.workspace = true
 iced-x86 = { workspace = true, features = ["serde"] }
 yaxpeax-arm.workspace = true
 yaxpeax-arch.workspace = true
+goblin.workspace = true
 uint.workspace = true
 md5.workspace = true
 lazy_static.workspace = true

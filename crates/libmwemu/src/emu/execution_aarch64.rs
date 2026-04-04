@@ -166,6 +166,16 @@ impl Emu {
                 }
             }
 
+            // Register trace
+            if self.cfg.trace_regs {
+                let regs = self.regs_aarch64();
+                log::trace!(
+                    "  x0=0x{:x} x1=0x{:x} x2=0x{:x} x3=0x{:x} x8=0x{:x} x9=0x{:x} sp=0x{:x} lr=0x{:x}",
+                    regs.x[0], regs.x[1], regs.x[2], regs.x[3],
+                    regs.x[8], regs.x[9], regs.sp, regs.x[30]
+                );
+            }
+
             // Advance PC
             if self.force_reload {
                 self.force_reload = false;

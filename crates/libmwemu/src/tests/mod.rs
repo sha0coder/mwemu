@@ -14,6 +14,7 @@ mod console_control_tests;
 mod emulation_perf;
 mod elf64lin_cpu_arithmetics;
 
+mod elf64_aarch64_basic;
 mod elf64lin_flags;
 mod elf64lin_fpu;
 mod elf64lin_static_helloworld;
@@ -73,4 +74,5 @@ mod utility_functions_tests;
 mod winapi32_tests;
 mod winapi64_tests;
 mod rax_x86_tests;
+mod macho64_basic;
 mod mingw_tests;
