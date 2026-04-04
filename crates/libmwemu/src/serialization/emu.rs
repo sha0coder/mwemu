@@ -73,6 +73,7 @@ pub struct SerializableEmu {
     pub banzai: Banzai,
     pub mnemonic: String,
     pub linux: bool,
+    pub macos: bool,
     pub fs: BTreeMap<u64, u64>,
     pub now: SerializableInstant,
     pub skip_apicall: bool,
@@ -135,6 +136,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             banzai: emu.banzai.clone(),
             mnemonic: emu.mnemonic.clone(),
             linux: emu.linux,
+            macos: emu.macos,
             fs: emu.fs().clone(),
             now: SerializableInstant::from(emu.now),
             skip_apicall: emu.skip_apicall,
@@ -180,6 +182,7 @@ impl From<SerializableEmu> for Emu {
             force_reload: serialized.force_reload,
             tls_callbacks: serialized.tls_callbacks,
             instruction: serialized.instruction,
+            aarch64_instruction: None, // TODO: serialized?
             decoder_position: serialized.decoder_position,
             memory_operations: serialized.memory_operations,
             main_thread_cont: serialized.main_thread_cont,
@@ -193,7 +196,8 @@ impl From<SerializableEmu> for Emu {
             running_script: serialized.running_script,
             banzai: serialized.banzai,
             mnemonic: serialized.mnemonic,
-            linux: serialized.linux,
+            linux: serialized.linux, // TODO: add a windows or make into a self.os field?
+            macos: serialized.macos,
             now: serialized.now.to_instant(),
             skip_apicall: serialized.skip_apicall,
             its_apicall: serialized.its_apicall,
@@ -221,7 +225,7 @@ impl From<SerializableEmu> for Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(), // TODO: for now, we haven't implement HandleManagement as serializable but in the future maybe
             library_loaded: false,
-            aarch64_instruction: None,
+            macho_addr_to_symbol: std::collections::HashMap::new(),
         }
     }
 }
@@ -271,6 +275,7 @@ impl Default for SerializableEmu {
             banzai: emu.banzai.clone(),
             mnemonic: emu.mnemonic.clone(),
             linux: emu.linux,
+            macos: emu.macos,
             fs: emu.fs().clone(),
             now: SerializableInstant::from(emu.now),
             skip_apicall: emu.skip_apicall,

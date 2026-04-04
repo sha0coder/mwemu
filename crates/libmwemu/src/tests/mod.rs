@@ -75,4 +75,5 @@ mod winapi32_tests;
 mod winapi64_tests;
 mod rax_x86_tests;
 mod macho64_basic;
+mod macho64_hello;
 mod mingw_tests;
