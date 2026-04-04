@@ -365,6 +365,17 @@ impl Emu {
         self.init_stack_aarch64();
     }
 
+    /// Initialize macOS aarch64 simulation for Mach-O loading.
+    pub fn init_macos_aarch64(&mut self) {
+        // Ensure aarch64 regs exist
+        if self.threads[self.current_thread_id].regs_aarch64.is_none() {
+            self.threads[self.current_thread_id].regs_aarch64 =
+                Some(Box::new(crate::regs_aarch64::RegsAarch64::new()));
+        }
+
+        self.init_stack_aarch64();
+    }
+
     /// Initialize linux x86_64 simulation, it's called from load_code() if the sample is an ELF.
     pub fn init_linux64(&mut self, dyn_link: bool) {
         //self.regs_mut().clear::<64>();

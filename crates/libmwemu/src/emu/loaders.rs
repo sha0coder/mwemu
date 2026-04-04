@@ -7,6 +7,7 @@ use crate::elf::elf64::Elf64;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
 use crate::pe::pe32::PE32;
+use crate::macho::macho64::Macho64;
 use crate::pe::pe64::PE64;
 use crate::peb::{peb32, peb64};
 
@@ -571,6 +572,15 @@ impl Emu {
         }*/
     }
 
+    /// Load a Mach-O 64-bit AArch64 binary.
+    pub fn load_macho64(&mut self, filename: &str) {
+        let macho = Macho64::parse(filename).expect("cannot parse macho64 binary");
+        macho.load(&mut self.maps);
+        self.init_macos_aarch64();
+        self.set_pc(macho.entry);
+        log::info!("macho64: entry point set to 0x{:x}", macho.entry);
+    }
+
     /// Load a sample. It can be PE32, PE64, ELF32, ELF64 or shellcode.
     /// If its a shellcode cannot be known if is for windows or linux, it triggers also init() to
     /// setup windows simulator.
@@ -606,6 +616,15 @@ impl Emu {
             // load_elf64 → init_linux64_aarch64 sets up stack/regs
             // Entry point was set in rip by load_elf64 — transfer to PC
             self.regs_aarch64_mut().pc = self.regs().rip;
+
+            // Mach-O AArch64
+        } else if Macho64::is_macho64_aarch64(filename) && !self.cfg.shellcode {
+            self.cfg.arch = Arch::Aarch64;
+            self.maps.is_64bits = true;
+            self.maps.clear();
+
+            log::trace!("macho64 aarch64 detected.");
+            self.load_macho64(filename);
 
             // ELF64 x86_64
         } else if Elf64::is_elf64_x64(filename) && !self.cfg.shellcode {
