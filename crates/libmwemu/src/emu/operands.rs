@@ -112,7 +112,7 @@ impl Emu {
         };
 
         if fs {
-            if self.linux {
+            if self.os.is_linux() {
                 return if let Some(val) = self.fs().get(&mem_addr) {
                     if self.cfg.verbose > 0 {
                         log::trace!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
@@ -505,7 +505,7 @@ impl Emu {
                 };
 
                 if mem_seg == Register::FS || mem_base == Register::GS {
-                    if self.linux {
+                    if self.os.is_linux() {
                         if self.cfg.verbose > 0 {
                             log::trace!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
                         }

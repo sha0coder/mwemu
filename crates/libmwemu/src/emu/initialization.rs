@@ -84,15 +84,16 @@ impl Emu {
             run_until_ret: false,
             running_script: true,
             banzai: Banzai::new(),
-            mnemonic: String::new(),
-            linux: false,
-            macos: false,
+            os: crate::arch::OperatingSystem::Windows,
             now: Instant::now(),
             skip_apicall: false,
             its_apicall: None,
             last_instruction_size: 0,
             pe64: None,
             pe32: None,
+            elf64: None,
+            elf32: None,
+            macho64: None,
             instruction: None,
             decoder_position: 0,
             memory_operations: vec![],
@@ -118,8 +119,6 @@ impl Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(),
             library_loaded: false,
-            macho_addr_to_symbol: std::collections::HashMap::new(),
-            aarch64_instruction: None,
         }
     }
 
@@ -377,7 +376,7 @@ impl Emu {
 
     /// Initialize macOS aarch64 simulation for Mach-O loading.
     pub fn init_macos_aarch64(&mut self) {
-        self.macos = true;
+        self.os = crate::arch::OperatingSystem::MacOS;
 
         // Ensure aarch64 regs exist
         if self.threads[self.current_thread_id].regs_aarch64.is_none() {

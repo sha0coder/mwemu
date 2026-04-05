@@ -8,14 +8,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
         _ => 0,
     };
 
-    if emu.macos {
+    if emu.os.is_macos() {
         // macOS aarch64: x16 = syscall number, SVC #0x80
         log::trace!(
             "SVC #0x{:x} at 0x{:x} (x16=0x{:x} x0=0x{:x})",
             imm, emu.regs_aarch64().pc, emu.regs_aarch64().x[16], emu.regs_aarch64().x[0],
         );
         crate::syscall::macos::syscall_aarch64::gateway(emu);
-    } else if emu.linux {
+    } else if emu.os.is_linux() {
         // Linux aarch64: x8 = syscall number, SVC #0
         log::trace!(
             "SVC #0x{:x} at 0x{:x} (x8=0x{:x} x0=0x{:x})",
@@ -24,7 +24,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
         crate::syscall::linux::syscall_aarch64::gateway(emu);
     } else {
         log::warn!(
-            "SVC #{} at 0x{:x} but neither macos nor linux is set",
+            "SVC #{} at 0x{:x} but os is not macOS or Linux",
             imm, emu.regs_aarch64().pc,
         );
     }

@@ -10,6 +10,27 @@ pub enum Arch {
     Aarch64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OperatingSystem {
+    Windows,
+    Linux,
+    MacOS,
+}
+
+impl OperatingSystem {
+    pub fn is_windows(self) -> bool {
+        matches!(self, OperatingSystem::Windows)
+    }
+
+    pub fn is_linux(self) -> bool {
+        matches!(self, OperatingSystem::Linux)
+    }
+
+    pub fn is_macos(self) -> bool {
+        matches!(self, OperatingSystem::MacOS)
+    }
+}
+
 impl Arch {
     /// True for any 64-bit address space (X86_64 or Aarch64).
     /// Use for pointer width, address space decisions (e.g., Maps).
