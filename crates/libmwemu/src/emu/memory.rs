@@ -3,7 +3,11 @@ use crate::{windows::constants, emu::Emu, windows::structures::MemoryOperation};
 impl Emu {
     /// This is not used on the emulation.
     /// It's part of a feature like  reading or wirtting like it was asm "dword ptr [rax + 0x123]"
+    /// NOTE: x86 operand syntax only. Will panic on aarch64.
     pub fn memory_operand_to_address(&mut self, operand: &str) -> u64 {
+        if self.cfg.arch.is_aarch64() {
+            panic!("memory_operand_to_address() uses x86 operand syntax, not available on aarch64");
+        }
         let spl: Vec<&str> = operand.split('[').collect::<Vec<&str>>()[1]
             .split(']')
             .collect::<Vec<&str>>()[0]
@@ -185,7 +189,7 @@ impl Emu {
                         };
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs().rip,
+                            rip: self.pc(),
                             op: "read".to_string(),
                             bits: 64,
                             address: addr,
@@ -194,7 +198,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 64, addr, v, name);
                     }
                     Some(v)
                 }
@@ -209,7 +213,7 @@ impl Emu {
                             .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs().rip,
+                            rip: self.pc(),
                             op: "read".to_string(),
                             bits: 32,
                             address: addr,
@@ -218,7 +222,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 32, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -233,7 +237,7 @@ impl Emu {
                             .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs().rip,
+                            rip: self.pc(),
                             op: "read".to_string(),
                             bits: 16,
                             address: addr,
@@ -242,7 +246,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 16, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 16, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -257,7 +261,7 @@ impl Emu {
                             .unwrap_or_else(|| "not mapped");
                         let memory_operation = MemoryOperation {
                             pos: self.pos,
-                            rip: self.regs().rip,
+                            rip: self.pc(),
                             op: "read".to_string(),
                             bits: 8,
                             address: addr,
@@ -266,7 +270,7 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 8, addr, v, name);
+                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 8, addr, v, name);
                     }
                     Some(v.into())
                 }
@@ -308,7 +312,7 @@ impl Emu {
         if self.cfg.trace_mem {
             let memory_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs().rip,
+                rip: self.pc(),
                 op: "write".to_string(),
                 bits: bits as u32,
                 address: addr,
@@ -323,7 +327,7 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 32, addr, value, name);
+            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 32, addr, value, name);
         }
 
         match bits {

@@ -102,4 +102,19 @@ impl Emu {
             _ => panic!("post_op_regs_mut called on aarch64 emu"),
         }
     }
+
+    // AArch64 pre/post op register accessors
+    pub fn pre_op_regs_aarch64(&self) -> &RegsAarch64 {
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::AArch64 { pre_op_regs, .. } => pre_op_regs,
+            _ => panic!("pre_op_regs_aarch64 called on x86 emu"),
+        }
+    }
+
+    pub fn post_op_regs_aarch64(&self) -> &RegsAarch64 {
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::AArch64 { post_op_regs, .. } => post_op_regs,
+            _ => panic!("post_op_regs_aarch64 called on x86 emu"),
+        }
+    }
 }

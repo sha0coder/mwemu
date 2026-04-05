@@ -112,6 +112,7 @@ impl Console {
         log::trace!("bcmp ................... break on next cmp or test instruction");
         log::trace!("bc ..................... clear breakpoint");
         log::trace!("n ...................... next instruction");
+        log::trace!("pc ..................... change pc (any arch)");
         log::trace!("eip .................... change eip");
         log::trace!("rip .................... change rip");
         log::trace!("push ................... push dword to the stack");
@@ -176,14 +177,26 @@ impl Console {
 
         let base = format!("0x{:x}", mem.get_base());
         let seek = format!("0x{:x}", addr);
+        let arch_str;
         let bits;
         let precmd: String;
-        if emu.cfg.is_x64() {
+        if emu.cfg.arch.is_aarch64() {
+            arch_str = "arm";
+            bits = "64";
+            let regs = emu.regs_aarch64();
+            let mut cmd = String::new();
+            for i in 0..31 {
+                cmd.push_str(&format!("dr x{}={}; ", i, regs.x[i]));
+            }
+            cmd.push_str(&format!("dr sp={}; dr pc={};", regs.sp, regs.pc));
+            precmd = cmd;
+        } else if emu.cfg.is_x64() {
+            arch_str = "x86";
             bits = "64";
             precmd = format!(
                 "dr rax={}; dr rbx={}; dr rcx={}; dr rdx={}; dr rsi={};
                                   dr rdi={}; dr rbp={}; dr rsp={}; dr rip={}; dr r8={}
-                                  dr r9={}; dr r10={}; dr r11={}; dr r12={}; dr r13={}; 
+                                  dr r9={}; dr r10={}; dr r11={}; dr r12={}; dr r13={};
                                   dr r14={}; dr r15={}; decai -e model=qwen3-coder:30b; r2ai -e r2ai.model=qwen3-coder:30b;",
                                   emu.regs().rax, emu.regs().rbx, emu.regs().rcx, emu.regs().rdx,
                                   emu.regs().rsi, emu.regs().rdi, emu.regs().rbp, emu.regs().rsp,
@@ -191,6 +204,7 @@ impl Console {
                                   emu.regs().r11, emu.regs().r12, emu.regs().r13, emu.regs().r14,
                                   emu.regs().r15);
         } else {
+            arch_str = "x86";
             bits = "32";
             precmd = format!(
                 "dr eax={}; dr ebx={}; dr ecx={}; dr edx={}; dr esi={}; \
@@ -208,7 +222,7 @@ impl Console {
             );
         }
         let r2args = vec![
-            "-n", "-a", "x86", "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,
+            "-n", "-a", arch_str, "-b", &bits, "-m", &base, "-s", &seek, "-c", &precmd, &tmpfile,
         ];
 
         log::trace!("spawning radare2 software.");
@@ -258,7 +272,9 @@ impl Console {
                 "q" => std::process::exit(1),
                 "h" => con.help(),
                 "r" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() {
+                        emu.featured_regs_aarch64();
+                    } else if emu.cfg.is_x64() {
                         emu.featured_regs64();
                     } else {
                         emu.featured_regs32();
@@ -358,7 +374,13 @@ impl Console {
                             continue;
                         }
                     };
-                    emu.regs_mut().set_by_name(reg.as_str(), value);
+                    if emu.cfg.arch.is_aarch64() {
+                        if !emu.regs_aarch64_mut().set_by_name(reg.as_str(), value) {
+                            log::trace!("unknown aarch64 register: {}", reg);
+                        }
+                    } else {
+                        emu.regs_mut().set_by_name(reg.as_str(), value);
+                    }
                 }
                 "mr" | "rm" => {
                     con.print("memory argument");
@@ -461,21 +483,26 @@ impl Console {
                 }
                 "cls" => log::trace!("{}", emu.colors.clear_screen),
                 "s" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() {
+                        emu.maps.dump_qwords(emu.sp(), 10);
+                    } else if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() {
+                        // aarch64: dump around SP (no frame pointer convention guaranteed)
+                        emu.maps.dump_qwords(emu.sp().wrapping_sub(0x100), 100);
+                    } else if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
+                        emu.maps
+                            .get_mem("stack")
+                            .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                     }
-                    emu.maps
-                        .get_mem("stack")
-                        .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                 }
                 "sv" => {
                     con.print("verbose level");
@@ -510,10 +537,41 @@ impl Console {
                     emu.is_running.store(1, atomic::Ordering::Relaxed);
                     return;
                 }
-                "f" => emu.flags().print(),
-                "fc" => emu.flags_mut().clear(),
-                "fz" => emu.flags_mut().f_zf = !emu.flags().f_zf,
-                "fs" => emu.flags_mut().f_sf = !emu.flags().f_sf,
+                "f" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &emu.regs_aarch64().nzcv;
+                        log::trace!("NZCV: N={} Z={} C={} V={}", nzcv.n, nzcv.z, nzcv.c, nzcv.v);
+                    } else {
+                        emu.flags().print();
+                    }
+                }
+                "fc" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.n = false;
+                        nzcv.z = false;
+                        nzcv.c = false;
+                        nzcv.v = false;
+                    } else {
+                        emu.flags_mut().clear();
+                    }
+                }
+                "fz" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.z = !nzcv.z;
+                    } else {
+                        emu.flags_mut().f_zf = !emu.flags().f_zf;
+                    }
+                }
+                "fs" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.n = !nzcv.n;
+                    } else {
+                        emu.flags_mut().f_sf = !emu.flags().f_sf;
+                    }
+                }
                 "mc" => {
                     con.print("name ");
                     let name = con.cmd();
@@ -715,6 +773,19 @@ impl Console {
                         log::trace!("memory errors.");
                     }
                 }
+                "pc" => {
+                    con.print("=");
+                    let addr = match con.cmd_hex64() {
+                        Ok(v) => v,
+                        Err(_) => {
+                            log::trace!("bad hex value");
+                            continue;
+                        }
+                    };
+                    emu.set_pc(addr);
+                    emu.force_break = true;
+                    break;
+                }
                 "eip" => {
                     con.print("=");
                     let addr = match con.cmd_hex64() {
@@ -724,7 +795,6 @@ impl Console {
                             continue;
                         }
                     };
-                    //emu.regs_mut().set_eip(addr);
                     emu.set_eip(addr, false);
                     emu.force_break = true;
                     break;
@@ -745,7 +815,7 @@ impl Console {
                 }
                 "push" => {
                     con.print("value");
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
                         let value = match con.cmd_hex64() {
                             Ok(v) => v,
                             Err(_) => {
@@ -767,7 +837,7 @@ impl Console {
                     log::trace!("pushed.");
                 }
                 "pop" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
                         let value = emu.stack_pop64(false).unwrap_or(0);
                         log::trace!("poped value 0x{:x}", value);
                     } else {
@@ -1045,7 +1115,14 @@ impl Console {
                 } // end dt command
 
                 _ => {
-                    if cmd.starts_with("m ") {
+                    // Handle "r <regname>" for aarch64 registers dynamically
+                    if cmd.starts_with("r ") && emu.cfg.arch.is_aarch64() {
+                        let reg_name = &cmd[2..];
+                        match emu.regs_aarch64().get_by_name(reg_name) {
+                            Some(val) => log::trace!("\t{}: 0x{:016x}", reg_name, val),
+                            None => log::trace!("unknown aarch64 register: {}", reg_name),
+                        }
+                    } else if cmd.starts_with("m ") {
                         let parts: Vec<&str> = cmd.split_whitespace().collect();
                         if parts.len() >= 2 {
                             emu.maps.print_maps_keyword(&parts[1]);

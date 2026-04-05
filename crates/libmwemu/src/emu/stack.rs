@@ -70,60 +70,44 @@ impl Emu {
         }
     }
 
-    /// Push a qword to the stack and dec the rsp.
+    /// Push a qword to the stack and dec the stack pointer.
+    /// Works for both x86_64 (rsp) and aarch64 (sp).
     /// This will return false if stack pointer is pointing to non allocated place.
     pub fn stack_push64(&mut self, value: u64) -> bool {
+        let sp = self.sp();
+
         if self.cfg.stack_trace {
             log::trace!("--- stack push64  ---");
-            self.maps.dump_qwords(self.regs().rsp, 5);
+            self.maps.dump_qwords(sp, 5);
         }
 
         if self.cfg.trace_mem {
+            let pc = self.pc();
             let name = self
                 .maps
-                .get_addr_name(self.regs().rsp)
+                .get_addr_name(sp)
                 .unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs().rip,
+                rip: pc,
                 op: "write".to_string(),
                 bits: 64,
-                address: self.regs().rsp - 8,
-                old_value: self.maps.read_qword(self.regs().rsp).unwrap_or(0),
+                address: sp - 8,
+                old_value: self.maps.read_qword(sp).unwrap_or(0),
                 new_value: value,
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, 64, self.regs().rsp, value, name);
+            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, pc, 64, sp, value, name);
         }
 
-        self.regs_mut().rsp -= 8;
-        //self.stack_lvl[self.stack_lvl_idx] += 1;
-        //log::trace!("push64 stack level is {} deep {}", self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
+        let new_sp = sp - 8;
+        self.set_sp(new_sp);
 
-        /*
-        let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs().rsp) {
-            stack.write_qword(self.regs().rsp, value);
-        } else {
-            let mem = match self.maps.get_mem_by_addr(self.regs().rsp) {
-                Some(m) => m,
-                None => {
-                    log::trace!(
-                        "pushing stack outside maps rsp: 0x{:x}",
-                        self.regs().get_esp()
-                    );
-                    Console::spawn_console(self);
-                    return false;
-                }
-            };
-            mem.write_qword(self.regs().rsp, value);
-        }*/
-
-        if self.maps.write_qword(self.regs().rsp, value) {
+        if self.maps.write_qword(new_sp, value) {
             true
         } else {
-            log::trace!("/!\\ pushing in non mapped mem 0x{:x}", self.regs().rsp);
+            log::trace!("/!\\ pushing in non mapped mem 0x{:x}", new_sp);
             false
         }
     }
@@ -229,86 +213,60 @@ impl Emu {
         Some(value)
     }
 
-    /// Pop a qword from stack, return None if cannot read the rsp address.
+    /// Pop a qword from stack, return None if cannot read the stack pointer address.
+    /// Works for both x86_64 (rsp) and aarch64 (sp).
     pub fn stack_pop64(&mut self, pop_instruction: bool) -> Option<u64> {
+        let sp = self.sp();
+
         if self.cfg.stack_trace {
             log::trace!("--- stack pop64 ---");
-            self.maps.dump_qwords(self.regs().rsp, 5);
+            self.maps.dump_qwords(sp, 5);
         }
 
-        /*
-        let stack = self.maps.get_mem("stack");
-        if stack.inside(self.regs().rsp) {
-            let value = stack.read_qword(self.regs().rsp);
-            if self.cfg.verbose >= 1
-                && pop_instruction
-                && self.maps.get_mem("code").inside(value.into())
-            {
-                log::trace!("/!\\ poping a code address 0x{:x}", value);
-            }
-            self.regs_mut().rsp += 8;
-            return Some(value);
-        }
-
-        let mem = match self.maps.get_mem_by_addr(self.regs().rsp) {
-            Some(m) => m,
-            None => {
-                log::trace!("poping stack outside map  esp: 0x{:x}", self.regs().rsp);
-                Console::spawn_console(self);
-                return None;
-            }
-        };
-
-        let value = mem.read_qword(self.regs().rsp);
-        */
-
-        let value = match self.maps.read_qword(self.regs().rsp) {
+        let value = match self.maps.read_qword(sp) {
             Some(v) => v,
             None => {
-                log::trace!("rsp point to non mapped mem");
+                log::trace!("stack pointer points to non mapped mem");
                 return None;
             }
         };
 
         if self.cfg.trace_mem {
-            // Record the read from stack memory
+            let pc = self.pc();
             let name = self
                 .maps
-                .get_addr_name(self.regs().rsp)
+                .get_addr_name(sp)
                 .unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs().rip,
+                rip: pc,
                 op: "read".to_string(),
-                bits: 64, // Changed from 32 to 64 for 64-bit operations
-                address: self.regs().rsp,
-                old_value: 0, // not needed for read
-                new_value: value as u64,
+                bits: 64,
+                address: sp,
+                old_value: 0,
+                new_value: value,
                 name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
-                self.pos, self.regs().rip, 64, self.regs().rsp, value, name);
+            log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos, pc, 64, sp, value, name);
 
-            // Record the write to register
             let write_operation = MemoryOperation {
                 pos: self.pos,
-                rip: self.regs().rip,
+                rip: pc,
                 op: "write".to_string(),
-                bits: 64, // Changed from 32 to 64 for 64-bit operations
-                address: self.regs().rsp,
-                old_value: self.maps.read_qword(self.regs().rsp).unwrap_or(0),
-                new_value: value as u64, // new value being written
+                bits: 64,
+                address: sp,
+                old_value: self.maps.read_qword(sp).unwrap_or(0),
+                new_value: value,
                 name: "register".to_string(),
             };
             self.memory_operations.push(write_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'", 
-                self.pos, self.regs().rip, 64, self.regs().rsp, value);
+            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'",
+                self.pos, pc, 64, sp, value);
         }
 
-        self.regs_mut().rsp += 8;
-        //self.stack_lvl[self.stack_lvl_idx] -= 1;
-        //log::trace!("0x{:x} pop64 stack level is {} deep {}", self.regs().rip, self.stack_lvl[self.stack_lvl_idx], self.stack_lvl_idx);
+        self.set_sp(sp + 8);
         Some(value)
     }
 }

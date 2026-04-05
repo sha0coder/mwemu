@@ -37,26 +37,56 @@ pub struct TraceRecord {
 
 impl TraceRecord {
     pub fn capture(emu: &Emu, instruction_count: u64) -> Self {
-        Self {
-            instruction_count,
-            rip: emu.regs().rip,
-            rflags: emu.flags().dump() as u64, // TODO: u32?
-            rax: emu.regs().rax,
-            rbx: emu.regs().rbx,
-            rcx: emu.regs().rcx,
-            rdx: emu.regs().rdx,
-            rsi: emu.regs().rsi,
-            rdi: emu.regs().rdi,
-            rbp: emu.regs().rbp,
-            rsp: emu.regs().rsp,
-            r8: emu.regs().r8,
-            r9: emu.regs().r9,
-            r10: emu.regs().r10,
-            r11: emu.regs().r11,
-            r12: emu.regs().r12,
-            r13: emu.regs().r13,
-            r14: emu.regs().r14,
-            r15: emu.regs().r15,
+        if emu.cfg.arch.is_aarch64() {
+            let regs = emu.regs_aarch64();
+            let nzcv = &regs.nzcv;
+            let nzcv_val = ((nzcv.n as u64) << 31)
+                | ((nzcv.z as u64) << 30)
+                | ((nzcv.c as u64) << 29)
+                | ((nzcv.v as u64) << 28);
+            Self {
+                instruction_count,
+                rip: regs.pc,
+                rflags: nzcv_val,
+                rax: regs.x[0],
+                rbx: regs.x[1],
+                rcx: regs.x[2],
+                rdx: regs.x[3],
+                rsi: regs.x[4],
+                rdi: regs.x[5],
+                rbp: regs.x[29], // fp
+                rsp: regs.sp,
+                r8: regs.x[8],
+                r9: regs.x[9],
+                r10: regs.x[10],
+                r11: regs.x[11],
+                r12: regs.x[12],
+                r13: regs.x[13],
+                r14: regs.x[14],
+                r15: regs.x[15],
+            }
+        } else {
+            Self {
+                instruction_count,
+                rip: emu.regs().rip,
+                rflags: emu.flags().dump() as u64,
+                rax: emu.regs().rax,
+                rbx: emu.regs().rbx,
+                rcx: emu.regs().rcx,
+                rdx: emu.regs().rdx,
+                rsi: emu.regs().rsi,
+                rdi: emu.regs().rdi,
+                rbp: emu.regs().rbp,
+                rsp: emu.regs().rsp,
+                r8: emu.regs().r8,
+                r9: emu.regs().r9,
+                r10: emu.regs().r10,
+                r11: emu.regs().r11,
+                r12: emu.regs().r12,
+                r13: emu.regs().r13,
+                r14: emu.regs().r14,
+                r15: emu.regs().r15,
+            }
         }
     }
 

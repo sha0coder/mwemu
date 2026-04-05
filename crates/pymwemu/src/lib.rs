@@ -1,5 +1,4 @@
 use env_logger::Env;
-use iced_x86::Formatter;
 use std::io::Write as _;
 
 use pyo3::exceptions::PyException;
@@ -26,8 +25,10 @@ impl Emu {
 
     /// get last emulated mnemonic with name and parameters.
     fn get_prev_mnemonic(&mut self) -> PyResult<String> {
-        let ins = self.emu.x86_instruction().unwrap();
-        Ok(self.emu.x86_format_instruction(&ins))
+        match self.emu.last_decoded {
+            Some(decoded) => Ok(self.emu.format_instruction(&decoded)),
+            None => Err(PyValueError::new_err("no instruction decoded yet")),
+        }
     }
 
     /// reset the instruction counter to zero.
@@ -363,6 +364,26 @@ impl Emu {
         }
     }
 
+    /// set program counter (works for any arch).
+    fn set_pc(&mut self, addr: u64) {
+        self.emu.set_pc(addr);
+    }
+
+    /// get program counter (works for any arch).
+    fn get_pc(&self) -> u64 {
+        self.emu.pc()
+    }
+
+    /// get stack pointer (works for any arch).
+    fn get_sp(&self) -> u64 {
+        self.emu.sp()
+    }
+
+    /// set stack pointer (works for any arch).
+    fn set_sp(&mut self, addr: u64) {
+        self.emu.set_sp(addr);
+    }
+
     /// set rip register, if rip point to an api will be emulated.
     fn set_rip(&mut self, addr: u64) -> PyResult<bool> {
         Ok(self.emu.set_rip(addr, false))
@@ -449,17 +470,31 @@ impl Emu {
 
     // registers
 
-    /// read register value ie get_reg('rax')
+    /// read register value ie get_reg('rax') or get_reg('x0')
     fn get_reg(&mut self, reg: &str) -> PyResult<u64> {
-        if self.emu.regs().is_reg(reg) {
-            return Ok(self.emu.regs().get_by_name(reg));
+        if self.emu.cfg.arch.is_aarch64() {
+            match self.emu.regs_aarch64().get_by_name(reg) {
+                Some(val) => Ok(val),
+                None => Err(PyValueError::new_err("invalid aarch64 register name")),
+            }
+        } else if self.emu.regs().is_reg(reg) {
+            Ok(self.emu.regs().get_by_name(reg))
+        } else {
+            Err(PyValueError::new_err("invalid register name"))
         }
-        Err(PyValueError::new_err("invalid register name"))
     }
 
-    /// set register value ie  set_reg('rax', 0x123), returns previous value.
+    /// set register value ie  set_reg('rax', 0x123) or set_reg('x0', 0x123), returns previous value.
     fn set_reg(&mut self, reg: &str, value: u64) -> PyResult<u64> {
-        if self.emu.regs().is_reg(reg) {
+        if self.emu.cfg.arch.is_aarch64() {
+            match self.emu.regs_aarch64().get_by_name(reg) {
+                Some(prev) => {
+                    self.emu.regs_aarch64_mut().set_by_name(reg, value);
+                    Ok(prev)
+                }
+                None => Err(PyValueError::new_err("invalid aarch64 register name")),
+            }
+        } else if self.emu.regs().is_reg(reg) {
             let prev = self.emu.regs().get_by_name(reg);
             self.emu.regs_mut().set_by_name(reg, value);
             Ok(prev)
@@ -468,16 +503,22 @@ impl Emu {
         }
     }
 
-    /// get the value of a xmm register.
+    /// get the value of a xmm register (x86 only).
     fn get_xmm(&mut self, reg: &str) -> PyResult<u128> {
+        if self.emu.cfg.arch.is_aarch64() {
+            return Err(PyValueError::new_err("xmm registers not available on aarch64"));
+        }
         if self.emu.regs().is_xmm_by_name(reg) {
             return Ok(self.emu.regs().get_xmm_by_name(reg));
         }
         Err(PyValueError::new_err("invalid register name"))
     }
 
-    /// set a value to a xmm register.
+    /// set a value to a xmm register (x86 only).
     fn set_xmm(&mut self, reg: &str, value: u128) -> PyResult<u128> {
+        if self.emu.cfg.arch.is_aarch64() {
+            return Err(PyValueError::new_err("xmm registers not available on aarch64"));
+        }
         if self.emu.regs().is_xmm_by_name(reg) {
             let prev = self.emu.regs().get_xmm_by_name(reg);
             self.emu.regs_mut().set_xmm_by_name(reg, value);
@@ -857,7 +898,8 @@ impl Emu {
             Some(addr) => {
                 self.emu.skip_apicall = false;
                 let name = self.emu.api_addr_to_name(addr);
-                self.emu.regs_mut().rip += self.emu.last_instruction_size as u64;
+                let new_pc = self.emu.pc() + self.emu.last_instruction_size as u64;
+                self.emu.set_pc(new_pc);
                 return Ok((addr, name));
             }
 

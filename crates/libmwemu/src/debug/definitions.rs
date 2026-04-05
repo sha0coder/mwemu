@@ -62,13 +62,13 @@ pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
 
 impl Emu {
     pub fn show_definition(&mut self) {
-        let rip = self.regs().rip;
+        let pc = self.pc();
         let definitions = &self.cfg.definitions;
-        if let Some(definition) = definitions.get(&rip) {
+        if let Some(definition) = definitions.get(&pc) {
             log::trace!(
                 "Event: {} (0x{:x}) - {}",
                 definition.name,
-                rip,
+                pc,
                 definition.event_type
             );
 
@@ -136,6 +136,19 @@ impl Emu {
     }
 
     fn get_parameter_value(&self, source: &str) -> u64 {
+        if self.cfg.arch.is_aarch64() {
+            if let Some(val) = self.regs_aarch64().get_by_name(source) {
+                return val;
+            }
+            // Try stack offset like "sp+0x20"
+            if source.starts_with("sp+") {
+                if let Ok(offset) = u64::from_str_radix(&source[5..], 16) {
+                    let addr = self.sp() + offset;
+                    return self.maps.read_qword(addr).unwrap_or(0);
+                }
+            }
+            return 0;
+        }
         match source {
             "rcx" => self.regs().rcx,
             "rdx" => self.regs().rdx,

@@ -272,7 +272,7 @@ impl Emu {
     #[allow(deprecated)]
     pub fn step(&mut self) -> bool {
         // Multi-threaded dispatch (uses scheduler which calls decode_and_execute internally)
-        if !self.cfg.arch.is_aarch64() && self.cfg.enable_threading && self.threads.len() > 1 {
+        if self.cfg.enable_threading && self.threads.len() > 1 {
             return self.step_multi_threaded();
         }
 

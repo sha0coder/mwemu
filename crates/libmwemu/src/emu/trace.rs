@@ -1,6 +1,6 @@
 use std::io::Write as _;
 
-use crate::{windows::constants, emu::Emu, flags::Flags, regs64::Regs64};
+use crate::{windows::constants, emu::Emu, flags::Flags, regs64::Regs64, regs_aarch64::{RegsAarch64, FlagsNZCV}};
 
 impl Emu {
     pub fn open_trace_file(&mut self) {
@@ -19,7 +19,11 @@ impl Emu {
     #[inline]
     pub fn capture_pre_op(&mut self) {
         if self.cfg.arch.is_aarch64() {
-            // TODO: aarch64 pre-op snapshot (parity debt: Step 15)
+            let regs = *self.regs_aarch64();
+            match &mut self.threads[self.current_thread_id].arch {
+                crate::threading::context::ArchThreadState::AArch64 { pre_op_regs, .. } => *pre_op_regs = regs,
+                _ => {}
+            }
         } else {
             self.set_pre_op_regs(*self.regs());
             self.set_pre_op_flags(*self.flags());
@@ -29,7 +33,11 @@ impl Emu {
     #[inline]
     pub fn capture_post_op(&mut self) {
         if self.cfg.arch.is_aarch64() {
-            // TODO: aarch64 post-op snapshot (parity debt: Step 15)
+            let regs = *self.regs_aarch64();
+            match &mut self.threads[self.current_thread_id].arch {
+                crate::threading::context::ArchThreadState::AArch64 { post_op_regs, .. } => *post_op_regs = regs,
+                _ => {}
+            }
         } else {
             self.set_post_op_regs(*self.regs());
             self.set_post_op_flags(*self.flags());
@@ -53,14 +61,26 @@ impl Emu {
         let mut comments = String::new();
 
         if self.cfg.arch.is_aarch64() {
-            // aarch64 trace: just output the instruction, no reg diff yet (parity debt: Step 15)
-            log::trace!(
-                r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","","","""#,
-                index = index + 1,
-                address = pc,
-                bytes = instruction_bytes,
-                disassembly = output,
-            );
+            let pre = self.pre_op_regs_aarch64();
+            let post = self.post_op_regs_aarch64();
+            let registers = RegsAarch64::diff(pre, post);
+            let flags = FlagsNZCV::diff(&pre.nzcv, &post.nzcv);
+
+            if let Some(trace_file) = &mut self.trace_file {
+                writeln!(
+                    trace_file,
+                    r#""{index}","{address:016X}","{bytes}","{disassembly}","{registers}","","{flags}""#,
+                    index = index + 1,
+                    address = pc,
+                    bytes = instruction_bytes.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" "),
+                    disassembly = output,
+                    registers = registers,
+                    flags = flags,
+                ).ok();
+            }
+            if self.cfg.verbose >= 2 && !registers.is_empty() {
+                log::trace!("  {}", registers);
+            }
             return;
         }
 

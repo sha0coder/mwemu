@@ -74,20 +74,30 @@ impl Emu {
 
         // hook
         let handle_exception: bool = if let Some(mut hook_fn) = self.hooks.hook_on_exception.take() {
-            let rip = self.regs().rip;
-            let result = hook_fn(self, rip, ex_type);
+            let pc = self.pc();
+            let result = hook_fn(self, pc, ex_type);
             self.hooks.hook_on_exception = Some(hook_fn);
             result
         } else {
             true
         };
 
+        // aarch64 has no SEH/VEH/UEF
+        if self.cfg.arch.is_aarch64() {
+            log::trace!(
+                "exception on aarch64 (no SEH/VEH support). pos = {} pc = {:x}",
+                self.pos,
+                self.pc()
+            );
+            return;
+        }
+
         // No handled exceptions
         if self.seh() == 0 && self.veh() == 0 && self.uef() == 0 {
             log::trace!(
                 "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
                 self.pos,
-                self.regs().rip
+                self.pc()
             );
             return;
         }

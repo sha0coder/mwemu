@@ -36,6 +36,23 @@ impl Emu {
         self.regs().show_r15(&self.maps, 0);
     }
 
+    /// display aarch64 main registers
+    pub fn featured_regs_aarch64(&self) {
+        let regs = self.regs_aarch64();
+        for i in (0..31).step_by(2) {
+            if i + 1 < 31 {
+                log::trace!("\tx{:<2}: 0x{:016x}  x{:<2}: 0x{:016x}", i, regs.x[i], i + 1, regs.x[i + 1]);
+            } else {
+                log::trace!("\tx{:<2}: 0x{:016x}", i, regs.x[i]);
+            }
+        }
+        log::trace!("\tsp:  0x{:016x}", regs.sp);
+        log::trace!("\tpc:  0x{:016x}", regs.pc);
+        log::trace!("\tlr:  0x{:016x} (x30)", regs.x[30]);
+        log::trace!("\tfp:  0x{:016x} (x29)", regs.x[29]);
+        log::trace!("\tNZCV: N={} Z={} C={} V={}", regs.nzcv.n, regs.nzcv.z, regs.nzcv.c, regs.nzcv.v);
+    }
+
     #[inline]
     pub fn show_instruction_comment(&mut self, color: &str, ins: &DecodedInstruction, comment: &str) {
         if self.cfg.verbose < 2 {

@@ -59,7 +59,13 @@ impl Script {
             };
             return a;
         }
-        emu.regs().get_by_name(arg)
+        if emu.cfg.arch.is_aarch64() {
+            emu.regs_aarch64().get_by_name(arg).unwrap_or_else(|| {
+                panic!("error in line {}, unknown aarch64 register: {}", i, arg);
+            })
+        } else {
+            emu.regs().get_by_name(arg)
+        }
     }
 
     pub fn to_int(&self, s: &str) -> Option<u64> {
@@ -141,10 +147,20 @@ impl Script {
                 "q" => std::process::exit(1),
                 "r" => {
                     if args.len() == 1 {
-                        if emu.cfg.is_x64() {
+                        if emu.cfg.arch.is_aarch64() {
+                            emu.featured_regs_aarch64();
+                        } else if emu.cfg.is_x64() {
                             emu.featured_regs64();
                         } else {
                             emu.featured_regs32();
+                        }
+                    } else if emu.cfg.arch.is_aarch64() {
+                        match emu.regs_aarch64().get_by_name(args[1]) {
+                            Some(val) => {
+                                self.result = val;
+                                log::trace!("\t{}: 0x{:016x}", args[1], val);
+                            }
+                            None => log::trace!("unknown aarch64 register: {} in line {}", args[1], i),
                         }
                     } else {
                         self.result = emu.regs().get_by_name(args[1]);
@@ -225,7 +241,13 @@ impl Script {
                         log::trace!("expected: rc <register> <value>");
                     } else {
                         let value: u64 = self.resolve(args[2], i, emu);
-                        emu.regs_mut().set_by_name(args[1], value);
+                        if emu.cfg.arch.is_aarch64() {
+                            if !emu.regs_aarch64_mut().set_by_name(args[1], value) {
+                                log::trace!("error in line {}, unknown aarch64 register: {}", i, args[1]);
+                            }
+                        } else {
+                            emu.regs_mut().set_by_name(args[1], value);
+                        }
                     }
                 }
                 "mr" | "rm" => {
@@ -340,21 +362,25 @@ impl Script {
                     log::trace!("{}", emu.colors.clear_screen);
                 }
                 "s" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() {
+                        emu.maps.dump_qwords(emu.sp(), 10);
+                    } else if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rsp, 10);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_esp(), 10);
                     }
                 }
                 "v" => {
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() {
+                        emu.maps.dump_qwords(emu.sp().wrapping_sub(0x100), 100);
+                    } else if emu.cfg.is_x64() {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
+                        emu.maps
+                            .get_mem("stack")
+                            .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                     }
-                    emu.maps
-                        .get_mem("stack")
-                        .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
                 }
                 "sv" => {
                     if args.len() < 2 {
@@ -396,10 +422,41 @@ impl Script {
                         .store(1, std::sync::atomic::Ordering::Relaxed);
                     emu.run(None);
                 }
-                "f" => emu.flags().print(),
-                "fc" => emu.flags_mut().clear(),
-                "fz" => emu.flags_mut().f_zf = !emu.flags().f_zf,
-                "fs" => emu.flags_mut().f_sf = !emu.flags().f_sf,
+                "f" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &emu.regs_aarch64().nzcv;
+                        log::trace!("NZCV: N={} Z={} C={} V={}", nzcv.n, nzcv.z, nzcv.c, nzcv.v);
+                    } else {
+                        emu.flags().print();
+                    }
+                }
+                "fc" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.n = false;
+                        nzcv.z = false;
+                        nzcv.c = false;
+                        nzcv.v = false;
+                    } else {
+                        emu.flags_mut().clear();
+                    }
+                }
+                "fz" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.z = !nzcv.z;
+                    } else {
+                        emu.flags_mut().f_zf = !emu.flags().f_zf;
+                    }
+                }
+                "fs" => {
+                    if emu.cfg.arch.is_aarch64() {
+                        let nzcv = &mut emu.regs_aarch64_mut().nzcv;
+                        nzcv.n = !nzcv.n;
+                    } else {
+                        emu.flags_mut().f_sf = !emu.flags().f_sf;
+                    }
+                }
                 "mc" => {
                     // mc mymap 1024
                     if args.len() != 3 {
@@ -610,6 +667,14 @@ impl Script {
                         log::trace!("memory errors.");
                     }
                 }
+                "pc" => {
+                    if args.len() != 2 {
+                        log::trace!("error in line {}, address is missing", i);
+                        return;
+                    }
+                    let addr = self.resolve(args[1], i, emu);
+                    emu.set_pc(addr);
+                }
                 "eip" => {
                     // eip <addr>
                     if args.len() != 2 {
@@ -641,7 +706,7 @@ impl Script {
 
                     let value = self.resolve(args[1], i, emu);
 
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
                         emu.stack_push64(value);
                     } else {
                         emu.stack_push32((value & 0xffffffff) as u32);
@@ -654,7 +719,7 @@ impl Script {
                         return;
                     }
 
-                    if emu.cfg.is_x64() {
+                    if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
                         let value = emu.stack_pop64(false).expect("pop failed");
                         log::trace!("poped value 0x{:x}", value);
                         self.result = value;
@@ -996,7 +1061,7 @@ impl Script {
                     // push arguments
                     for j in (2..args.len()).rev() {
                         let v = self.resolve(args[j], i, emu);
-                        if emu.cfg.is_x64() {
+                        if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
                             emu.stack_push64(v);
                         } else {
                             emu.stack_push32(v as u32);
@@ -1004,20 +1069,14 @@ impl Script {
                     }
 
                     // push return address
-                    let retaddr: u64;
-                    if emu.cfg.is_x64() {
-                        retaddr = emu.regs().rip;
-                        emu.stack_push64(emu.regs().rip);
+                    let retaddr = emu.pc();
+                    if emu.cfg.arch.is_aarch64() || emu.cfg.is_x64() {
+                        emu.stack_push64(retaddr);
                     } else {
-                        retaddr = emu.regs().get_eip();
-                        emu.stack_push32(emu.regs().get_eip() as u32);
+                        emu.stack_push32(retaddr as u32);
                     }
 
-                    if emu.cfg.is_x64() {
-                        emu.set_rip(addr, false);
-                    } else {
-                        emu.set_eip(addr, false);
-                    }
+                    emu.set_pc(addr);
 
                     emu.is_running
                         .store(1, std::sync::atomic::Ordering::Relaxed);

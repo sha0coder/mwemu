@@ -53,7 +53,6 @@ pub mod emu_context;
 mod display;
 mod exception_handlers;
 mod execution;
-mod execution_aarch64;
 mod flags;
 mod fls;
 mod fpu;
