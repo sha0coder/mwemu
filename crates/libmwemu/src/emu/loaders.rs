@@ -1,15 +1,15 @@
 use iced_x86::Register;
 
 use crate::arch::Arch;
-use crate::constants;
-use crate::elf::elf32::Elf32;
-use crate::elf::elf64::Elf64;
+use crate::windows::constants;
+use crate::loaders::elf::elf32::Elf32;
+use crate::loaders::elf::elf64::Elf64;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
-use crate::pe::pe32::PE32;
-use crate::macho::macho64::Macho64;
-use crate::pe::pe64::PE64;
-use crate::peb::{peb32, peb64};
+use crate::loaders::pe::pe32::PE32;
+use crate::loaders::macho::macho64::Macho64;
+use crate::loaders::pe::pe64::PE64;
+use crate::windows::peb::{peb32, peb64};
 use crate::winapi::winapi64;
 
 macro_rules! align_up {
@@ -662,7 +662,7 @@ impl Emu {
     /// Load a Mach-O dylib from disk and map its segments into memory.
     /// Returns (base_address, vec of (symbol_name, absolute_address)).
     pub fn map_dylib_macho64(&mut self, filename: &str, lib_name: &str) -> (u64, Vec<(String, u64)>) {
-        use crate::macho::macho64::prot_to_permission;
+        use crate::loaders::macho::macho64::prot_to_permission;
 
         let dylib = Macho64::parse(filename).expect("cannot parse dylib");
 

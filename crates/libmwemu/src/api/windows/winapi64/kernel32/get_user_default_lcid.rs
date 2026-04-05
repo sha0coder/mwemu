@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn GetUserDefaultLCID(emu: &mut emu::Emu) {
     log_red!(emu, "kernel32!GetUserDefaultLCID");

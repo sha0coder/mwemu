@@ -3,13 +3,14 @@ use std::sync::{atomic, Arc};
 
 use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemonic};
 
-use crate::console::Console;
+use crate::debug::console::Console;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::err::MwemuError;
-use crate::peb::peb64;
+
+use crate::windows::peb::peb64;
 use crate::syscall::windows::syscall64::memory as win_syscall64_memory;
-use crate::{constants, engine, serialization};
+use crate::{windows::constants, engine, serialization};
 
 macro_rules! round_to {
     ($num:expr, $dec:expr) => {{
@@ -476,7 +477,7 @@ impl Emu {
                                 self.threads[self.current_thread_id].regs.rip,
                                 thread.regs.rip);*/
                     }
-                    return crate::threading::ThreadScheduler::execute_thread_instruction(
+                    return crate::threading::scheduler::ThreadScheduler::execute_thread_instruction(
                         self, thread_idx,
                     );
                 }
@@ -490,7 +491,7 @@ impl Emu {
             /*if num_threads > 1 {
                 log::debug!("Continuing with current thread {}", self.current_thread_id);
             }*/
-            return crate::threading::ThreadScheduler::execute_thread_instruction(
+            return crate::threading::scheduler::ThreadScheduler::execute_thread_instruction(
                 self,
                 self.current_thread_id,
             );

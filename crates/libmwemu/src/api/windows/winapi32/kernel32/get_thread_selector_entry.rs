@@ -1,4 +1,4 @@
-use crate::constants;
+use crate::windows::constants;
 use crate::emu;
 
 pub fn GetThreadSelectorEntry(emu: &mut emu::Emu) {

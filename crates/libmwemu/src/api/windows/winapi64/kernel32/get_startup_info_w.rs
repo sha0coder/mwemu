@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetStartupInfoW(emu: &mut emu::Emu) {
     let startup_info_ptr = emu.regs().rcx;

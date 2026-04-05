@@ -1,7 +1,7 @@
 use iced_x86::Instruction;
 
 use crate::emu;
-use crate::exception_type;
+use crate::exception::types;
 
 // Hook types using Box<dyn FnMut> for state capture instead of bare fn pointers.
 // return: false will ignore interrupt handling like 0x80 -> linux
@@ -9,7 +9,7 @@ pub type TypeHookOnInterrupt =
     Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 // return: allow handle exception?
 pub type TypeHookOnException =
-    Box<dyn FnMut(&mut emu::Emu, u64, exception_type::ExceptionType) -> bool>;
+    Box<dyn FnMut(&mut emu::Emu, u64, types::ExceptionType) -> bool>;
 // memory read is pre-read you can modify the value that is going to be read.
 pub type TypeHookOnMemoryRead =
     Box<dyn FnMut(&mut emu::Emu, u64, u64, u32)>;
@@ -65,7 +65,7 @@ impl Hooks {
 
     pub fn on_exception(
         &mut self,
-        hook: impl FnMut(&mut emu::Emu, u64, exception_type::ExceptionType) -> bool + 'static,
+        hook: impl FnMut(&mut emu::Emu, u64, types::ExceptionType) -> bool + 'static,
     ) {
         self.hook_on_exception = Some(Box::new(hook));
     }

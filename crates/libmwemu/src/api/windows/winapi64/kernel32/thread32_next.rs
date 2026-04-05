@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn Thread32Next(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;

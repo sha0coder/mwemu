@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::arch::Arch;
-use crate::{constants, definitions::Definition};
+use crate::{windows::constants, debug::definitions::Definition};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]

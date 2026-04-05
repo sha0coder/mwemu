@@ -1,5 +1,5 @@
 use crate::emu::Emu;
-use crate::constants::*;
+use crate::windows::constants::*;
 
 pub(crate) mod memory;
 mod process;

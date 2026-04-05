@@ -1,7 +1,16 @@
 .PHONY: all tests pytests
 
+# Detect Apple Silicon and set cross-compile target
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S)$(UNAME_M),Darwinarm64)
+  CARGO_TARGET := --target x86_64-apple-darwin
+else
+  CARGO_TARGET :=
+endif
+
 all:
-	cargo build --release
+	cargo build --release $(CARGO_TARGET)
 
 tests:
 	if [ ! -d test ]; then \
@@ -13,8 +22,8 @@ tests:
 		unzip -o -P mwemuTestSystem test.zip; \
 		rm test.zip; \
 	fi
-	cargo test --package libmwemu --verbose
-	cargo test --release --package libmwemu --verbose
+	cargo test --package libmwemu --verbose $(CARGO_TARGET)
+	cargo test --release --package libmwemu --verbose $(CARGO_TARGET)
 
 pytests:
 	cd crates/pymwemu && ./test_all.sh

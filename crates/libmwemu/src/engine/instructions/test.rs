@@ -1,5 +1,5 @@
 use crate::color;
-use crate::console::Console;
+use crate::debug::console::Console;
 use crate::emu::Emu;
 use iced_x86::Instruction;
 

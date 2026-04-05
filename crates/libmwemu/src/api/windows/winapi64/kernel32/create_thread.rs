@@ -1,7 +1,7 @@
 use crate::maps::mem64::Permission;
-use crate::thread_context::ThreadContext;
+use crate::threading::context::ThreadContext;
 use crate::winapi::helper;
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn CreateThread(emu: &mut emu::Emu) {
     // Add comprehensive debugging

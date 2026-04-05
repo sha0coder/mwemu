@@ -1,5 +1,5 @@
 use crate::maps::mem64::Permission;
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn HeapReAlloc(emu: &mut emu::Emu) {
     let heap_handle = emu.regs().rcx;

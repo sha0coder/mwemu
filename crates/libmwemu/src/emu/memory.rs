@@ -1,4 +1,4 @@
-use crate::{constants, emu::Emu, structures::MemoryOperation};
+use crate::{windows::constants, emu::Emu, windows::structures::MemoryOperation};
 
 impl Emu {
     /// This is not used on the emulation.

@@ -1,6 +1,6 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
-//use crate::constants::*;
+//use crate::windows::constants::*;
 //use crate::winapi::helper;
 use crate::serialization;
 use crate::winapi::winapi32::kernel32;

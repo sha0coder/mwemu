@@ -6,7 +6,7 @@ use crate::*;
 pub fn breakpoint_functionality() {
     helpers::setup();
 
-    let mut bp = crate::breakpoint::Breakpoint::new();
+    let mut bp = crate::debug::breakpoint::Breakpoint::new();
 
     // Test initial state
     assert_eq!(bp.get_bp(), 0);

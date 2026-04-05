@@ -11,17 +11,17 @@ use iced_x86::{Instruction, IntelFormatter};
 use crate::emu::disassemble::InstructionCache;
 use crate::maps::heap_allocation::O1Heap;
 use crate::{
-    banzai::Banzai,
-    breakpoint::Breakpoints,
-    colors::Colors,
+    api::banzai::Banzai,
+    debug::breakpoint::Breakpoints,
+    utils::colors::Colors,
     config::Config,
-    definitions::{Definition, StoredContext},
-    global_locks::GlobalLocks,
+    debug::definitions::{Definition, StoredContext},
+    threading::global_locks::GlobalLocks,
     hooks::Hooks,
     maps::Maps,
-    pe::{pe32::PE32, pe64::PE64},
-    structures::MemoryOperation,
-    thread_context::ThreadContext,
+    loaders::pe::{pe32::PE32, pe64::PE64},
+    windows::structures::MemoryOperation,
+    threading::context::ThreadContext,
 };
 use crate::emu::object_handle::HandleManagement;
 
@@ -30,6 +30,7 @@ mod call_stack;
 mod config;
 mod console;
 pub mod disassemble;
+pub mod emu_context;
 mod display;
 mod exception_handlers;
 mod execution;

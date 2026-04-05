@@ -25,27 +25,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
-#      - name: Cache dependencies
-#        uses: actions/cache@v3
-#        with:
-#          path: |
-#            ~/.cargo/registry
-#            ~/.cargo/git
-#            target
-#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-      
-      # TODO: fail pipeline if formatting fails
-      #- name: Check formatting
-      #  run: cargo fmt --all -- --check || true
-      
-      # TODO: fail pipeline if clippy fails
-      #- name: Run clippy
-      #  run: cargo clippy -- -D warnings || true
-      
-      #- name: Build
-      #  run: cargo build --release --verbose
-      
+
+      - name: Add x86_64 target (macOS ARM)
+        if: runner.os == 'macOS'
+        run: rustup target add x86_64-apple-darwin
+
       - name: Run libmwemu tests (linux / mac)
         if: runner.os != 'Windows'
         run: make tests 
@@ -77,10 +61,6 @@ jobs:
           cargo test --package libmwemu --verbose
           cargo test --release --package libmwemu --verbose
 
-      #- name: Run pymwemu tests
-      #  if: runner.os != 'Windows'
-      #  run: make pytests
-
       - name: Install cargo-tarpaulin
         if: runner.os == 'Linux'
         run: cargo install cargo-tarpaulin
@@ -89,7 +69,6 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           cargo tarpaulin --no-default-features --out Xml --timeout 200
-
 
       - name: Upload coverage reports to Codecov
         if: runner.os == 'Linux'

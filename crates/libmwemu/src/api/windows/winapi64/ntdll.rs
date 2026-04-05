@@ -3,13 +3,13 @@ use std::io::Read as _;
 use std::io::Seek as _;
 use std::io::SeekFrom;
 
-use crate::console::Console;
-use crate::constants;
+use crate::debug::console::Console;
+use crate::windows::constants;
 use crate::context::context64::Context64;
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::serialization;
-use crate::structures;
+use crate::windows::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi64::kernel32;
 use crate::winapi::winapi64::kernel32::InitializeCriticalSection;

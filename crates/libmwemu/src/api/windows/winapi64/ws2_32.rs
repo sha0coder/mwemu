@@ -1,7 +1,7 @@
 use crate::emu;
 use crate::serialization;
 //use crate::endpoint;
-use crate::structures::*;
+use crate::windows::structures::*;
 use crate::winapi::helper;
 use crate::winapi::winapi64;
 

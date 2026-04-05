@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::pe::pe64::PE64;
+use crate::loaders::pe::pe64::PE64;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializablePE64 {

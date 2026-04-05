@@ -1,4 +1,4 @@
-use crate::console;
+use crate::debug::console;
 use crate::context::context32;
 use crate::emu;
 

@@ -1,7 +1,7 @@
 /*
     Little endian 64 bits and inferior bits memory.
 */
-use crate::emu_context;
+use crate::emu::emu_context;
 use bytemuck::cast_slice;
 use md5;
 use serde::{Deserialize, Serialize};

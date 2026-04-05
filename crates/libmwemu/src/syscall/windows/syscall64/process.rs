@@ -1,9 +1,9 @@
 
 use std::sync::atomic::Ordering;
 
-use crate::constants::*;
+use crate::windows::constants::*;
 use crate::emu::Emu;
-use crate::structures::ProcessBasicInformation64;
+use crate::windows::structures::ProcessBasicInformation64;
 
 fn is_current_process_handle(h: u64) -> bool {
     h == !0 || h == 0xffff_ffff_ffff_fffe

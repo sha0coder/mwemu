@@ -1,9 +1,9 @@
-use crate::console::Console;
-use crate::constants;
+use crate::debug::console::Console;
+use crate::windows::constants;
 use crate::context::context32::Context32;
 use crate::emu;
 use crate::serialization;
-use crate::structures;
+use crate::windows::structures;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 

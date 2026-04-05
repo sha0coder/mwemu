@@ -1,4 +1,4 @@
-use crate::constants::*;
+use crate::windows::constants::*;
 use crate::emu::Emu;
 
 /// `SYSTEM_TIMEOFDAY_INFORMATION` size (56 bytes).

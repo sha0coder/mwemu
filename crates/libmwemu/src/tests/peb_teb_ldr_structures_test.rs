@@ -1,4 +1,5 @@
 use crate::{tests::helpers, *};
+use crate::windows::structures;
 
 #[test]
 // peb/teb/ldr basic tests

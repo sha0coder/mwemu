@@ -1,7 +1,7 @@
 use crate::emu;
 use crate::serialization;
 use crate::winapi::winapi64;
-//use crate::constants;
+//use crate::windows::constants;
 //use crate::winapi::helper;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {

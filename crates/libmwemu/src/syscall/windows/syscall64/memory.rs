@@ -1,7 +1,7 @@
-use crate::constants::*;
+use crate::windows::constants::*;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
-use crate::structures::MemoryBasicInformation64;
+use crate::windows::structures::MemoryBasicInformation64;
 use iced_x86::{Instruction, Mnemonic, OpKind, Register};
 
 fn nt_page_protection_to_permission(protect: u32) -> Permission {

@@ -1,5 +1,5 @@
 use crate::emu::Emu;
-use crate::{color, exception_type};
+use crate::{color, exception::types};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
@@ -9,7 +9,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         Some(v) => v,
         None => {
             log::error!("popf cannot read the stack");
-            emu.exception(exception_type::ExceptionType::PopfCannotReadStack);
+            emu.exception(types::ExceptionType::PopfCannotReadStack);
             return false;
         }
     };
