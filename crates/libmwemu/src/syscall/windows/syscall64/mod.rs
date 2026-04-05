@@ -1,13 +1,18 @@
 use crate::emu::Emu;
 use crate::constants::*;
 
-mod memory;
+pub(crate) mod memory;
 mod process;
+mod registry;
+mod sync;
+mod system;
 
 pub fn gateway(emu: &mut Emu) {
     let nr = emu.regs().rax;
     match nr {
+        WIN64_NTACCESSCHECK => process::nt_access_check(emu),
         WIN64_NTALLOCATEVIRTUALMEMORY => memory::nt_allocate_virtual_memory(emu),
+        WIN64_NTALLOCATEVIRTUALMEMORYEX => memory::nt_allocate_virtual_memory_ex(emu),
         WIN64_NTFREEVIRTUALMEMORY => memory::nt_free_virtual_memory(emu),
         WIN64_NTPROTECTVIRTUALMEMORY => memory::nt_protect_virtual_memory(emu),
         WIN64_NTQUERYVIRTUALMEMORY => memory::nt_query_virtual_memory(emu),
@@ -15,6 +20,7 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTWRITEVIRTUALMEMORY => memory::nt_write_virtual_memory(emu),
         WIN64_NTMAPVIEWOFSECTION => memory::nt_map_view_of_section(emu),
         WIN64_NTUNMAPVIEWOFSECTION => memory::nt_unmap_view_of_section(emu),
+        WIN64_NTQUERYSYSTEMINFORMATION => system::nt_query_system_information(emu),
         WIN64_NTQUERYINFORMATIONPROCESS => process::nt_query_information_process(emu),
         WIN64_NTQUERYINFORMATIONTHREAD => process::nt_query_information_thread(emu),
         WIN64_NTSETINFORMATIONPROCESS => process::nt_set_information_process(emu),
@@ -22,6 +28,17 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTOPENPROCESS => process::nt_open_process(emu),
         WIN64_NTTERMINATEPROCESS => process::nt_terminate_process(emu),
         WIN64_NTQUERYPERFORMANCECOUNTER => process::nt_query_performance_counter(emu),
+        WIN64_NTCREATEEVENT => sync::nt_create_event(emu),
+        WIN64_NTSETEVENT => sync::nt_set_event(emu),
+        WIN64_NTCLOSE => sync::nt_close(emu),
+        WIN64_NTOPENKEY => registry::nt_open_key(emu),
+        WIN64_NTQUERYVALUEKEY => registry::nt_query_value_key(emu),
+        WIN64_NTMANAGEHOTPATCH => system::nt_manage_hot_patch(emu),
+        WIN64_NTQUERYDEBUGFILTERSTATE => system::nt_query_debug_filter_state(emu),
+        WIN64_NTTRACEEVENT => system::nt_trace_event(emu),
+        WIN64_NTRAISEEXCEPTION => process::nt_raise_exception(emu),
+        WIN64_NTRAISEHARDERROR => process::nt_raise_hard_error(emu),
+        WIN64_NTWAITFORALERTBYTHREADID => sync::nt_wait_for_alert_by_thread_id(emu),
         _ => {
             let name = what_syscall(nr);
             log_orange!(

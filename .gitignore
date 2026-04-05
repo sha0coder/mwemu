@@ -4,6 +4,7 @@ shellcodes32/
 shellcodes64/
 .DS_Store
 prompt.md
+*prompt*
 x
 *.txt
 *.swp

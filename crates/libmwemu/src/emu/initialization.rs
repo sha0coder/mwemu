@@ -18,7 +18,7 @@ use crate::{
     banzai::Banzai, breakpoint::Breakpoints, colors::Colors, config::Config,
     global_locks::GlobalLocks, hooks::Hooks, maps::Maps, thread_context::ThreadContext,
 };
-use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32};
+use crate::{get_bit, kuser_shared, set_bit, structures, winapi::winapi32, winapi::winapi64};
 
 use crate::maps::heap_allocation::O1Heap;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
@@ -165,14 +165,22 @@ impl Emu {
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
     pub fn init_stack64(&mut self) {
-        let stack_size = 0x100000;
+        // Large stack only when booting through `ntdll!LdrInitializeThunk` (needs >2 MB).
+        let stack_size = if self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk {
+            0x400000
+        } else {
+            0x100000
+        };
 
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
-            self.cfg.stack_addr = 0x22a000;
-            // Set up 1MB stack
-            self.regs_mut().rsp = self.cfg.stack_addr + stack_size; // 1MB offset
-            self.regs_mut().rbp = self.cfg.stack_addr + stack_size + 0x1000; // Extra page for frame
+            self.cfg.stack_addr = if self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk {
+                0x10000
+            } else {
+                0x22a000
+            };
+            self.regs_mut().rsp = self.cfg.stack_addr + stack_size;
+            self.regs_mut().rbp = self.cfg.stack_addr + stack_size + 0x1000;
         }
 
         // Store register values in local variables
@@ -570,6 +578,59 @@ impl Emu {
         log::trace!("loading memory maps");
         self.maps.is_64bits = self.cfg.arch.is_64bits();
 
+        // In SSDT mode we can optionally let `ntdll!LdrInitializeThunk` bootstrap the loader.
+        // This path intentionally maps far fewer DLLs up front.
+        if self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk {
+            // Empty PEB + TEB only; `ntdll!LdrInitializeThunk` is expected to initialize loader state.
+            peb64::init_peb_teb_empty(self);
+            kuser_shared::init_kuser_shared_data(self);
+
+            // Map ntdll (LdrInitializeThunk lives here).
+            winapi64::kernel32::load_library(self, "ntdll.dll");
+
+            // Map the base DLLs used by imports reached after `LdrInitializeThunk`.
+            // They must be present in the LDR lists before binding so exports and
+            // forwarders can resolve across `kernel32` / `kernelbase`.
+            let mut base_dlls: Vec<Lib> = Vec::new();
+            for dll in &["kernel32.dll", "kernelbase.dll"] {
+                let filepath = self.cfg.get_maps_folder(dll);
+                if std::path::Path::new(&filepath).exists() {
+                    let (base, pe64) = self.map_dll_pe64(&filepath);
+                    peb64::dynamic_link_module(base, pe64.get_pe_off(), dll, self);
+                    base_dlls.push(Lib {
+                        pe64,
+                        base,
+                        name: dll.to_string(),
+                    });
+                }
+            }
+
+            // Bind internal imports now that both modules are mapped. Without this,
+            // export thunks like `kernel32!LoadLibraryA -> jmp [IAT]` can jump
+            // through uninitialized slots when the sample resumes after loader init.
+            for dll in base_dlls.iter_mut() {
+                dll.pe64.iat_binding(self, dll.base);
+                dll.pe64.delay_load_binding(self, dll.base);
+            }
+
+            // Minimal TEB stack bounds (NtTib) so stack probes do not fault.
+            let (stack_base, stack_limit) = self
+                .maps
+                .get_map_by_name("stack")
+                .map(|s| (s.get_base(), s.get_bottom()))
+                .unwrap_or((
+                    self.cfg.stack_addr,
+                    self.cfg.stack_addr + 0x400000 + 0x2000,
+                ));
+            let teb_map = self.maps.get_mem_mut("teb");
+            let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
+            teb.nt_tib.stack_base = stack_base;
+            teb.nt_tib.stack_limit = stack_limit;
+            teb.save(teb_map);
+
+            return;
+        }
+
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
 
@@ -622,10 +683,9 @@ impl Emu {
             peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_off(), &dll.name, self);
         }
 
-        // Stage 3: IAT Binding  base + deps
+        // Stage 3: IAT binding for base + deps (relocs already applied in `map_dll_pe64`).
         for dll in metadata.iter_mut() {
             log::debug!("iat binding {}", &dll.name);
-            dll.pe64.apply_relocations(self, dll.base);
             dll.pe64.iat_binding(self, dll.base);
             dll.pe64.delay_load_binding(self, dll.base);
         }
@@ -634,11 +694,18 @@ impl Emu {
         let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
         peb64::update_peb_image_base(self, ntdll_base);
 
+        let (stack_base, stack_limit) = self
+            .maps
+            .get_map_by_name("stack")
+            .map(|s| (s.get_base(), s.get_bottom()))
+            .unwrap_or((
+                self.cfg.stack_addr,
+                self.cfg.stack_addr + 0x100000 + 0x2000,
+            ));
         let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
-        teb.nt_tib.stack_base = self.cfg.stack_addr;
-        let stack_size = 0x100000;
-        teb.nt_tib.stack_limit = self.cfg.stack_addr + stack_size + 0x2000;
+        teb.nt_tib.stack_base = stack_base;
+        teb.nt_tib.stack_limit = stack_limit;
         teb.save(teb_map);
 
         let heap_sz = 0x885900 - 0x4b5000;

@@ -79,6 +79,11 @@ pub struct Config {
     /// If true, disable the "empty code block" detector in the main `run()` loop.
     /// Some samples intentionally execute/scan zero-filled regions.
     pub allow_empty_code_blocks: bool,
+
+    /// If true, use a minimal PEB/TEB bootstrap and call ntdll!LdrInitializeThunk to
+    /// initialize the Windows loader before jumping to the sample entry point.
+    /// Only effective when `emulate_winapi` is also true and the target is PE64.
+    pub ssdt_use_ldr_initialize_thunk: bool,
 }
 
 impl Default for Config {
@@ -147,6 +152,7 @@ impl Config {
             heap_alloc_min_size: 0,
             heap_free_soft: false,
             allow_empty_code_blocks: false,
+            ssdt_use_ldr_initialize_thunk: false,
         }
     }
 

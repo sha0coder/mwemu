@@ -10,6 +10,7 @@ use crate::pe::pe32::PE32;
 use crate::macho::macho64::Macho64;
 use crate::pe::pe64::PE64;
 use crate::peb::{peb32, peb64};
+use crate::winapi::winapi64;
 
 macro_rules! align_up {
     ($size:expr, $align:expr) => {{
@@ -19,6 +20,24 @@ macro_rules! align_up {
 }
 
 impl Emu {
+    /// Prefer PE `ImageBase` when it is in canonical user space and does not overlap existing maps;
+    /// otherwise fall back to `lib64_alloc` in `LIBS64_*`.
+    fn pick_pe64_dll_base(&mut self, pe64: &PE64) -> u64 {
+        const USER_MAX: u64 = 0x7FFF_FFFF_FFFF;
+        let ib = pe64.opt.image_base;
+        let span = (pe64.opt.size_of_image as u64).max(pe64.size());
+        if ib < 0x10000 {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        }
+        let Some(end) = ib.checked_add(span) else {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        };
+        if end > USER_MAX || self.maps.overlaps(ib, span) {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        }
+        ib
+    }
+
     /// Complex funtion called from many places and with multiple purposes.
     /// This is called from load_code() if sample is PE32, but also from load_library etc.
     /// cyclic stuff: [load_pe] -> [iat-binding]  ->  [load_library] -> [load_pe]
@@ -205,12 +224,9 @@ impl Emu {
 
     pub fn map_dll_pe64(&mut self, filename: &str) -> (u64, PE64) {
         let map_name = self.filename_to_mapname(filename);
-        let pe64 = PE64::load(&filename.to_lowercase());
+        let mut pe64 = PE64::load(&filename.to_lowercase());
 
-        let mut base = pe64.opt.image_base;
-        if base < constants::LIBS64_MIN {
-            base = self.maps.lib64_alloc(pe64.size()).expect("out of memory");
-        }
+        let base = self.pick_pe64_dll_base(&pe64);
 
         let sec_allign = pe64.opt.section_alignment;
 
@@ -289,6 +305,8 @@ impl Emu {
             }
         }
 
+        pe64.apply_relocations(self, base);
+
         (base, pe64)
     }
 
@@ -334,20 +352,16 @@ impl Emu {
 
             // system library
             } else {
-                base = self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+                base = self.pick_pe64_dll_base(&pe64);
             }
         }
 
         if set_entry || self.cfg.emulate_winapi {
-            // 2. pe binding
             if !is_maps || self.cfg.emulate_winapi {
-                pe64.apply_relocations(self, base);
-                pe64.iat_binding(self, base);
-                pe64.delay_load_binding(self, base);
                 self.base = base;
             }
 
-            // 3. entry point logic
+            // 2. entry point logic (relocs + IAT run after PE maps exist; see step 4b below)
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
                 self.regs_mut().rip = base + pe64.opt.address_of_entry_point as u64;
                 log::trace!("entry point at 0x{:x}", self.regs().rip);
@@ -441,18 +455,36 @@ impl Emu {
             }
         }
 
+        // 4b. Base relocs on the mapped image (all load paths, including DLL without emulate_winapi).
+        pe64.apply_relocations(self, base);
+
+        if set_entry || self.cfg.emulate_winapi {
+            if !is_maps || self.cfg.emulate_winapi {
+                // In SSDT + LdrInitializeThunk bootstrap mode, skip eager IAT binding for the main image.
+                if !(set_entry && self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk) {
+                    pe64.iat_binding(self, base);
+                    pe64.delay_load_binding(self, base);
+                }
+            }
+        }
+
         // 5. ldr table entry creation and link
         if set_entry {
-            let space_addr = peb64::create_ldr_entry(
-                self,
-                base,
-                self.regs().rip,
-                &filename2.clone(),
-                0,
-                0x2c1950,
-            );
-            let exe_name = self.cfg.exe_name.clone();
-            peb64::update_ldr_entry_base(&exe_name, base, self);
+            if !(self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk) {
+                let _space_addr = peb64::create_ldr_entry(
+                    self,
+                    base,
+                    self.regs().rip,
+                    &filename2.clone(),
+                    0,
+                    0x2c1950,
+                );
+                let exe_name = self.cfg.exe_name.clone();
+                peb64::update_ldr_entry_base(&exe_name, base, self);
+            }
+            if self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk {
+                peb64::update_peb_image_base(self, base);
+            }
         }
 
         // 6. return values
@@ -780,6 +812,34 @@ impl Emu {
                 }
                 _ => {
                     log::error!("No Pe64 found inside self");
+                }
+            }
+            // Optional SSDT loader bootstrap: call ntdll!LdrInitializeThunk to perform loader init.
+            if self.cfg.emulate_winapi && self.cfg.ssdt_use_ldr_initialize_thunk {
+                let ldr_init = winapi64::kernel32::resolve_api_name_in_module(
+                    self,
+                    "ntdll.dll",
+                    "LdrInitializeThunk",
+                );
+                if ldr_init != 0 {
+                    // Arrange return to entrypoint so execution continues normally.
+                    self.regs_mut().rip = ep;
+                    log::trace!("Initializing win32 64bits emulating ntdll!LdrInitializeThunk");
+                    // LdrInitializeThunk(PCONTEXT Context, PVOID NtdllBase, PVOID Unused)
+                    // The second argument must be ntdll's image base so the loader
+                    // can parse its own PE headers during init.
+                    let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
+                    let _ = self.call64(ldr_init, &[0, ntdll_base, 0]);
+                    log::trace!("ntdll!LdrInitializeThunk emulated completely.");
+                    // Guest loader often clears `PEB+0x90`; restore before walking modules / main EP.
+                    peb64::ensure_peb_system_dependent_07(self);
+
+                    // LdrInitializeThunk reinitializes the Ldr lists; if it didn't
+                    // complete successfully the lists may be empty.  Rebuild them
+                    // from the actually-loaded PE images so user code can walk them.
+                    peb64::rebuild_ldr_lists(self);
+                } else if self.cfg.verbose >= 1 {
+                    log::trace!("ssdt: could not resolve ntdll!LdrInitializeThunk");
                 }
             }
             // emulating tls callbacks

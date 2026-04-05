@@ -12,6 +12,7 @@ use std::path::PathBuf;
 //use libmwemu::definitions;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 use fast_log::Config;
+use libmwemu::disable_color;
 use libmwemu::emu::object_handle::file_handle::init_file_system;
 
 macro_rules! match_register_arg {
@@ -142,6 +143,7 @@ fn main() {
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
         .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
         .arg(clap_arg!("ssdt", "", "ssdt", "emulate winapi, use ssdt syscall implementation instead"))
+        .arg(clap_arg!("init", "", "init", "ssdt: minimal init + call ntdll!LdrInitializeThunk to bootstrap loader"))
         .arg(clap_arg!("gdb", "g", "gdb", "enable GDB remote debugging server"))
         .arg(clap_arg!("gdb_port", "P", "gdb-port", "set GDB server port (default: 9001)", "PORT"))
         .arg(clap_arg!("gdb_wait", "W", "gdb-wait", "wait for GDB connection before starting"))
@@ -233,6 +235,9 @@ fn main() {
             panic!("SSDT mode is not supported in 32-bit mode yet.");
         }
         emu.cfg.emulate_winapi = true;
+    }
+    if matches.is_present("init") {
+        emu.cfg.ssdt_use_ldr_initialize_thunk = true;
     }
 
     // verbose_at
@@ -464,6 +469,10 @@ fn main() {
     // log to file
     if matches.is_present("log") {
         let filename = matches.value_of("log").expect("log filename is missing");
+        // `colors.disable()` alone is not enough: `show_instruction` / macros use `cfg.nocolors`,
+        // and `color!()` uses the global `color_enabled()` flag — both must be off for plain text.
+        emu.cfg.nocolors = true;
+        disable_color();
         emu.colors.disable();
         fast_log::init(
             Config::new()

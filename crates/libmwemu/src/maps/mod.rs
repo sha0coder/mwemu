@@ -564,6 +564,60 @@ impl Maps {
         self.get_mem_by_addr(addr).map(|mem| mem.get_base())
     }
 
+    /// Resolve the **allocation base** for `NtFreeVirtualMemory(MEM_RELEASE)` when the guest passes
+    /// an interior pointer, the exclusive end (`addr == Mem64::bottom`), or when `get_addr_base`
+    /// misses due to edge cases — scans `alloc_*` maps (see `trace_LdrInitializeThunk` / Ldr heap).
+    pub fn alloc_region_base_for_free(&self, addr: u64) -> Option<u64> {
+        if let Some(b) = self.get_addr_base(addr) {
+            return Some(b);
+        }
+        if addr > 0 {
+            if let Some(b) = self.get_addr_base(addr - 1) {
+                return Some(b);
+            }
+        }
+        for (_, mem) in self.mem_slab.iter() {
+            let name = mem.get_name();
+            if !name.starts_with("alloc_") {
+                continue;
+            }
+            if mem.inside(addr) || (addr > 0 && mem.inside(addr - 1)) {
+                return Some(mem.get_base());
+            }
+            if addr == mem.get_bottom() {
+                return Some(mem.get_base());
+            }
+        }
+        None
+    }
+
+    /// Find the PE image (base, size_of_image) that contains `addr`.
+    /// Iterates maps named `*.pe`, reads the PE optional-header `SizeOfImage`,
+    /// and checks whether `addr` falls within `[base, base+size_of_image)`.
+    pub fn find_pe_image_info(&self, addr: u64) -> Option<(u64, u64)> {
+        for (name, _) in self.name_map.iter() {
+            if !name.ends_with(".pe") {
+                continue;
+            }
+            if let Some(pe_map) = self.get_map_by_name(name) {
+                let pe_base = pe_map.get_base();
+                let pe_hdr_off = self.read_dword(pe_base + 0x3c).unwrap_or(0) as u64;
+                if pe_hdr_off == 0 {
+                    continue;
+                }
+                let size_of_image =
+                    self.read_dword(pe_base + pe_hdr_off + 0x50).unwrap_or(0) as u64;
+                if size_of_image == 0 {
+                    continue;
+                }
+                if addr >= pe_base && addr < pe_base + size_of_image {
+                    return Some((pe_base, size_of_image));
+                }
+            }
+        }
+        None
+    }
+
     #[inline(always)]
     pub fn is_mapped(&self, addr: u64) -> bool {
         self.get_mem_by_addr(addr).is_some()

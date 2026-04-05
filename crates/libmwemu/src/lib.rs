@@ -58,7 +58,7 @@ pub use x86::fpu;
 pub use x86::regs as regs64;
 
 // re-export the helper so the macro can reach it
-pub use utils::color_enabled;
+pub use utils::{color_enabled, disable_color};
 
 #[cfg(test)]
 mod tests;

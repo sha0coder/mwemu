@@ -7,6 +7,8 @@ use crate::console::Console;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::err::MwemuError;
+use crate::peb::peb64;
+use crate::syscall::windows::syscall64::memory as win_syscall64_memory;
 use crate::{constants, engine, serialization};
 
 macro_rules! round_to {
@@ -191,6 +193,10 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             return self.step_aarch64();
         }
+        if !self.linux && self.cfg.is_x64() && self.cfg.ssdt_use_ldr_initialize_thunk {
+            peb64::ensure_peb_system_dependent_07(self);
+        }
+
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.step_multi_threaded()
         } else {
@@ -548,6 +554,9 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             return self.run_aarch64(end_addr);
         }
+        if !self.linux && self.cfg.is_x64() && self.cfg.ssdt_use_ldr_initialize_thunk && self.maps.get_map_by_name("peb").is_some() {
+            peb64::ensure_peb_system_dependent_07(self);
+        }
         let instruction_cache = InstructionCache::new();
         self.instruction_cache = instruction_cache;
         if self.cfg.enable_threading && self.threads.len() > 1 {
@@ -565,8 +574,222 @@ impl Emu {
         since = "0.1.0",
         note = "Use run() instead, which automatically handles threading"
     )]
+    #[allow(deprecated)] // delegates to step_multi_threaded (also deprecated)
     pub fn run_multi_threaded(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
-        todo!()
+        match self.maps.get_mem_by_addr(self.regs().rip) {
+            Some(_) => {}
+            None => {
+                log::trace!("Cannot start emulation, pc pointing to unmapped area");
+                return Err(MwemuError::new(
+                    "program counter pointing to unmapped memory",
+                ));
+            }
+        };
+
+        self.is_running.store(1, atomic::Ordering::Relaxed);
+        let is_running2 = Arc::clone(&self.is_running);
+
+        if self.enabled_ctrlc {
+            ctrlc::set_handler(move || {
+                log::trace!("Ctrl-C detected, spawning console");
+                is_running2.store(0, atomic::Ordering::Relaxed);
+            })
+            .expect("ctrl-c handler failed");
+        }
+
+        let mut looped: Vec<u64> = Vec::new();
+        let mut prev_addr: u64 = 0;
+        let mut repeat_counter: u32 = 0;
+
+        loop {
+            while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
+                let rip = self.regs().rip;
+
+                if self.maps.get_mem_by_addr(rip).is_none() {
+                    log::trace!("redirecting code flow to non mapped address 0x{:x}", rip);
+                    Console::spawn_console(self);
+                    return Err(MwemuError::new("cannot read program counter"));
+                }
+
+                if end_addr.is_some() && Some(rip) == end_addr {
+                    return Ok(rip);
+                }
+
+                if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
+                    return Ok(rip);
+                }
+
+                let next_pos = self.pos.saturating_add(1);
+
+                if (self.exp != u64::MAX && self.exp == next_pos)
+                    || self.bp.is_bp_instruction(next_pos)
+                    || self.bp.is_bp(rip)
+                    || (self.cfg.console2 && self.cfg.console_addr == rip)
+                {
+                    if self.running_script {
+                        return Ok(rip);
+                    }
+                    self.cfg.console2 = false;
+                    if self.cfg.verbose >= 2 {
+                        log::trace!(
+                            "------- (breakpoint/console at 0x{:x}, pos {})",
+                            rip,
+                            next_pos
+                        );
+                    }
+                    Console::spawn_console(self);
+                    if self.force_break {
+                        self.force_break = false;
+                        break;
+                    }
+                    continue;
+                }
+
+                if rip == prev_addr {
+                    repeat_counter = repeat_counter.saturating_add(1);
+                } else {
+                    repeat_counter = 0;
+                }
+                prev_addr = rip;
+                if repeat_counter == 100 {
+                    log::trace!("infinite loop! at 0x{:x}", rip);
+                    return Err(MwemuError::new("inifinite loop found"));
+                }
+
+                if self.cfg.loops {
+                    looped.push(rip);
+                    let mut count: u32 = 0;
+                    for a in looped.iter() {
+                        if rip == *a {
+                            count += 1;
+                        }
+                    }
+                    if count > 2 {
+                        log::trace!("    loop: {} interations", count);
+                    }
+                }
+
+                if self.cfg.trace_regs
+                    && self.cfg.trace_filename.is_some()
+                    && next_pos >= self.cfg.trace_start
+                {
+                    self.capture_pre_op();
+                }
+
+                if self.cfg.trace_reg {
+                    for reg in self.cfg.reg_names.iter() {
+                        self.trace_specific_register(reg);
+                    }
+                }
+
+                if self.cfg.trace_flags {
+                    self.flags().print_trace(next_pos);
+                }
+
+                if self.cfg.trace_string {
+                    self.trace_string();
+                }
+
+                let step_ok = self.step_multi_threaded();
+
+                self.instruction_count = self.instruction_count.saturating_add(1);
+
+                if let Some(max) = self.cfg.max_instructions {
+                    if self.instruction_count >= max {
+                        log::info!("max_instructions limit reached ({})", max);
+                        return Ok(self.regs().rip);
+                    }
+                }
+
+                if let Some(timeout) = self.cfg.timeout_secs {
+                    if self.instruction_count % 10000 == 0 {
+                        let elapsed = self.now.elapsed().as_secs_f64();
+                        if elapsed >= timeout {
+                            log::info!("timeout reached ({:.1}s >= {:.1}s)", elapsed, timeout);
+                            return Ok(self.regs().rip);
+                        }
+                    }
+                }
+
+                if let Some(max) = self.cfg.max_faults {
+                    if self.fault_count >= max {
+                        log::info!("max_faults limit reached ({})", max);
+                        return Ok(self.regs().rip);
+                    }
+                }
+
+                if let Some(vpos) = self.cfg.verbose_at {
+                    if vpos == self.pos {
+                        self.cfg.verbose = 3;
+                        self.cfg.trace_mem = true;
+                        self.cfg.trace_regs = true;
+                    }
+                }
+
+                if self.is_running.load(atomic::Ordering::Relaxed) == 0 {
+                    return Ok(self.regs().rip);
+                }
+
+                if self.cfg.entropy && self.instruction_count % 10000 == 0 {
+                    self.update_entropy();
+                }
+
+                if self.cfg.trace_regs
+                    && self.cfg.trace_filename.is_some()
+                    && self.pos >= self.cfg.trace_start
+                    && self.instruction.is_some()
+                {
+                    self.capture_post_op();
+                    self.write_to_trace_file();
+                }
+
+                if self.cfg.inspect {
+                    self.trace_memory_inspection();
+                }
+
+                if !step_ok {
+                    if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
+                        return Ok(self.regs().rip);
+                    }
+                    let any_runnable = self.threads.iter().any(|t| {
+                        !t.suspended && t.wake_tick <= self.tick && t.blocked_on_cs.is_none()
+                    });
+                    if !any_runnable {
+                        return Err(MwemuError::new(
+                            "all emulated threads blocked or suspended",
+                        ));
+                    }
+                    if self.cfg.console_enabled {
+                        Console::spawn_console(self);
+                    } else if self.running_script {
+                        return Ok(self.regs().rip);
+                    } else {
+                        return Err(MwemuError::new(&format!(
+                            "emulation error at pos = {} rip = 0x{:x}",
+                            self.pos,
+                            self.regs().rip
+                        )));
+                    }
+                }
+
+                if self.force_break {
+                    self.force_break = false;
+                    break;
+                }
+
+                if self.is_api_run && self.is_break_on_api {
+                    self.is_api_run = false;
+                    break;
+                }
+            }
+
+            if self.is_break_on_api {
+                return Ok(0);
+            }
+
+            self.is_running.store(1, atomic::Ordering::Relaxed);
+            Console::spawn_console(self);
+        }
     } // end run
 
     /// Start or continue emulation (single-threaded implementation).
@@ -760,7 +983,7 @@ impl Emu {
                         return Ok(self.regs().rip);
                     }
 
-                    if self.exp == self.pos
+                    if (self.exp != u64::MAX && self.exp == self.pos)
                         || self.bp.is_bp_instruction(self.pos)
                         || self.bp.is_bp(addr)
                         || (self.cfg.console2 && self.cfg.console_addr == addr)
@@ -887,6 +1110,8 @@ impl Emu {
                     if self.cfg.entropy && self.pos % 10000 == 0 {
                         self.update_entropy();
                     }
+
+                    win_syscall64_memory::ntdll_heap_list_walk_fixup(self, &ins, addr);
 
                     /*************************************/
                     let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);

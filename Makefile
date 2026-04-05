@@ -21,3 +21,6 @@ pytests:
 
 test_x86:
 	cargo test --release --features rax_x86_tests rax_x86_tests
+
+test_loader:
+	cargo run --release -- -f test/exe64win_msgbox.bin -6 --ssdt --init
