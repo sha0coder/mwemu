@@ -1,4 +1,4 @@
-use crate::{emu::Emu, structures::MemoryOperation};
+use crate::{emu::Emu, windows::structures::MemoryOperation};
 
 impl Emu {
     /// Push a dword to the stack and dec the esp

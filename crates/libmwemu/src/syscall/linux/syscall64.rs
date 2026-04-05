@@ -1,7 +1,7 @@
-use crate::console::Console;
-use crate::constants;
+use crate::debug::console::Console;
+use crate::windows::constants;
 use crate::emu;
-use crate::structures;
+use crate::windows::structures;
 //use crate::endpoint;
 use crate::winapi::helper; // TODO: why not winapi64 helper?
 

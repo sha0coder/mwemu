@@ -4,8 +4,8 @@ use crate::winapi::winapi32::kernel32;
 /*
 use crate::winapi::helper;
 use crate::context32;
-use crate::constants;
-use crate::console;
+use crate::windows::constants;
+use crate::debug::console;
 */
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {

@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetSystemInfo(emu: &mut emu::Emu) {
     let out_sysinfo = emu.regs().rcx;

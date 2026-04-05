@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::structures;
+use crate::windows::structures;
 
 pub fn VirtualQueryEx(emu: &mut emu::Emu) {
     let hndl = emu

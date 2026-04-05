@@ -1,4 +1,4 @@
-use crate::peb::peb32;
+use crate::windows::peb::peb32;
 use crate::{emu, serialization};
 
 use lazy_static::lazy_static;

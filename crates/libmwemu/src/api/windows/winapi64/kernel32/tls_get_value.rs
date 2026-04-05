@@ -1,5 +1,5 @@
 use crate::winapi::winapi64::kernel32::LAST_ERROR;
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn TlsGetValue(emu: &mut emu::Emu) {
     let idx = emu.regs().rcx as usize; // Parameter passed in RCX in x64

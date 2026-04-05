@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetNativeSystemInfo(emu: &mut emu::Emu) {
     let ptr_sysinfo = emu.regs().rcx;

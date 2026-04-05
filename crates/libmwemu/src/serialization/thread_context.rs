@@ -5,7 +5,7 @@ use crate::eflags::Eflags;
 use crate::flags::Flags;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
-use crate::thread_context::ThreadContext;
+use crate::threading::context::ThreadContext;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableThreadContext {

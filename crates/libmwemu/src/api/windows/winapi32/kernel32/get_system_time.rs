@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::structures;
+use crate::windows::structures;
 
 pub fn GetSystemTime(emu: &mut emu::Emu) {
     let out_time = emu

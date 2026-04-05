@@ -1,7 +1,7 @@
-use crate::console::Console;
+use crate::debug::console::Console;
 use crate::emu::Emu;
 use crate::winapi::{winapi32, winapi64};
-use crate::{color, exception};
+use crate::{color, exception::handlers as exception};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {

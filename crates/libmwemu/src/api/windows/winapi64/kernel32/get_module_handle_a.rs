@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::peb;
+use crate::windows::peb;
 use crate::winapi::helper;
 
 pub fn GetModuleHandleA(emu: &mut emu::Emu) {

@@ -1,5 +1,5 @@
-//use crate::console::Console;
-use crate::constants;
+//use crate::debug::console::Console;
+use crate::windows::constants;
 use crate::emu;
 //use crate::endpoint;
 use crate::winapi::helper;

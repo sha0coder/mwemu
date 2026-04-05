@@ -5,7 +5,7 @@
 use crate::emu;
 use crate::pe32;
 use crate::pe32::PE32;
-use crate::structures;
+use crate::windows::structures;
 use crate::winapi::winapi64;
 use std::fs::File;
 use std::io::Read;

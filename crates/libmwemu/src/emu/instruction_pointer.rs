@@ -1,5 +1,5 @@
 use crate::{
-    console::Console, constants, emu::Emu, exception_type::ExceptionType, log_red, to32,
+    console::Console, windows::constants, emu::Emu, exception::types::ExceptionType,
     winapi::winapi32, winapi::winapi64,
 };
 

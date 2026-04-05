@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::structures;
+use crate::windows::structures;
 
 pub fn GetVersionExW(emu: &mut emu::Emu) {
     let version_info_ptr =

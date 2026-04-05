@@ -1,5 +1,5 @@
 use crate::winapi::winapi64::kernel32::LAST_ERROR;
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx;

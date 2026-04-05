@@ -2,7 +2,7 @@ use std::io::Write as _;
 
 use iced_x86::Formatter as _;
 
-use crate::{constants, emu::Emu, flags::Flags, regs64::Regs64};
+use crate::{windows::constants, emu::Emu, flags::Flags, regs64::Regs64};
 
 impl Emu {
     pub fn open_trace_file(&mut self) {

@@ -2,7 +2,7 @@ use crate::emu;
 //use crate::serialization;
 use crate::winapi::winapi64;
 
-//use crate::constants;
+//use crate::windows::constants;
 //use crate::winapi::helper;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
@@ -180,7 +180,7 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
     );
 
     if filename == "comctl32.dll" {
-        use crate::structures::{VS_FIXEDFILEINFO, VS_VERSIONINFO};
+        use crate::windows::structures::{VS_FIXEDFILEINFO, VS_VERSIONINFO};
 
         let mut version_info = VS_VERSIONINFO::new();
 

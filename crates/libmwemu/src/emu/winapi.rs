@@ -1,7 +1,7 @@
 use crate::{
     emu::Emu,
-    exception_type::ExceptionType,
-    peb::{peb32, peb64},
+    exception::types::ExceptionType,
+    windows::peb::{peb32, peb64},
     winapi::{winapi32, winapi64},
 };
 

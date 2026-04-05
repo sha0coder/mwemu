@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetSystemTime(emu: &mut emu::Emu) {
     let out_time = emu.regs().rcx;

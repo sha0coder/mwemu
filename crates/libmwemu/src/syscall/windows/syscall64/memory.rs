@@ -1,7 +1,7 @@
-use crate::constants::*;
+use crate::windows::constants::*;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
-use crate::structures::MemoryBasicInformation64;
+use crate::windows::structures::MemoryBasicInformation64;
 
 fn nt_page_protection_to_permission(protect: u32) -> Permission {
     const PAGE_READONLY: u32 = 0x02;

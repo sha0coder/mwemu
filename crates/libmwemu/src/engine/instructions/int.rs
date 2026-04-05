@@ -1,7 +1,7 @@
 use crate::emu::Emu;
 use crate::syscall::linux;
 use crate::syscall::windows;
-use crate::{color, exception_type};
+use crate::{color, exception::types};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
@@ -50,7 +50,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             0x03 => {
                 emu.show_instruction(color!("Red"), ins);
                 log::trace!("/!\\ int 0x3 sigtrap!!!!");
-                emu.exception(exception_type::ExceptionType::Int3);
+                emu.exception(types::ExceptionType::Int3);
                 return false;
             }
 

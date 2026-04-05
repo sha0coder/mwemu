@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetCPInfo(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx as usize;

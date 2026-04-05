@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn GetVersionExA(emu: &mut emu::Emu) {
     let version_info_ptr = emu.regs().rcx;

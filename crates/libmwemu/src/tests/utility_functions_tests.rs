@@ -1,4 +1,4 @@
-use crate::utils::{color_enabled, disable_color, enable_color, likely, unlikely};
+use crate::utils::helpers::{color_enabled, disable_color, enable_color, likely, unlikely};
 
 #[test]
 fn test_color_enabled_by_default() {

@@ -1,4 +1,4 @@
-use crate::constants;
+use crate::windows::constants;
 use crate::emu;
 
 pub fn WerpCheckOkToRegister(emu: &mut emu::Emu) {

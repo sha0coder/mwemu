@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn FindActCtxSectionStringW(emu: &mut emu::Emu) {
     let actctx = emu.regs().rcx;

@@ -1,5 +1,5 @@
 use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 // FROM THE ASSEMBLY FILE - THESE ARE THE CORRECT VALUES:
 const LOCALE_ILANGUAGE: u64 = 0x1;

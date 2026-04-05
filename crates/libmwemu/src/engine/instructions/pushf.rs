@@ -1,5 +1,5 @@
 use crate::emu::Emu;
-use crate::{color, exception_type};
+use crate::{color, exception::types};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
@@ -11,7 +11,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if !emu.maps.write_word(emu.regs().rsp, val) {
         log::trace!("/!\\ exception writing word at rsp 0x{:x}", emu.regs().rsp);
-        emu.exception(exception_type::ExceptionType::WritingWord);
+        emu.exception(types::ExceptionType::WritingWord);
         return false;
     }
     true
