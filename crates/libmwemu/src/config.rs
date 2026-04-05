@@ -6,52 +6,84 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub filename: String,  // filename with full path included
-    pub trace_mem: bool,   // show memory operations in every step.
-    pub trace_calls: bool, // trace every call
-    pub trace_regs: bool,  // show all the regs in every step.
-    pub trace_reg: bool,   // show value and content of a reg in every step.
-    pub trace_filename: Option<String>,
-    pub trace_start: u64,
+    // --- Binary & architecture ---
+    pub filename: String, // filename with full path included
+    pub arch: Arch,       // CPU architecture (X86, X86_64, Aarch64)
+    pub shellcode: bool,
+    pub arguments: String,
+
+    // --- Memory layout ---
+    pub code_base_addr: u64,
+    pub stack_addr: u64,
+    pub entry_point: u64,
+    pub maps_folder: String,
+
+    // --- Heap behavior ---
+    pub max_alloc_size: u64,      // allocation cap (default 16MB), larger are truncated
+    pub heap_alloc_min_size: u64, // minimum padding for all heap allocations
+    pub heap_free_soft: bool,     // mark memory as freed but don't deallocate
+
+    // --- Tracing ---
+    pub trace_mem: bool,               // show memory operations in every step
+    pub trace_calls: bool,             // trace every call
+    pub trace_regs: bool,              // show all regs in every step
+    pub trace_reg: bool,               // show value and content of a reg in every step
     pub trace_string: bool,
     pub trace_flags: bool,
-    pub reg_names: Vec<String>, // which reg to trace.
-    pub verbose: u32,           // 0 only view the api, 1 api + messages, 2 asm code.
-    pub console: bool,          // enable the console on specific moment?.
-    pub console_num: u64,       // in which moment enable the console.
-    pub loops: bool,            // loop mode count the iterations for every instruction, its slow.
-    pub nocolors: bool,         // to redirecting the output to a file is better to remove colors.
-    pub string_addr: u64,
-    pub inspect: bool,
-    pub inspect_seq: String,
-    pub endpoint: bool,
-    pub maps_folder: String,
-    pub console2: bool,
-    pub console_addr: u64,
-    pub entry_point: u64,
+    pub trace_filename: Option<String>,
+    pub trace_start: u64,
+    pub reg_names: Vec<String>,        // which reg to trace
+    pub stack_trace: bool,
+
+    // --- Verbosity & output ---
+    pub verbose: u32,       // 0 = api only, 1 = api + messages, 2 = asm code
+    pub verbose_at: Option<u64>,
+    pub nocolors: bool,     // disable colors for file redirection
+
+    // --- Console / interactive debugger ---
+    // Three trigger mechanisms: by instruction count, by address, or always-on
+    pub console: bool,         // trigger console at instruction count `console_num`
+    pub console_num: u64,      // instruction count at which to spawn console (sets emu.exp)
+    pub console2: bool,        // trigger console when execution hits `console_addr` (one-shot)
+    pub console_addr: u64,     // address to trigger console spawn (paired with console2)
+    pub console_enabled: bool, // master gate for all console operations
+    pub command: Option<String>,
+
+    // --- Execution limits ---
     pub exit_position: u64,
+    pub max_instructions: Option<u64>, // stop after N instructions
+    pub timeout_secs: Option<f64>,     // stop after N seconds wall-clock time
+    pub max_faults: Option<u32>,       // stop after N faults/exceptions
+    pub loops: bool,                   // count iterations per instruction (slow)
+    pub allow_empty_code_blocks: bool, // disable empty-code-block detector
+
+    // --- API emulation behavior ---
+    pub emulate_winapi: bool,
+    pub skip_unimplemented: bool,
+    pub short_circuit_sleep: bool, // Sleep/Wait calls advance tick but return immediately
+
+    // --- Threading ---
+    pub enable_threading: bool,
+
+    // --- Memory inspection ---
+    pub inspect: bool,         // enable memory watch during execution
+    pub inspect_seq: String,   // operand to watch, e.g. "dword ptr [ebp + 0x24]"
+
+    // --- Network emulation ---
+    pub endpoint: bool,        // enable network endpoint emulation (sockets, HTTP)
+
+    // --- API emulation helpers ---
+    pub string_addr: u64,      // buffer address for string-returning API stubs
+
+    // --- Analysis ---
+    pub entropy: bool,         // enable entropy measurement (polymorphic code detection)
+    pub definitions: HashMap<u64, Definition>, // address annotations (also duplicated on Emu for serialization)
+
+    // --- Dump on exit ---
     pub dump_on_exit: bool,
     pub dump_filename: Option<String>,
-    pub code_base_addr: u64,
-    pub arch: Arch, // CPU architecture (X86, X86_64, Aarch64)
-    pub stack_trace: bool,
-    pub test_mode: bool,
-    pub console_enabled: bool,
-    pub skip_unimplemented: bool,
-    pub stack_addr: u64,
-    pub arguments: String,
-    pub enable_threading: bool, // Enable multi-threading support
-    pub verbose_at: Option<u64>,
-    pub command: Option<String>,
-    pub definitions: HashMap<u64, Definition>,
-    pub entropy: bool,
-    pub shellcode: bool,
-    pub emulate_winapi: bool,
 
-    // Configurable allocation cap (default 16MB). Allocations larger than this are truncated.
-    pub max_alloc_size: u64,
-
-    // Configurable environment constants (override hardcoded values in constants.rs)
+    // --- Simulated environment constants ---
     pub module_name: String,
     pub exe_name: String,
     pub user_name: String,
@@ -61,24 +93,8 @@ pub struct Config {
     pub windows_directory: String,
     pub system_directory: String,
 
-    // Execution limits
-    pub max_instructions: Option<u64>,   // Stop emulation after N instructions
-    pub timeout_secs: Option<f64>,       // Stop emulation after N seconds wall-clock time
-
-    // Fault tracking
-    pub max_faults: Option<u32>,         // Stop emulation after N faults/exceptions
-
-    // Sleep/Wait short-circuit: if true, Sleep/Wait calls advance tick but return immediately
-    pub short_circuit_sleep: bool,
-
-    // HeapAlloc minimum padding: ensure all heap allocations are at least this size
-    pub heap_alloc_min_size: u64,
-    // HeapFree soft-free: if true, HeapFree marks memory as freed but doesn't deallocate
-    pub heap_free_soft: bool,
-
-    /// If true, disable the "empty code block" detector in the main `run()` loop.
-    /// Some samples intentionally execute/scan zero-filled regions.
-    pub allow_empty_code_blocks: bool,
+    // --- Testing ---
+    pub test_mode: bool,
 }
 
 impl Default for Config {

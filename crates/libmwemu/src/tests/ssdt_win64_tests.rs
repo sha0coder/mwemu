@@ -63,7 +63,7 @@ fn exe64win_msgbox_ssdt_hits_first_windows_syscall() {
     let hit = Rc::new(RefCell::new(false));
     let hit_flag = Rc::clone(&hit);
     emu.hooks.on_post_instruction(move |emu, _rip, ins, _sz, _ok| {
-        if !emu.linux && ins.mnemonic() == Mnemonic::Syscall {
+        if emu.os.is_windows() && ins.mnemonic() == Mnemonic::Syscall {
             *hit_flag.borrow_mut() = true;
         }
     });

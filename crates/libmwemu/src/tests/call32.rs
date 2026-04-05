@@ -13,7 +13,7 @@ pub fn call32() {
         0xc3,
     ];
     emu.set_verbose(3);
-    emu.linux = true; // otherwise I would need to set map files.
+    emu.os = crate::arch::OperatingSystem::Linux; // otherwise I would need to set map files.
     emu.load_code_bytes(&opcodes);
     emu.regs_mut().rax = 0;
     let eax = emu.call32(emu.regs().rip, &[]).unwrap();

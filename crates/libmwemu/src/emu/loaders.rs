@@ -570,11 +570,13 @@ impl Emu {
                 None => {}
             }*/
         }*/
+
+        self.elf64 = Some(elf64);
     }
 
     /// Load a Mach-O 64-bit AArch64 binary.
     pub fn load_macho64(&mut self, filename: &str) {
-        let macho = Macho64::parse(filename).expect("cannot parse macho64 binary");
+        let mut macho = Macho64::parse(filename).expect("cannot parse macho64 binary");
         macho.load(&mut self.maps);
         self.init_macos_aarch64();
         self.set_pc(macho.entry);
@@ -599,7 +601,7 @@ impl Emu {
                     lib_name, base, exports.len()
                 );
                 for (sym, addr) in exports {
-                    self.macho_addr_to_symbol.insert(addr, sym.clone());
+                    macho.addr_to_symbol.insert(addr, sym.clone());
                     export_map.insert(sym, addr);
                 }
             } else {
@@ -625,6 +627,8 @@ impl Emu {
                 }
             }
         }
+
+        self.macho64 = Some(macho);
     }
 
     /// Load a Mach-O dylib from disk and map its segments into memory.
@@ -689,7 +693,7 @@ impl Emu {
 
         // ELF32
         if Elf32::is_elf32(filename) && !self.cfg.shellcode {
-            self.linux = true;
+            self.os = crate::arch::OperatingSystem::Linux;
             self.cfg.arch = Arch::X86;
 
             log::trace!("elf32 detected.");
@@ -699,10 +703,11 @@ impl Emu {
             let stack_sz = 0x30000;
             let stack = self.alloc("stack", stack_sz, Permission::READ_WRITE);
             self.regs_mut().rsp = stack + (stack_sz / 2);
+            self.elf32 = Some(elf32);
 
             // ELF64 AArch64
         } else if Elf64::is_elf64_aarch64(filename) && !self.cfg.shellcode {
-            self.linux = true;
+            self.os = crate::arch::OperatingSystem::Linux;
             self.cfg.arch = Arch::Aarch64;
             self.maps.is_64bits = true;
             self.maps.clear();
@@ -733,7 +738,7 @@ impl Emu {
 
             // ELF64 x86_64
         } else if Elf64::is_elf64_x64(filename) && !self.cfg.shellcode {
-            self.linux = true;
+            self.os = crate::arch::OperatingSystem::Linux;
             self.cfg.arch = Arch::X86_64;
             self.maps.clear();
 
