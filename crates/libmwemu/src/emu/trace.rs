@@ -1,7 +1,5 @@
 use std::io::Write as _;
 
-use iced_x86::Formatter as _;
-
 use crate::{windows::constants, emu::Emu, flags::Flags, regs64::Regs64};
 
 impl Emu {
@@ -34,11 +32,11 @@ impl Emu {
     pub fn write_to_trace_file(&mut self) {
         let index = self.pos - 1;
 
-        let instruction = self.instruction.unwrap();
+        let instruction = self.x86_instruction().unwrap();
         let instruction_size = instruction.len();
-        let instruction_bytes = self.maps.read_bytes(self.regs().rip, instruction_size);
-        let mut output: String = String::new();
-        self.formatter.format(&instruction, &mut output);
+        let rip = self.regs().rip;
+        let instruction_bytes = self.maps.read_bytes(rip, instruction_size).to_vec();
+        let output = self.x86_format_instruction(&instruction);
 
         let mut comments = String::new();
 

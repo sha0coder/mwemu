@@ -598,11 +598,11 @@ impl Emu {
                 };
 
                 // now we flush the cacheline if it is written to executable memory and the cacheline exist
-                if let Some(mem1) = self.maps.get_mem_by_addr(mem_addr) {
-                    if mem1.can_execute() {
-                        let idx = self.instruction_cache.get_index_of(mem_addr, 0);
-                        self.instruction_cache.flush_cache_line(idx);
-                    }
+                let should_flush = self.maps.get_mem_by_addr(mem_addr)
+                    .map_or(false, |mem1| mem1.can_execute());
+                if should_flush {
+                    let idx = self.x86_instruction_cache_ref().get_index_of(mem_addr, 0);
+                    self.x86_instruction_cache().flush_cache_line(idx);
                 }
                 match sz {
                     64 => {

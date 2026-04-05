@@ -1,5 +1,4 @@
 use crate::emu;
-use iced_x86::Formatter;
 
 pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
     match syscall {
@@ -14,8 +13,8 @@ pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
         }
 
         _ => {
-            let mut output = String::new();
-            emu.formatter.format(&emu.instruction.unwrap(), &mut output);
+            let ins = emu.x86_instruction().unwrap();
+            let output = emu.x86_format_instruction(&ins);
             log::trace!(
                 "{}{} 0x{:x}: {}{}",
                 emu.colors.red,

@@ -1,68 +1,105 @@
-use crate::{emu::Emu, regs64::Regs64, regs_aarch64::RegsAarch64};
+use crate::{emu::Emu, regs64::Regs64, regs_aarch64::RegsAarch64, threading::context::ArchThreadState};
 
 impl Emu {
     // Forwarding methods for thread-specific fields
     pub fn regs(&self) -> &Regs64 {
-        &self.threads[self.current_thread_id].regs
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs,
+            _ => panic!("regs() called on aarch64 emu"),
+        }
     }
 
     pub fn regs_mut(&mut self) -> &mut Regs64 {
-        &mut self.threads[self.current_thread_id].regs
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs,
+            _ => panic!("regs_mut() called on aarch64 emu"),
+        }
     }
 
     // AArch64 register accessors
     pub fn regs_aarch64(&self) -> &RegsAarch64 {
-        self.threads[self.current_thread_id]
-            .regs_aarch64
-            .as_ref()
-            .expect("regs_aarch64 called on non-aarch64 emu")
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::AArch64 { regs, .. } => regs,
+            _ => panic!("regs_aarch64 called on non-aarch64 emu"),
+        }
     }
 
     pub fn regs_aarch64_mut(&mut self) -> &mut RegsAarch64 {
-        self.threads[self.current_thread_id]
-            .regs_aarch64
-            .as_mut()
-            .expect("regs_aarch64_mut called on non-aarch64 emu")
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::AArch64 { regs, .. } => regs,
+            _ => panic!("regs_aarch64_mut called on non-aarch64 emu"),
+        }
     }
 
     // Unified program counter for shared code paths
     pub fn pc(&self) -> u64 {
-        if self.cfg.arch.is_aarch64() {
-            self.regs_aarch64().pc
-        } else {
-            self.regs().rip
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs.rip,
+            ArchThreadState::AArch64 { regs, .. } => regs.pc,
         }
     }
 
     pub fn set_pc(&mut self, addr: u64) {
-        if self.cfg.arch.is_aarch64() {
-            self.regs_aarch64_mut().pc = addr;
-        } else {
-            self.regs_mut().rip = addr;
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs.rip = addr,
+            ArchThreadState::AArch64 { regs, .. } => regs.pc = addr,
         }
     }
 
-    pub fn set_pre_op_regs(&mut self, regs: Regs64) {
-        self.threads[self.current_thread_id].pre_op_regs = regs;
+    // Unified stack pointer
+    pub fn sp(&self) -> u64 {
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs.rsp,
+            ArchThreadState::AArch64 { regs, .. } => regs.sp,
+        }
     }
 
-    pub fn set_post_op_regs(&mut self, regs: Regs64) {
-        self.threads[self.current_thread_id].post_op_regs = regs;
+    pub fn set_sp(&mut self, addr: u64) {
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { regs, .. } => regs.rsp = addr,
+            ArchThreadState::AArch64 { regs, .. } => regs.sp = addr,
+        }
+    }
+
+    pub fn set_pre_op_regs(&mut self, new_regs: Regs64) {
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { pre_op_regs, .. } => *pre_op_regs = new_regs,
+            _ => panic!("set_pre_op_regs called on aarch64 emu"),
+        }
+    }
+
+    pub fn set_post_op_regs(&mut self, new_regs: Regs64) {
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { post_op_regs, .. } => *post_op_regs = new_regs,
+            _ => panic!("set_post_op_regs called on aarch64 emu"),
+        }
     }
 
     pub fn pre_op_regs(&self) -> &Regs64 {
-        &self.threads[self.current_thread_id].pre_op_regs
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { pre_op_regs, .. } => pre_op_regs,
+            _ => panic!("pre_op_regs called on aarch64 emu"),
+        }
     }
 
     pub fn pre_op_regs_mut(&mut self) -> &mut Regs64 {
-        &mut self.threads[self.current_thread_id].pre_op_regs
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { pre_op_regs, .. } => pre_op_regs,
+            _ => panic!("pre_op_regs_mut called on aarch64 emu"),
+        }
     }
 
     pub fn post_op_regs(&self) -> &Regs64 {
-        &self.threads[self.current_thread_id].post_op_regs
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { post_op_regs, .. } => post_op_regs,
+            _ => panic!("post_op_regs called on aarch64 emu"),
+        }
     }
 
     pub fn post_op_regs_mut(&mut self) -> &mut Regs64 {
-        &mut self.threads[self.current_thread_id].post_op_regs
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { post_op_regs, .. } => post_op_regs,
+            _ => panic!("post_op_regs_mut called on aarch64 emu"),
+        }
     }
 }

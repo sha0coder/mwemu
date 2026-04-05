@@ -1,7 +1,7 @@
 use std::io::Write as _;
 use std::sync::{atomic, Arc};
 
-use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemonic};
+use iced_x86::{Code, Decoder, DecoderOptions, Instruction, Mnemonic};
 
 use crate::debug::console::Console;
 use crate::emu::disassemble::InstructionCache;
@@ -20,6 +20,88 @@ impl Emu {
     #[inline]
     pub fn stop(&mut self) {
         self.is_running.store(0, atomic::Ordering::Relaxed);
+    }
+
+    /// Decode and execute one instruction at the current PC.
+    /// Returns (instruction_size, emulation_ok).
+    /// Dispatches to x86 or aarch64 decode/execute internally.
+    pub fn decode_and_execute(&mut self) -> (usize, bool) {
+        let pc = self.pc();
+
+        // Fetch code
+        let code = match self.maps.get_mem_by_addr(pc) {
+            Some(c) => c,
+            None => {
+                log::trace!("code flow to unmapped address 0x{:x}", pc);
+                Console::spawn_console(self);
+                return (0, false);
+            }
+        };
+
+        self.memory_operations.clear();
+
+        if self.cfg.arch.is_aarch64() {
+            // --- AArch64 decode & execute ---
+            let block = code.read_bytes(pc, 4);
+            if block.len() < 4 {
+                log::warn!("aarch64: cannot read 4 bytes at 0x{:x}", pc);
+                return (0, false);
+            }
+
+            let decoder = yaxpeax_arm::armv8::a64::InstDecoder::default();
+            let mut reader = yaxpeax_arch::U8Reader::new(block);
+            let ins = match yaxpeax_arch::Decoder::decode(&decoder, &mut reader) {
+                Ok(ins) => ins,
+                Err(e) => {
+                    log::warn!("aarch64: decode error at 0x{:x}: {:?}", pc, e);
+                    return (0, false);
+                }
+            };
+
+            if self.cfg.verbose >= 2 {
+                log::trace!("{} 0x{:x}: {}", self.pos, pc, ins);
+            }
+
+            let result_ok = engine::aarch64::emulate_instruction(self, &ins);
+            self.last_instruction_size = 4;
+            (4, result_ok)
+        } else {
+            // --- x86 decode & execute ---
+            let block = code.read_from(pc).to_vec();
+            let mut decoder = if self.cfg.is_x64() {
+                Decoder::with_ip(64, &block, pc, DecoderOptions::NONE)
+            } else {
+                Decoder::with_ip(32, &block, pc, DecoderOptions::NONE)
+            };
+
+            let ins = decoder.decode();
+            let sz = ins.len();
+            let position = decoder.position();
+
+            self.set_x86_instruction(Some(ins));
+            self.set_x86_decoder_position(position);
+
+            let result_ok = engine::emulate_instruction(self, &ins, sz, true);
+            self.last_instruction_size = sz;
+            (sz, result_ok)
+        }
+    }
+
+    /// Advance the program counter by `sz` bytes.
+    /// Respects force_reload (branch already set PC).
+    /// Dispatches to RIP, EIP, or PC based on architecture.
+    #[inline]
+    pub fn advance_pc(&mut self, sz: usize) {
+        if self.force_reload {
+            self.force_reload = false;
+        } else if self.cfg.arch.is_aarch64() {
+            self.regs_aarch64_mut().pc += sz as u64;
+        } else if self.cfg.is_x64() {
+            self.regs_mut().rip += sz as u64;
+        } else {
+            let eip = self.regs().get_eip() + sz as u64;
+            self.regs_mut().set_eip(eip);
+        }
     }
 
     /// Call a 32bits function at addr, passing argument in an array of u64 but will cast to u32.
@@ -183,19 +265,69 @@ impl Emu {
     }
 
     /// Emulate a single step from the current point.
-    /// This doesn't reset the emu.pos, which marks the number of emulated instructions and points to
-    /// the current emulation moment.
-    /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
+    /// Works for both x86 and aarch64. Handles hooks, threading, exit_position.
     #[allow(deprecated)]
     pub fn step(&mut self) -> bool {
-        if self.cfg.arch.is_aarch64() {
-            return self.step_aarch64();
+        // Multi-threaded dispatch (uses scheduler which calls decode_and_execute internally)
+        if !self.cfg.arch.is_aarch64() && self.cfg.enable_threading && self.threads.len() > 1 {
+            return self.step_multi_threaded();
         }
-        if self.cfg.enable_threading && self.threads.len() > 1 {
-            self.step_multi_threaded()
-        } else {
-            self.step_single_threaded()
+
+        self.pos += 1;
+
+        // exit position check
+        if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
+            log::trace!("exit position reached");
+            if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
+                serialization::Serialization::dump_to_file(
+                    self,
+                    self.cfg.dump_filename.as_ref().unwrap(),
+                );
+            }
+            if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
+                self.trace_file
+                    .as_ref()
+                    .unwrap()
+                    .flush()
+                    .expect("failed to flush trace file");
+            }
+            return false;
         }
+
+        // Decode and execute (arch-dispatched)
+        let (sz, result_ok) = self.decode_and_execute();
+        if sz == 0 {
+            return false;
+        }
+
+        // Pre-instruction hook (x86: uses stored instruction; aarch64: no instruction to pass yet)
+        if !self.cfg.arch.is_aarch64() {
+            if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+                let pc = self.pc();
+                let ins = self.x86_instruction().unwrap();
+                let skip = !hook_fn(self, pc, &ins, sz);
+                self.hooks.hook_on_pre_instruction = Some(hook_fn);
+                if skip {
+                    self.advance_pc(sz);
+                    return true;
+                }
+            }
+        }
+
+        // Post-instruction hook
+        if !self.cfg.arch.is_aarch64() {
+            if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+                let pc = self.pc();
+                let ins = self.x86_instruction().unwrap();
+                hook_fn(self, pc, &ins, sz, result_ok);
+                self.hooks.hook_on_post_instruction = Some(hook_fn);
+            }
+        }
+
+        // Advance PC
+        self.advance_pc(sz);
+
+        result_ok
     }
 
     pub fn update_entropy(&mut self) {
@@ -332,8 +464,8 @@ impl Emu {
         self.memory_operations.clear();
 
         // format
-        self.instruction = Some(ins);
-        self.decoder_position = position;
+        self.set_x86_instruction(Some(ins));
+        self.set_x86_decoder_position(position);
 
         // Run pre-instruction hook
         if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
@@ -436,7 +568,7 @@ impl Emu {
 
                 let marker = if i == self.current_thread_id { ">>> " } else { "    " };
                 log::trace!("{}Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
-                        marker, i, thread.id, thread.regs.rip, status);
+                        marker, i, thread.id, thread.regs_x86().rip, status);
             }*/
         }
 
@@ -467,8 +599,8 @@ impl Emu {
                         /*log::trace!("🔄 THREAD SWITCH: {} -> {} (step {})",
                                 self.current_thread_id, thread_idx, self.pos);
                         log::trace!("   From RIP: 0x{:x} -> To RIP: 0x{:x}",
-                                self.threads[self.current_thread_id].regs.rip,
-                                thread.regs.rip);*/
+                                self.threads[self.current_thread_id].regs_x86().rip,
+                                thread.regs_x86().rip);*/
                     }
                     return crate::threading::scheduler::ThreadScheduler::execute_thread_instruction(
                         self, thread_idx,
@@ -548,8 +680,7 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             return self.run_aarch64(end_addr);
         }
-        let instruction_cache = InstructionCache::new();
-        self.instruction_cache = instruction_cache;
+        *self.x86_instruction_cache() = InstructionCache::new();
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.run_multi_threaded(end_addr)
         } else {
@@ -624,28 +755,35 @@ impl Emu {
         // the need of Reallocate everytime
         let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
         block.resize(constants::BLOCK_LEN, 0x0);
-        self.instruction_cache = InstructionCache::new();
+        *self.x86_instruction_cache() = InstructionCache::new();
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
                 //log::trace!("reloading rip 0x{:x}", self.regs().rip);
 
                 let rip = self.regs().rip;
-                let code = match self.maps.get_mem_by_addr(rip) {
-                    Some(c) => c,
-                    None => {
-                        log::trace!("redirecting code flow to non mapped address 0x{:x}", rip);
-                        Console::spawn_console(self);
-                        return Err(MwemuError::new("cannot read program counter"));
+                // Read code bytes into block before checking cache, to avoid
+                // holding an immutable borrow on self.maps across a mutable
+                // borrow on self.arch_state (instruction_cache).
+                {
+                    let code = match self.maps.get_mem_by_addr(rip) {
+                        Some(c) => c,
+                        None => {
+                            log::trace!("redirecting code flow to non mapped address 0x{:x}", rip);
+                            Console::spawn_console(self);
+                            return Err(MwemuError::new("cannot read program counter"));
+                        }
+                    };
+                    let block_temp = code.read_bytes(rip, constants::BLOCK_LEN);
+                    let block_temp_len = block_temp.len();
+                    if block_temp_len != block.len() {
+                        block.resize(block_temp_len, 0);
                     }
-                };
+                    block.clone_from_slice(block_temp);
+                }
 
-                if !self.instruction_cache.lookup_entry(rip, 0) {
-                    // we just need to read 0x300 bytes because x86 require that the instruction is 16 bytes long
-                    // reading anymore would be a waste of time
-                    let block_sz = constants::BLOCK_LEN;
-                    let block_temp = code.read_bytes(rip, block_sz);
+                if !self.x86_instruction_cache().lookup_entry(rip, 0) {
                     let mut zeros = 0;
-                    for b in block_temp.iter() {
+                    for b in block.iter() {
                         if *b == 0 {
                             zeros += 1;
                         } else {
@@ -659,11 +797,6 @@ impl Emu {
                         return Err(MwemuError::new("empty code block"));
                     }
 
-                    let block_temp_len = block_temp.len();
-                    if block_temp_len != block.len() {
-                        block.resize(block_temp_len, 0);
-                    }
-                    block.clone_from_slice(block_temp);
                     if block.is_empty() {
                         return Err(MwemuError::new("cannot read code block, weird address."));
                     }
@@ -671,20 +804,20 @@ impl Emu {
                         Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
 
                     self.rep = None;
-                    let addition = if block_temp_len < 16 {
-                        block_temp_len
+                    let addition = if block.len() < 16 {
+                        block.len()
                     } else {
                         16
                     };
-                    self.instruction_cache
+                    self.x86_instruction_cache()
                         .insert_from_decoder(&mut decoder, addition, rip);
                 }
 
                 let mut sz = 0;
                 let mut addr = 0;
-                while self.instruction_cache.can_decode() {
+                while self.x86_instruction_cache_ref().can_decode() {
                     if self.rep.is_none() {
-                        self.instruction_cache.decode_out(&mut ins);
+                        self.x86_instruction_cache().decode_out(&mut ins);
                         sz = ins.len();
                         addr = ins.ip();
 
@@ -697,8 +830,8 @@ impl Emu {
                         }
                     }
 
-                    self.instruction = Some(ins);
-                    self.decoder_position = self.instruction_cache.current_instruction_slot;
+                    self.set_x86_instruction(Some(ins));
+                    self.set_x86_decoder_position(self.x86_instruction_cache_ref().current_instruction_slot);
                     self.memory_operations.clear();
                     self.pos += 1;
                     self.instruction_count += 1;
@@ -771,8 +904,7 @@ impl Emu {
 
                         self.cfg.console2 = false;
                         if self.cfg.verbose >= 2 {
-                            let mut output = String::new();
-                            self.formatter.format(&ins, &mut output);
+                            let output = self.x86_format_instruction(&ins);
                             log::trace!("-------");
                             log::trace!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
                         }

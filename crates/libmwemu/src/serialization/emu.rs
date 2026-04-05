@@ -28,6 +28,7 @@ use crate::windows::structures::MemoryOperation;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::object_handle::HandleManagement;
+use crate::emu::ArchState;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableEmu {
@@ -132,8 +133,8 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             heap_addr: emu.heap_addr,
             memory_operations: emu.memory_operations.clone(),
             // Instruction decoding
-            instruction: emu.instruction,
-            decoder_position: emu.decoder_position,
+            instruction: emu.x86_instruction(),
+            decoder_position: emu.x86_decoder_position(),
             last_instruction_size: emu.last_instruction_size,
             rep: emu.rep,
             // Core execution state
@@ -213,10 +214,12 @@ impl From<SerializableEmu> for Emu {
             heap_management: None,
             memory_operations: serialized.memory_operations,
             // Instruction decoding (formatter, cache recreated)
-            instruction: serialized.instruction,
-            formatter: Default::default(),
-            instruction_cache: InstructionCache::new(),
-            decoder_position: serialized.decoder_position,
+            arch_state: ArchState::X86 {
+                instruction: serialized.instruction,
+                formatter: Default::default(),
+                instruction_cache: InstructionCache::new(),
+                decoder_position: serialized.decoder_position,
+            },
             last_instruction_size: serialized.last_instruction_size,
             rep: serialized.rep,
             // Core execution state

@@ -1,4 +1,3 @@
-use iced_x86::Formatter as _;
 use std::cell::RefCell;
 
 use crate::emu::Emu;
@@ -49,23 +48,18 @@ pub fn log_emu_state(emu: &mut Emu) {
     log::error!("=== EMULATOR STATE ===");
     log::error!("Current position: {}", emu.pos);
 
-    let mut out: String = String::new();
     let color = "\x1b[0;31m";
-    match emu.instruction {
-        Some(ins) => {
-            let ins = ins.clone();
-            emu.formatter.format(&ins, &mut out);
-            log::trace!(
-                "{}{} 0x{:x}: {}{}",
-                color,
-                emu.pos,
-                ins.ip(),
-                out,
-                emu.colors.nc
-            );
-        }
-        None => {}
-    };
+    if let Some(ins) = emu.x86_instruction() {
+        let out = emu.x86_format_instruction(&ins);
+        log::trace!(
+            "{}{} 0x{:x}: {}{}",
+            color,
+            emu.pos,
+            ins.ip(),
+            out,
+            emu.colors.nc
+        );
+    }
 
     // Log general purpose registers
     log::error!("Registers:");
@@ -115,7 +109,7 @@ pub fn log_emu_state(emu: &mut Emu) {
     log::error!("EFLAGS: 0x{:08x}", emu.flags().dump());
 
     // Log last instruction if available
-    if let Some(ref instruction) = emu.instruction {
+    if let Some(instruction) = emu.x86_instruction() {
         log::error!("Last instruction: {:?}", instruction.mnemonic());
         log::error!("Instruction size: {}", emu.last_instruction_size);
     }

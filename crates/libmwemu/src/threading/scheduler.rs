@@ -44,8 +44,8 @@ impl ThreadScheduler {
                 );
                 log::debug!(
                     "   From RIP: 0x{:x} -> To RIP: 0x{:x}",
-                    emu.threads[current_thread_id].regs.rip,
-                    emu.threads[thread_idx].regs.rip
+                    emu.threads[current_thread_id].regs_x86().rip,
+                    emu.threads[thread_idx].regs_x86().rip
                 );*/
 
                 Self::switch_to_thread(emu, thread_idx);
@@ -119,7 +119,7 @@ impl ThreadScheduler {
                 marker,
                 i,
                 thread.id,
-                thread.regs.rip,
+                thread.regs_x86().rip,
                 status
             );
         }
@@ -152,14 +152,9 @@ impl ThreadScheduler {
             return true; // Already on this thread
         }
 
-        // Save current thread's FPU state
-        emu.threads[emu.current_thread_id].fpu = emu.fpu().clone();
-
-        // Switch to new thread
+        // Switch to new thread (FPU state is inside the ArchThreadState enum,
+        // so it moves with the thread automatically)
         emu.current_thread_id = thread_id;
-
-        // Restore new thread's FPU state
-        *emu.fpu_mut() = emu.threads[thread_id].fpu.clone();
 
         // Don't set force_reload - we want the thread to continue from its current position
         // force_reload would prevent IP advancement which causes instructions to execute twice
@@ -173,8 +168,8 @@ impl ThreadScheduler {
         true
     }
 
-    /// Execute a single instruction for a specific thread
-    /// This consolidates the duplicated logic from step_thread
+    /// Execute a single instruction for a specific thread.
+    /// Uses the arch-dispatched decode_and_execute() and advance_pc() on Emu.
     pub fn execute_thread_instruction(emu: &mut Emu, thread_id: usize) -> bool {
         // Switch to target thread if needed
         if emu.current_thread_id != thread_id {
@@ -183,88 +178,28 @@ impl ThreadScheduler {
             }
         }
 
-        let rip = emu.regs().rip;
+        let pc = emu.pc();
 
-        // Check if RIP points to valid memory
-        let code = match emu.maps.get_mem_by_addr(rip) {
-            Some(c) => c,
-            None => {
-                log::trace!(
-                    "Thread {} (ID: 0x{:x}) RIP 0x{:x} points to unmapped memory",
-                    thread_id,
-                    emu.threads[thread_id].id,
-                    rip
-                );
-                crate::debug::console::Console::spawn_console(emu);
-                return false;
-            }
-        };
-
-        // Read and decode instruction
-        let block = code.read_from(rip).to_vec();
-        let ins = if emu.cfg.is_x64() {
-            iced_x86::Decoder::with_ip(64, &block, rip, iced_x86::DecoderOptions::NONE).decode()
-        } else {
-            let eip = emu.regs().get_eip();
-            iced_x86::Decoder::with_ip(32, &block, eip, iced_x86::DecoderOptions::NONE).decode()
-        };
-
-        let sz = ins.len();
-        let position = if emu.cfg.is_x64() {
-            iced_x86::Decoder::with_ip(64, &block, rip, iced_x86::DecoderOptions::NONE).position()
-        } else {
-            let eip = emu.regs().get_eip();
-            iced_x86::Decoder::with_ip(32, &block, eip, iced_x86::DecoderOptions::NONE).position()
-        };
-
-        // Prepare for execution
-        emu.memory_operations.clear();
-        emu.instruction = Some(ins);
-        emu.decoder_position = position;
-
-        // Pre-instruction hook
-        if let Some(mut hook_fn) = emu.hooks.hook_on_pre_instruction.take() {
-            let skip = !hook_fn(emu, rip, &ins, sz);
-            emu.hooks.hook_on_pre_instruction = Some(hook_fn);
-            if skip {
-                Self::advance_ip(emu, sz);
-                return true;
-            }
+        // Decode and execute
+        let (sz, result_ok) = emu.decode_and_execute();
+        if sz == 0 {
+            return false;
         }
 
-        // Execute the instruction
-        let result_ok = crate::engine::emulate_instruction(emu, &ins, sz, true);
-        emu.last_instruction_size = sz;
-
-        // Post-instruction hook
-        if let Some(mut hook_fn) = emu.hooks.hook_on_post_instruction.take() {
-            let instruction = emu.instruction.take().unwrap();
-            hook_fn(emu, rip, &instruction, sz, result_ok);
-            emu.instruction = Some(instruction);
-            emu.hooks.hook_on_post_instruction = Some(hook_fn);
+        // Pre/post instruction hooks (x86 only — these fire but don't skip in the scheduler path.
+        // Full hook support with skip is handled in step()/run() which Part 4 will unify.)
+        if !emu.cfg.arch.is_aarch64() {
+            if let Some(mut hook_fn) = emu.hooks.hook_on_post_instruction.take() {
+                let ins = emu.x86_instruction().unwrap();
+                hook_fn(emu, pc, &ins, sz, result_ok);
+                emu.hooks.hook_on_post_instruction = Some(hook_fn);
+            }
         }
 
         // Advance instruction pointer
-        Self::advance_ip(emu, sz);
+        emu.advance_pc(sz);
 
         result_ok
-    }
-
-    /// Advance the instruction pointer by the given size
-    /// Handles both 32-bit and 64-bit modes, and respects force_reload flag
-    pub fn advance_ip(emu: &mut Emu, sz: usize) {
-        if emu.force_reload {
-            // Don't advance IP if force_reload is set
-            // This allows hooks or other code to manually set the IP
-            emu.force_reload = false;
-        } else if emu.cfg.is_x64() {
-            // 64-bit mode: advance RIP
-            emu.regs_mut().rip += sz as u64;
-        } else {
-            // 32-bit mode: advance EIP
-            let eip = emu.regs().get_eip() + sz as u64;
-            emu.regs_mut().set_eip(eip);
-        }
     }
 
     /// Main thread scheduling step - replaces the complex logic in step()

@@ -1,17 +1,25 @@
-use crate::{emu::Emu, fpu::FPU};
+use crate::{emu::Emu, fpu::FPU, threading::context::ArchThreadState};
 
 impl Emu {
-    // Helper method to sync FPU instruction pointer with RIP
     pub fn sync_fpu_ip(&mut self) {
-        let rip = self.threads[self.current_thread_id].regs.rip;
-        self.threads[self.current_thread_id].fpu.set_ip(rip);
+        let rip = self.regs().rip;
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { fpu, .. } => fpu.set_ip(rip),
+            _ => {} // no-op on aarch64
+        }
     }
 
     pub fn fpu(&self) -> &FPU {
-        &self.threads[self.current_thread_id].fpu
+        match &self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { fpu, .. } => fpu,
+            _ => panic!("fpu() called on aarch64 emu"),
+        }
     }
 
     pub fn fpu_mut(&mut self) -> &mut FPU {
-        &mut self.threads[self.current_thread_id].fpu
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { fpu, .. } => fpu,
+            _ => panic!("fpu_mut() called on aarch64 emu"),
+        }
     }
 }

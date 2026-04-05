@@ -26,11 +26,8 @@ impl Emu {
 
     /// get last emulated mnemonic with name and parameters.
     fn get_prev_mnemonic(&mut self) -> PyResult<String> {
-        let mut output = String::new();
-        self.emu
-            .formatter
-            .format(&self.emu.instruction.unwrap(), &mut output);
-        Ok(output.clone())
+        let ins = self.emu.x86_instruction().unwrap();
+        Ok(self.emu.x86_format_instruction(&ins))
     }
 
     /// reset the instruction counter to zero.

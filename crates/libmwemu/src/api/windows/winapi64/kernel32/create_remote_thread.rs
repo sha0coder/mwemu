@@ -31,15 +31,19 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
     let mut new_thread = ThreadContext::new(new_thread_id as u64, emu.cfg.arch);
 
     // Initialize thread context with entry point and parameter
-    new_thread.regs.rip = addr;
-    new_thread.regs.rcx = param;
-    new_thread.regs.rax = 0;
+    {
+        let regs = new_thread.regs_x86_mut();
+        regs.rip = addr;
+        regs.rcx = param;
+        regs.rax = 0;
+    }
 
     // Allocate stack if requested (otherwise will share/reuse current stack)
     if stack_size > 0 {
         if let Some(stack_base) = emu.maps.alloc(stack_size) {
-            new_thread.regs.rsp = stack_base + stack_size - 8; // Stack grows down
-            new_thread.regs.rbp = new_thread.regs.rsp;
+            let regs = new_thread.regs_x86_mut();
+            regs.rsp = stack_base + stack_size - 8; // Stack grows down
+            regs.rbp = regs.rsp;
             emu.maps
                 .create_map(
                     &format!("remote_thread_stack_{:x}", new_thread_id),
@@ -52,7 +56,9 @@ pub fn CreateRemoteThread(emu: &mut emu::Emu) {
     }
 
     // Sync FPU instruction pointer
-    new_thread.fpu.set_ip(addr);
+    if let crate::threading::context::ArchThreadState::X86 { fpu, .. } = &mut new_thread.arch {
+        fpu.set_ip(addr);
+    }
 
     emu.threads.push(new_thread);
 

@@ -507,7 +507,7 @@ impl Emu {
         // 1. Configured entry point
         if self.cfg.entry_point != constants::CFG_DEFAULT_BASE {
             log::trace!("forcing entry point to 0x{:x}", self.cfg.entry_point);
-            self.regs_mut().rip = self.cfg.entry_point;
+            self.set_pc(self.cfg.entry_point);
 
         // 2. Entry point pointing inside .text
         } else if elf64.elf_hdr.e_entry >= text_addr && elf64.elf_hdr.e_entry < text_addr + text_sz
@@ -516,15 +516,15 @@ impl Emu {
                 "Entry point pointing to .text 0x{:x}",
                 elf64.elf_hdr.e_entry
             );
-            self.regs_mut().rip = elf64.elf_hdr.e_entry;
+            self.set_pc(elf64.elf_hdr.e_entry);
 
         // 3. Entry point points above .text, relative entry point
         } else if elf64.elf_hdr.e_entry < text_addr {
-            self.regs_mut().rip = elf64.elf_hdr.e_entry + elf64.base; //text_addr;
+            self.set_pc(elf64.elf_hdr.e_entry + elf64.base);
             log::trace!(
                 "relative entry point: 0x{:x}  fixed: 0x{:x}",
                 elf64.elf_hdr.e_entry,
-                self.regs().rip
+                self.pc()
             );
 
         // 4. Entry point points below .text, weird case.
@@ -713,10 +713,9 @@ impl Emu {
             self.maps.clear();
 
             log::trace!("elf64 aarch64 detected.");
+            // load_elf64 handles thread conversion (via init_linux64_aarch64)
+            // and sets PC via set_pc()
             self.load_elf64(filename);
-            // load_elf64 → init_linux64_aarch64 sets up stack/regs
-            // Entry point was set in rip by load_elf64 — transfer to PC
-            self.regs_aarch64_mut().pc = self.regs().rip;
 
             // Mach-O AArch64
         } else if Macho64::is_macho64_aarch64(filename) && !self.cfg.shellcode {

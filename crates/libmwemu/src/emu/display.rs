@@ -1,4 +1,4 @@
-use iced_x86::{Formatter as _, Instruction};
+use iced_x86::Instruction;
 
 use crate::emu::Emu;
 
@@ -42,8 +42,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} ; {}", self.pos, ins.ip(), out, comment);
@@ -67,8 +66,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {}", self.pos, ins.ip(), out);
@@ -91,8 +89,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!(
@@ -124,8 +121,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} ;0x{:x}", self.pos, ins.ip(), out, value);
@@ -149,8 +145,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} taken", self.pos, ins.ip(), out);
@@ -172,8 +167,7 @@ impl Emu {
         if self.cfg.verbose < 2 {
             return;
         }
-        let mut out: String = String::new();
-        self.formatter.format(ins, &mut out);
+        let out = self.x86_format_instruction(ins);
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} not taken", self.pos, ins.ip(), out);

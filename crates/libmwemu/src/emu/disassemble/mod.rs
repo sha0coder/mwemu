@@ -1,5 +1,5 @@
 use crate::emu::Emu;
-use iced_x86::{Decoder, DecoderOptions, Formatter as _, Instruction};
+use iced_x86::{Decoder, DecoderOptions, Instruction};
 use serde::{Deserialize, Serialize};
 
 // about 10 mb should be on l3 cache
@@ -226,23 +226,19 @@ impl Emu {
     pub fn disassemble(&mut self, addr: u64, amount: u32) -> String {
         let mut out = String::new();
         let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
-        let block = code.read_from(addr);
+        let block = code.read_from(addr).to_vec();
 
         let bits: u32 = if self.cfg.is_x64() { 64 } else { 32 };
-        let mut decoder = Decoder::with_ip(bits, block, addr, DecoderOptions::NONE);
-        let mut output = String::new();
+        let mut decoder = Decoder::with_ip(bits, &block, addr, DecoderOptions::NONE);
         let mut instruction = Instruction::default();
         let mut count: u32 = 1;
         while decoder.can_decode() {
             decoder.decode_out(&mut instruction);
-            output.clear();
-            self.formatter.format(&instruction, &mut output);
+            let output = self.x86_format_instruction(&instruction);
             if self.cfg.is_x64() {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip(), output));
-                //log::trace!("0x{:x}: {}", instruction.ip(), output);
             } else {
                 out.push_str(&format!("0x{:x}: {}\n", instruction.ip32(), output));
-                //log::trace!("0x{:x}: {}", instruction.ip32(), output);
             }
             count += 1;
             if count == amount {

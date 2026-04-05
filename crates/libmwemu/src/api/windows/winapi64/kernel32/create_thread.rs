@@ -107,15 +107,19 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     let mut new_thread = ThreadContext::new(new_thread_id as u64, emu.cfg.arch);
 
     // Initialize thread context with entry point and parameter
-    new_thread.regs.rip = code;
-    new_thread.regs.rcx = param;
-    new_thread.regs.rax = 0;
+    {
+        let regs = new_thread.regs_x86_mut();
+        regs.rip = code;
+        regs.rcx = param;
+        regs.rax = 0;
+    }
 
     // Allocate stack if requested
     if stack_sz > 0 {
         if let Some(stack_base) = emu.maps.alloc(stack_sz) {
-            new_thread.regs.rsp = stack_base + stack_sz - 8;
-            new_thread.regs.rbp = new_thread.regs.rsp;
+            let regs = new_thread.regs_x86_mut();
+            regs.rsp = stack_base + stack_sz - 8;
+            regs.rbp = regs.rsp;
             emu.maps
                 .create_map(
                     &format!("thread_stack_{:x}", new_thread_id),
@@ -135,7 +139,9 @@ pub fn CreateThread(emu: &mut emu::Emu) {
     }
 
     // Sync FPU instruction pointer
-    new_thread.fpu.set_ip(code);
+    if let crate::threading::context::ArchThreadState::X86 { fpu, .. } = &mut new_thread.arch {
+        fpu.set_ip(code);
+    }
 
     // Set suspended state if CREATE_SUSPENDED flag is set
     if (flags & constants::CREATE_SUSPENDED) != 0 {
@@ -178,7 +184,7 @@ pub fn CreateThread(emu: &mut emu::Emu) {
             idx,
             thread.id,
             thread.suspended,
-            thread.regs.rip
+            thread.regs_x86().rip
         );
     }
     log::trace!("current_thread_id = {}", emu.current_thread_id);
