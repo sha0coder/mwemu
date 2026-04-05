@@ -37,7 +37,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         );
     }
 
-    emu.show_instruction_ret(color!("Yellow"), ins, ret_addr);
+    emu.show_instruction_ret(color!("Yellow"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins), ret_addr);
 
     if emu.break_on_next_return {
         emu.break_on_next_return = false;

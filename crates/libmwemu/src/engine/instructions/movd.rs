@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     // the high part is cleared to zero
 
-    emu.show_instruction(color!("Cyan"), ins);
+    emu.show_instruction(color!("Cyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     let sz0 = emu.get_operand_sz(ins, 0);
     let sz1 = emu.get_operand_sz(ins, 1);

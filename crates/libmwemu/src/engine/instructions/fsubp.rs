@@ -4,7 +4,7 @@ use crate::fpu::f80::F80;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), ins);
+    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     let st0_idx = 0; // src, always ST(0)
     let st1_idx = emu.get_operand_value(ins, 0, false).unwrap_or(1) as usize; // dest

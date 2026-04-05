@@ -4,7 +4,7 @@ use crate::winapi::{winapi32, winapi64};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Yellow"), ins);
+    emu.show_instruction(color!("Yellow"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     if ins.op_count() != 1 {
         unimplemented!("weird variant of call");

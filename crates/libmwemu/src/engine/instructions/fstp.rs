@@ -3,7 +3,7 @@ use crate::emu::Emu;
 use iced_x86::{Instruction, Register};
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), ins);
+    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     log::trace!("count: {}", ins.op_count());
     if ins.op_register(0) == Register::ST0 {

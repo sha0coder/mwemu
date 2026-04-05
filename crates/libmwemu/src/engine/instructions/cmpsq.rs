@@ -7,10 +7,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), ins);
+            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), ins);
+        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
     }
 
     let value0: u64 = match emu.maps.read_qword(emu.regs().rsi) {

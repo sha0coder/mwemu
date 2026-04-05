@@ -3,7 +3,7 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), ins);
+    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     if emu.get_operand_sz(ins, 1) < 128 {
         let value = emu.get_operand_xmm_value_128(ins, 0, true).unwrap_or(0);

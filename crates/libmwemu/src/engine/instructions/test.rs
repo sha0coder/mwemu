@@ -4,7 +4,7 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Orange"), ins);
+    emu.show_instruction(color!("Orange"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     assert!(ins.op_count() == 2);
 

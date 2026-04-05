@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     //TODO: exception if memory address is unaligned to 16,32,64
 
-    emu.show_instruction(color!("Green"), ins);
+    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     let sz0 = emu.get_operand_sz(ins, 0);
     let sz1 = emu.get_operand_sz(ins, 1);

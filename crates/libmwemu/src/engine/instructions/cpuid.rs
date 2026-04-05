@@ -3,7 +3,7 @@ use crate::color;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Red"), ins);
+    emu.show_instruction(color!("Red"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     // guloader checks bit31 which is if its hipervisor with command
     // https://c9x.me/x86/html/file_module_x86_id_45.html

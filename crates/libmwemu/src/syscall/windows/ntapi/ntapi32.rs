@@ -13,13 +13,16 @@ pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
         }
 
         _ => {
-            let ins = emu.x86_instruction().unwrap();
-            let output = emu.x86_format_instruction(&ins);
+            let output = if let Some(decoded) = emu.last_decoded {
+                emu.format_instruction(&decoded)
+            } else {
+                String::from("???")
+            };
             log::trace!(
                 "{}{} 0x{:x}: {}{}",
                 emu.colors.red,
                 emu.pos,
-                emu.regs().rip,
+                emu.pc(),
                 output,
                 emu.colors.nc
             );

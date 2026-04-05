@@ -18,29 +18,53 @@ impl Emu {
 
     #[inline]
     pub fn capture_pre_op(&mut self) {
-        self.set_pre_op_regs(*self.regs());
-        self.set_pre_op_flags(*self.flags());
+        if self.cfg.arch.is_aarch64() {
+            // TODO: aarch64 pre-op snapshot (parity debt: Step 15)
+        } else {
+            self.set_pre_op_regs(*self.regs());
+            self.set_pre_op_flags(*self.flags());
+        }
     }
 
     #[inline]
     pub fn capture_post_op(&mut self) {
-        self.set_post_op_regs(*self.regs());
-        self.set_post_op_flags(*self.flags());
+        if self.cfg.arch.is_aarch64() {
+            // TODO: aarch64 post-op snapshot (parity debt: Step 15)
+        } else {
+            self.set_post_op_regs(*self.regs());
+            self.set_post_op_flags(*self.flags());
+        }
     }
 
     /// dump the registers and memory write operations to file
     pub fn write_to_trace_file(&mut self) {
         let index = self.pos - 1;
+        let pc = self.pc();
 
-        let instruction = self.x86_instruction().unwrap();
-        let instruction_size = instruction.len();
-        let rip = self.regs().rip;
-        let instruction_bytes = self.maps.read_bytes(rip, instruction_size).to_vec();
-        let output = self.x86_format_instruction(&instruction);
+        let (instruction_size, instruction_bytes, output) = if let Some(decoded) = self.last_decoded {
+            let sz = decoded.size();
+            let bytes = self.maps.read_bytes(pc, sz).to_vec();
+            let out = self.format_instruction(&decoded);
+            (sz, bytes, out)
+        } else {
+            (0, vec![], String::from("???"))
+        };
 
         let mut comments = String::new();
 
-        // dump all registers on first, only differences on next
+        if self.cfg.arch.is_aarch64() {
+            // aarch64 trace: just output the instruction, no reg diff yet (parity debt: Step 15)
+            log::trace!(
+                r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","","","""#,
+                index = index + 1,
+                address = pc,
+                bytes = instruction_bytes,
+                disassembly = output,
+            );
+            return;
+        }
+
+        // x86 register diff
         let pre_op_regs = self.pre_op_regs();
         let post_op_regs = self.post_op_regs();
         let mut registers = String::new();
@@ -114,76 +138,7 @@ impl Emu {
             registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 
-        // temp test, always dump all?
-        /*{
-            registers = format!(
-                "{} rax: {:x}-> {:x}",
-                registers, pre_op_regs.rax, post_op_regs.rax
-            );
-            registers = format!(
-                "{} rbx: {:x}-> {:x}",
-                registers, pre_op_regs.rbx, post_op_regs.rbx
-            );
-            registers = format!(
-                "{} rcx: {:x}-> {:x}",
-                registers, pre_op_regs.rcx, post_op_regs.rcx
-            );
-            registers = format!(
-                "{} rdx: {:x}-> {:x}",
-                registers, pre_op_regs.rdx, post_op_regs.rdx
-            );
-            registers = format!(
-                "{} rsp: {:x}-> {:x}",
-                registers, pre_op_regs.rsp, post_op_regs.rsp
-            );
-            registers = format!(
-                "{} rbp: {:x}-> {:x}",
-                registers, pre_op_regs.rbp, post_op_regs.rbp
-            );
-            registers = format!(
-                "{} rsi: {:x}-> {:x}",
-                registers, pre_op_regs.rsi, post_op_regs.rsi
-            );
-            registers = format!(
-                "{} rdi: {:x}-> {:x}",
-                registers, pre_op_regs.rdi, post_op_regs.rdi
-            );
-            registers = format!(
-                "{} r8: {:x}-> {:x}",
-                registers, pre_op_regs.r8, post_op_regs.r8
-            );
-            registers = format!(
-                "{} r9: {:x}-> {:x}",
-                registers, pre_op_regs.r9, post_op_regs.r9
-            );
-            registers = format!(
-                "{} r10: {:x}-> {:x}",
-                registers, pre_op_regs.r10, post_op_regs.r10
-            );
-            registers = format!(
-                "{} r11: {:x}-> {:x}",
-                registers, pre_op_regs.r11, post_op_regs.r11
-            );
-            registers = format!(
-                "{} r12: {:x}-> {:x}",
-                registers, pre_op_regs.r12, post_op_regs.r12
-            );
-            registers = format!(
-                "{} r13: {:x}-> {:x}",
-                registers, pre_op_regs.r13, post_op_regs.r13
-            );
-            registers = format!(
-                "{} r14: {:x}-> {:x}",
-                registers, pre_op_regs.r14, post_op_regs.r14
-            );
-            registers = format!(
-                "{} r15: {:x}-> {:x}",
-                registers, pre_op_regs.r15, post_op_regs.r15
-            );
-        }*/
-
         let mut flags = String::new();
-        // dump all flags on first, only differences on next
         let pre_op_flags = self.pre_op_flags();
         let post_op_flags = self.post_op_flags();
         if index == 0 {
@@ -213,20 +168,6 @@ impl Emu {
             );
         }
 
-        /*
-        let mut trace_file = self.trace_file.as_ref().unwrap();
-        writeln!(
-            trace_file,
-            r#""{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#,
-            index = index,
-            address = pre_op_regs.rip,
-            bytes = instruction_bytes,
-            disassembly = output,
-            registers = format!("{} {}", registers, flags),
-            memory = memory,
-            comments = comments
-        ).expect("failed to write to trace file");*/
-
         log::trace!(
             r#"trace: "{index}","{address:016X}","{bytes:02x?}","{disassembly}","{registers}","{memory}","{comments}""#,
             index = index + 1,
@@ -241,7 +182,24 @@ impl Emu {
 
     /// display specific register.
     pub(crate) fn trace_specific_register(&self, reg: &str) {
-        //TODO: I think this is already implemented in regs64
+        if self.cfg.arch.is_aarch64() {
+            let regs = self.regs_aarch64();
+            match reg {
+                "sp" => log::trace!("\t{} sp: 0x{:x}", self.pos, regs.sp),
+                "pc" => log::trace!("\t{} pc: 0x{:x}", self.pos, regs.pc),
+                "lr" => log::trace!("\t{} lr: 0x{:x}", self.pos, regs.x[30]),
+                "fp" => log::trace!("\t{} fp: 0x{:x}", self.pos, regs.x[29]),
+                _ => {
+                    if let Some(val) = regs.get_by_name(reg) {
+                        log::trace!("\t{} {}: 0x{:x}", self.pos, reg, val);
+                    } else {
+                        log::warn!("unknown aarch64 register: {}", reg);
+                    }
+                }
+            }
+            return;
+        }
+
         match reg {
             "rax" => self.regs().show_rax(&self.maps, self.pos),
             "rbx" => self.regs().show_rbx(&self.maps, self.pos),
@@ -272,7 +230,7 @@ impl Emu {
             "ebp" => log::trace!("\t{} ebp: 0x{:x}", self.pos, self.regs().get_ebp() as u32),
             "eip" => log::trace!("\t{} eip: 0x{:x}", self.pos, self.regs().get_eip() as u32),
             "xmm1" => log::trace!("\t{} xmm1: 0x{:x}", self.pos, self.regs().xmm1),
-            _ => panic!("invalid register."),
+            _ => log::warn!("unknown register: {}", reg),
         }
     }
 
@@ -298,9 +256,6 @@ impl Emu {
                     self.cfg.string_addr,
                     w
                 );
-            } else {
-
-                //log::trace!("\t{} trace wide string -> 0x{:x}: ''", self.pos, self.cfg.string_addr);
             }
         }
     }
@@ -319,8 +274,8 @@ impl Emu {
             .maps
             .read_string_of_bytes(addr, constants::NUM_BYTES_TRACE);
         log::trace!(
-            "\tmem_inspect: rip = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
-            self.regs().rip,
+            "\tmem_inspect: pc = {:x} (0x{:x}): 0x{:x} {} '{}' {{{}}}",
+            self.pc(),
             addr,
             value,
             value,

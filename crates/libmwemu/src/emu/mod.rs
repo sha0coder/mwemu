@@ -6,6 +6,7 @@ use std::{
     time::Instant,
 };
 
+use crate::emu::decoded_instruction::DecodedInstruction;
 use crate::emu::disassemble::InstructionCache;
 use crate::maps::heap_allocation::O1Heap;
 use crate::{
@@ -27,17 +28,18 @@ use crate::{
 use crate::emu::object_handle::HandleManagement;
 
 /// Architecture-specific instruction decoding and disassembly state.
-/// Discriminated by target architecture so aarch64 instances don't allocate
-/// the ~21.5 MB x86 InstructionCache, formatter, etc.
+/// Discriminated by target architecture so each variant carries only
+/// the decode state relevant to its ISA.
 pub enum ArchState {
     X86 {
         instruction: Option<iced_x86::Instruction>,
         formatter: iced_x86::IntelFormatter,
-        instruction_cache: InstructionCache,
+        instruction_cache: InstructionCache<iced_x86::Instruction>,
         decoder_position: usize,
     },
     AArch64 {
-        // Future: aarch64-specific decode state, formatter, etc.
+        instruction: Option<yaxpeax_arm::armv8::a64::Instruction>,
+        instruction_cache: InstructionCache<yaxpeax_arm::armv8::a64::Instruction>,
     },
 }
 
@@ -45,6 +47,7 @@ mod banzai;
 mod call_stack;
 mod config;
 mod console;
+pub mod decoded_instruction;
 pub mod disassemble;
 pub mod emu_context;
 mod display;
@@ -86,6 +89,7 @@ pub struct Emu {
 
     // --- Instruction decoding & disassembly ---
     pub arch_state: ArchState,                         // architecture-specific decode/cache/formatter state
+    pub last_decoded: Option<DecodedInstruction>,      // last decoded instruction (arch-neutral)
     pub last_instruction_size: usize,
     pub rep: Option<u64>,                              // REP prefix counter for string operations
 
@@ -178,7 +182,7 @@ impl Emu {
 
     /// Get the x86 instruction cache (panics on aarch64).
     #[inline]
-    pub fn x86_instruction_cache(&mut self) -> &mut InstructionCache {
+    pub fn x86_instruction_cache(&mut self) -> &mut InstructionCache<iced_x86::Instruction> {
         match &mut self.arch_state {
             ArchState::X86 { instruction_cache, .. } => instruction_cache,
             ArchState::AArch64 { .. } => panic!("x86_instruction_cache called on aarch64 emu"),
@@ -187,10 +191,28 @@ impl Emu {
 
     /// Get the x86 instruction cache immutably.
     #[inline]
-    pub fn x86_instruction_cache_ref(&self) -> &InstructionCache {
+    pub fn x86_instruction_cache_ref(&self) -> &InstructionCache<iced_x86::Instruction> {
         match &self.arch_state {
             ArchState::X86 { instruction_cache, .. } => instruction_cache,
             ArchState::AArch64 { .. } => panic!("x86_instruction_cache_ref called on aarch64 emu"),
+        }
+    }
+
+    /// Get the aarch64 instruction cache (panics on x86).
+    #[inline]
+    pub fn aarch64_instruction_cache(&mut self) -> &mut InstructionCache<yaxpeax_arm::armv8::a64::Instruction> {
+        match &mut self.arch_state {
+            ArchState::AArch64 { instruction_cache, .. } => instruction_cache,
+            ArchState::X86 { .. } => panic!("aarch64_instruction_cache called on x86 emu"),
+        }
+    }
+
+    /// Get the aarch64 instruction cache immutably.
+    #[inline]
+    pub fn aarch64_instruction_cache_ref(&self) -> &InstructionCache<yaxpeax_arm::armv8::a64::Instruction> {
+        match &self.arch_state {
+            ArchState::AArch64 { instruction_cache, .. } => instruction_cache,
+            ArchState::X86 { .. } => panic!("aarch64_instruction_cache_ref called on x86 emu"),
         }
     }
 
@@ -224,5 +246,16 @@ impl Emu {
             ArchState::AArch64 { .. } => panic!("x86_format_instruction called on aarch64 emu"),
         }
         output
+    }
+
+    /// Format a `DecodedInstruction` to a human-readable string.
+    ///
+    /// Dispatches to `IntelFormatter` for x86 or `Display` for aarch64.
+    #[inline]
+    pub fn format_instruction(&mut self, ins: &DecodedInstruction) -> String {
+        match ins {
+            DecodedInstruction::X86(x86_ins) => self.x86_format_instruction(x86_ins),
+            DecodedInstruction::AArch64(aarch64_ins) => format!("{}", aarch64_ins),
+        }
     }
 }

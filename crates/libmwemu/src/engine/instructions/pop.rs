@@ -15,7 +15,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
     };
 
-    emu.show_instruction_pushpop(color!("Blue"), ins, value);
+    emu.show_instruction_pushpop(color!("Blue"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins), value);
 
     if !emu.set_operand_value(ins, 0, value) {
         return false;

@@ -3,7 +3,7 @@ use crate::{color, regs64};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), ins);
+    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     let mask_lower = regs64::U256::from(0xffffffffffffffffu64);
     let mask = mask_lower | (mask_lower << 64);

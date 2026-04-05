@@ -3,7 +3,7 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Blue"), ins);
+    emu.show_instruction(color!("Blue"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     // only 32bits instruction
     let tmp_esp = emu.regs().get_esp() as u32;

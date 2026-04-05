@@ -1,6 +1,5 @@
-use iced_x86::Instruction;
-
 use crate::emu;
+use crate::emu::decoded_instruction::DecodedInstruction;
 use crate::exception::types;
 
 // Hook types using Box<dyn FnMut> for state capture instead of bare fn pointers.
@@ -18,11 +17,13 @@ pub type TypeHookOnMemoryWrite =
     Box<dyn FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128>;
 
 // [BREAKING API CHANGE] returning false will skip the handling of the instruction
+// Changed from &iced_x86::Instruction to &DecodedInstruction for arch parity.
+// x86 hook users call ins.as_x86() to get the familiar type.
 pub type TypeHookOnPreInstruction =
-    Box<dyn FnMut(&mut emu::Emu, u64, &Instruction, usize) -> bool>;
+    Box<dyn FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize) -> bool>;
 
 pub type TypeHookOnPostInstruction =
-    Box<dyn FnMut(&mut emu::Emu, u64, &Instruction, usize, bool)>;
+    Box<dyn FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize, bool)>;
 pub type TypeHookOnWinApiCall =
     Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 
@@ -98,7 +99,7 @@ impl Hooks {
 
     pub fn on_pre_instruction(
         &mut self,
-        hook: impl FnMut(&mut emu::Emu, u64, &Instruction, usize) -> bool + 'static,
+        hook: impl FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize) -> bool + 'static,
     ) {
         self.hook_on_pre_instruction = Some(Box::new(hook));
     }
@@ -109,7 +110,7 @@ impl Hooks {
 
     pub fn on_post_instruction(
         &mut self,
-        hook: impl FnMut(&mut emu::Emu, u64, &Instruction, usize, bool) + 'static,
+        hook: impl FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize, bool) + 'static,
     ) {
         self.hook_on_post_instruction = Some(Box::new(hook));
     }

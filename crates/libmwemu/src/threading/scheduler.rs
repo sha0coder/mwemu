@@ -114,12 +114,16 @@ impl ThreadScheduler {
                 "   "
             };
 
+            let thread_pc = match &thread.arch {
+                crate::threading::context::ArchThreadState::X86 { regs, .. } => regs.rip,
+                crate::threading::context::ArchThreadState::AArch64 { regs, .. } => regs.pc,
+            };
             log::trace!(
-                "{} Thread[{}]: ID=0x{:x}, RIP=0x{:x}, Status={}",
+                "{} Thread[{}]: ID=0x{:x}, PC=0x{:x}, Status={}",
                 marker,
                 i,
                 thread.id,
-                thread.regs_x86().rip,
+                thread_pc,
                 status
             );
         }
@@ -186,14 +190,11 @@ impl ThreadScheduler {
             return false;
         }
 
-        // Pre/post instruction hooks (x86 only — these fire but don't skip in the scheduler path.
-        // Full hook support with skip is handled in step()/run() which Part 4 will unify.)
-        if !emu.cfg.arch.is_aarch64() {
-            if let Some(mut hook_fn) = emu.hooks.hook_on_post_instruction.take() {
-                let ins = emu.x86_instruction().unwrap();
-                hook_fn(emu, pc, &ins, sz, result_ok);
-                emu.hooks.hook_on_post_instruction = Some(hook_fn);
-            }
+        // Post instruction hook (fires for both arches via DecodedInstruction)
+        if let Some(mut hook_fn) = emu.hooks.hook_on_post_instruction.take() {
+            let decoded = emu.last_decoded.unwrap();
+            hook_fn(emu, pc, &decoded, sz, result_ok);
+            emu.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
         // Advance instruction pointer

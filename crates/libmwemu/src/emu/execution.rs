@@ -4,6 +4,7 @@ use std::sync::{atomic, Arc};
 use iced_x86::{Code, Decoder, DecoderOptions, Instruction, Mnemonic};
 
 use crate::debug::console::Console;
+use crate::emu::decoded_instruction::DecodedInstruction;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
 use crate::err::MwemuError;
@@ -62,6 +63,7 @@ impl Emu {
                 log::trace!("{} 0x{:x}: {}", self.pos, pc, ins);
             }
 
+            self.last_decoded = Some(DecodedInstruction::AArch64(ins));
             let result_ok = engine::aarch64::emulate_instruction(self, &ins);
             self.last_instruction_size = 4;
             (4, result_ok)
@@ -80,6 +82,7 @@ impl Emu {
 
             self.set_x86_instruction(Some(ins));
             self.set_x86_decoder_position(position);
+            self.last_decoded = Some(DecodedInstruction::X86(ins));
 
             let result_ok = engine::emulate_instruction(self, &ins, sz, true);
             self.last_instruction_size = sz;
@@ -300,28 +303,24 @@ impl Emu {
             return false;
         }
 
-        // Pre-instruction hook (x86: uses stored instruction; aarch64: no instruction to pass yet)
-        if !self.cfg.arch.is_aarch64() {
-            if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
-                let pc = self.pc();
-                let ins = self.x86_instruction().unwrap();
-                let skip = !hook_fn(self, pc, &ins, sz);
-                self.hooks.hook_on_pre_instruction = Some(hook_fn);
-                if skip {
-                    self.advance_pc(sz);
-                    return true;
-                }
+        // Pre-instruction hook
+        if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+            let pc = self.pc();
+            let decoded = self.last_decoded.unwrap();
+            let skip = !hook_fn(self, pc, &decoded, sz);
+            self.hooks.hook_on_pre_instruction = Some(hook_fn);
+            if skip {
+                self.advance_pc(sz);
+                return true;
             }
         }
 
         // Post-instruction hook
-        if !self.cfg.arch.is_aarch64() {
-            if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
-                let pc = self.pc();
-                let ins = self.x86_instruction().unwrap();
-                hook_fn(self, pc, &ins, sz, result_ok);
-                self.hooks.hook_on_post_instruction = Some(hook_fn);
-            }
+        if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+            let pc = self.pc();
+            let decoded = self.last_decoded.unwrap();
+            hook_fn(self, pc, &decoded, sz, result_ok);
+            self.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
         // Advance PC
@@ -333,7 +332,7 @@ impl Emu {
     pub fn update_entropy(&mut self) {
         let prev_entropy = self.entropy;
 
-        let mem = match self.maps.get_mem_by_addr(self.regs().rip) {
+        let mem = match self.maps.get_mem_by_addr(self.pc()) {
             Some(n) => n,
             None => {
                 self.entropy = 0.0;
@@ -341,7 +340,7 @@ impl Emu {
                     log::trace!(
                         "{}:0x{:x} entropy changed {} ->  {}",
                         self.pos,
-                        self.regs().rip,
+                        self.pc(),
                         prev_entropy,
                         self.entropy
                     );
@@ -358,7 +357,7 @@ impl Emu {
                 log::trace!(
                     "{}:0x{:x} entropy changed {} ->  {}",
                     self.pos,
-                    self.regs().rip,
+                    self.pc(),
                     prev_entropy,
                     self.entropy
                 );
@@ -387,7 +386,7 @@ impl Emu {
             log::trace!(
                 "{}:0x{:x} entropy changed {} ->  {}",
                 self.pos,
-                self.regs().rip,
+                self.pc(),
                 prev_entropy,
                 self.entropy
             );
@@ -468,9 +467,11 @@ impl Emu {
         self.set_x86_decoder_position(position);
 
         // Run pre-instruction hook
+        let decoded = DecodedInstruction::X86(ins);
+        self.last_decoded = Some(decoded);
         if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
             let rip = self.regs().rip;
-            let skip = !hook_fn(self, rip, &ins, sz);
+            let skip = !hook_fn(self, rip, &decoded, sz);
             self.hooks.hook_on_pre_instruction = Some(hook_fn);
             if skip {
                 // update eip/rip
@@ -493,7 +494,7 @@ impl Emu {
         // Run post-instruction hook
         if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
             let rip = self.regs().rip;
-            hook_fn(self, rip, &ins, sz, result_ok);
+            hook_fn(self, rip, &decoded, sz, result_ok);
             self.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
@@ -677,10 +678,11 @@ impl Emu {
     /// Automatically dispatches to single or multi-threaded execution based on cfg.enable_threading.
     #[allow(deprecated)]
     pub fn run(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
-        if self.cfg.arch.is_aarch64() {
-            return self.run_aarch64(end_addr);
+        // Reset instruction cache for the active architecture
+        match &mut self.arch_state {
+            super::ArchState::X86 { instruction_cache, .. } => *instruction_cache = InstructionCache::new(),
+            super::ArchState::AArch64 { instruction_cache, .. } => *instruction_cache = InstructionCache::new(),
         }
-        *self.x86_instruction_cache() = InstructionCache::new();
         if self.cfg.enable_threading && self.threads.len() > 1 {
             self.run_multi_threaded(end_addr)
         } else {
@@ -700,21 +702,20 @@ impl Emu {
         todo!()
     } // end run
 
-    /// Start or continue emulation (single-threaded implementation).
-    /// For emulating forever: run(None)
-    /// For emulating until an address: run(Some(0x11223344))
-    /// self.pos is not set to zero, can be used to continue emulation.
+    /// Unified single-threaded emulation loop for both x86 and aarch64.
+    ///
+    /// Both architectures share identical structure: outer cache-miss → inner
+    /// cache-hit decode loop.  The only x86-specific section is REP prefix
+    /// handling (~30 lines), guarded by `decoded.is_x86()`.
     #[deprecated(
         since = "0.1.0",
         note = "Use run() instead, which automatically handles threading"
     )]
     pub fn run_single_threaded(&mut self, end_addr: Option<u64>) -> Result<u64, MwemuError> {
-        //self.stack_lvl.clear();
-        //self.stack_lvl_idx = 0;
-        //self.stack_lvl.push(0);
+        let is_aarch64 = self.cfg.arch.is_aarch64();
 
-        match self.maps.get_mem_by_addr(self.regs().rip) {
-            Some(mem) => {}
+        match self.maps.get_mem_by_addr(self.pc()) {
+            Some(_) => {}
             None => {
                 log::trace!("Cannot start emulation, pc pointing to unmapped area");
                 return Err(MwemuError::new(
@@ -736,44 +737,29 @@ impl Emu {
 
         let mut looped: Vec<u64> = Vec::new();
         let mut prev_addr: u64 = 0;
-        //let mut prev_prev_addr:u64 = 0;
         let mut repeat_counter: u32 = 0;
 
-        /*
-        if end_addr.is_none() && self.max_pos.is_none() {
-            log::trace!(" ----- emulation -----");
-        } else if !self.max_pos.is_none() {
-            log::trace!(" ----- emulation to {} -----", self.max_pos.unwrap());
-        } else {
-            log::trace!(" ----- emulation to 0x{:x} -----", end_addr.unwrap());
-        }*/
-
-        //self.pos = 0;
         let arch = if self.cfg.is_x64() { 64 } else { 32 };
-        let mut ins: Instruction = Instruction::default();
-        // we using a single block to store all the instruction to optimize for without
-        // the need of Reallocate everytime
+        let mut x86_ins: Instruction = Instruction::default();
+        let mut aarch64_ins = yaxpeax_arm::armv8::a64::Instruction::default();
         let mut block: Vec<u8> = Vec::with_capacity(constants::BLOCK_LEN + 1);
         block.resize(constants::BLOCK_LEN, 0x0);
-        *self.x86_instruction_cache() = InstructionCache::new();
+
         loop {
             while self.is_running.load(atomic::Ordering::Relaxed) == 1 {
-                //log::trace!("reloading rip 0x{:x}", self.regs().rip);
+                let pc = self.pc();
 
-                let rip = self.regs().rip;
-                // Read code bytes into block before checking cache, to avoid
-                // holding an immutable borrow on self.maps across a mutable
-                // borrow on self.arch_state (instruction_cache).
+                // Read code bytes into block (before cache lookup to avoid borrow conflict)
                 {
-                    let code = match self.maps.get_mem_by_addr(rip) {
+                    let code = match self.maps.get_mem_by_addr(pc) {
                         Some(c) => c,
                         None => {
-                            log::trace!("redirecting code flow to non mapped address 0x{:x}", rip);
+                            log::trace!("code flow to unmapped address 0x{:x}", pc);
                             Console::spawn_console(self);
                             return Err(MwemuError::new("cannot read program counter"));
                         }
                     };
-                    let block_temp = code.read_bytes(rip, constants::BLOCK_LEN);
+                    let block_temp = code.read_bytes(pc, constants::BLOCK_LEN);
                     let block_temp_len = block_temp.len();
                     if block_temp_len != block.len() {
                         block.resize(block_temp_len, 0);
@@ -781,89 +767,148 @@ impl Emu {
                     block.clone_from_slice(block_temp);
                 }
 
-                if !self.x86_instruction_cache().lookup_entry(rip, 0) {
-                    let mut zeros = 0;
-                    for b in block.iter() {
-                        if *b == 0 {
-                            zeros += 1;
-                        } else {
-                            break;
-                        }
+                // Cache miss → decode and insert
+                let cache_hit = match &mut self.arch_state {
+                    super::ArchState::X86 { instruction_cache, .. } => {
+                        instruction_cache.lookup_entry(pc, 0)
                     }
-                    if !self.cfg.allow_empty_code_blocks && zeros > 100 {
-                        if self.cfg.verbose > 0 {
-                            log::trace!("{} empty code block at 0x{:x}", self.pos, rip);
+                    super::ArchState::AArch64 { instruction_cache, .. } => {
+                        instruction_cache.lookup_entry(pc, 0)
+                    }
+                };
+
+                if !cache_hit {
+                    // Empty code block detection
+                    if !is_aarch64 {
+                        let mut zeros = 0;
+                        for b in block.iter() {
+                            if *b == 0 { zeros += 1; } else { break; }
                         }
-                        return Err(MwemuError::new("empty code block"));
+                        if !self.cfg.allow_empty_code_blocks && zeros > 100 {
+                            if self.cfg.verbose > 0 {
+                                log::trace!("{} empty code block at 0x{:x}", self.pos, pc);
+                            }
+                            return Err(MwemuError::new("empty code block"));
+                        }
                     }
 
                     if block.is_empty() {
                         return Err(MwemuError::new("cannot read code block, weird address."));
                     }
-                    let mut decoder =
-                        Decoder::with_ip(arch, &block, self.regs().rip, DecoderOptions::NONE);
 
-                    self.rep = None;
-                    let addition = if block.len() < 16 {
-                        block.len()
-                    } else {
-                        16
-                    };
-                    self.x86_instruction_cache()
-                        .insert_from_decoder(&mut decoder, addition, rip);
+                    match &mut self.arch_state {
+                        super::ArchState::X86 { instruction_cache, .. } => {
+                            let mut decoder = Decoder::with_ip(arch, &block, pc, DecoderOptions::NONE);
+                            self.rep = None;
+                            let addition = if block.len() < 16 { block.len() } else { 16 };
+                            instruction_cache.insert_from_decoder(&mut decoder, addition, pc);
+                        }
+                        super::ArchState::AArch64 { instruction_cache, .. } => {
+                            instruction_cache.insert_from_block(&block, pc);
+                        }
+                    }
                 }
 
-                let mut sz = 0;
-                let mut addr = 0;
-                while self.x86_instruction_cache_ref().can_decode() {
-                    if self.rep.is_none() {
-                        self.x86_instruction_cache().decode_out(&mut ins);
-                        sz = ins.len();
-                        addr = ins.ip();
+                // Inner decode loop
+                let mut sz: usize = 0;
+                let mut addr: u64 = 0;
 
-                        if end_addr.is_some() && Some(addr) == end_addr {
-                            return Ok(self.regs().rip);
+                let can_decode_initially = match &self.arch_state {
+                    super::ArchState::X86 { instruction_cache, .. } => instruction_cache.can_decode(),
+                    super::ArchState::AArch64 { instruction_cache, .. } => instruction_cache.can_decode(),
+                };
+                let mut inner_running = can_decode_initially;
+                let mut aarch64_decode_offset: u64 = 0;
+
+                while inner_running {
+                    // Decode next instruction from cache
+                    let decoded: DecodedInstruction;
+                    if is_aarch64 {
+                        if self.rep.is_none() {
+                            match &mut self.arch_state {
+                                super::ArchState::AArch64 { instruction_cache, instruction, .. } => {
+                                    instruction_cache.decode_out(&mut aarch64_ins);
+                                    *instruction = Some(aarch64_ins);
+                                }
+                                _ => unreachable!(),
+                            }
+                            sz = 4;
+                            addr = pc + aarch64_decode_offset;
+                            aarch64_decode_offset += 4;
                         }
+                        decoded = DecodedInstruction::AArch64(aarch64_ins);
+                    } else {
+                        if self.rep.is_none() {
+                            match &mut self.arch_state {
+                                super::ArchState::X86 { instruction_cache, .. } => {
+                                    instruction_cache.decode_out(&mut x86_ins);
+                                }
+                                _ => unreachable!(),
+                            }
+                            sz = x86_ins.len();
+                            addr = x86_ins.ip();
 
+                            if end_addr.is_some() && Some(addr) == end_addr {
+                                return Ok(self.pc());
+                            }
+
+                            if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
+                                return Ok(self.pc());
+                            }
+                        }
+                        self.set_x86_instruction(Some(x86_ins));
+                        match &self.arch_state {
+                            super::ArchState::X86 { instruction_cache, .. } => {
+                                self.set_x86_decoder_position(instruction_cache.current_instruction_slot);
+                            }
+                            _ => unreachable!(),
+                        }
+                        decoded = DecodedInstruction::X86(x86_ins);
+                    }
+
+                    // aarch64 end_addr / max_pos checks (x86 checked above during decode)
+                    if is_aarch64 {
+                        if let Some(end) = end_addr {
+                            if addr == end {
+                                return Ok(self.pc());
+                            }
+                        }
                         if self.max_pos.is_some() && Some(self.pos) >= self.max_pos {
-                            return Ok(self.regs().rip);
+                            return Ok(self.pc());
                         }
                     }
 
-                    self.set_x86_instruction(Some(ins));
-                    self.set_x86_decoder_position(self.x86_instruction_cache_ref().current_instruction_slot);
+                    self.last_decoded = Some(decoded);
                     self.memory_operations.clear();
                     self.pos += 1;
                     self.instruction_count += 1;
 
-                    // Check max_instructions limit
+                    // --- Limits ---
                     if let Some(max) = self.cfg.max_instructions {
                         if self.instruction_count >= max {
                             log::info!("max_instructions limit reached ({})", max);
-                            return Ok(self.regs().rip);
+                            return Ok(self.pc());
                         }
                     }
 
-                    // Check timeout
                     if let Some(timeout) = self.cfg.timeout_secs {
                         if self.instruction_count % 10000 == 0 {
                             let elapsed = self.now.elapsed().as_secs_f64();
                             if elapsed >= timeout {
                                 log::info!("timeout reached ({:.1}s >= {:.1}s)", elapsed, timeout);
-                                return Ok(self.regs().rip);
+                                return Ok(self.pc());
                             }
                         }
                     }
 
-                    // Check max_faults limit
                     if let Some(max) = self.cfg.max_faults {
                         if self.fault_count >= max {
                             log::info!("max_faults limit reached ({})", max);
-                            return Ok(self.regs().rip);
+                            return Ok(self.pc());
                         }
                     }
 
-                    // turn on verbosity after a lot of pos
+                    // --- verbose_at activation ---
                     if let Some(vpos) = self.cfg.verbose_at {
                         if vpos == self.pos {
                             self.cfg.verbose = 3;
@@ -872,6 +917,7 @@ impl Emu {
                         }
                     }
 
+                    // --- Exit position ---
                     if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
                         log::trace!("exit position reached");
 
@@ -890,23 +936,24 @@ impl Emu {
                                 .expect("failed to flush trace file");
                         }
 
-                        return Ok(self.regs().rip);
+                        return Ok(self.pc());
                     }
 
+                    // --- Breakpoints ---
                     if self.exp == self.pos
                         || self.bp.is_bp_instruction(self.pos)
                         || self.bp.is_bp(addr)
                         || (self.cfg.console2 && self.cfg.console_addr == addr)
                     {
                         if self.running_script {
-                            return Ok(self.regs().rip);
+                            return Ok(self.pc());
                         }
 
                         self.cfg.console2 = false;
                         if self.cfg.verbose >= 2 {
-                            let output = self.x86_format_instruction(&ins);
+                            let output = self.format_instruction(&decoded);
                             log::trace!("-------");
-                            log::trace!("{} 0x{:x}: {}", self.pos, ins.ip(), output);
+                            log::trace!("{} 0x{:x}: {}", self.pos, addr, output);
                         }
                         Console::spawn_console(self);
                         if self.force_break {
@@ -915,42 +962,29 @@ impl Emu {
                         }
                     }
 
-                    // prevent infinite loop
+                    // --- Loop detection (skip during REP) ---
                     if self.rep.is_none() {
                         if addr == prev_addr {
-                            // || addr == prev_prev_addr {
                             repeat_counter += 1;
+                        } else {
+                            repeat_counter = 0;
                         }
-                        //prev_prev_addr = prev_addr;
                         prev_addr = addr;
                         if repeat_counter == 100 {
-                            log::trace!(
-                                "infinite loop!  opcode: {}",
-                                ins.op_code().op_code_string()
-                            );
-                            return Err(MwemuError::new("inifinite loop found"));
+                            log::trace!("infinite loop at 0x{:x}", addr);
+                            return Err(MwemuError::new("infinite loop found"));
                         }
 
                         if self.cfg.loops {
-                            // loop detector
                             looped.push(addr);
-                            let mut count: u32 = 0;
-                            for a in looped.iter() {
-                                if addr == *a {
-                                    count += 1;
-                                }
-                            }
+                            let count = looped.iter().filter(|&&a| a == addr).count() as u32;
                             if count > 2 {
-                                log::trace!("    loop: {} interations", count);
+                                log::trace!("    loop: {} iterations", count);
                             }
-                            /*
-                            if count > self.loop_limit {
-                            panic!("/!\\ iteration limit reached");
-                            }*/
-                            //TODO: if more than x addresses remove the bottom ones
                         }
                     }
 
+                    // --- Pre-instruction tracing ---
                     if self.cfg.trace_regs
                         && self.cfg.trace_filename.is_some()
                         && self.pos >= self.cfg.trace_start
@@ -959,7 +993,7 @@ impl Emu {
                     }
 
                     if self.cfg.trace_reg {
-                        for reg in self.cfg.reg_names.iter() {
+                        for reg in self.cfg.reg_names.clone().iter() {
                             self.trace_specific_register(reg);
                         }
                     }
@@ -972,124 +1006,121 @@ impl Emu {
                         self.trace_string();
                     }
 
-                    //let mut info_factory = InstructionInfoFactory::new();
-                    //let info = info_factory.info(&ins);
-
+                    // --- Pre-instruction hook ---
                     if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
-                        let rip = self.regs().rip;
-                        let skip = !hook_fn(self, rip, &ins, sz);
+                        let hook_pc = self.pc();
+                        let skip = !hook_fn(self, hook_pc, &decoded, sz);
                         self.hooks.hook_on_pre_instruction = Some(hook_fn);
                         if skip {
+                            // Check can_decode for next iteration
+                            inner_running = match &self.arch_state {
+                                super::ArchState::X86 { instruction_cache, .. } => instruction_cache.can_decode(),
+                                super::ArchState::AArch64 { instruction_cache, .. } => instruction_cache.can_decode(),
+                            };
                             continue;
                         }
                     }
 
-                    // trace pre instruction
-                    /*{
-                        if self.pos >= 100_000_000 {
-                            tracing::trace_instruction(self, self.pos);
-                        }
-                    }*/
+                    // --- x86 REP prefix handling ---
+                    if !is_aarch64 {
+                        let x86 = x86_ins;
+                        let is_ret = matches!(x86.code(), Code::Retnw | Code::Retnd | Code::Retnq);
 
-                    let is_ret = match ins.code() {
-                        Code::Retnw | Code::Retnd | Code::Retnq => true,
-                        _ => false,
-                    };
-
-                    if !is_ret
-                        && (ins.has_rep_prefix() || ins.has_repe_prefix() || ins.has_repne_prefix())
-                    {
-                        if self.rep.is_none() {
-                            self.rep = Some(0);
-                        }
-
-                        // if rcx is 0 in first rep step, skip instruction.
-                        if self.regs_mut().rcx == 0 {
-                            self.rep = None;
-                            if self.cfg.is_x64() {
-                                self.regs_mut().rip += sz as u64;
-                            } else {
-                                let new_eip = self.regs().get_eip() + sz as u64;
-                                self.regs_mut().set_eip(new_eip);
+                        if !is_ret
+                            && (x86.has_rep_prefix() || x86.has_repe_prefix() || x86.has_repne_prefix())
+                        {
+                            if self.rep.is_none() {
+                                self.rep = Some(0);
                             }
-                            continue;
+
+                            if self.regs().rcx == 0 {
+                                self.rep = None;
+                                if self.cfg.is_x64() {
+                                    self.regs_mut().rip += sz as u64;
+                                } else {
+                                    let new_eip = self.regs().get_eip() + sz as u64;
+                                    self.regs_mut().set_eip(new_eip);
+                                }
+                                inner_running = match &self.arch_state {
+                                    super::ArchState::X86 { instruction_cache, .. } => instruction_cache.can_decode(),
+                                    super::ArchState::AArch64 { instruction_cache, .. } => instruction_cache.can_decode(),
+                                };
+                                continue;
+                            }
                         }
                     }
 
+                    // --- Entropy ---
                     if self.cfg.entropy && self.pos % 10000 == 0 {
                         self.update_entropy();
                     }
 
-                    /*************************************/
-                    let emulation_ok = engine::emulate_instruction(self, &ins, sz, false);
-                    //tracing::trace_instruction(self, self.pos);
-                    /*************************************/
+                    // --- Verbose output ---
+                    if self.cfg.verbose >= 2 && is_aarch64 {
+                        log::trace!("{} 0x{:x}: {}", self.pos, addr, aarch64_ins);
+                    }
+
+                    // --- Emulate ---
+                    let emulation_ok = if is_aarch64 {
+                        engine::aarch64::emulate_instruction(self, &aarch64_ins)
+                    } else {
+                        engine::emulate_instruction(self, &x86_ins, sz, false)
+                    };
+                    self.last_instruction_size = sz;
 
                     if self.is_running.load(atomic::Ordering::Relaxed) == 0 {
-                        return Ok(self.regs().rip);
+                        return Ok(self.pc());
                     }
 
-                    if let Some(rep_count) = self.rep {
-                        if self.cfg.verbose >= 3 {
-                            log::trace!("    rcx: {}", self.regs().rcx);
-                        }
-                        if self.regs().rcx > 0 {
-                            self.regs_mut().rcx -= 1;
-                            if self.regs_mut().rcx == 0 {
-                                self.rep = None;
+                    // --- x86 REP post-execution state machine ---
+                    if !is_aarch64 {
+                        if let Some(rep_count) = self.rep {
+                            if self.cfg.verbose >= 3 {
+                                log::trace!("    rcx: {}", self.regs().rcx);
+                            }
+                            if self.regs().rcx > 0 {
+                                self.regs_mut().rcx -= 1;
+                                if self.regs().rcx == 0 {
+                                    self.rep = None;
+                                } else {
+                                    self.rep = Some(rep_count + 1);
+                                }
+                            }
+
+                            let is_string_movement = matches!(
+                                x86_ins.mnemonic(),
+                                Mnemonic::Movsb | Mnemonic::Movsw | Mnemonic::Movsd | Mnemonic::Movsq
+                                    | Mnemonic::Stosb | Mnemonic::Stosw | Mnemonic::Stosd | Mnemonic::Stosq
+                                    | Mnemonic::Lodsb | Mnemonic::Lodsw | Mnemonic::Lodsd | Mnemonic::Lodsq
+                            );
+                            let is_string_comparison = matches!(
+                                x86_ins.mnemonic(),
+                                Mnemonic::Cmpsb | Mnemonic::Cmpsw | Mnemonic::Cmpsd | Mnemonic::Cmpsq
+                                    | Mnemonic::Scasb | Mnemonic::Scasw | Mnemonic::Scasd | Mnemonic::Scasq
+                            );
+                            if is_string_movement {
+                                // do not clear rep
+                            } else if is_string_comparison {
+                                if x86_ins.has_repe_prefix() && !self.flags().f_zf {
+                                    self.rep = None;
+                                }
+                                if x86_ins.has_repne_prefix() && self.flags().f_zf {
+                                    self.rep = None;
+                                }
                             } else {
-                                self.rep = Some(rep_count + 1);
-                            }
-                        }
-
-                        // repe and repe are the same on x86 (0xf3) so you have to check if it is movement or comparison
-                        let is_string_movement = matches!(
-                            ins.mnemonic(),
-                            Mnemonic::Movsb
-                                | Mnemonic::Movsw
-                                | Mnemonic::Movsd
-                                | Mnemonic::Movsq
-                                | Mnemonic::Stosb
-                                | Mnemonic::Stosw
-                                | Mnemonic::Stosd
-                                | Mnemonic::Stosq
-                                | Mnemonic::Lodsb
-                                | Mnemonic::Lodsw
-                                | Mnemonic::Lodsd
-                                | Mnemonic::Lodsq
-                        );
-                        let is_string_comparison = matches!(
-                            ins.mnemonic(),
-                            Mnemonic::Cmpsb
-                                | Mnemonic::Cmpsw
-                                | Mnemonic::Cmpsd
-                                | Mnemonic::Cmpsq
-                                | Mnemonic::Scasb
-                                | Mnemonic::Scasw
-                                | Mnemonic::Scasd
-                                | Mnemonic::Scasq
-                        );
-                        if is_string_movement {
-                            // do not clear rep if it is a string movement
-                        } else if is_string_comparison {
-                            if ins.has_repe_prefix() && !self.flags().f_zf {
                                 self.rep = None;
                             }
-                            if ins.has_repne_prefix() && self.flags().f_zf {
-                                self.rep = None;
-                            }
-                        } else {
-                            self.rep = None;
-                            //unimplemented!("string instruction not supported");
                         }
                     }
 
+                    // --- Post-instruction hook ---
                     if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
-                        let rip = self.regs().rip;
-                        hook_fn(self, rip, &ins, sz, emulation_ok);
+                        let hook_pc = self.pc();
+                        hook_fn(self, hook_pc, &decoded, sz, emulation_ok);
                         self.hooks.hook_on_post_instruction = Some(hook_fn);
                     }
 
+                    // --- Post-execution tracing ---
                     if self.cfg.inspect {
                         self.trace_memory_inspection();
                     }
@@ -1102,28 +1133,40 @@ impl Emu {
                         self.write_to_trace_file();
                     }
 
+                    // --- Register trace (aarch64) ---
+                    if is_aarch64 && self.cfg.trace_regs {
+                        let regs = self.regs_aarch64();
+                        log::trace!(
+                            "  x0=0x{:x} x1=0x{:x} x2=0x{:x} x3=0x{:x} x8=0x{:x} x9=0x{:x} sp=0x{:x} lr=0x{:x}",
+                            regs.x[0], regs.x[1], regs.x[2], regs.x[3],
+                            regs.x[8], regs.x[9], regs.sp, regs.x[30]
+                        );
+                    }
+
+                    // --- Failure handling ---
                     if !emulation_ok {
+                        self.fault_count += 1;
                         if self.cfg.console_enabled {
                             Console::spawn_console(self);
+                        } else if self.running_script {
+                            return Ok(self.pc());
                         } else {
-                            if self.running_script {
-                                return Ok(self.regs().rip);
-                            } else {
-                                return Err(MwemuError::new(&format!(
-                                    "emulation error at pos = {} rip = 0x{:x}",
-                                    self.pos,
-                                    self.regs().rip
-                                )));
-                            }
+                            return Err(MwemuError::new(&format!(
+                                "emulation error at pos = {} pc = 0x{:x}",
+                                self.pos, addr
+                            )));
                         }
                     }
 
+                    // --- PC advance ---
                     if self.force_reload {
                         self.force_reload = false;
-                        break;
+                        break; // break inner loop to re-fetch from new PC
                     }
 
-                    if self.rep.is_none() {
+                    if is_aarch64 {
+                        self.regs_aarch64_mut().pc += 4;
+                    } else if self.rep.is_none() {
                         if self.cfg.is_x64() {
                             self.regs_mut().rip += sz as u64;
                         } else {
@@ -1136,7 +1179,18 @@ impl Emu {
                         self.force_break = false;
                         break;
                     }
-                } // end decoder loop
+
+                    // --- Return-based stop ---
+                    if self.run_until_ret && decoded.is_return() {
+                        return Ok(self.pc());
+                    }
+
+                    // Check can_decode for next iteration
+                    inner_running = match &self.arch_state {
+                        super::ArchState::X86 { instruction_cache, .. } => instruction_cache.can_decode(),
+                        super::ArchState::AArch64 { instruction_cache, .. } => instruction_cache.can_decode(),
+                    };
+                } // end inner decode loop
 
                 if self.is_api_run && self.is_break_on_api {
                     self.is_api_run = false;
@@ -1151,5 +1205,5 @@ impl Emu {
             self.is_running.store(1, atomic::Ordering::Relaxed);
             Console::spawn_console(self);
         } // end infinite loop
-    } // end run {
+    } // end run_single_threaded
 }

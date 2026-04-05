@@ -93,6 +93,7 @@ impl Emu {
             now: Instant::now(),
             skip_apicall: false,
             its_apicall: None,
+            last_decoded: None,
             last_instruction_size: 0,
             pe64: None,
             pe32: None,
@@ -347,6 +348,14 @@ impl Emu {
                 let id = self.threads[self.current_thread_id].id;
                 self.threads[self.current_thread_id] = crate::threading::context::ThreadContext::new(id, self.cfg.arch);
             }
+        }
+
+        // Ensure arch_state matches the target architecture
+        if self.cfg.arch.is_aarch64() && matches!(self.arch_state, super::ArchState::X86 { .. }) {
+            self.arch_state = super::ArchState::AArch64 {
+                instruction: None,
+                instruction_cache: crate::emu::disassemble::InstructionCache::new(),
+            };
         }
 
         if self.cfg.arch.is_aarch64() {

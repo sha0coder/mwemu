@@ -3,7 +3,7 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Cyan"), ins);
+    emu.show_instruction(color!("Cyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
     assert!(ins.op_count() == 2);
 
@@ -20,7 +20,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     /*
                 if value0 == emu.regs().rsp {
 
-    emu.show_instruction(color!("LightCyan"), ins);
+    emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
 
                     if emu.cfg.is_x64() {
                         if value1 % 8 == 0 {

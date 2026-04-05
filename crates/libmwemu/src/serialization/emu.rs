@@ -220,6 +220,7 @@ impl From<SerializableEmu> for Emu {
                 instruction_cache: InstructionCache::new(),
                 decoder_position: serialized.decoder_position,
             },
+            last_decoded: None,
             last_instruction_size: serialized.last_instruction_size,
             rep: serialized.rep,
             // Core execution state

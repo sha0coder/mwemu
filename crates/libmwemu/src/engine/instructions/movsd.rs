@@ -6,7 +6,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     if ins.op_count() == 2
         && (emu.get_operand_sz(ins, 0) == 128 || emu.get_operand_sz(ins, 1) == 128)
     {
-        emu.show_instruction(color!("LightCyan"), ins);
+        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
         let src = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v & 0xffffffff_ffffffff,
             None => return false,
@@ -25,10 +25,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         if emu.rep.is_some() {
             if emu.rep.unwrap() == 0 {
-                emu.show_instruction(color!("LightCyan"), ins);
+                emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
             }
         } else {
-            emu.show_instruction(color!("LightCyan"), ins);
+            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
         }
 
         if emu.cfg.is_x64() {

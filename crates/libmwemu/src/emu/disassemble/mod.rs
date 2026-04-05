@@ -1,6 +1,5 @@
 use crate::emu::Emu;
 use iced_x86::{Decoder, DecoderOptions, Instruction};
-use serde::{Deserialize, Serialize};
 
 // about 10 mb should be on l3 cache
 // 8192 cache lines,
@@ -23,7 +22,7 @@ pub fn LPF_OF(addr: u64) -> u64 {
     addr & 0xfffffffffffff000
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 struct CachedInstruction {
     pub lpf: u64,
     pub instruction_key: usize,
@@ -46,41 +45,32 @@ impl CachedInstruction {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct InstructionCache {
+/// Decoded-instruction cache, generic over the native instruction type.
+///
+/// `T` is `iced_x86::Instruction` for x86 or
+/// `yaxpeax_arm::armv8::a64::Instruction` for aarch64.  The cache itself
+/// (address→slot mapping, linear probing, flush logic) is entirely
+/// type-agnostic; only the insert helpers are arch-specific.
+#[derive(Clone)]
+pub struct InstructionCache<T: Copy + Default> {
     cache_entries: Vec<CachedInstruction>,
-    instructions: Vec<Instruction>,
+    instructions: Vec<T>,
     next_instruction_slot: usize,
     pub current_instruction_slot: usize,
     current_decode_len: usize,
-    current_decode_idx: usize, // probe_stats: ProbeStats,
+    current_decode_idx: usize,
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
-struct ProbeStats {
-    hits: usize,
-    misses: usize,
-    collisions: usize,
-}
-
-impl InstructionCache {
+impl<T: Copy + Default> InstructionCache<T> {
     pub fn new() -> Self {
-        let mut cache = InstructionCache {
+        InstructionCache {
             cache_entries: vec![CachedInstruction::default(); CACHE_SIZE],
-            instructions: vec![Instruction::default(); INSTRUCTION_ARRAY_SIZE],
+            instructions: vec![T::default(); INSTRUCTION_ARRAY_SIZE],
             next_instruction_slot: 0,
             current_decode_len: 0,
             current_instruction_slot: 0,
             current_decode_idx: 0,
-            // probe_stats: ProbeStats::default(),
-        };
-
-        // Initialize all instructions to default state
-        for inst in &mut cache.instructions {
-            *inst = Instruction::default();
         }
-
-        cache
     }
 
     #[inline(always)]
@@ -92,7 +82,7 @@ impl InstructionCache {
     #[inline]
     pub fn flush_cache_line(&mut self, idx: usize) {
         for i in 0..MAX_CACHE_PER_LINE {
-            self.cache_entries[idx].lpf = INVALID_LPF_ADDR;
+            self.cache_entries[idx + i].lpf = INVALID_LPF_ADDR;
         }
     }
 
@@ -130,6 +120,43 @@ impl InstructionCache {
         self.next_instruction_slot = 0;
     }
 
+    pub fn decode_out(&mut self, instruction: &mut T) {
+        *instruction = self.instructions[self.current_instruction_slot + self.current_decode_idx];
+        self.current_decode_idx += 1;
+    }
+
+    pub fn can_decode(&self) -> bool {
+        self.current_decode_idx < self.current_decode_len
+    }
+
+    /// Insert a single instruction at the given address.
+    /// Used by the aarch64 path which decodes one instruction at a time.
+    pub fn insert_single(&mut self, addr: u64, instruction: T) {
+        let lpf = crate::maps::tlb::LPF_OF(addr);
+        let idx = self.get_index_of(lpf, 0);
+
+        let slot = self.next_instruction_slot;
+        if slot + 1 > INSTRUCTION_ARRAY_SIZE {
+            self.flush_cache();
+        }
+
+        self.instructions[self.next_instruction_slot] = instruction;
+        self.next_instruction_slot += 1;
+
+        for i in 0..MAX_CACHE_PER_LINE {
+            if self.cache_entries[idx + i].lpf == INVALID_LPF_ADDR {
+                self.cache_entries[idx + i].instruction_key = slot;
+                self.cache_entries[idx + i].lpf = addr;
+                self.cache_entries[idx + i].instruction_len = 1;
+                break;
+            }
+        }
+    }
+}
+
+// --- x86-specific insert methods ---
+
+impl InstructionCache<iced_x86::Instruction> {
     pub fn insert_from_decoder(&mut self, decoder: &mut Decoder, addition: usize, rip_addr: u64) {
         let lpf = crate::maps::tlb::LPF_OF(rip_addr);
         let idx = self.get_index_of(lpf, 0);
@@ -180,7 +207,7 @@ impl InstructionCache {
         assert!(self.lookup_entry(rip_addr, 0), "Cache Insertion FAILED: There is support to be entry after insertion using insert_from_decoder");
     }
 
-    pub fn insert_instruction(&mut self, addr: u64, instrs: Vec<Instruction>) {
+    pub fn insert_instruction(&mut self, addr: u64, instrs: Vec<iced_x86::Instruction>) {
         let lpf = crate::maps::tlb::LPF_OF(addr);
         let idx = self.get_index_of(lpf, 0);
 
@@ -208,22 +235,89 @@ impl InstructionCache {
             }
         }
     }
+}
 
-    pub fn decode_out(&mut self, instruction: &mut Instruction) {
-        *instruction = self.instructions[self.current_instruction_slot + self.current_decode_idx];
-        self.current_decode_idx += 1;
-    }
+// --- aarch64-specific insert methods ---
 
-    pub fn can_decode(&self) -> bool {
-        self.current_decode_idx < self.current_decode_len
+impl InstructionCache<yaxpeax_arm::armv8::a64::Instruction> {
+    /// Decode a basic block of aarch64 instructions starting at `pc_addr`
+    /// from the given byte slice and insert them into the cache.
+    ///
+    /// Decodes until a branch/call/return or end of block, mirroring the
+    /// x86 `insert_from_decoder` strategy of caching one basic block.
+    pub fn insert_from_block(&mut self, block: &[u8], pc_addr: u64) {
+        let lpf = crate::maps::tlb::LPF_OF(pc_addr);
+        let idx = self.get_index_of(lpf, 0);
+
+        let slot = self.next_instruction_slot;
+        let mut count: usize = 0;
+        let decoder = yaxpeax_arm::armv8::a64::InstDecoder::default();
+        let mut offset: usize = 0;
+
+        while offset + 4 <= block.len() {
+            if slot + count >= INSTRUCTION_ARRAY_SIZE {
+                self.flush_cache();
+                return; // caller will re-try and get a cache miss → re-insert
+            }
+
+            let chunk = &block[offset..offset + 4];
+            let mut reader = yaxpeax_arch::U8Reader::new(chunk);
+            let ins = match yaxpeax_arch::Decoder::decode(&decoder, &mut reader) {
+                Ok(ins) => ins,
+                Err(_) => break,
+            };
+
+            self.instructions[slot + count] = ins;
+            count += 1;
+            offset += 4;
+
+            // Stop at branches/calls/returns (end of basic block)
+            use yaxpeax_arm::armv8::a64::Opcode;
+            match ins.opcode {
+                Opcode::RET
+                | Opcode::B
+                | Opcode::BR
+                | Opcode::BL
+                | Opcode::BLR
+                | Opcode::Bcc(_)
+                | Opcode::CBZ
+                | Opcode::CBNZ
+                | Opcode::TBZ
+                | Opcode::TBNZ => break,
+                _ => {}
+            }
+        }
+
+        if count == 0 {
+            return;
+        }
+
+        self.next_instruction_slot += count;
+
+        for i in 0..MAX_CACHE_PER_LINE {
+            if self.cache_entries[idx + i].lpf == INVALID_LPF_ADDR {
+                self.cache_entries[idx + i].instruction_key = slot;
+                self.cache_entries[idx + i].lpf = pc_addr;
+                self.cache_entries[idx + i].instruction_len = count;
+                break;
+            }
+        }
+
+        assert!(
+            self.lookup_entry(pc_addr, 0),
+            "aarch64 cache insertion failed"
+        );
     }
 }
 
 impl Emu {
-    /// Disassemble an amount of instruccions on an specified address.
-    /// This not used on the emulation engine, just from console,
-    /// but the api could be used programatilcally.
+    /// Disassemble instructions at the given address.
+    /// Works for both x86 and aarch64.
     pub fn disassemble(&mut self, addr: u64, amount: u32) -> String {
+        if self.cfg.arch.is_aarch64() {
+            return self.disassemble_aarch64(addr, amount);
+        }
+
         let mut out = String::new();
         let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
         let block = code.read_from(addr).to_vec();
@@ -244,6 +338,35 @@ impl Emu {
             if count == amount {
                 break;
             }
+        }
+        out
+    }
+
+    /// Disassemble aarch64 instructions at the given address.
+    fn disassemble_aarch64(&self, addr: u64, amount: u32) -> String {
+        let mut out = String::new();
+        let code = self.maps.get_mem_by_addr(addr).expect("address not mapped");
+        let block = code.read_from(addr).to_vec();
+
+        let decoder = yaxpeax_arm::armv8::a64::InstDecoder::default();
+        let mut pc = addr;
+        let mut count: u32 = 0;
+        let mut offset: usize = 0;
+
+        while offset + 4 <= block.len() && count < amount {
+            let chunk = &block[offset..offset + 4];
+            let mut reader = yaxpeax_arch::U8Reader::new(chunk);
+            match yaxpeax_arch::Decoder::decode(&decoder, &mut reader) {
+                Ok(ins) => {
+                    out.push_str(&format!("0x{:x}: {}\n", pc, ins));
+                }
+                Err(e) => {
+                    out.push_str(&format!("0x{:x}: <decode error: {:?}>\n", pc, e));
+                }
+            }
+            pc += 4;
+            offset += 4;
+            count += 1;
         }
         out
     }
