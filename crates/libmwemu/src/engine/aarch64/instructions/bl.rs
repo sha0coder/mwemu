@@ -6,7 +6,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
         let pc = emu.regs_aarch64().pc;
         // LR = address of next instruction
         emu.regs_aarch64_mut().x[30] = pc + 4;
-        emu.regs_aarch64_mut().pc = pc.wrapping_add(offset as u64);
+        let target = pc.wrapping_add(offset as u64);
+        emu.set_pc_aarch64(target);
         emu.force_reload = true;
         true
     } else {

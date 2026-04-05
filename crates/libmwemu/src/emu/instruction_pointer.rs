@@ -124,6 +124,57 @@ impl Emu {
         true
     }
 
+    /// Redirect execution flow for AArch64 branches.
+    /// If the target address is in a loaded library (dylib/so), intercept and
+    /// dispatch to the appropriate API handler. Mirrors set_rip() for Windows.
+    pub fn set_pc_aarch64(&mut self, addr: u64) -> bool {
+        // If in user code range, just set PC
+        if addr < constants::LIBS64_MIN {
+            self.regs_aarch64_mut().pc = addr;
+            return true;
+        }
+
+        // Execution is entering a library — intercept
+        let name = match self.maps.get_addr_name(addr) {
+            Some(n) => n.to_string(),
+            None => {
+                log::error!("set_pc_aarch64: addr 0x{:x} not in any mapped region", addr);
+                self.regs_aarch64_mut().pc = addr;
+                return false;
+            }
+        };
+
+        // Look up symbol name from address
+        let symbol = self
+            .macho_addr_to_symbol
+            .get(&addr)
+            .cloned()
+            .unwrap_or_else(|| format!("unknown_0x{:x}", addr));
+
+        log::info!(
+            "{}** {} API call: {} (in {}) at 0x{:x} {}",
+            self.colors.light_red,
+            self.pos,
+            symbol,
+            name,
+            addr,
+            self.colors.nc
+        );
+
+        // Set PC to return address (already in LR from BL/BLR)
+        self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
+
+        // Dispatch to appropriate platform API handler
+        if self.macos {
+            crate::macosapi::gateway(addr, &name, &symbol, self);
+        } else if self.linux {
+            crate::linuxapi::gateway(addr, &name, &symbol, self);
+        }
+
+        self.force_break = true;
+        true
+    }
+
     /// Redirect execution flow on 32bits.
     /// If the target address is a winapi, triggers it's implementation.
     pub fn set_eip(&mut self, addr: u64, is_branch: bool) -> bool {

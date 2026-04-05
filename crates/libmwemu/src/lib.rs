@@ -11,9 +11,7 @@ pub mod colors;
 pub mod config;
 pub mod console;
 pub mod constants;
-pub mod context;
 pub mod definitions;
-pub mod eflags;
 pub mod elf;
 pub mod emu;
 pub mod emu_context;
@@ -21,8 +19,6 @@ pub mod engine;
 pub mod gdb;
 pub mod err;
 pub mod exception;
-pub mod flags;
-pub mod fpu;
 pub mod hooks;
 #[macro_use]
 pub mod macros;
@@ -32,11 +28,8 @@ pub mod global_locks;
 pub mod kuser_shared;
 pub mod macho;
 pub mod maps;
-pub mod ntapi;
 pub mod pe;
 pub mod peb;
-pub mod regs64;
-pub mod regs_aarch64;
 pub mod script;
 pub mod serialization;
 pub mod structures;
@@ -44,7 +37,25 @@ pub mod syscall;
 pub mod thread_context;
 pub mod threading;
 pub mod tracing;
-pub mod winapi;
+
+// Architecture-specific modules
+pub mod aarch64;
+pub mod x86;
+
+// Platform API interception modules
+pub mod api;
+
+// Backwards-compatible re-exports
+pub use aarch64::regs as regs_aarch64;
+pub use api::linux as linuxapi;
+pub use api::macos as macosapi;
+pub use api::windows as winapi;
+pub use syscall::windows::ntapi;
+pub use x86::context;
+pub use x86::eflags;
+pub use x86::flags;
+pub use x86::fpu;
+pub use x86::regs as regs64;
 
 // re-export the helper so the macro can reach it
 pub use utils::color_enabled;

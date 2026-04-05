@@ -83,6 +83,7 @@ pub struct Emu {
     pub banzai: Banzai,
     pub mnemonic: String,
     pub linux: bool,
+    pub macos: bool,
     pub now: Instant,
     pub skip_apicall: bool,
     pub its_apicall: Option<u64>,
@@ -112,6 +113,9 @@ pub struct Emu {
     pub fault_count: u32,
     pub handle_management: HandleManagement,
     pub library_loaded: bool,  // Flag for GDB to detect library load events
+    // macOS dylib symbol resolution maps
+    pub macho_addr_to_symbol: std::collections::HashMap<u64, String>,
+
     // AArch64 state (only populated when arch is Aarch64)
     pub aarch64_instruction: Option<yaxpeax_arm::armv8::a64::Instruction>,
 }

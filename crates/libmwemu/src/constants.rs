@@ -30,6 +30,10 @@ pub const ALLOC64_MAX: u64 = 0x7fefffffffff;
 pub const LIBS64_MIN: u64 = 0x7FF000000000;
 pub const LIBS64_MAX: u64 = 0x7FFFFFFFFFFF;
 
+// macOS dylib address range (reuses same range — never coexists with Windows libs)
+pub const DYLIBS_MACOS_MIN: u64 = 0x7FF000000000;
+pub const DYLIBS_MACOS_MAX: u64 = 0x7FFFFFFFFFFF;
+
 pub const TRUE: u64 = 1;
 pub const FALSE: u64 = 0;
 pub const STATUS_SUCCESS: u64 = 0x00000000;

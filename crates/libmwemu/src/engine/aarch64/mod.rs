@@ -48,6 +48,12 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         Opcode::LDP => instructions::ldp::execute(emu, ins),
         Opcode::LDXR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
         Opcode::LDAR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
+        Opcode::LDUR => instructions::ldur::execute(emu, ins),
+        Opcode::LDURB => instructions::ldurb::execute(emu, ins),
+        Opcode::LDURH => instructions::ldurh::execute(emu, ins),
+        Opcode::LDURSB => instructions::ldursb::execute(emu, ins),
+        Opcode::LDURSH => instructions::ldursh::execute(emu, ins),
+        Opcode::LDURSW => instructions::ldursw::execute(emu, ins),
 
         // --- Stores ---
         Opcode::STR => instructions::str::execute(emu, ins),
@@ -56,6 +62,9 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         Opcode::STP => instructions::stp::execute(emu, ins),
         Opcode::STXR => instructions::stxr::execute(emu, ins),
         Opcode::STLR => instructions::str::execute(emu, ins),  // treat as STR for now
+        Opcode::STUR => instructions::stur::execute(emu, ins),
+        Opcode::STURB => instructions::sturb::execute(emu, ins),
+        Opcode::STURH => instructions::sturh::execute(emu, ins),
 
         // --- Branches ---
         Opcode::B => instructions::b::execute(emu, ins),
