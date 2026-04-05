@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::utils::likely;
+use crate::utils::helpers::likely;
 
 pub fn HeapFree(emu: &mut emu::Emu) {
     let heap = emu.regs().rcx;

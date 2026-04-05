@@ -1,4 +1,4 @@
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn IsProcessorFeaturePresent(emu: &mut emu::Emu) {
     let feature = emu.regs().rcx as u32;

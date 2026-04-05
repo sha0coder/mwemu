@@ -1,8 +1,8 @@
 use crate::emu;
 use crate::serialization;
 //use crate::winapi::helper;
-use crate::constants;
-use crate::structures::UnicodeString;
+use crate::windows::constants;
+use crate::windows::structures::UnicodeString;
 use crate::winapi::winapi32::kernel32;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {

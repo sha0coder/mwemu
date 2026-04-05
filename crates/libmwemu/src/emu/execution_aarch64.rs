@@ -3,7 +3,7 @@ use std::sync::atomic;
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
-use crate::console::Console;
+use crate::debug::console::Console;
 use crate::emu::Emu;
 use crate::engine;
 use crate::err::MwemuError;

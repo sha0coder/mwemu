@@ -1,4 +1,4 @@
-use crate::constants;
+use crate::windows::constants;
 use crate::emu;
 
 pub fn TraceLoggingRegisterEx_EventRegister_EventSetInformation(emu: &mut emu::Emu) {

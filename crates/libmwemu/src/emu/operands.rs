@@ -3,12 +3,11 @@ use iced_x86::{Instruction, MemorySize, OpKind, Register};
 use crate::maps::mem64::Permission;
 use crate::{
     console::Console,
-    constants,
+    windows::constants,
     emu::Emu,
-    exception_type::ExceptionType,
+    exception::types::ExceptionType,
     regs64,
-    structures::{self, MemoryOperation},
-    to32,
+    windows::structures::{self, MemoryOperation},
 };
 
 impl Emu {

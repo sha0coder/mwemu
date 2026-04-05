@@ -1,4 +1,4 @@
-use crate::{emu, structures};
+use crate::{emu, windows::structures};
 
 pub fn SystemTimeToFileTime(emu: &mut emu::Emu) {
     let in_ptr = emu.regs().rcx;

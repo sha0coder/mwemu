@@ -1,10 +1,10 @@
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 
-use crate::constants;
+use crate::windows::constants;
 use crate::emu;
 use crate::emu::Emu;
-use crate::peb::peb64;
+use crate::windows::peb::peb64;
 use crate::serialization;
 
 pub mod activate_act_ctx;

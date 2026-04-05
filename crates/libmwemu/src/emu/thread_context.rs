@@ -1,4 +1,4 @@
-use crate::{emu::Emu, thread_context::ThreadContext};
+use crate::{emu::Emu, threading::context::ThreadContext};
 
 impl Emu {
     // Thread management helper methods

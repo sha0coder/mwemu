@@ -1,4 +1,4 @@
-use crate::constants::INVALID_HANDLE_VALUE_32;
+use crate::windows::constants::INVALID_HANDLE_VALUE_32;
 use crate::emu;
 use crate::emu::object_handle::{MappingHandle};
 

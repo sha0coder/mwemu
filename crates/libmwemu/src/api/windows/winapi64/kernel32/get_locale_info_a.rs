@@ -1,5 +1,5 @@
 use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
-use crate::{constants, emu};
+use crate::{windows::constants, emu};
 
 pub fn GetLocaleInfoA(emu: &mut emu::Emu) {
     let locale = emu.regs().rcx as usize;

@@ -1,4 +1,4 @@
-use crate::{constants, emu, winapi::winapi64::kernel32::set_last_error};
+use crate::{windows::constants, emu, winapi::winapi64::kernel32::set_last_error};
 
 pub fn GetComputerNameA(emu: &mut emu::Emu) {
     let buff_ptr = emu.regs().rcx; // LPSTR lpBuffer

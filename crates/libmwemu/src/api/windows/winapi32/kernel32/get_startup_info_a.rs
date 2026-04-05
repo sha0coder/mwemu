@@ -1,5 +1,5 @@
 use crate::emu;
-use crate::structures;
+use crate::windows::structures;
 
 pub fn GetStartupInfoA(emu: &mut emu::Emu) {
     let startup_info_ptr =

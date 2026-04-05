@@ -8,14 +8,14 @@ use std::sync::Arc;
 use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
-use crate::banzai::Banzai;
-use crate::breakpoint::Breakpoints;
-use crate::colors::Colors;
+use crate::api::banzai::Banzai;
+use crate::debug::breakpoint::Breakpoints;
+use crate::utils::colors::Colors;
 use crate::config::Config;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
-use crate::global_locks::GlobalLocks;
+use crate::threading::global_locks::GlobalLocks;
 use crate::hooks::Hooks;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
@@ -24,7 +24,7 @@ use crate::serialization::maps::SerializableMaps;
 use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
 use crate::serialization::thread_context::SerializableThreadContext;
-use crate::structures::MemoryOperation;
+use crate::windows::structures::MemoryOperation;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::object_handle::HandleManagement;

@@ -2,7 +2,7 @@ pub mod heap_allocation;
 pub mod mem64;
 pub mod tlb;
 
-use crate::constants;
+use crate::windows::constants;
 use crate::maps::mem64::Permission;
 use crate::maps::tlb::LPF_OF;
 use ahash::AHashMap;

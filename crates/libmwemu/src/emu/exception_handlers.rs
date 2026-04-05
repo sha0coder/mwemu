@@ -1,8 +1,8 @@
 use crate::{
     console::Console,
     emu::Emu,
-    exception::{self, HandlerKind},
-    exception_type::ExceptionType,
+    exception::handlers::{self, HandlerKind},
+    exception::types::ExceptionType,
 };
 
 impl Emu {
@@ -139,7 +139,7 @@ impl Emu {
         if self.veh() > 0 {
             addr = self.veh();
 
-            exception::enter_for_handler(self, ex_type, HandlerKind::Veh);
+            handlers::enter_for_handler(self, ex_type, HandlerKind::Veh);
 
             if self.cfg.is_x64() {
                 self.set_rip(addr, false);
@@ -175,7 +175,7 @@ impl Emu {
             let con = Console::new();
             if self.running_script {
                 self.set_seh(next);
-                exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
+                handlers::enter_for_handler(self, ex_type, HandlerKind::Seh);
                 if self.cfg.is_x64() {
                     self.set_rip(addr, false);
                 } else {
@@ -188,7 +188,7 @@ impl Emu {
             let cmd = con.cmd();
             if cmd == "y" {
                 self.set_seh(next);
-                exception::enter_for_handler(self, ex_type, HandlerKind::Seh);
+                handlers::enter_for_handler(self, ex_type, HandlerKind::Seh);
                 if self.cfg.is_x64() {
                     self.set_rip(addr, false);
                 } else {
@@ -200,7 +200,7 @@ impl Emu {
 
             addr = self.uef();
 
-            exception::enter_for_handler(self, ex_type, HandlerKind::Uef);
+            handlers::enter_for_handler(self, ex_type, HandlerKind::Uef);
             if self.cfg.is_x64() {
                 self.set_rip(addr, false);
             } else {

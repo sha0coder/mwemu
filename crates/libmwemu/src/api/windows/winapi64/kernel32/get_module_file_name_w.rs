@@ -1,4 +1,4 @@
-use crate::{constants, emu, winapi::winapi64::kernel32::set_last_error};
+use crate::{windows::constants, emu, winapi::winapi64::kernel32::set_last_error};
 
 pub fn GetModuleFileNameW(emu: &mut emu::Emu) {
     let module_handle = emu.regs().rcx;
