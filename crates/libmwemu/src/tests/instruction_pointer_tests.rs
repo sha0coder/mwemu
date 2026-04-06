@@ -5,7 +5,7 @@
 #[test]
 fn test_set_rip_nonmapped_linux() {
     let mut emu = crate::emu64();
-    emu.linux = true;
+    emu.os = crate::arch::OperatingSystem::Linux;
 
     // In Linux mode, unmapped addresses return false
     let result = emu.set_rip(0xdeadbeef, false);
@@ -15,7 +15,7 @@ fn test_set_rip_nonmapped_linux() {
 #[test]
 fn test_set_eip_nonmapped_linux() {
     let mut emu = crate::emu32();
-    emu.linux = true;
+    emu.os = crate::arch::OperatingSystem::Linux;
 
     // In Linux mode, unmapped addresses return false
     let result = emu.set_eip(0xdeadbeef, false);
@@ -34,9 +34,9 @@ fn test_force_reload_flag_exists() {
 }
 
 #[test]
-fn test_linux_flag_persistence() {
+fn test_os_default_is_windows() {
     let emu = crate::emu64();
-    assert!(!emu.linux);
+    assert!(emu.os.is_windows());
 }
 
 #[test]

@@ -42,7 +42,6 @@ impl Emu {
             }
         };
 
-        self.aarch64_instruction = Some(ins);
         self.memory_operations.clear();
 
         if self.cfg.verbose >= 2 {
@@ -114,7 +113,6 @@ impl Emu {
                 }
             }
 
-            self.aarch64_instruction = Some(ins);
             self.memory_operations.clear();
             self.pos += 1;
             self.instruction_count += 1;

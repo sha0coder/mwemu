@@ -20,7 +20,7 @@ pub fn linux_call64() {
         0x01, 0xc2, 0x8b, 0x45, 0xe8, 0x01, 0xc2, 0x8b, 0x45, 0x10, 0x01, 0xd0, 0x5d, 0xc3,
     ];
     emu.set_verbose(0);
-    emu.linux = true;
+    emu.os = crate::arch::OperatingSystem::Linux;
     emu.load_code_bytes(&opcodes);
     emu.regs_mut().rax = 0;
     let rax = emu

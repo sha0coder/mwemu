@@ -115,8 +115,8 @@ pub fn log_emu_state(emu: &mut Emu) {
     log::error!("EFLAGS: 0x{:08x}", emu.flags().dump());
 
     // Log last instruction if available
-    if let Some(ref _instruction) = emu.instruction {
-        log::error!("Last instruction: {}", emu.mnemonic);
+    if let Some(ref instruction) = emu.instruction {
+        log::error!("Last instruction: {:?}", instruction.mnemonic());
         log::error!("Instruction size: {}", emu.last_instruction_size);
     }
 

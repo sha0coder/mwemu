@@ -2,6 +2,16 @@
 
 A multi-platform x86/x64/AArch64 binary emulator written in Rust. Supports PE, ELF, and Mach-O formats across Windows, Linux, and macOS.
 
+## Development Environment
+
+A Nix flake is provided for a reproducible Rust development shell. To enter it:
+
+```bash
+nix develop
+```
+
+This gives you the stable Rust toolchain (with rust-src, rust-analyzer, clippy), pkg-config, and openssl.
+
 ## Building & Testing on Apple Silicon
 
 **This is critical.** On Apple Silicon (arm64) hosts, always build and test targeting `x86_64-apple-darwin`:

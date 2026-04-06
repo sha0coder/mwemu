@@ -25,6 +25,7 @@ pub struct Macho64 {
     pub bin: Vec<u8>,
     pub entry: u64,
     pub segments: Vec<Macho64Segment>,
+    pub addr_to_symbol: std::collections::HashMap<u64, String>,
 }
 
 /// A resolved chained fixup bind entry: GOT address -> import ordinal
@@ -103,6 +104,7 @@ impl Macho64 {
             bin,
             entry,
             segments,
+            addr_to_symbol: std::collections::HashMap::new(),
         })
     }
 

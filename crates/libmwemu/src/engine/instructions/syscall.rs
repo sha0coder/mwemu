@@ -7,7 +7,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     emu.show_instruction(color!("Red"), ins);
 
-    if emu.cfg.trace_calls && !emu.linux {
+    if emu.cfg.trace_calls && !emu.os.is_linux() {
         log::trace!(
             "{} 0x{:x} SYSCALL nr=0x{:x}",
             emu.pos,
@@ -16,7 +16,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         );
     }
 
-    if emu.linux {
+    if emu.os.is_linux() {
         linux::syscall64::gateway(emu);
     } else {
         windows::syscall64::gateway(emu);

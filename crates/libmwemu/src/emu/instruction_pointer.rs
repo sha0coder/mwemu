@@ -21,7 +21,7 @@ impl Emu {
         let name = match self.maps.get_addr_name(addr) {
             Some(n) => n,
             None => {
-                if self.linux {
+                if self.os.is_linux() {
                     return false;
                 }
                 let import = self.pe64.as_ref().unwrap().import_addr_to_dll_and_name(addr);
@@ -76,7 +76,7 @@ impl Emu {
             }
 
             self.regs_mut().rip = addr;
-        } else if self.linux {
+        } else if self.os.is_linux() {
             self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
         } else {
             if self.cfg.verbose >= 1 && !self.cfg.emulate_winapi {
@@ -146,9 +146,9 @@ impl Emu {
 
         // Look up symbol name from address
         let symbol = self
-            .macho_addr_to_symbol
-            .get(&addr)
-            .cloned()
+            .macho64
+            .as_ref()
+            .and_then(|m| m.addr_to_symbol.get(&addr).cloned())
             .unwrap_or_else(|| format!("unknown_0x{:x}", addr));
 
         log::info!(
@@ -165,9 +165,9 @@ impl Emu {
         self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
 
         // Dispatch to appropriate platform API handler
-        if self.macos {
+        if self.os.is_macos() {
             crate::macosapi::gateway(addr, &name, &symbol, self);
-        } else if self.linux {
+        } else if self.os.is_linux() {
             crate::linuxapi::gateway(addr, &name, &symbol, self);
         }
 
@@ -191,7 +191,7 @@ impl Emu {
         let name = match self.maps.get_addr_name(addr) {
             Some(n) => n,
             None => {
-                if self.linux {
+                if self.os.is_linux() {
                     return false;
                 }
                 let api_name = self.pe32.as_ref().unwrap().import_addr_to_name(addr as u32);

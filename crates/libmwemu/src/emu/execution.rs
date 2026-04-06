@@ -1,16 +1,16 @@
 use std::io::Write as _;
-use std::sync::{atomic, Arc};
+use std::sync::{Arc, atomic};
 
 use iced_x86::{Code, Decoder, DecoderOptions, Formatter as _, Instruction, Mnemonic};
 
 use crate::debug::console::Console;
-use crate::emu::disassemble::InstructionCache;
 use crate::emu::Emu;
+use crate::emu::disassemble::InstructionCache;
 use crate::err::MwemuError;
 
-use crate::windows::peb::peb64;
 use crate::syscall::windows::syscall64::memory as win_syscall64_memory;
-use crate::{windows::constants, engine, serialization};
+use crate::windows::peb::peb64;
+use crate::{engine, serialization, windows::constants};
 
 macro_rules! round_to {
     ($num:expr, $dec:expr) => {{
@@ -194,7 +194,7 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             return self.step_aarch64();
         }
-        if !self.linux && self.cfg.is_x64() && self.cfg.ssdt_use_ldr_initialize_thunk {
+        if !self.os.is_linux() && self.cfg.is_x64() && self.cfg.ssdt_use_ldr_initialize_thunk {
             peb64::ensure_peb_system_dependent_07(self);
         }
 
@@ -555,7 +555,11 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             return self.run_aarch64(end_addr);
         }
-        if !self.linux && self.cfg.is_x64() && self.cfg.ssdt_use_ldr_initialize_thunk && self.maps.get_map_by_name("peb").is_some() {
+        if !self.os.is_linux()
+            && self.cfg.is_x64()
+            && self.cfg.ssdt_use_ldr_initialize_thunk
+            && self.maps.get_map_by_name("peb").is_some()
+        {
             peb64::ensure_peb_system_dependent_07(self);
         }
         let instruction_cache = InstructionCache::new();
@@ -756,9 +760,7 @@ impl Emu {
                         !t.suspended && t.wake_tick <= self.tick && t.blocked_on_cs.is_none()
                     });
                     if !any_runnable {
-                        return Err(MwemuError::new(
-                            "all emulated threads blocked or suspended",
-                        ));
+                        return Err(MwemuError::new("all emulated threads blocked or suspended"));
                     }
                     if self.cfg.console_enabled {
                         Console::spawn_console(self);
