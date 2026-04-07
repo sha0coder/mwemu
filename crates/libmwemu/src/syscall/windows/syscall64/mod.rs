@@ -43,6 +43,7 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTALLOCATEUSERPHYSICALPAGESEX => memory::nt_allocate_user_physical_pages_ex(emu),
         WIN64_NTQUERYINFORMATIONTRANSACTIONMANAGER => system::nt_query_information_transaction_manager(emu),
         WIN64_NTCREATETHREADEX => process::nt_create_thread_ex(emu),
+        WIN64_NTCONTINUE => process::nt_continue(emu),
         _ => {
             let name = what_syscall(nr);
             log_orange!(

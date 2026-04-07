@@ -821,7 +821,27 @@ impl Emu {
                     // The second argument must be ntdll's image base so the loader
                     // can parse its own PE headers during init.
                     let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
-                    let _ = self.call64(ldr_init, &[0, ntdll_base, 0]);
+
+                    // Build a minimal x64 CONTEXT structure so LdrInitializeThunk does not
+                    // null-deref when it reads CONTEXT.Rip to find the process entry point.
+                    // x64 CONTEXT size is 0x4D0 bytes; key offsets:
+                    //   +0x30  ContextFlags   (DWORD)
+                    //   +0x98  Rsp            (QWORD)
+                    //   +0xF8  Rip            (QWORD)
+                    const CTX_SIZE: u64 = 0x4D0;
+                    const CONTEXT_FULL: u32 = 0x10_007F;
+                    let ctx_addr = self.maps.lib64_alloc(CTX_SIZE)
+                        .expect("cannot alloc CONTEXT for LdrInitializeThunk");
+                    self.maps.create_map("ldr_context", ctx_addr, CTX_SIZE, Permission::READ_WRITE)
+                        .expect("cannot create ldr_context map");
+                    // ContextFlags
+                    let _ = self.maps.write_dword(ctx_addr + 0x30, CONTEXT_FULL);
+                    // Rsp: current stack pointer
+                    let _ = self.maps.write_qword(ctx_addr + 0x98, self.regs().rsp);
+                    // Rip: entry point — NtContinue will redirect execution here
+                    let _ = self.maps.write_qword(ctx_addr + 0xF8, ep);
+
+                    let _ = self.call64(ldr_init, &[ctx_addr, ntdll_base, 0]);
                     log::trace!("ntdll!LdrInitializeThunk emulated completely.");
                     // Guest loader often clears `PEB+0x90`; restore before walking modules / main EP.
                     peb64::ensure_peb_system_dependent_07(self);

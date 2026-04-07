@@ -602,6 +602,23 @@ impl Emu {
             // Map ntdll (LdrInitializeThunk lives here).
             winapi64::kernel32::load_library(self, "ntdll.dll");
 
+            // ntdll patches its own globals during LdrInitializeThunk (LdrpHashTable,
+            // LdrpModuleBaseAddressIndex, etc.).  These often fall in the .rdata section
+            // which our PE loader maps read-only; add write permission to all ntdll maps
+            // so the self-patching writes succeed.
+            let ntdll_map_names: Vec<String> = self
+                .maps
+                .name_map
+                .keys()
+                .filter(|n| n.starts_with("ntdll"))
+                .cloned()
+                .collect();
+            for name in ntdll_map_names {
+                if let Some(mem) = self.maps.get_map_by_name_mut(&name) {
+                    mem.add_permission(crate::maps::mem64::Permission::WRITE);
+                }
+            }
+
             // Map the base DLLs used by imports reached after `LdrInitializeThunk`.
             // They must be present in the LDR lists before binding so exports and
             // forwarders can resolve across `kernel32` / `kernelbase`.

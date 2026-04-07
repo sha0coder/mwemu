@@ -565,3 +565,87 @@ pub fn nt_create_thread_ex(emu: &mut Emu) {
 
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
+
+/// `NtContinue` — syscall 0x43.
+/// RCX = PCONTEXT, RDX = TestAlert (BOOLEAN)
+///
+/// Restores CPU state from the CONTEXT structure and resumes execution at CONTEXT.Rip.
+/// In our emulator this is used by `LdrInitializeThunk` to transfer control to the
+/// process entry point after loader initialisation is complete.
+///
+/// x64 CONTEXT field offsets (relative to context base):
+///   +0x30  ContextFlags   (DWORD)
+///   +0x78  Rax            (QWORD)
+///   +0x80  Rcx            (QWORD)
+///   +0x88  Rdx            (QWORD)
+///   +0x90  Rbx            (QWORD)
+///   +0x98  Rsp            (QWORD)
+///   +0xA0  Rbp            (QWORD)
+///   +0xA8  Rsi            (QWORD)
+///   +0xB0  Rdi            (QWORD)
+///   +0xF8  Rip            (QWORD)
+pub fn nt_continue(emu: &mut Emu) {
+    let context_ptr = emu.regs().rcx;
+    let _test_alert = emu.regs().rdx;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtContinue context_ptr=0x{:x}",
+        WIN64_NTCONTINUE,
+        context_ptr
+    );
+
+    if context_ptr == 0 || !emu.maps.is_mapped(context_ptr) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    // Read register fields from the CONTEXT structure.
+    let ctx_rip = emu.maps.read_qword(context_ptr + 0xF8).unwrap_or(0);
+    let ctx_rsp = emu.maps.read_qword(context_ptr + 0x98).unwrap_or(0);
+    let ctx_rax = emu.maps.read_qword(context_ptr + 0x78).unwrap_or(0);
+    let ctx_rcx = emu.maps.read_qword(context_ptr + 0x80).unwrap_or(0);
+    let ctx_rdx = emu.maps.read_qword(context_ptr + 0x88).unwrap_or(0);
+    let ctx_rbx = emu.maps.read_qword(context_ptr + 0x90).unwrap_or(0);
+    let ctx_rbp = emu.maps.read_qword(context_ptr + 0xA0).unwrap_or(0);
+    let ctx_rsi = emu.maps.read_qword(context_ptr + 0xA8).unwrap_or(0);
+    let ctx_rdi = emu.maps.read_qword(context_ptr + 0xB0).unwrap_or(0);
+    let ctx_r8  = emu.maps.read_qword(context_ptr + 0xB8).unwrap_or(0);
+    let ctx_r9  = emu.maps.read_qword(context_ptr + 0xC0).unwrap_or(0);
+    let ctx_r10 = emu.maps.read_qword(context_ptr + 0xC8).unwrap_or(0);
+    let ctx_r11 = emu.maps.read_qword(context_ptr + 0xD0).unwrap_or(0);
+    let ctx_r12 = emu.maps.read_qword(context_ptr + 0xD8).unwrap_or(0);
+    let ctx_r13 = emu.maps.read_qword(context_ptr + 0xE0).unwrap_or(0);
+    let ctx_r14 = emu.maps.read_qword(context_ptr + 0xE8).unwrap_or(0);
+    let ctx_r15 = emu.maps.read_qword(context_ptr + 0xF0).unwrap_or(0);
+
+    // Restore integer registers.
+    emu.regs_mut().rax = ctx_rax;
+    emu.regs_mut().rcx = ctx_rcx;
+    emu.regs_mut().rdx = ctx_rdx;
+    emu.regs_mut().rbx = ctx_rbx;
+    if ctx_rsp != 0 {
+        emu.regs_mut().rsp = ctx_rsp;
+    }
+    emu.regs_mut().rbp = ctx_rbp;
+    emu.regs_mut().rsi = ctx_rsi;
+    emu.regs_mut().rdi = ctx_rdi;
+    emu.regs_mut().r8  = ctx_r8;
+    emu.regs_mut().r9  = ctx_r9;
+    emu.regs_mut().r10 = ctx_r10;
+    emu.regs_mut().r11 = ctx_r11;
+    emu.regs_mut().r12 = ctx_r12;
+    emu.regs_mut().r13 = ctx_r13;
+    emu.regs_mut().r14 = ctx_r14;
+    emu.regs_mut().r15 = ctx_r15;
+
+    // Redirect execution to the address stored in CONTEXT.Rip.
+    // Set force_reload so the emulator skips the automatic `rip += instruction_sz`
+    // advancement that would otherwise overshoot the target by 2 bytes.
+    if ctx_rip != 0 {
+        emu.regs_mut().rip = ctx_rip;
+        emu.force_reload = true;
+    }
+
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
