@@ -82,8 +82,13 @@ fn patch_ldr_heap_list_sentinel(emu: &mut Emu, base: u64, size: u64) {
 /// Runs immediately before `mov rax, qword ptr [rsi]` inside **ntdll** while `RSI` points at
 /// emulated heap backing (`ALLOC64_*`).  ntdll `memset`s after `NtAllocateVirtualMemory*` and
 /// clears Flink/Blink; self-link when both are still zero.
+///
+/// Does NOT apply when the instruction that immediately follows the load is a null-check of the
+/// destination register (`test reg,reg` or `cmp reg,0`).  In that case the calling code handles
+/// an empty/null LIST_ENTRY explicitly and the self-link would send execution down the wrong path
+/// (e.g. the loader worker-thread list in `LdrInitializeThunk`).
 pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
-    if !emu.cfg.emulate_winapi || !emu.cfg.emulate_winapi {
+    if !emu.cfg.emulate_winapi {
         return;
     }
     // Code lives in per-section maps (`ntdll.text`, …), not only the small `ntdll.pe` header map.
@@ -123,6 +128,22 @@ pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
     {
         return;
     }
+
+    // If the next instruction is a null-check on the loaded value the caller handles the
+    // empty-list case itself — applying the self-link fixup here would bypass that branch.
+    //   test r64,r64  =>  48 85 xx
+    //   test r32,r32  =>  85 xx
+    //   cmp  r64,imm8 =>  48 83 Fx xx  (e.g. cmp rax,0 = 48 83 F8 00)
+    let next = rip.wrapping_add(ins.len() as u64);
+    let b0 = emu.maps.read_byte(next).unwrap_or(0);
+    let b1 = emu.maps.read_byte(next.wrapping_add(1)).unwrap_or(0);
+    let next_is_null_check = (b0 == 0x48 && b1 == 0x85)  // test r64,r64
+        || b0 == 0x85                                      // test r32,r32
+        || (b0 == 0x48 && b1 == 0x83);                    // cmp r64,imm8
+    if next_is_null_check {
+        return;
+    }
+
     let _ = emu.maps.write_qword(rsi, rsi);
     let _ = emu.maps.write_qword(rsi + 8, rsi);
 }

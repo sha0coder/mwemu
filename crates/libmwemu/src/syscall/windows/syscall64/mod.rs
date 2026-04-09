@@ -52,6 +52,9 @@ pub fn gateway(emu: &mut Emu) {
                 nr,
                 name,
             );
+            // Return STATUS_NOT_IMPLEMENTED so callers using `test eax,eax; js` take
+            // the error path instead of processing an uninitialized output buffer.
+            emu.regs_mut().rax = STATUS_NOT_IMPLEMENTED;
         }
     }
 }

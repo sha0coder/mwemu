@@ -19,7 +19,7 @@ impl Emu {
         }
 
         let name = match self.maps.get_addr_name(addr) {
-            Some(n) => n,
+            Some(n) => n.to_string(),
             None => {
                 if self.os.is_linux() {
                     return false;

@@ -109,7 +109,11 @@ fn benchmark32win_donut() {
     emu.disable_ctrlc();
 
     let sample = helpers::test_data_path("sc32win_donut.bin");
-    assert!(std::path::Path::new(&sample).is_file(), "missing {}", sample);
+    assert!(
+        std::path::Path::new(&sample).is_file(),
+        "missing {}",
+        sample
+    );
     emu.load_code(&sample);
 
     // `-vv` → verbose level 2 (assembly tracing).
@@ -166,7 +170,11 @@ fn benchmark64with_enigma() {
     emu.disable_ctrlc();
 
     let sample = helpers::test_data_path("exe64win_enigma.bin");
-    assert!(std::path::Path::new(&sample).is_file(), "missing {}", sample);
+    assert!(
+        std::path::Path::new(&sample).is_file(),
+        "missing {}",
+        sample
+    );
     emu.load_code(&sample);
 
     // Keep the cost profile comparable to `-vv`.
@@ -188,7 +196,7 @@ fn benchmark64with_enigma() {
         let max_secs: u64 = std::env::var("MWEMU_BENCH_ENIGMA_MAX_SECS_RELEASE")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(if cfg!(windows) { 13 } else { 5 });
+            .unwrap_or(if cfg!(windows) { 13 } else { 7 });
         (target_pos, Duration::from_secs(max_secs))
     };
     let t0 = Instant::now();

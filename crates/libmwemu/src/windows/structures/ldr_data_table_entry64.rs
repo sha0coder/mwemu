@@ -57,11 +57,11 @@ impl LdrDataTableEntry64 {
             size_of_image: maps.read_dword(addr + 0x40).unwrap(), // dword aligned to qword
             full_dll_name: UnicodeString64::load(addr + 0x48, maps),
             base_dll_name: UnicodeString64::load(addr + 0x58, maps),
-            flags: maps.read_dword(addr + 0x68).unwrap(), // cc 22 00 00   c4 a2 00 00   cc a2 c0 00
-            load_count: maps.read_word(addr + 0x7b).unwrap(), // ff ff
-            tls_index: maps.read_word(addr + 0x7d).unwrap(), // ff ff
-            hash_links: ListEntry64::load(addr + 0x7f, maps),
-            time_date_stamp: maps.read_dword(addr + 0x8f).unwrap(),
+            flags: maps.read_dword(addr + 0x68).unwrap(),
+            load_count: maps.read_word(addr + 0x6c).unwrap(),
+            tls_index: maps.read_word(addr + 0x6e).unwrap(),
+            hash_links: ListEntry64::load(addr + 0x70, maps),
+            time_date_stamp: maps.read_dword(addr + 0x80).unwrap(),
         }
     }
 
@@ -75,10 +75,10 @@ impl LdrDataTableEntry64 {
         self.full_dll_name.save(addr + 0x48, maps);
         self.base_dll_name.save(addr + 0x58, maps);
         maps.write_dword(addr + 0x68, self.flags);
-        maps.write_word(addr + 0x7b, self.load_count);
-        maps.write_word(addr + 0x7d, self.tls_index);
-        self.hash_links.save(addr + 0x7f, maps);
-        maps.write_dword(addr + 0x8f, self.time_date_stamp);
+        maps.write_word(addr + 0x6c, self.load_count);
+        maps.write_word(addr + 0x6e, self.tls_index);
+        self.hash_links.save(addr + 0x70, maps);
+        maps.write_dword(addr + 0x80, self.time_date_stamp);
     }
 
     pub fn print(&self) {

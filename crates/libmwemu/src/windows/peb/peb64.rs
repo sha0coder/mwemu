@@ -7,12 +7,32 @@ use crate::windows::structures::RtlUserProcessParameters64;
 use crate::windows::structures::PEB64;
 use crate::windows::structures::TEB64;
 
-const NTDLL_LDRP_HASH_TABLE_RVA64: u64 = 0x1d30e0;
+const NTDLL_LDRP_HASH_TABLE_RVA64: u64 = 0x16a140;
 const NTDLL_LDRP_HASH_BUCKETS64: u64 = 32;
-const LDR_HASH_LINKS_OFFSET64: u64 = 0x7f;
+const LDR_HASH_LINKS_OFFSET64: u64 = 0x70;
 const NTDLL_LDRP_GLOBAL_2680_RVA64: u64 = 0x1d2680;
 const NTDLL_LDRP_GLOBAL_26C0_RVA64: u64 = 0x1d26c0;
 const NTDLL_LDRP_GLOBAL_26F0_RVA64: u64 = 0x1d26f0;
+
+// RTL_RB_TREE `LdrpModuleBaseAddressIndex` lives at ntdll + this RVA.
+// Confirmed by disassembly of LdrGetProcedureAddressForCaller and LdrFindEntryForAddress.
+// [ntdll + RVA]     = Root pointer (RTL_BALANCED_NODE*)
+// [ntdll + RVA + 8] = Min/flags  (0 = no pointer encoding)
+const NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA: u64 = 0x16B458;
+
+// RVA of the loader lock RTL_CRITICAL_SECTION inside ntdll .data.
+// Confirmed from: LdrLockLoaderLock uses `lock xadd [ntdll+0x16abc0]` for LockCount (+8).
+// CS base = lock_count_addr - 8 = ntdll + 0x16abb8.
+const NTDLL_LOADER_LOCK_CS_RVA: u64 = 0x16abb8;
+
+// Offset of the embedded RTL_BALANCED_NODE within an LDR_DATA_TABLE_ENTRY.
+// Confirmed from: LdrFindEntryForAddress accesses [node - 0x98] == DllBase (entry+0x30)
+// and [node - 0x88] == SizeOfImage (entry+0x40), so node == entry + 0xC8.
+const LDR_BASE_ADDRESS_INDEX_NODE_OFFSET: u64 = 0xC8;
+
+// Offset of the DdagNode pointer within an LDR_DATA_TABLE_ENTRY.
+// Confirmed from: LdrGetProcedureAddressForCaller reads [entry+0x98] as DdagNode.
+const LDR_DDAG_NODE_OFFSET: u64 = 0x98;
 
 /// `PEB+0x90` (`system_dependent_07`): ntdll reads this as a pointer in loader / API-set helpers.
 /// Real CSRSS/kernel fills it; under emulation `LdrInitializeThunk` (and related code) often leaves it
@@ -950,11 +970,119 @@ fn ensure_ntdll_loader_globals(emu: &mut emu::Emu) {
     let list_26f0 = base + NTDLL_LDRP_GLOBAL_26F0_RVA64;
     emu.maps.write_qword(list_26f0, list_26f0);
     emu.maps.write_qword(list_26f0 + 8, list_26f0);
+
+    // Ensure the loader lock CRITICAL_SECTION is in a valid, unlocked state.
+    // If LdrInitializeThunk did not fully run, the CS may be all-zero (DebugInfo=null,
+    // LockCount=0). RtlEnterCriticalSection then takes the slow path and crashes
+    // trying to increment [null+0x24].  Setting DebugInfo=-1 suppresses the debug
+    // accounting, and LockCount=-1 (bit0=1) puts the CS into the "unlocked" state.
+    let loader_lock = base + NTDLL_LOADER_LOCK_CS_RVA;
+    if emu.maps.is_mapped(loader_lock) {
+        // Only patch if DebugInfo is still null (not yet initialized by LdrInitializeThunk).
+        let debug_info = emu.maps.read_qword(loader_lock).unwrap_or(0);
+        if debug_info == 0 {
+            let _ = emu.maps.write_qword(loader_lock, u64::MAX);        // DebugInfo = -1 (no debug)
+            let _ = emu.maps.write_dword(loader_lock + 0x08, u32::MAX); // LockCount = -1 (unlocked)
+        }
+    }
 }
 
 struct ModInfo {
     name: String,
     base: u64,
+}
+
+/// Populate `LdrpModuleBaseAddressIndex` (ntdll + 0x16B458) so that
+/// `LdrGetProcedureAddressForCaller` and `LdrFindEntryForAddress` can walk the
+/// loaded-module RB tree.
+///
+/// Each `LDR_DATA_TABLE_ENTRY` has an embedded `RTL_BALANCED_NODE` at offset
+/// `LDR_BASE_ADDRESS_INDEX_NODE_OFFSET` (0xC8).  The tree is sorted by
+/// `DllBase` (at entry+0x30).  We build a degenerate right-only chain (valid
+/// BST, O(n) search) which is correct and simple.
+///
+/// Each entry also needs a `DdagNode` pointer at `LDR_DDAG_NODE_OFFSET`
+/// (0x98); the callers check `[DdagNode + 0x18] == -1` to decide the fast
+/// path.  We allocate a minimal fake node with that field set.
+fn rebuild_ldrp_module_base_address_index(emu: &mut emu::Emu, entries: &[u64]) {
+    if entries.is_empty() {
+        return;
+    }
+    let Some(ntdll_map) = emu.maps.get_map_by_name("ntdll.pe") else {
+        return;
+    };
+    let ntdll_base = ntdll_map.get_base();
+
+    let tree_root_ptr = ntdll_base + NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA;
+    let tree_min_ptr  = ntdll_base + NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA + 8;
+
+    // Collect (DllBase, entry_addr) and sort ascending by DllBase.
+    let mut items: Vec<(u64, u64)> = entries
+        .iter()
+        .filter_map(|&entry| {
+            let dll_base = emu.maps.read_qword(entry + 0x30).unwrap_or(0);
+            if dll_base == 0 { None } else { Some((dll_base, entry)) }
+        })
+        .collect();
+    items.sort_by_key(|&(base, _)| base);
+    if items.is_empty() {
+        return;
+    }
+
+    // Allocate a minimal DdagNode for each entry and link it.
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static DDAG_SEQ: AtomicU32 = AtomicU32::new(0);
+
+    const DDAG_SIZE: u64 = 0x60;
+    let mut node_addrs: Vec<u64> = Vec::with_capacity(items.len());
+
+    for &(_, entry_addr) in &items {
+        let ddag_addr = emu
+            .maps
+            .alloc(DDAG_SIZE)
+            .expect("cannot alloc DdagNode");
+        let seq = DDAG_SEQ.fetch_add(1, Ordering::Relaxed);
+        emu.maps
+            .create_map(&format!("ddag_node.{}", seq), ddag_addr, DDAG_SIZE, Permission::READ_WRITE)
+            .expect("cannot create DdagNode map");
+
+        // LDR_DDAG_NODE.LoadCount (+0x18) == -1 means "untracked / system" module.
+        // Both LdrGetProcedureAddressForCaller and LdrFindEntryForAddress test this
+        // and take the fast success path when it equals 0xFFFFFFFF.
+        let _ = emu.maps.write_dword(ddag_addr + 0x18, 0xFFFF_FFFF);
+        // LDR_DDAG_NODE.State (+0x38) must be >= 9 (LdrModulesInitialized) so that
+        // LdrGetProcedureAddressForCaller skips the slow dependency-load path.
+        let _ = emu.maps.write_dword(ddag_addr + 0x38, 9);
+
+        // Point entry->DdagNode to our fake node.
+        let _ = emu.maps.write_qword(entry_addr + LDR_DDAG_NODE_OFFSET, ddag_addr);
+
+        node_addrs.push(entry_addr + LDR_BASE_ADDRESS_INDEX_NODE_OFFSET);
+    }
+
+    // Build a right-skewed BST: each node's Right = next larger node.
+    // RTL_BALANCED_NODE layout: [+0x00] Left, [+0x08] Right, [+0x10] ParentValue
+    // ParentValue = parent_addr | color_bit (0 = black).
+    let n = node_addrs.len();
+    for i in 0..n {
+        let node = node_addrs[i];
+        let left   = 0u64;
+        let right  = if i + 1 < n { node_addrs[i + 1] } else { 0 };
+        let parent = if i > 0 { node_addrs[i - 1] } else { 0 };
+        let _ = emu.maps.write_qword(node,        left);
+        let _ = emu.maps.write_qword(node + 0x08, right);
+        let _ = emu.maps.write_qword(node + 0x10, parent); // black (bit0=0)
+    }
+
+    // Write tree root and clear the encoding flag (Min/flags = 0).
+    let _ = emu.maps.write_qword(tree_root_ptr, node_addrs[0]);
+    let _ = emu.maps.write_qword(tree_min_ptr, 0);
+
+    log::trace!(
+        "rebuild_ldrp_module_base_address_index: {} modules, root node=0x{:x}",
+        n,
+        node_addrs[0]
+    );
 }
 
 /// Rebuild the PEB_LDR_DATA lists after ntdll's `LdrInitializeThunk` has run.
@@ -1066,35 +1194,49 @@ pub fn rebuild_ldr_lists(emu: &mut emu::Emu) {
         entries.push(addr);
     }
 
-    // Link entries in a circular chain (not through the Ldr head)
+    // Link entries using the LDR sentinel nodes as terminators.
+    // The sentinel is the LIST_ENTRY inside PEB_LDR_DATA:
+    //   InLoadOrderModuleList     sentinel at ldr_addr + 0x10
+    //   InMemoryOrderModuleList   sentinel at ldr_addr + 0x20
+    //   InInitializationOrderModuleList sentinel at ldr_addr + 0x30
+    // Each list head must be the terminator for the first and last entries so
+    // that real ntdll code can detect end-of-list by comparing against the head.
     let n = entries.len();
+    let sentinel_load   = ldr_addr + 0x10;
+    let sentinel_mem    = ldr_addr + 0x20;
+    let sentinel_init   = ldr_addr + 0x30;
     for i in 0..n {
-        let next = entries[(i + 1) % n];
-        let prev = entries[(i + n - 1) % n];
+        let flink_load = if i + 1 < n { entries[i + 1]        } else { sentinel_load };
+        let blink_load = if i > 0     { entries[i - 1]        } else { sentinel_load };
+        let flink_mem  = if i + 1 < n { entries[i + 1] + 0x10 } else { sentinel_mem  };
+        let blink_mem  = if i > 0     { entries[i - 1] + 0x10 } else { sentinel_mem  };
+        let flink_init = if i + 1 < n { entries[i + 1] + 0x20 } else { sentinel_init };
+        let blink_init = if i > 0     { entries[i - 1] + 0x20 } else { sentinel_init };
         // InLoadOrderLinks
-        emu.maps.write_qword(entries[i], next);
-        emu.maps.write_qword(entries[i] + 8, prev);
+        emu.maps.write_qword(entries[i],        flink_load);
+        emu.maps.write_qword(entries[i] + 0x08, blink_load);
         // InMemoryOrderLinks
-        emu.maps.write_qword(entries[i] + 0x10, next + 0x10);
-        emu.maps.write_qword(entries[i] + 0x18, prev + 0x10);
+        emu.maps.write_qword(entries[i] + 0x10, flink_mem);
+        emu.maps.write_qword(entries[i] + 0x18, blink_mem);
         // InInitializationOrderLinks
-        emu.maps.write_qword(entries[i] + 0x20, next + 0x20);
-        emu.maps.write_qword(entries[i] + 0x28, prev + 0x20);
+        emu.maps.write_qword(entries[i] + 0x20, flink_init);
+        emu.maps.write_qword(entries[i] + 0x28, blink_init);
     }
 
-    // Point Ldr list heads to the first/last entries
+    // Point the sentinel nodes to first and last entries
     let first = entries[0];
     let last = entries[n - 1];
-    emu.maps.write_qword(ldr_addr + 0x10, first); // InLoadOrder.Flink
-    emu.maps.write_qword(ldr_addr + 0x18, last); // InLoadOrder.Blink
-    emu.maps.write_qword(ldr_addr + 0x20, first + 0x10); // InMemoryOrder.Flink
-    emu.maps.write_qword(ldr_addr + 0x28, last + 0x10); // InMemoryOrder.Blink
-    emu.maps.write_qword(ldr_addr + 0x30, first + 0x20); // InInitializationOrder.Flink
-    emu.maps.write_qword(ldr_addr + 0x38, last + 0x20); // InInitializationOrder.Blink
+    emu.maps.write_qword(ldr_addr + 0x10, first);          // InLoadOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x18, last);           // InLoadOrder sentinel.Blink
+    emu.maps.write_qword(ldr_addr + 0x20, first + 0x10);   // InMemoryOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x28, last + 0x10);    // InMemoryOrder sentinel.Blink
+    emu.maps.write_qword(ldr_addr + 0x30, first + 0x20);   // InInitializationOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x38, last + 0x20);    // InInitializationOrder sentinel.Blink
     emu.maps.write_dword(ldr_addr + 4, 1); // Initialized = TRUE
 
     rebuild_ldr_hash_table(emu, &modules, &entries);
     ensure_ntdll_loader_globals(emu);
+    rebuild_ldrp_module_base_address_index(emu, &entries);
 
     // Also update PEB.ImageBaseAddress
     if exe_base != 0 {
