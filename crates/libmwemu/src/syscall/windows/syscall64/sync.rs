@@ -89,6 +89,109 @@ pub fn nt_wait_for_alert_by_thread_id(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
+/// `NtAlpcAcceptConnectPort` — x64 syscall 0x79.
+///
+/// RCX = PortHandle (out), RDX = ConnectionPortHandle, R8 = Flags,
+/// R9 = ObjectAttributes, [rsp+28] = PortAttributes, [rsp+30] = PortContext,
+/// [rsp+38] = ConnectionRequest, [rsp+40] = ConnMsgAttributes, [rsp+48] = AcceptConnection.
+/// Stub: write a fake handle and return STATUS_SUCCESS (accept).
+pub fn nt_alpc_accept_connect_port(emu: &mut Emu) {
+    let handle_out = emu.regs().rcx;
+    let conn_port  = emu.regs().rdx;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtAlpcAcceptConnectPort out: 0x{:x}, conn: 0x{:x}",
+        WIN64_NTALPCACCEPTCONNECTPORT,
+        handle_out,
+        conn_port,
+    );
+
+    if handle_out != 0 && emu.maps.is_mapped(handle_out) {
+        let h = next_handle();
+        let _ = emu.maps.write_qword(handle_out, h);
+    }
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtWaitForSingleObject` — x64 syscall 0x4.
+///
+/// RCX = Handle, RDX = Alertable (BOOLEAN), R8 = Timeout (PLARGE_INTEGER, optional).
+/// Stub: returns STATUS_SUCCESS (object signaled) immediately.
+pub fn nt_wait_for_single_object(emu: &mut Emu) {
+    let handle    = emu.regs().rcx;
+    let alertable = emu.regs().rdx;
+    let timeout   = emu.regs().r8;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtWaitForSingleObject handle: 0x{:x}, alertable: {}, timeout: 0x{:x}",
+        WIN64_NTWAITFORSINGLEOBJECT,
+        handle,
+        alertable,
+        timeout,
+    );
+
+    emu.regs_mut().rax = STATUS_SUCCESS; // WAIT_OBJECT_0
+}
+
+/// `NtOpenEvent` — x64 syscall 0x40.
+///
+/// RCX = EventHandle (out), RDX = DesiredAccess, R8 = ObjectAttributes.
+/// Returns a fake handle; callers use it as an opaque synchronisation token.
+pub fn nt_open_event(emu: &mut Emu) {
+    let handle_out    = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
+    let object_attr   = emu.regs().r8;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtOpenEvent out: 0x{:x}, access: 0x{:x}, obj: 0x{:x}",
+        WIN64_NTOPENEVENT,
+        handle_out,
+        desired_access,
+        object_attr,
+    );
+
+    if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let h = next_handle();
+    let _ = emu.maps.write_qword(handle_out, h);
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtCreateTimer2` — x64 syscall 0xcc.
+///
+/// RCX = TimerHandle (out), RDX = DesiredAccess, R8 = ObjectAttributes,
+/// R9 = TimerType (0=Synchronization, 1=Notification), [rsp+0x28] = TimerAttributes.
+/// Returns a fake handle.
+pub fn nt_create_timer2(emu: &mut Emu) {
+    let handle_out   = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
+    let timer_type   = emu.regs().r9;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtCreateTimer2 out: 0x{:x}, access: 0x{:x}, type: {}",
+        WIN64_NTCREATETIMER2,
+        handle_out,
+        desired_access,
+        timer_type,
+    );
+
+    if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let h = next_handle();
+    let _ = emu.maps.write_qword(handle_out, h);
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
 /// `NtClose` — RCX `Handle`.
 pub fn nt_close(emu: &mut Emu) {
     let handle = emu.regs().rcx;

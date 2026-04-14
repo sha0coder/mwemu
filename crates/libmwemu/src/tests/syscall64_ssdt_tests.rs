@@ -145,7 +145,7 @@ fn nt_query_information_process_basic_and_cookie() {
     emu.maps.write_qword(emu.regs().rsp + 0x28, 0);
     syscall64::gateway(&mut emu);
     assert_eq!(emu.regs().rax, STATUS_SUCCESS);
-    assert_eq!(emu.maps.read_dword(0x560200).unwrap_or(1), 0);
+    assert_eq!(emu.maps.read_dword(0x560200).unwrap_or(1), 0x01234567);
 }
 
 #[test]

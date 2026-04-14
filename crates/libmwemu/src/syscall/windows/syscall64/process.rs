@@ -121,7 +121,7 @@ pub fn nt_query_information_process(emu: &mut Emu) {
             emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
             return;
         }
-        if !emu.maps.write_dword(process_information, 0) {
+        if !emu.maps.write_dword(process_information, 0x01234567) {
             emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
             return;
         }
@@ -153,6 +153,47 @@ pub fn nt_query_information_process(emu: &mut Emu) {
                 emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
                 return;
             }
+        }
+        emu.regs_mut().rax = STATUS_SUCCESS;
+        return;
+    }
+
+    // ProcessWow64Information (0x25): returns ULONG_PTR = 0 for native 64-bit processes.
+    if process_information_class == 0x25 {
+        if process_information_length < 8 || process_information == 0 || !emu.maps.is_mapped(process_information) {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        let _ = emu.maps.write_qword(process_information, 0);
+        if return_length_ptr != 0 {
+            let _ = emu.maps.write_dword(return_length_ptr, 8);
+        }
+        emu.regs_mut().rax = STATUS_SUCCESS;
+        return;
+    }
+
+    // ProcessImageFileName (0x1b): return a UNICODE_STRING with a fake path.
+    if process_information_class == 0x1b {
+        // Minimum buffer: UNICODE_STRING header (8 bytes on x64: Length+MaxLength+Buffer ptr = actually
+        // it is 4+4+8=16 bytes on x64) + the string data. Return STATUS_INFO_LENGTH_MISMATCH if too small.
+        const HDR: u32 = 16; // sizeof(UNICODE_STRING) on x64
+        if process_information_length < HDR as u64 {
+            if return_length_ptr != 0 && emu.maps.is_mapped(return_length_ptr) {
+                let _ = emu.maps.write_dword(return_length_ptr, HDR);
+            }
+            emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
+            return;
+        }
+        if process_information == 0 || !emu.maps.is_mapped(process_information) {
+            emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            return;
+        }
+        // Write an empty UNICODE_STRING (Length=0, MaxLength=0, Buffer=0).
+        let _ = emu.maps.write_word(process_information, 0);
+        let _ = emu.maps.write_word(process_information + 2, 0);
+        let _ = emu.maps.write_qword(process_information + 8, 0);
+        if return_length_ptr != 0 && emu.maps.is_mapped(return_length_ptr) {
+            let _ = emu.maps.write_dword(return_length_ptr, HDR);
         }
         emu.regs_mut().rax = STATUS_SUCCESS;
         return;
@@ -237,6 +278,10 @@ pub fn nt_query_information_thread(emu: &mut Emu) {
         }
         let teb_base = emu.maps.get_mem("teb").get_base();
         let _ = emu.maps.write_qword(thread_info + 8, teb_base);
+        // ClientId.UniqueProcess and .UniqueThread must be non-zero;
+        // ntdll may dereference them when resolving thread/process context.
+        let _ = emu.maps.write_qword(thread_info + 0x10, 0x1000); // fake PID
+        let _ = emu.maps.write_qword(thread_info + 0x18, 0x1004); // fake TID
         if return_length_ptr != 0 {
             let _ = emu.maps.write_qword(return_length_ptr, TBI_SIZE);
         }
@@ -648,4 +693,54 @@ pub fn nt_continue(emu: &mut Emu) {
     }
 
     emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtDuplicateObject` — syscall 0x3c.
+/// RCX=SourceProcessHandle, RDX=SourceHandle, R8=TargetProcessHandle,
+/// R9=TargetHandle (PHANDLE, optional out), [rsp+0x28]=DesiredAccess,
+/// [rsp+0x30]=HandleAttributes, [rsp+0x38]=Options.
+///
+/// If TargetHandle is non-null, write a fresh fake handle to it.
+pub fn nt_duplicate_object(emu: &mut Emu) {
+    let source_process = emu.regs().rcx;
+    let source_handle = emu.regs().rdx;
+    let _target_process = emu.regs().r8;
+    let target_handle_out = emu.regs().r9;
+    let rsp = emu.regs().rsp;
+    let desired_access = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+    let options = emu.maps.read_qword(rsp + 0x38).unwrap_or(0);
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtDuplicateObject src_proc: 0x{:x}, src_handle: 0x{:x}, target_out: 0x{:x}, access: 0x{:x}, opts: 0x{:x}",
+        WIN64_NTDUPLICATEOBJECT,
+        source_process,
+        source_handle,
+        target_handle_out,
+        desired_access,
+        options,
+    );
+
+    if target_handle_out != 0 && emu.maps.is_mapped(target_handle_out) {
+        let h = super::sync::next_handle();
+        let _ = emu.maps.write_qword(target_handle_out, h);
+    }
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtCreateProfileEx` — x64 syscall 0xc3.
+///
+/// Creates a profiling object. Stub: returns STATUS_NOT_SUPPORTED.
+/// Callers check the return but don't fatal-fail on this error.
+pub fn nt_create_profile_ex(emu: &mut Emu) {
+    let profile_handle = emu.regs().rcx;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtCreateProfileEx out: 0x{:x}",
+        WIN64_NTCREATEPROFILEEX,
+        profile_handle,
+    );
+
+    emu.regs_mut().rax = STATUS_NOT_SUPPORTED;
 }

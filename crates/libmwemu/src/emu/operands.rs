@@ -306,8 +306,21 @@ impl Emu {
                     static_tls
                 }
                 _ => {
-                    log::trace!("unimplemented gs:[0x{:x}]", mem_addr);
-                    return None;
+                    // Fall back to reading from actual TEB memory so that real ntdll code
+                    // can access arbitrary TEB fields without explicit special-casing.
+                    let teb_base = self.maps.get_mem("teb").get_base();
+                    let teb_addr = teb_base.wrapping_add(mem_addr);
+                    let sz = self.get_operand_sz(ins, noperand);
+                    let v = match sz {
+                        8 => self.maps.read_byte(teb_addr).map(|x| x as u64).unwrap_or(0),
+                        16 => self.maps.read_word(teb_addr).map(|x| x as u64).unwrap_or(0),
+                        32 => self.maps.read_dword(teb_addr).map(|x| x as u64).unwrap_or(0),
+                        _ => self.maps.read_qword(teb_addr).unwrap_or(0),
+                    };
+                    if self.cfg.verbose >= 1 {
+                        log::trace!("gs:[0x{:x}] -> 0x{:x}  (teb+0x{:x})", mem_addr, v, mem_addr);
+                    }
+                    return Some(v);
                 }
             };
             return Some(value1);
@@ -509,6 +522,25 @@ impl Emu {
                     }*/
                     result
                 };
+
+                let gs_sz = self.get_operand_sz(ins, noperand);
+                if mem_seg == Register::GS && self.cfg.is_x64() && !self.os.is_linux() {
+                    // x64 Windows: GS is based at TEB.  Forward writes to teb_base + offset
+                    // so that real ntdll code can update TEB fields without writing to address 0.
+                    let teb_base = self.maps.get_mem("teb").get_base();
+                    let teb_addr = teb_base.wrapping_add(temp_displace);
+                    if self.cfg.verbose >= 1 {
+                        log::trace!("gs:[0x{:x}] = 0x{:x}  (teb+0x{:x})", temp_displace, value, temp_displace);
+                    }
+                    match gs_sz {
+                        8 => { let _ = self.maps.write_byte(teb_addr, value as u8); }
+                        16 => { let _ = self.maps.write_word(teb_addr, value as u16); }
+                        32 => { let _ = self.maps.write_dword(teb_addr, value as u32); }
+                        64 => { let _ = self.maps.write_qword(teb_addr, value); }
+                        _ => { let _ = self.maps.write_qword(teb_addr, value); }
+                    }
+                    return true;
+                }
 
                 if mem_seg == Register::FS || mem_base == Register::GS {
                     if self.os.is_linux() {

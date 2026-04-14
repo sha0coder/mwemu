@@ -232,6 +232,7 @@ impl From<SerializableEmu> for Emu {
             force_break: serialized.force_break,
             process_terminated: false,
             call_depth: 0,
+            ldr_init_done: false,
             force_reload: serialized.force_reload,
             run_until_ret: serialized.run_until_ret,
             rng: RefCell::new(rand::rng()),

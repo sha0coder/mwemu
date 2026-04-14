@@ -5,7 +5,14 @@ use super::unicode_string64::UnicodeString64;
 /// `Flags` bit 0 is `RTL_USER_PROCESS_PARAMETERS_NORMALIZED`: `ImagePathName.Buffer` /
 /// `CommandLine.Buffer` are absolute pointers. If this is clear, ntdll treats `Buffer` as an
 /// offset from the process-parameters base (`lea rdx,[rax+rcx]` path).
-pub const RTL_USER_PROCESS_PARAMETERS_NORMALIZED: u32 = 0x1;
+pub const RTL_USER_PROCESS_PARAMETERS_NORMALIZED:      u32 = 0x0001;
+/// `Flags` bit 0x2000: app manifest is present.
+pub const RTL_USER_PROCESS_PARAMETERS_APP_MANIFEST:    u32 = 0x2000;
+/// `Flags` bit 0x4000: image registry key is missing (no IFEO entry).
+/// When set ntdll skips Image File Execution Options lookups and the CSRSS
+/// client-connect sequence, preventing `LdrpInitializeCsrss` from reaching
+/// `RtlFailFast2(STATUS_STACK_BUFFER_OVERRUN)` via the ALPC error path.
+pub const RTL_USER_PROCESS_PARAMETERS_IMAGE_KEY_MISSING: u32 = 0x4000;
 
 #[derive(Debug)]
 pub struct RtlUserProcessParameters64 {
@@ -32,7 +39,9 @@ impl RtlUserProcessParameters64 {
         Self {
             maximum_length: Self::size() as u32,
             length: Self::size() as u32,
-            flags: RTL_USER_PROCESS_PARAMETERS_NORMALIZED,
+            flags: RTL_USER_PROCESS_PARAMETERS_NORMALIZED
+                | RTL_USER_PROCESS_PARAMETERS_APP_MANIFEST
+                | RTL_USER_PROCESS_PARAMETERS_IMAGE_KEY_MISSING,
             debug_flags: 0,
             reserved2: [0; 8],
             dll_path: UnicodeString64::new(),

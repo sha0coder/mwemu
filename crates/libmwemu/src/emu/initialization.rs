@@ -79,6 +79,7 @@ impl Emu {
             force_break: false,
             process_terminated: false,
             call_depth: 0,
+            ldr_init_done: false,
             force_reload: false,
             tls_callbacks: Vec::new(),
             main_thread_cont: 0,
@@ -619,33 +620,63 @@ impl Emu {
                 }
             }
 
-            // Map the base DLLs used by imports reached after `LdrInitializeThunk`.
-            // They must be present in the LDR lists before binding so exports and
-            // forwarders can resolve across `kernel32` / `kernelbase`.
-            let mut base_dlls: Vec<Lib> = Vec::new();
-            for dll in &["kernel32.dll", "kernelbase.dll", "user32.dll", "gdi32.dll", "win32u.dll"] {
-                let filepath = self.cfg.get_maps_folder(dll);
-                if std::path::Path::new(&filepath).exists() {
-                    let (base, pe64) = self.map_dll_pe64(&filepath);
-                    peb64::dynamic_link_module(base, pe64.get_pe_off(), dll, self);
-                    base_dlls.push(Lib {
-                        pe64,
-                        base,
-                        name: dll.to_string(),
-                    });
+            // Patch ntdll's LdrpHandleInvalidUserCallTarget / RtlFailFast2 terminal block.
+            // The sequence `mov edx, 0xc0000409; mov rcx, -1; call NtTerminateProcess` triggers
+            // during LdrInitializeThunk for CFG violations in our emulated environment.
+            // Replace the `mov edx` with a `jmp` to the `ret` that follows the call, so the
+            // handler returns harmlessly instead of terminating the process.
+            // Pattern: ba 09 04 00 c0  48 c7 c1 ff ff ff ff  e8 ?? ?? ?? ??  [??x7]  c3
+            // (5 bytes mov edx) + (7 bytes mov rcx,-1) + (5 bytes call) + (7 bytes add rsp) + ret
+            if let Some(ntdll_pe) = self.maps.get_map_by_name("ntdll.pe") {
+                let ntdll_base = ntdll_pe.get_base();
+                // ntdll.pe is just the PE header — scan the full image (≤ 8 MiB covers all sections).
+                let ntdll_size: usize = 0x800000;
+                // Search for the pattern in the ntdll image.
+                // We look for mov-edx + mov-rcx(-1) = ba 09 04 00 c0  48 c7 c1 ff ff ff ff
+                let needle: &[u8] = &[0xba, 0x09, 0x04, 0x00, 0xc0, 0x48, 0xc7, 0xc1, 0xff, 0xff, 0xff, 0xff];
+                let mut found_va: Option<u64> = None;
+                for off in 0..ntdll_size.saturating_sub(needle.len() + 10) {
+                    let va = ntdll_base + off as u64;
+                    let mut matches = true;
+                    for (i, &b) in needle.iter().enumerate() {
+                        if self.maps.read_byte(va + i as u64).unwrap_or(0xff) != b {
+                            matches = false;
+                            break;
+                        }
+                    }
+                    if matches {
+                        // Verify there is a `ret` (c3) 24 bytes after pattern start:
+                        // needle(12) + call(5) + add rsp,0x88(7) = 24.
+                        let ret_off = needle.len() as u64 + 5 + 7; // = 24
+                        if self.maps.read_byte(va + ret_off).unwrap_or(0) == 0xc3 {
+                            found_va = Some(va);
+                            break;
+                        }
+                    }
+                }
+                if let Some(patch_va) = found_va {
+                    // Layout from patch_va:
+                    //  +0x00 mov edx,0xc0000409  (5 bytes)  ← replaced with jmp rel32
+                    //  +0x05 mov rcx,-1           (7 bytes)
+                    //  +0x0c call NtTerminateProcess (5 bytes)
+                    //  +0x11 add rsp,0x88          (7 bytes)  ← jump TARGET (must not skip this)
+                    //  +0x18 ret
+                    // displacement = 0x11 - 5 = 0x0C
+                    let _ = self.maps.write_byte(patch_va,     0xe9); // jmp rel32
+                    let _ = self.maps.write_byte(patch_va + 1, 0x0c); // disp: jump to add rsp,0x88
+                    let _ = self.maps.write_byte(patch_va + 2, 0x00);
+                    let _ = self.maps.write_byte(patch_va + 3, 0x00);
+                    let _ = self.maps.write_byte(patch_va + 4, 0x00);
+                    log::debug!("ntdll CFG RtlFailFast2 patch applied at 0x{:x}", patch_va);
+                } else {
+                    log::debug!("ntdll CFG RtlFailFast2 pattern not found — skipping patch");
                 }
             }
 
-            // Bind internal imports now that both modules are mapped. Without this,
-            // export thunks like `kernel32!LoadLibraryA -> jmp [IAT]` can jump
-            // through uninitialized slots when the sample resumes after loader init.
-            for dll in base_dlls.iter_mut() {
-                dll.pe64.iat_binding(self, dll.base);
-                dll.pe64.delay_load_binding(self, dll.base);
-            }
-
             // Minimal TEB stack bounds (NtTib) so stack probes do not fault.
-            let (stack_base, stack_limit) = self
+            // NtTib.StackBase (off +0x08) = HIGH address (top of stack, where RSP starts).
+            // NtTib.StackLimit (off +0x10) = LOW address (bottom of committed region).
+            let (stack_lo, stack_hi) = self
                 .maps
                 .get_map_by_name("stack")
                 .map(|s| (s.get_base(), s.get_bottom()))
@@ -654,9 +685,12 @@ impl Emu {
                     self.cfg.stack_addr + 0x400000 + 0x2000,
                 ));
             let teb_map = self.maps.get_mem_mut("teb");
-            let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
-            teb.nt_tib.stack_base = stack_base;
-            teb.nt_tib.stack_limit = stack_limit;
+            let teb_addr = teb_map.get_base();
+            let mut teb = structures::TEB64::load_map(teb_addr, teb_map);
+            teb.nt_tib.stack_base = stack_hi;   // high address = top of stack
+            teb.nt_tib.stack_limit = stack_lo;  // low address = bottom of committed pages
+            // NtTib.Self must point to the TEB itself (gs:[0x30] canonical value).
+            teb.nt_tib.self_pointer = teb_addr;
             teb.save(teb_map);
 
             return;

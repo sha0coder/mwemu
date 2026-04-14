@@ -101,6 +101,7 @@ pub struct Emu {
     pub force_break: bool,     // set by breakpoints, memory violations, etc. to stop execution
     pub process_terminated: bool, // set by NtTerminateProcess; prevents run() from resetting is_running
     pub call_depth: u32,          // nesting depth of call64/call32 — NtTerminateProcess only exits at depth 0
+    pub ldr_init_done: bool,      // true after LdrInitializeThunk call64 completes; switches API dispatch to virtual stubs
     pub force_reload: bool,    // trigger instruction re-decode
     pub run_until_ret: bool,   // step-over mode: run until next RET
     pub rng: RefCell<rand::rngs::ThreadRng>,

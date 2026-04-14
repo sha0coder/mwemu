@@ -218,6 +218,23 @@ pub fn nt_query_system_information(emu: &mut Emu) {
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
 
+        // SystemKernelDebuggerInformationEx (0x73):
+        // SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX { DebuggerAllowed, DebuggerEnabled, DebuggerPresent }
+        // Return all-zero (no kernel debugger) so the js/jl on negative return is not taken.
+        0x73 => {
+            const NEED: u32 = 3;
+            if len < NEED {
+                write_return_length(emu, ret_len_ptr, NEED);
+                emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
+                return;
+            }
+            for off in 0..NEED {
+                let _ = emu.maps.write_byte(info + u64::from(off), 0);
+            }
+            write_return_length(emu, ret_len_ptr, NEED);
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+
         _ => {
             log_orange!(
                 emu,
@@ -322,5 +339,51 @@ pub fn nt_query_information_transaction_manager(emu: &mut Emu) {
     // Zero-fill the output — no real KTM state to return.
     emu.maps.memset(buffer, 0, needed as usize);
 
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtQueryIoCompletion` — syscall 0x15e.
+/// RCX=IoCompletionHandle, RDX=IoCompletionInformationClass,
+/// R8=IoCompletionInformation (out), R9=IoCompletionInformationLength,
+/// [rsp+0x28]=ReturnLength (out PULONG).
+///
+/// IoCompletionBasicInformation (class 0) returns a single ULONG Depth.
+/// Since we do not track real I/O completion ports, return STATUS_INVALID_HANDLE
+/// so callers fall back gracefully rather than receiving STATUS_NOT_IMPLEMENTED.
+pub fn nt_query_io_completion(emu: &mut Emu) {
+    let handle = emu.regs().rcx;
+    let info_class = emu.regs().rdx;
+    let buffer = emu.regs().r8;
+    let buffer_len = emu.regs().r9;
+    let rsp = emu.regs().rsp;
+    let return_length_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtQueryIoCompletion handle: 0x{:x}, class: {}, buf: 0x{:x}, len: {}",
+        WIN64_NTQUERYIOCOMPLETION,
+        handle,
+        info_class,
+        buffer,
+        buffer_len,
+    );
+
+    // IoCompletionBasicInformation (0): single ULONG Depth.
+    // Accept any class and return zeroed output — callers interpret 0 as "no queued items".
+    const NEEDED: u64 = 4; // sizeof(ULONG)
+    write_return_length(emu, return_length_ptr, NEEDED as u32);
+
+    if buffer == 0 || buffer_len < NEEDED {
+        emu.regs_mut().rax = STATUS_BUFFER_TOO_SMALL;
+        return;
+    }
+
+    if !emu.maps.is_mapped(buffer) {
+        emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
+        return;
+    }
+
+    // Depth = 0: completion port exists but has no queued items.
+    let _ = emu.maps.write_dword(buffer, 0);
     emu.regs_mut().rax = STATUS_SUCCESS;
 }

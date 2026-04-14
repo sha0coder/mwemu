@@ -818,13 +818,90 @@ pub fn nt_unmap_view_of_section(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
-/// `NtMapViewOfSection` — minimal stub (many args on stack); returns success.
+/// `NtMapViewOfSection` — x64 10-arg syscall.
+/// RCX=SectionHandle, RDX=ProcessHandle, R8=*BaseAddress (in/out),
+/// R9=ZeroBits, [rsp+0x28]=CommitSize, [rsp+0x30]=SectionOffset,
+/// [rsp+0x38]=*ViewSize, [rsp+0x40]=InheritDisposition,
+/// [rsp+0x48]=AllocationType, [rsp+0x50]=Win32Protect.
+///
+/// Allocates a fresh anonymous region and writes its address back to *BaseAddress.
 pub fn nt_map_view_of_section(emu: &mut Emu) {
+    let _section_handle = emu.regs().rcx;
+    let process_handle = emu.regs().rdx;
+    let base_addr_ptr = emu.regs().r8;
+    let rsp = emu.regs().rsp;
+    let view_size_ptr = emu.maps.read_qword(rsp + 0x38).unwrap_or(0);
+    let protect = emu.maps.read_dword(rsp + 0x50).unwrap_or(4); // PAGE_READWRITE default
+
+    // Read requested base (0 = any) and requested size.
+    let requested_base = if base_addr_ptr != 0 && emu.maps.is_mapped(base_addr_ptr) {
+        emu.maps.read_qword(base_addr_ptr).unwrap_or(0)
+    } else {
+        0
+    };
+    let view_size = if view_size_ptr != 0 && emu.maps.is_mapped(view_size_ptr) {
+        emu.maps.read_qword(view_size_ptr).unwrap_or(0x1000)
+    } else {
+        0x1000
+    };
+    let size = if view_size == 0 { 0x1000 } else { (view_size + 0xfff) & !0xfff };
+
     log_orange!(
         emu,
-        "syscall 0x{:x}: NtMapViewOfSection (stub)",
-        WIN64_NTMAPVIEWOFSECTION
+        "syscall 0x{:x}: NtMapViewOfSection base_ptr: 0x{:x} req_base: 0x{:x} size: 0x{:x} prot: 0x{:x}",
+        WIN64_NTMAPVIEWOFSECTION,
+        base_addr_ptr,
+        requested_base,
+        size,
+        protect,
     );
+
+    if !is_current_process_handle(process_handle) {
+        emu.regs_mut().rax = STATUS_ACCESS_DENIED;
+        return;
+    }
+
+    let perm = nt_page_protection_to_permission(protect);
+
+    // Use the requested base if it looks valid and is not already mapped,
+    // otherwise let the allocator pick an address.
+    let mapped_base = if requested_base >= 0x10000 && !emu.maps.is_mapped(requested_base) {
+        // Try to create the map at the exact requested address.
+        let name = format!("section_view_{:x}", requested_base);
+        match emu.maps.create_map(&name, requested_base, size, perm) {
+            Ok(_) => requested_base,
+            Err(_) => {
+                // Fall back to a lib64 allocation.
+                let base = emu.maps.lib64_alloc(size).unwrap_or(0);
+                if base != 0 {
+                    let name2 = format!("section_view_{:x}", base);
+                    let _ = emu.maps.create_map(&name2, base, size, perm);
+                }
+                base
+            }
+        }
+    } else {
+        let base = emu.maps.lib64_alloc(size).unwrap_or(0);
+        if base != 0 {
+            let name = format!("section_view_{:x}", base);
+            emu.maps.create_map(&name, base, size, perm);
+        }
+        base
+    };
+
+    if mapped_base == 0 {
+        emu.regs_mut().rax = STATUS_NO_MEMORY;
+        return;
+    }
+
+    // Write back the mapped base address and actual size to caller.
+    if base_addr_ptr != 0 && emu.maps.is_mapped(base_addr_ptr) {
+        let _ = emu.maps.write_qword(base_addr_ptr, mapped_base);
+    }
+    if view_size_ptr != 0 && emu.maps.is_mapped(view_size_ptr) {
+        let _ = emu.maps.write_qword(view_size_ptr, size);
+    }
+
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
@@ -856,5 +933,73 @@ pub fn nt_allocate_user_physical_pages_ex(emu: &mut Emu) {
         let _ = emu.maps.write_qword(num_pages_ptr, 0);
     }
 
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtCreateSection` — syscall 0x4a.
+/// RCX=SectionHandle (out), RDX=DesiredAccess, R8=ObjectAttributes,
+/// R9=MaximumSize (PLARGE_INTEGER), [rsp+0x28]=SectionPageProtection,
+/// [rsp+0x30]=AllocationAttributes, [rsp+0x38]=FileHandle.
+///
+/// Returns a fake handle. Section objects are used by the loader to map
+/// DLL images; we don't need real semantics since mapping is handled
+/// by NtMapViewOfSection stubs.
+/// `NtOpenSection` — open a handle to an existing named section object.
+///
+/// x64: RCX=SectionHandle(out), RDX=DesiredAccess, R8=ObjectAttributes.
+/// Writes a fake handle and returns STATUS_SUCCESS.
+pub fn nt_open_section(emu: &mut Emu) {
+    let handle_out = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
+    let obj_attr = emu.regs().r8;
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtOpenSection handle_out: 0x{:x}, access: 0x{:x}, obj_attr: 0x{:x}",
+        WIN64_NTOPENSECTION,
+        handle_out,
+        desired_access,
+        obj_attr,
+    );
+
+    if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let h = crate::syscall::windows::syscall64::sync::next_handle();
+    let _ = emu.maps.write_qword(handle_out, h);
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+pub fn nt_create_section(emu: &mut Emu) {
+    let handle_out = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
+    let object_attributes = emu.regs().r8;
+    let max_size = emu.regs().r9;
+    let rsp = emu.regs().rsp;
+    let page_protection = emu.maps.read_dword(rsp + 0x28).unwrap_or(0);
+    let alloc_attributes = emu.maps.read_dword(rsp + 0x30).unwrap_or(0);
+    let file_handle = emu.maps.read_qword(rsp + 0x38).unwrap_or(0);
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtCreateSection handle_out: 0x{:x}, access: 0x{:x}, max_size: 0x{:x}, prot: 0x{:x}, alloc: 0x{:x}, file: 0x{:x}",
+        WIN64_NTCREATESECTION,
+        handle_out,
+        desired_access,
+        max_size,
+        page_protection,
+        alloc_attributes,
+        file_handle,
+    );
+
+    if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let h = crate::syscall::windows::syscall64::sync::next_handle();
+    let _ = emu.maps.write_qword(handle_out, h);
     emu.regs_mut().rax = STATUS_SUCCESS;
 }

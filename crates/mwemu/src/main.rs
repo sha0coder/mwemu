@@ -89,8 +89,7 @@ fn main() {
         .arg(clap_arg!("filename", "f", "filename", "set the shellcode binary file.", "FILE"))
         .arg(clap_arg!("dump", "d", "dump", "load from dump.", "FILE"))
         .arg(clap_arg!("verbose", "v", "verbose", "-v syscalls+api calls, -vv assembly, -vvv reps; default shows only syscalls", multiple: true))
-        .arg(clap_arg!("verbose_at", "V", "verbose_at", "start displaying assembly at specific position (is like -vv enabled in specific moment)", "NUMBER"))
-        .arg(clap_arg!("verbose_range", "X", "verbose_range", "enable verbose only between positions a and b: -X a,b or from a onwards: -X a,", "RANGE"))
+        .arg(clap_arg!("verbose_at", "V", "verbose_at", "enable assembly display from position N (-V N) or between positions (-V N-M)", "RANGE"))
         .arg(clap_arg!("64bits", "6", "64bits", "enable 64bits architecture emulation"))
         .arg(clap_arg!("aarch64", "", "aarch64", "enable AArch64/ARM64 architecture emulation"))
         .arg(clap_arg!("trace_memory", "m", "trace_memory", "trace all the memory accesses read and write."))
@@ -236,32 +235,28 @@ fn main() {
         }
         emu.cfg.emulate_winapi = true;
     }
-    // verbose_at
+    // -V N        → enable verbose from step N onwards (permanent)
+    // -V N-M      → enable verbose only between steps N and M (range, restores afterwards)
     if matches.is_present("verbose_at") {
-        emu.cfg.verbose_at = Some(
-            matches
-                .value_of("verbose_at")
-                .expect("select the number of moment to enable verbose")
-                .parse::<u64>()
-                .expect("select a valid number where to enable verbosity"),
-        );
-    }
-
-    // verbose_range
-    if matches.is_present("verbose_range") {
         let range_str = matches
-            .value_of("verbose_range")
-            .expect("select the range like 123,456 or 123,");
-        let parts: Vec<&str> = range_str.splitn(2, ',').collect();
-        emu.cfg.verbose_start = parts[0]
+            .value_of("verbose_at")
+            .expect("select a position like 123 or a range like 123-456");
+        let parts: Vec<&str> = range_str.splitn(2, '-').collect();
+        let start = parts[0]
             .trim()
             .parse::<u64>()
-            .expect("verbose_range: invalid start position");
+            .expect("-V: invalid start position");
         if parts.len() == 2 && !parts[1].trim().is_empty() {
-            emu.cfg.verbose_end = parts[1]
+            // Range mode: verbose only between start and end.
+            let end = parts[1]
                 .trim()
                 .parse::<u64>()
-                .expect("verbose_range: invalid end position");
+                .expect("-V: invalid end position");
+            emu.cfg.verbose_start = start;
+            emu.cfg.verbose_end = end;
+        } else {
+            // Single position: enable verbose permanently from start.
+            emu.cfg.verbose_at = Some(start);
         }
     }
 

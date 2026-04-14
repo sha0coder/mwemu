@@ -842,6 +842,11 @@ impl Emu {
                     let _ = self.maps.write_qword(ctx_addr + 0xF8, ep);
 
                     let _ = self.call64(ldr_init, &[ctx_addr, ntdll_base, 0]);
+                    // Switch API dispatch to virtual stubs so PE code uses Rust
+                    // implementations rather than executing real DLL machine code.
+                    // Real DLL code writes non-volatile registers to shadow space,
+                    // which can overlap with PE frame locals and corrupt saved RSP.
+                    self.ldr_init_done = true;
                     log::trace!("ntdll!LdrInitializeThunk emulated completely.");
                     // Guest loader often clears `PEB+0x90`; restore before walking modules / main EP.
                     peb64::ensure_peb_system_dependent_07(self);
