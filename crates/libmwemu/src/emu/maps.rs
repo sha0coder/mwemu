@@ -4,7 +4,7 @@ use crate::emu::Emu;
 use crate::maps::mem64::Permission;
 
 impl Emu {
-    /// For simulating a windows process space, select the folder with maps32 or maps64 depending upon the arch, do this before loading the binary.
+    /// For simulating a windows process space, select the folder with maps (e.g. maps/windows/x86_64/) depending upon the arch, do this before loading the binary.
     pub fn set_maps_folder(&mut self, folder: &str) {
         //let mut f = folder.to_string();
         //f.push('/');
@@ -61,10 +61,10 @@ impl Emu {
     /// Download and extract maps folder from specific URL
     fn download_and_extract_maps(&self, folder: &str) -> Result<(), Box<dyn std::error::Error>> {
         let url = match folder {
-            "maps32" | "maps32/" | "maps/maps32" | "maps/maps32/" => {
+            f if f.contains("windows/x86") && !f.contains("x86_64") => {
                 "https://github.com/sha0coder/mwemu/releases/download/maps/maps32.zip"
             }
-            "maps64" | "maps64/" | "maps/maps64" | "maps/maps64/" => {
+            f if f.contains("windows/x86_64") => {
                 "https://github.com/sha0coder/mwemu/releases/download/maps/maps64.zip"
             }
             _ => return Err(format!("Unknown maps folder: {}", folder).into()),

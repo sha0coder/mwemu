@@ -2,16 +2,16 @@
     Little endian 64 bits and inferior bits memory.
 */
 use crate::emu::emu_context;
+use crate::maps::scalar::{LittleEndianScalar, ScalarTrace};
 use bytemuck::cast_slice;
 use md5;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::Read;
 use std::io::SeekFrom;
 use std::io::Write;
+use std::io::prelude::*;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct Permission(u8);
@@ -451,141 +451,21 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn read_word(&self, addr: u64) -> u16 {
-        if !self.can_read() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: read_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        let r = u16::from_le_bytes(self.mem[idx..idx + 2].try_into().expect("incorrect length"));
-        if cfg!(feature = "log_mem_read") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: read_word: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 2),
-                        r
-                    );
-                }
-            })
-            .unwrap();
-        }
-        r
+        self.read_scalar(addr, ScalarTrace::ReadWord)
     }
 
     #[inline(always)]
     pub fn read_dword(&self, addr: u64) -> u32 {
-        if !self.can_read() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: read_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        let r = u32::from_le_bytes(self.mem[idx..idx + 4].try_into().expect("incorrect length"));
-        if cfg!(feature = "log_mem_read") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: read_dword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 4),
-                        r
-                    );
-                }
-            })
-            .unwrap();
-        }
-        r
+        self.read_scalar(addr, ScalarTrace::ReadDword)
     }
 
     #[inline(always)]
     pub fn read_qword(&self, addr: u64) -> u64 {
-        if !self.can_read() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: read_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        let r = u64::from_le_bytes(self.mem[idx..idx + 8].try_into().expect("incorrect length"));
-        if cfg!(feature = "log_mem_read") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: read_qword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 8),
-                        r
-                    );
-                }
-            })
-            .unwrap();
-        }
-        r
+        self.read_scalar(addr, ScalarTrace::ReadQword)
     }
 
     pub fn read_oword(&self, addr: u64) -> u128 {
-        if !self.can_read() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: read_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        let r = u128::from_le_bytes(
-            self.mem[idx..idx + 16]
-                .try_into()
-                .expect("incorrect length"),
-        );
-        if cfg!(feature = "log_mem_read") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: read_qword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 8),
-                        r
-                    );
-                }
-            })
-            .unwrap();
-        }
-        r
+        self.read_scalar(addr, ScalarTrace::ReadQword)
     }
 
     #[inline(always)]
@@ -628,82 +508,22 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn force_write_word(&mut self, addr: u64, value: u16) {
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 2].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem: force_write_word: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 2),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.force_write_scalar(addr, value, ScalarTrace::ForceWriteWord);
     }
 
     #[inline(always)]
     pub fn force_write_dword(&mut self, addr: u64, value: u32) {
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 4].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem: force_write_dword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 4),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.force_write_scalar(addr, value, ScalarTrace::ForceWriteDword);
     }
 
     #[inline(always)]
     pub fn force_write_qword(&mut self, addr: u64, value: u64) {
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 8].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem: force_write_qword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 8),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.force_write_scalar(addr, value, ScalarTrace::ForceWriteQword);
     }
 
     #[inline(always)]
     pub fn force_write_oword(&mut self, addr: u64, value: u128) {
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 16].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem: force_write_oword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 16),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.force_write_scalar(addr, value, ScalarTrace::ForceWriteOword);
     }
 
     #[inline(always)]
@@ -775,138 +595,22 @@ impl Mem64 {
 
     #[inline(always)]
     pub fn write_word(&mut self, addr: u64, value: u16) {
-        if !self.can_write() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: write_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 2].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: write_word: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 2),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.write_scalar(addr, value, ScalarTrace::WriteWord);
     }
 
     #[inline(always)]
     pub fn write_dword(&mut self, addr: u64, value: u32) {
-        if !self.can_write() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: write_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 4].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: write_dword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 4),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.write_scalar(addr, value, ScalarTrace::WriteDword);
     }
 
     #[inline(always)]
     pub fn write_qword(&mut self, addr: u64, value: u64) {
-        if !self.can_write() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: write_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 8].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: write_qword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 8),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.write_scalar(addr, value, ScalarTrace::WriteQword);
     }
 
     #[inline(always)]
     pub fn write_oword(&mut self, addr: u64, value: u128) {
-        if !self.can_write() {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "FAILED doesn't have permission: write_from: 0x{:x?}",
-                        addr
-                    );
-                }
-            })
-            .unwrap();
-            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
-        }
-
-        let idx = (addr - self.base_addr) as usize;
-        self.mem[idx..idx + 16].copy_from_slice(&value.to_le_bytes());
-
-        if cfg!(feature = "log_mem_write") {
-            emu_context::with_current_emu(|emu| {
-                if emu.cfg.trace_mem {
-                    log_red!(
-                        emu,
-                        "mem_trace: write_oword: 0x{:x?} = 0x{:x}",
-                        self.build_addresses(addr, 16),
-                        value
-                    );
-                }
-            })
-            .unwrap();
-        }
+        self.write_scalar(addr, value, ScalarTrace::WriteOword);
     }
 
     #[inline(always)]
@@ -1022,6 +726,107 @@ impl Mem64 {
                         self.build_addresses(addr, wide_string_byte_slice.len()),
                         s,
                         wide_string_byte_slice
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    fn read_scalar<T: LittleEndianScalar + Into<u128>>(&self, addr: u64, trace: ScalarTrace) -> T {
+        if !self.can_read() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: read_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
+        }
+
+        let idx = (addr - self.base_addr) as usize;
+        let r: T =
+            crate::maps::scalar::read_le(&self.mem[idx..idx + T::SIZE]).expect("incorrect length");
+        if cfg!(feature = "log_mem_read") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem_trace: {}: 0x{:x?} = 0x{:x}",
+                        trace.label(),
+                        self.build_addresses(addr, T::SIZE),
+                        r.into()
+                    );
+                }
+            })
+            .unwrap();
+        }
+        r
+    }
+
+    fn write_scalar<T: LittleEndianScalar + Into<u128>>(
+        &mut self,
+        addr: u64,
+        value: T,
+        trace: ScalarTrace,
+    ) {
+        if !self.can_write() {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "FAILED doesn't have permission: write_from: 0x{:x?}",
+                        addr
+                    );
+                }
+            })
+            .unwrap();
+            panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
+        }
+
+        let idx = (addr - self.base_addr) as usize;
+        let bytes = value.to_le_vec();
+        self.mem[idx..idx + T::SIZE].copy_from_slice(&bytes);
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem_trace: {}: 0x{:x?} = 0x{:x}",
+                        trace.label(),
+                        self.build_addresses(addr, T::SIZE),
+                        value.into()
+                    );
+                }
+            })
+            .unwrap();
+        }
+    }
+
+    fn force_write_scalar<T: LittleEndianScalar + Into<u128>>(
+        &mut self,
+        addr: u64,
+        value: T,
+        trace: ScalarTrace,
+    ) {
+        let idx = (addr - self.base_addr) as usize;
+        let bytes = value.to_le_vec();
+        self.mem[idx..idx + T::SIZE].copy_from_slice(&bytes);
+
+        if cfg!(feature = "log_mem_write") {
+            emu_context::with_current_emu(|emu| {
+                if emu.cfg.trace_mem {
+                    log_red!(
+                        emu,
+                        "mem: {}: 0x{:x?} = 0x{:x}",
+                        trace.label(),
+                        self.build_addresses(addr, T::SIZE),
+                        value.into()
                     );
                 }
             })

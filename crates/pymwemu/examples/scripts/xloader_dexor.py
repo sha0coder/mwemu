@@ -2,7 +2,7 @@ import pymwemu
 import sys
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32/')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')
 emu.load_binary('mw/xl_unpacked.bin')
 
 buff = emu.alloc("struct_buff", 1024)

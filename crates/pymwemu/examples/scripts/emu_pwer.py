@@ -3,7 +3,7 @@ import sys
 
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32/')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')
 
 # dont load the pe, its tricked to crash the loader
 # instead read it to an buffer inside the emulator:

@@ -2,7 +2,7 @@ import pymwemu
 import sys
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32/')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')
 emu.load_binary('/home/sha0/samples/danabot/2023-04-03-Botnet3-MainModule/unpacked2/dbmm_unpacked.dll')
 
 

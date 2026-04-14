@@ -3,7 +3,7 @@ import pymwemu
 import sys
 
 emu = pymwemu.init64()
-emu.load_maps('/Users/jesus/src/mwemu/maps64/')
+emu.load_maps('/Users/jesus/src/mwemu/maps/windows/x86_64/')
 emu.load_binary('msedge_exe_PID1530_codechunk_225DB910000_x64.dll')
 
 

@@ -14,7 +14,7 @@ Typical workflow (sync with mwemu `-a` / `-b`):
     -b 0x7FFE68000000 -B 0x180000000 -a 0x8CD0
 
   -b  base (ImageBase) of the *reference* trace (e.g. ntdll in x64dbg).
-  -B  base of the *candidate* trace (e.g. mwemu maps64 ntdll base); defaults to -b if omitted.
+  -B  base of the *candidate* trace (e.g. mwemu maps/windows/x86_64 ntdll base); defaults to -b if omitted.
   -a  RVA (hex) — first line in each trace with this RVA starts the diff (0 = from top).
 """
 from __future__ import annotations

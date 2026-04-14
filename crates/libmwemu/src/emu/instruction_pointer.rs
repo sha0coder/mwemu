@@ -1,9 +1,62 @@
 use crate::{
-    console::Console, windows::constants, emu::Emu, exception::types::ExceptionType,
-    winapi::winapi32, winapi::winapi64,
+    console::Console, emu::Emu, exception::types::ExceptionType, winapi::winapi32,
+    winapi::winapi64, windows::constants,
 };
 
 impl Emu {
+    fn resolve_unix_x64_symbol(&self, addr: u64) -> String {
+        let symbol = if self.os.is_macos() {
+            self.macho64
+                .as_ref()
+                .and_then(|m| m.addr_to_symbol.get(&addr).cloned())
+        } else if self.os.is_linux() {
+            self.elf64
+                .as_ref()
+                .and_then(|elf| elf.addr_to_symbol.get(&addr).cloned())
+                .or_else(|| {
+                    self.elf64
+                        .as_ref()
+                        .map(|elf| elf.sym_get_name_from_addr(addr))
+                        .filter(|name| !name.is_empty())
+                })
+        } else {
+            None
+        };
+
+        symbol.unwrap_or_else(|| format!("unknown_0x{:x}", addr))
+    }
+
+    fn intercept_unix_x64_api_call(&mut self, addr: u64, section_name: &str) -> bool {
+        if self.skip_apicall {
+            self.its_apicall = Some(addr);
+            return false;
+        }
+
+        let symbol = self.resolve_unix_x64_symbol(addr);
+
+        log::info!(
+            "{}** {} API call: {} (in {}) at 0x{:x} {}",
+            self.colors.light_red,
+            self.pos,
+            symbol,
+            section_name,
+            addr,
+            self.colors.nc
+        );
+
+        self.gateway_return = self.stack_pop64(false).unwrap_or(0);
+        self.regs_mut().rip = self.gateway_return;
+
+        if self.os.is_macos() {
+            crate::macosapi::gateway(addr, section_name, &symbol, self);
+        } else if self.os.is_linux() {
+            crate::linuxapi::gateway(addr, section_name, &symbol, self);
+        }
+
+        self.force_break = true;
+        true
+    }
+
     ///TODO: reimplement set_eip and set_rip
     /// Redirect execution flow on 64bits.
     /// If the target address is a winapi, triggers it's implementation.
@@ -24,7 +77,11 @@ impl Emu {
                 if self.os.is_linux() {
                     return false;
                 }
-                let import = self.pe64.as_ref().unwrap().import_addr_to_dll_and_name(addr);
+                let import = self
+                    .pe64
+                    .as_ref()
+                    .unwrap()
+                    .import_addr_to_dll_and_name(addr);
                 if !import.is_empty() {
                     let (dll, api) = import.split_once('!').unwrap_or(("", ""));
 
@@ -76,8 +133,9 @@ impl Emu {
             }
 
             self.regs_mut().rip = addr;
-        } else if self.os.is_linux() {
-            self.regs_mut().rip = addr; // in linux libs are no implemented are emulated
+        } else if self.os.is_linux() || self.os.is_macos() {
+            let section_name = name.to_string();
+            return self.intercept_unix_x64_api_call(addr, &section_name);
         } else {
             if self.cfg.verbose >= 1 && !self.cfg.emulate_winapi {
                 log::trace!("/!\\ changing RIP to {} ", name);
@@ -117,7 +175,9 @@ impl Emu {
 
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
                 if !api_name.is_empty() {
-                    if self.cfg.verbose >= 1 { log_red!(self, "emulating {}", api_name); }
+                    if self.cfg.verbose >= 1 {
+                        log_red!(self, "emulating {}", api_name);
+                    }
                 }
                 self.regs_mut().rip = addr;
                 return true;
@@ -174,11 +234,16 @@ impl Emu {
             }
         };
 
-        // Look up symbol name from address
+        // Look up symbol name from address (check both Mach-O and ELF maps)
         let symbol = self
             .macho64
             .as_ref()
             .and_then(|m| m.addr_to_symbol.get(&addr).cloned())
+            .or_else(|| {
+                self.elf64
+                    .as_ref()
+                    .and_then(|e| e.addr_to_symbol.get(&addr).cloned())
+            })
             .unwrap_or_else(|| format!("unknown_0x{:x}", addr));
 
         log::info!(
@@ -191,14 +256,50 @@ impl Emu {
             self.colors.nc
         );
 
-        // Set PC to return address (already in LR from BL/BLR)
-        self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
-
         // Dispatch to appropriate platform API handler
         if self.os.is_macos() {
+            // Set PC to return address (already in LR from BL/BLR)
+            self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
             crate::macosapi::gateway(addr, &name, &symbol, self);
         } else if self.os.is_linux() {
+            // Set PC to return address (already in LR from BL/BLR)
+            self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
             crate::linuxapi::gateway(addr, &name, &symbol, self);
+        } else if self.os.is_windows() {
+            // emulate winapi mode
+            if self.cfg.emulate_winapi {
+                let api_name = winapi64::kernel32::guess_api_name(self, addr);
+                if !api_name.is_empty() {
+                    if self.cfg.verbose >= 1 {
+                        log_red!(self, "emulating {}", api_name);
+                    }
+                }
+                self.regs_aarch64_mut().pc = addr;
+                return true;
+            }
+
+            if self.skip_apicall {
+                self.its_apicall = Some(addr);
+                return false;
+            }
+
+            // Return via LR, not stack pop
+            self.regs_aarch64_mut().pc = self.regs_aarch64().x[30];
+            self.gateway_return = self.regs_aarch64().x[30];
+
+            let handle_winapi: bool =
+                if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
+                    let pc = self.regs_aarch64().pc;
+                    let result = hook_fn(self, pc, addr);
+                    self.hooks.hook_on_winapi_call = Some(hook_fn);
+                    result
+                } else {
+                    true
+                };
+
+            if handle_winapi {
+                winapi64::gateway(addr, &name, self);
+            }
         }
 
         self.force_break = true;
@@ -229,7 +330,9 @@ impl Emu {
                     // winapi emulation case
                     if self.cfg.emulate_winapi {
                         let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
-                        if self.cfg.verbose >= 1 { log_red!(self, "emulating {}", api_name); }
+                        if self.cfg.verbose >= 1 {
+                            log_red!(self, "emulating {}", api_name);
+                        }
                         self.regs_mut().set_eip(addr);
                         return true;
                     }
@@ -274,7 +377,9 @@ impl Emu {
             if self.cfg.emulate_winapi {
                 let api_name = winapi32::kernel32::guess_api_name(self, addr as u32);
                 if !api_name.is_empty() {
-                    if self.cfg.verbose >= 1 { log_red!(self, "emulating {}", api_name); }
+                    if self.cfg.verbose >= 1 {
+                        log_red!(self, "emulating {}", api_name);
+                    }
                 }
                 self.regs_mut().set_eip(addr);
                 return true;

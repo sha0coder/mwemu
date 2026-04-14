@@ -1,0 +1,13 @@
+mod basic_logic;
+mod basic_logic_xor;
+mod bit_counting_swap;
+mod bit_scanning;
+mod bit_testing;
+mod bmi1;
+mod bmi2;
+mod rotates_advanced;
+mod rotates_basic;
+mod shifts_arithmetic;
+mod shifts_double_precision;
+mod shifts_logical;
+mod shifts_variable;

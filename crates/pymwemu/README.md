@@ -25,7 +25,7 @@ sudo xcode-select --switch /Library/Developer/CommandLineTools
 ```
 
 ## Download maps
-download maps32 from releases or maps64 better from git:
+download maps from releases or better from git:
 https://github.com/sha0coder/mwemu
 
 
@@ -41,7 +41,7 @@ Python 3.9.2 (default, Feb 28 2021, 17:03:44)
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import pymwemu
 >>> emu = pymwemu.init32()
->>> emu.load_maps('/home/sha0/src/mwemu/maps32/')
+>>> emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')
 initializing regs
 loading memory maps
 Loaded nsi.dll
@@ -82,14 +82,14 @@ run(end_addr) method of builtins.Emu instance
 >>> emu.load_binary('/home/sha0/samples/danabot/2023-04-03-MainModule/unpacked2/dbmm_unpacked.dll')
 PE32 header detected.
 IAT binding started ...
-Loaded /home/sha0/src/mwemu/maps32/version.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/version.dll
 	5 sections  base addr 0x52180000
 	created pe32 map for section `.text` at 0x52181000 size: 10431
 	created pe32 map for section `.data` at 0x52184000 size: 872
 	created pe32 map for section `.idata` at 0x52185000 size: 3176
 	created pe32 map for section `.rsrc` at 0x52186000 size: 1064
 	created pe32 map for section `.reloc` at 0x52187000 size: 820
-Loaded /home/sha0/src/mwemu/maps32/mpr.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/mpr.dll
 	6 sections  base addr 0x4b680000
 	created pe32 map for section `.text` at 0x4b681000 size: 71344
 	created pe32 map for section `.data` at 0x4b693000 size: 1260
@@ -97,21 +97,21 @@ Loaded /home/sha0/src/mwemu/maps32/mpr.dll
 	created pe32 map for section `.didat` at 0x4b696000 size: 80
 	created pe32 map for section `.rsrc` at 0x4b697000 size: 1296
 	created pe32 map for section `.reloc` at 0x4b698000 size: 3856
-Loaded /home/sha0/src/mwemu/maps32/netapi32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/netapi32.dll
 	4 sections  base addr 0x40ac0000
 	created pe32 map for section `.text` at 0x40ac1000 size: 51905
 	created pe32 map for section `.data` at 0x40ace000 size: 992
 	created pe32 map for section `.rsrc` at 0x40acf000 size: 1016
 /!\ warning: raw sz:56832 off:55808 sz:1024  off+sz:56832
 	created pe32 map for section `.reloc` at 0x40ad0000 size: 908
-Loaded /home/sha0/src/mwemu/maps32/shell32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/shell32.dll
 	4 sections  base addr 0x73800000
 	created pe32 map for section `.text` at 0x73801000 size: 3966180
 	created pe32 map for section `.data` at 0x73bca000 size: 26872
 	created pe32 map for section `.rsrc` at 0x73bd1000 size: 8670296
 /!\ warning: raw sz:12872192 off:12660736 sz:211456  off+sz:12872192
 	created pe32 map for section `.reloc` at 0x74416000 size: 211060
-Loaded /home/sha0/src/mwemu/maps32/esent.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/esent.dll
 	7 sections  base addr 0x10000000
 	created pe32 map for section `.text` at 0x10001000 size: 2573914
 	created pe32 map for section `.data` at 0x10276000 size: 22056
@@ -121,14 +121,14 @@ Loaded /home/sha0/src/mwemu/maps32/esent.dll
 	created pe32 map for section `.rsrc` at 0x10280000 size: 1360
 /!\ warning: raw sz:2712064 off:2597376 sz:114688  off+sz:2712064
 	created pe32 map for section `.reloc` at 0x10281000 size: 114200
-Loaded /home/sha0/src/mwemu/maps32/iphlpapi.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/iphlpapi.dll
 	4 sections  base addr 0x40c90000
 	created pe32 map for section `.text` at 0x40c91000 size: 96173
 	created pe32 map for section `.data` at 0x40ca9000 size: 1936
 	created pe32 map for section `.rsrc` at 0x40caa000 size: 1288
 /!\ warning: raw sz:103936 off:101376 sz:2560  off+sz:103936
 	created pe32 map for section `.reloc` at 0x40cab000 size: 2372
-Loaded /home/sha0/src/mwemu/maps32/winspool.drv.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/winspool.drv.dll
 	6 sections  base addr 0x4cc80000
 	created pe32 map for section `.text` at 0x4cc81000 size: 328345
 	created pe32 map for section `.data` at 0x4ccd2000 size: 4972
@@ -137,14 +137,14 @@ Loaded /home/sha0/src/mwemu/maps32/winspool.drv.dll
 	created pe32 map for section `.rsrc` at 0x4ccd8000 size: 88632
 /!\ warning: raw sz:449536 off:430080 sz:19456  off+sz:449536
 	created pe32 map for section `.reloc` at 0x4ccee000 size: 19448
-Loaded /home/sha0/src/mwemu/maps32/netapi32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/netapi32.dll
 	4 sections  base addr 0x40ac0000
 	created pe32 map for section `.text` at 0x40ac1000 size: 51905
 	created pe32 map for section `.data` at 0x40ace000 size: 992
 	created pe32 map for section `.rsrc` at 0x40acf000 size: 1016
 /!\ warning: raw sz:56832 off:55808 sz:1024  off+sz:56832
 	created pe32 map for section `.reloc` at 0x40ad0000 size: 908
-Loaded /home/sha0/src/mwemu/maps32/rasapi32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/rasapi32.dll
 	6 sections  base addr 0x10000000
 	created pe32 map for section `.text` at 0x10001000 size: 812208
 	created pe32 map for section `.data` at 0x100c8000 size: 5692
@@ -153,14 +153,14 @@ Loaded /home/sha0/src/mwemu/maps32/rasapi32.dll
 	created pe32 map for section `.rsrc` at 0x100ce000 size: 1296
 /!\ warning: raw sz:875008 off:826880 sz:48128  off+sz:875008
 	created pe32 map for section `.reloc` at 0x100cf000 size: 47656
-Loaded /home/sha0/src/mwemu/maps32/shell32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/shell32.dll
 	4 sections  base addr 0x73800000
 	created pe32 map for section `.text` at 0x73801000 size: 3966180
 	created pe32 map for section `.data` at 0x73bca000 size: 26872
 	created pe32 map for section `.rsrc` at 0x73bd1000 size: 8670296
 /!\ warning: raw sz:12872192 off:12660736 sz:211456  off+sz:12872192
 	created pe32 map for section `.reloc` at 0x74416000 size: 211060
-Loaded /home/sha0/src/mwemu/maps32/pstorec.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/pstorec.dll
 	5 sections  base addr 0x5a800000
 	created pe32 map for section `.text` at 0x5a801000 size: 1105
 	created pe32 map for section `.data` at 0x5a802000 size: 804
@@ -168,7 +168,7 @@ Loaded /home/sha0/src/mwemu/maps32/pstorec.dll
 	created pe32 map for section `.rsrc` at 0x5a804000 size: 9936
 /!\ warning: raw sz:14336 off:13824 sz:512  off+sz:14336
 	created pe32 map for section `.reloc` at 0x5a807000 size: 44
-Loaded /home/sha0/src/mwemu/maps32/rasapi32.dll
+Loaded /home/sha0/src/mwemu/maps/windows/x86/rasapi32.dll
 	6 sections  base addr 0x10000000
 	created pe32 map for section `.text` at 0x10001000 size: 812208
 	created pe32 map for section `.data` at 0x100c8000 size: 5692

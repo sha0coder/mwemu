@@ -33,31 +33,75 @@ macro_rules! set_reg8h {
 
 macro_rules! get_reg32l {
     ($reg:expr) => {
-        return $reg & 0x00000000ffffffff;
+        $reg & 0x00000000ffffffff
     };
 }
 
 macro_rules! get_reg32h {
     ($reg:expr) => {
-        return $reg >> 32;
+        $reg >> 32
     };
 }
 
 macro_rules! get_reg16 {
     ($reg:expr) => {
-        return $reg & 0x000000000000ffff;
+        $reg & 0x000000000000ffff
     };
 }
 
 macro_rules! get_reg8l {
     ($reg:expr) => {
-        return $reg & 0x00000000000000ff;
+        $reg & 0x00000000000000ff
     };
 }
 
 macro_rules! get_reg8h {
     ($reg:expr) => {
-        return ($reg & 0x000000000000ff00) >> 8;
+        ($reg & 0x000000000000ff00) >> 8
+    };
+}
+
+macro_rules! define_reg_accessors {
+    ($(
+        $get_fn:ident, $set_fn:ident => $field:ident, $getter:ident, $setter:ident
+    );+ $(;)?) => {
+        $(
+            #[inline(always)]
+            pub fn $get_fn(&self) -> u64 {
+                $getter!(self.$field)
+            }
+
+            #[inline(always)]
+            pub fn $set_fn(&mut self, val: u64) {
+                $setter!(self.$field, val);
+            }
+        )+
+    };
+}
+
+macro_rules! define_reg_getters {
+    ($(
+        $get_fn:ident => $field:ident, $getter:ident
+    );+ $(;)?) => {
+        $(
+            #[inline(always)]
+            pub fn $get_fn(&self) -> u64 {
+                $getter!(self.$field)
+            }
+        )+
+    };
+}
+
+macro_rules! define_show_wrappers {
+    ($(
+        $show_fn:ident => $show_impl:ident, $label:expr, $value_fn:expr
+    );+ $(;)?) => {
+        $(
+            #[inline(always)]
+            pub fn $show_fn(&self, maps: &Maps, pos: u64) {
+                self.$show_impl(maps, $label, ($value_fn)(self), pos);
+            }
+        )+
     };
 }
 
@@ -738,677 +782,90 @@ impl Regs64 {
         log::trace!("  ymm15: {}", self.ymm15);
     }
 
-    // get 16 bits
-
-    #[inline(always)]
-    pub fn get_ax(&self) -> u64 {
-        get_reg16!(self.rax);
+    // get 16 bits / set 16 bits
+    define_reg_accessors! {
+        get_ax, set_ax => rax, get_reg16, set_reg16;
+        get_bx, set_bx => rbx, get_reg16, set_reg16;
+        get_cx, set_cx => rcx, get_reg16, set_reg16;
+        get_dx, set_dx => rdx, get_reg16, set_reg16;
+        get_si, set_si => rsi, get_reg16, set_reg16;
+        get_di, set_di => rdi, get_reg16, set_reg16;
+        get_sp, set_sp => rsp, get_reg16, set_reg16;
+        get_bp, set_bp => rbp, get_reg16, set_reg16;
+        get_ip, set_ip => rip, get_reg16, set_reg16;
+        get_r8w, set_r8w => r8, get_reg16, set_reg16;
+        get_r9w, set_r9w => r9, get_reg16, set_reg16;
+        get_r10w, set_r10w => r10, get_reg16, set_reg16;
+        get_r11w, set_r11w => r11, get_reg16, set_reg16;
+        get_r12w, set_r12w => r12, get_reg16, set_reg16;
+        get_r13w, set_r13w => r13, get_reg16, set_reg16;
+        get_r14w, set_r14w => r14, get_reg16, set_reg16;
+        get_r15w, set_r15w => r15, get_reg16, set_reg16;
     }
 
-    #[inline(always)]
-    pub fn get_bx(&self) -> u64 {
-        get_reg16!(self.rbx);
+    // get 8bits / set 8bits
+    define_reg_accessors! {
+        get_ah, set_ah => rax, get_reg8h, set_reg8h;
+        get_al, set_al => rax, get_reg8l, set_reg8l;
+        get_bh, set_bh => rbx, get_reg8h, set_reg8h;
+        get_bl, set_bl => rbx, get_reg8l, set_reg8l;
+        get_ch, set_ch => rcx, get_reg8h, set_reg8h;
+        get_cl, set_cl => rcx, get_reg8l, set_reg8l;
+        get_dh, set_dh => rdx, get_reg8h, set_reg8h;
+        get_dl, set_dl => rdx, get_reg8l, set_reg8l;
+        get_r8l, set_r8l => r8, get_reg8l, set_reg8l;
+        get_r9l, set_r9l => r9, get_reg8l, set_reg8l;
+        get_r10l, set_r10l => r10, get_reg8l, set_reg8l;
+        get_r11l, set_r11l => r11, get_reg8l, set_reg8l;
+        get_r12l, set_r12l => r12, get_reg8l, set_reg8l;
+        get_r13l, set_r13l => r13, get_reg8l, set_reg8l;
+        get_r14l, set_r14l => r14, get_reg8l, set_reg8l;
+        get_r15l, set_r15l => r15, get_reg8l, set_reg8l;
+        get_r8h, set_r8h => r8, get_reg8h, set_reg8h;
+        get_r9h, set_r9h => r9, get_reg8h, set_reg8h;
+        get_r10h, set_r10h => r10, get_reg8h, set_reg8h;
+        get_r11h, set_r11h => r11, get_reg8h, set_reg8h;
+        get_r12h, set_r12h => r12, get_reg8h, set_reg8h;
+        get_r13h, set_r13h => r13, get_reg8h, set_reg8h;
+        get_r14h, set_r14h => r14, get_reg8h, set_reg8h;
+        get_r15h, set_r15h => r15, get_reg8h, set_reg8h;
+        get_sil, set_sil => rsi, get_reg8l, set_reg8l;
+        get_dil, set_dil => rdi, get_reg8l, set_reg8l;
+        get_bpl, set_bpl => rbp, get_reg8l, set_reg8l;
+        get_spl, set_spl => rsp, get_reg8l, set_reg8l;
     }
 
-    #[inline(always)]
-    pub fn get_cx(&self) -> u64 {
-        get_reg16!(self.rcx);
-    }
-
-    #[inline(always)]
-    pub fn get_dx(&self) -> u64 {
-        get_reg16!(self.rdx);
-    }
-
-    #[inline(always)]
-    pub fn get_si(&self) -> u64 {
-        get_reg16!(self.rsi);
-    }
-
-    #[inline(always)]
-    pub fn get_di(&self) -> u64 {
-        get_reg16!(self.rdi);
-    }
-
-    #[inline(always)]
-    pub fn get_sp(&self) -> u64 {
-        get_reg16!(self.rsp);
-    }
-
-    #[inline(always)]
-    pub fn get_bp(&self) -> u64 {
-        get_reg16!(self.rbp);
-    }
-
-    #[inline(always)]
-    pub fn get_ip(&self) -> u64 {
-        get_reg16!(self.rip);
-    }
-
-    #[inline(always)]
-    pub fn get_r8w(&self) -> u64 {
-        get_reg16!(self.r8);
-    }
-
-    #[inline(always)]
-    pub fn get_r9w(&self) -> u64 {
-        get_reg16!(self.r9);
-    }
-
-    #[inline(always)]
-    pub fn get_r10w(&self) -> u64 {
-        get_reg16!(self.r10);
-    }
-
-    #[inline(always)]
-    pub fn get_r11w(&self) -> u64 {
-        get_reg16!(self.r11);
-    }
-
-    #[inline(always)]
-    pub fn get_r12w(&self) -> u64 {
-        get_reg16!(self.r12);
-    }
-
-    #[inline(always)]
-    pub fn get_r13w(&self) -> u64 {
-        get_reg16!(self.r13);
-    }
-
-    #[inline(always)]
-    pub fn get_r14w(&self) -> u64 {
-        get_reg16!(self.r14);
-    }
-
-    #[inline(always)]
-    pub fn get_r15w(&self) -> u64 {
-        get_reg16!(self.r15);
-    }
-
-    // get 8bits
-
-    #[inline(always)]
-    pub fn get_ah(&self) -> u64 {
-        get_reg8h!(self.rax);
-    }
-
-    #[inline(always)]
-    pub fn get_al(&self) -> u64 {
-        get_reg8l!(self.rax);
-    }
-
-    #[inline(always)]
-    pub fn get_bh(&self) -> u64 {
-        get_reg8h!(self.rbx);
-    }
-
-    #[inline(always)]
-    pub fn get_bl(&self) -> u64 {
-        get_reg8l!(self.rbx);
-    }
-
-    #[inline(always)]
-    pub fn get_ch(&self) -> u64 {
-        get_reg8h!(self.rcx);
-    }
-
-    #[inline(always)]
-    pub fn get_cl(&self) -> u64 {
-        get_reg8l!(self.rcx);
-    }
-
-    #[inline(always)]
-    pub fn get_dh(&self) -> u64 {
-        get_reg8h!(self.rdx);
-    }
-
-    #[inline(always)]
-    pub fn get_dl(&self) -> u64 {
-        get_reg8l!(self.rdx);
-    }
-
-    #[inline(always)]
-    pub fn get_r8l(&self) -> u64 {
-        get_reg8l!(self.r8);
-    }
-
-    #[inline(always)]
-    pub fn get_r9l(&self) -> u64 {
-        get_reg8l!(self.r9);
-    }
-
-    #[inline(always)]
-    pub fn get_r10l(&self) -> u64 {
-        get_reg8l!(self.r10);
-    }
-
-    #[inline(always)]
-    pub fn get_r11l(&self) -> u64 {
-        get_reg8l!(self.r11);
-    }
-
-    #[inline(always)]
-    pub fn get_r12l(&self) -> u64 {
-        get_reg8l!(self.r12);
-    }
-
-    #[inline(always)]
-    pub fn get_r13l(&self) -> u64 {
-        get_reg8l!(self.r13);
-    }
-
-    #[inline(always)]
-    pub fn get_r14l(&self) -> u64 {
-        get_reg8l!(self.r14);
-    }
-
-    #[inline(always)]
-    pub fn get_r15l(&self) -> u64 {
-        get_reg8l!(self.r15);
-    }
-
-    #[inline(always)]
-    pub fn get_r8h(&self) -> u64 {
-        get_reg8h!(self.r8);
-    }
-
-    #[inline(always)]
-    pub fn get_r9h(&self) -> u64 {
-        get_reg8h!(self.r9);
-    }
-
-    #[inline(always)]
-    pub fn get_r10h(&self) -> u64 {
-        get_reg8h!(self.r10);
-    }
-
-    #[inline(always)]
-    pub fn get_r11h(&self) -> u64 {
-        get_reg8h!(self.r11);
-    }
-
-    #[inline(always)]
-    pub fn get_r12h(&self) -> u64 {
-        get_reg8h!(self.r12);
-    }
-
-    #[inline(always)]
-    pub fn get_r13h(&self) -> u64 {
-        get_reg8h!(self.r13);
-    }
-
-    #[inline(always)]
-    pub fn get_r14h(&self) -> u64 {
-        get_reg8h!(self.r14);
-    }
-
-    #[inline(always)]
-    pub fn get_r15h(&self) -> u64 {
-        get_reg8h!(self.r15);
-    }
-
-    #[inline(always)]
-    pub fn get_sil(&self) -> u64 {
-        get_reg8l!(self.rsi);
-    }
-
-    #[inline(always)]
-    pub fn get_dil(&self) -> u64 {
-        get_reg8l!(self.rdi);
-    }
-
-    #[inline(always)]
-    pub fn get_bpl(&self) -> u64 {
-        get_reg8l!(self.rbp);
-    }
-
-    #[inline(always)]
-    pub fn get_spl(&self) -> u64 {
-        get_reg8l!(self.rsp);
-    }
-
-    // get 32bits
-
-    #[inline(always)]
-    pub fn get_eax(&self) -> u64 {
-        get_reg32l!(self.rax);
-    }
-
-    #[inline(always)]
-    pub fn get_ebx(&self) -> u64 {
-        get_reg32l!(self.rbx);
-    }
-
-    #[inline(always)]
-    pub fn get_ecx(&self) -> u64 {
-        get_reg32l!(self.rcx);
-    }
-
-    #[inline(always)]
-    pub fn get_edx(&self) -> u64 {
-        get_reg32l!(self.rdx);
-    }
-
-    #[inline(always)]
-    pub fn get_esi(&self) -> u64 {
-        get_reg32l!(self.rsi);
-    }
-
-    #[inline(always)]
-    pub fn get_edi(&self) -> u64 {
-        get_reg32l!(self.rdi);
-    }
-
-    #[inline(always)]
-    pub fn get_esp(&self) -> u64 {
-        get_reg32l!(self.rsp);
-    }
-
-    #[inline(always)]
-    pub fn get_ebp(&self) -> u64 {
-        get_reg32l!(self.rbp);
-    }
-
-    #[inline(always)]
-    pub fn get_eip(&self) -> u64 {
-        get_reg32l!(self.rip);
-    }
-
-    #[inline(always)]
-    pub fn get_r8d(&self) -> u64 {
-        get_reg32l!(self.r8);
-    }
-
-    #[inline(always)]
-    pub fn get_r9d(&self) -> u64 {
-        get_reg32l!(self.r9);
-    }
-
-    #[inline(always)]
-    pub fn get_r10d(&self) -> u64 {
-        get_reg32l!(self.r10);
-    }
-
-    #[inline(always)]
-    pub fn get_r11d(&self) -> u64 {
-        get_reg32l!(self.r11);
-    }
-
-    #[inline(always)]
-    pub fn get_r12d(&self) -> u64 {
-        get_reg32l!(self.r12);
-    }
-
-    #[inline(always)]
-    pub fn get_r13d(&self) -> u64 {
-        get_reg32l!(self.r13);
-    }
-
-    #[inline(always)]
-    pub fn get_r14d(&self) -> u64 {
-        get_reg32l!(self.r14);
-    }
-
-    #[inline(always)]
-    pub fn get_r15d(&self) -> u64 {
-        get_reg32l!(self.r15);
+    // get 32bits / set 32bits
+    define_reg_accessors! {
+        get_eax, set_eax => rax, get_reg32l, set_reg32;
+        get_ebx, set_ebx => rbx, get_reg32l, set_reg32;
+        get_ecx, set_ecx => rcx, get_reg32l, set_reg32;
+        get_edx, set_edx => rdx, get_reg32l, set_reg32;
+        get_esi, set_esi => rsi, get_reg32l, set_reg32;
+        get_edi, set_edi => rdi, get_reg32l, set_reg32;
+        get_esp, set_esp => rsp, get_reg32l, set_reg32;
+        get_ebp, set_ebp => rbp, get_reg32l, set_reg32;
+        get_eip, set_eip => rip, get_reg32l, set_reg32;
+        get_r8d, set_r8d => r8, get_reg32l, set_reg32;
+        get_r9d, set_r9d => r9, get_reg32l, set_reg32;
+        get_r10d, set_r10d => r10, get_reg32l, set_reg32;
+        get_r11d, set_r11d => r11, get_reg32l, set_reg32;
+        get_r12d, set_r12d => r12, get_reg32l, set_reg32;
+        get_r13d, set_r13d => r13, get_reg32l, set_reg32;
+        get_r14d, set_r14d => r14, get_reg32l, set_reg32;
+        get_r15d, set_r15d => r15, get_reg32l, set_reg32;
     }
 
     // get 32-bits (upper)
-    #[inline(always)]
-    pub fn get_r8u(&self) -> u64 {
-        get_reg32h!(self.r8);
-    }
-
-    #[inline(always)]
-    pub fn get_r9u(&self) -> u64 {
-        get_reg32h!(self.r9);
-    }
-
-    #[inline(always)]
-    pub fn get_r10u(&self) -> u64 {
-        get_reg32h!(self.r10);
-    }
-
-    #[inline(always)]
-    pub fn get_r11u(&self) -> u64 {
-        get_reg32h!(self.r11);
-    }
-
-    #[inline(always)]
-    pub fn get_r12u(&self) -> u64 {
-        get_reg32h!(self.r12);
-    }
-
-    #[inline(always)]
-    pub fn get_r13u(&self) -> u64 {
-        get_reg32h!(self.r13);
-    }
-
-    #[inline(always)]
-    pub fn get_r14u(&self) -> u64 {
-        get_reg32h!(self.r14);
-    }
-
-    #[inline(always)]
-    pub fn get_r15u(&self) -> u64 {
-        get_reg32h!(self.r15);
-    }
-
-    // set 16bits
-
-    #[inline(always)]
-    pub fn set_ax(&mut self, val: u64) {
-        set_reg16!(self.rax, val);
-    }
-
-    #[inline(always)]
-    pub fn set_bx(&mut self, val: u64) {
-        set_reg16!(self.rbx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_cx(&mut self, val: u64) {
-        set_reg16!(self.rcx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_dx(&mut self, val: u64) {
-        set_reg16!(self.rdx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_si(&mut self, val: u64) {
-        set_reg16!(self.rsi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_di(&mut self, val: u64) {
-        set_reg16!(self.rdi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_sp(&mut self, val: u64) {
-        set_reg16!(self.rsp, val);
-    }
-
-    #[inline(always)]
-    pub fn set_bp(&mut self, val: u64) {
-        set_reg16!(self.rbp, val);
-    }
-
-    #[inline(always)]
-    pub fn set_ip(&mut self, val: u64) {
-        set_reg16!(self.rip, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r8w(&mut self, val: u64) {
-        set_reg16!(self.r8, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r9w(&mut self, val: u64) {
-        set_reg16!(self.r9, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r10w(&mut self, val: u64) {
-        set_reg16!(self.r10, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r11w(&mut self, val: u64) {
-        set_reg16!(self.r11, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r12w(&mut self, val: u64) {
-        set_reg16!(self.r12, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r13w(&mut self, val: u64) {
-        set_reg16!(self.r13, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r14w(&mut self, val: u64) {
-        set_reg16!(self.r14, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r15w(&mut self, val: u64) {
-        set_reg16!(self.r15, val);
-    }
-
-    // set 32bits
-
-    #[inline(always)]
-    pub fn set_eax(&mut self, val: u64) {
-        set_reg32!(self.rax, val);
-    }
-
-    #[inline(always)]
-    pub fn set_ebx(&mut self, val: u64) {
-        set_reg32!(self.rbx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_ecx(&mut self, val: u64) {
-        set_reg32!(self.rcx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_edx(&mut self, val: u64) {
-        set_reg32!(self.rdx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_esi(&mut self, val: u64) {
-        set_reg32!(self.rsi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_edi(&mut self, val: u64) {
-        set_reg32!(self.rdi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_ebp(&mut self, val: u64) {
-        set_reg32!(self.rbp, val);
-    }
-
-    #[inline(always)]
-    pub fn set_esp(&mut self, val: u64) {
-        set_reg32!(self.rsp, val);
-    }
-
-    #[inline(always)]
-    pub fn set_eip(&mut self, val: u64) {
-        set_reg32!(self.rip, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r8d(&mut self, val: u64) {
-        set_reg32!(self.r8, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r9d(&mut self, val: u64) {
-        set_reg32!(self.r9, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r10d(&mut self, val: u64) {
-        set_reg32!(self.r10, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r11d(&mut self, val: u64) {
-        set_reg32!(self.r11, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r12d(&mut self, val: u64) {
-        set_reg32!(self.r12, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r13d(&mut self, val: u64) {
-        set_reg32!(self.r13, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r14d(&mut self, val: u64) {
-        set_reg32!(self.r14, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r15d(&mut self, val: u64) {
-        set_reg32!(self.r15, val);
-    }
-
-    // set 8bits
-
-    #[inline(always)]
-    pub fn set_ah(&mut self, val: u64) {
-        set_reg8h!(self.rax, val);
-    }
-
-    #[inline(always)]
-    pub fn set_bh(&mut self, val: u64) {
-        set_reg8h!(self.rbx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_ch(&mut self, val: u64) {
-        set_reg8h!(self.rcx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_dh(&mut self, val: u64) {
-        set_reg8h!(self.rdx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_al(&mut self, val: u64) {
-        set_reg8l!(self.rax, val);
-    }
-
-    #[inline(always)]
-    pub fn set_bl(&mut self, val: u64) {
-        set_reg8l!(self.rbx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_cl(&mut self, val: u64) {
-        set_reg8l!(self.rcx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_dl(&mut self, val: u64) {
-        set_reg8l!(self.rdx, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r8l(&mut self, val: u64) {
-        set_reg8l!(self.r8, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r9l(&mut self, val: u64) {
-        set_reg8l!(self.r9, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r10l(&mut self, val: u64) {
-        set_reg8l!(self.r10, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r11l(&mut self, val: u64) {
-        set_reg8l!(self.r11, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r12l(&mut self, val: u64) {
-        set_reg8l!(self.r12, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r13l(&mut self, val: u64) {
-        set_reg8l!(self.r13, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r14l(&mut self, val: u64) {
-        set_reg8l!(self.r14, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r15l(&mut self, val: u64) {
-        set_reg8l!(self.r15, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r8h(&mut self, val: u64) {
-        set_reg8h!(self.r8, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r9h(&mut self, val: u64) {
-        set_reg8h!(self.r9, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r10h(&mut self, val: u64) {
-        set_reg8h!(self.r10, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r11h(&mut self, val: u64) {
-        set_reg8h!(self.r11, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r12h(&mut self, val: u64) {
-        set_reg8h!(self.r12, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r13h(&mut self, val: u64) {
-        set_reg8h!(self.r13, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r14h(&mut self, val: u64) {
-        set_reg8h!(self.r14, val);
-    }
-
-    #[inline(always)]
-    pub fn set_r15h(&mut self, val: u64) {
-        set_reg8h!(self.r15, val);
-    }
-
-    #[inline(always)]
-    pub fn set_sil(&mut self, val: u64) {
-        set_reg8l!(self.rsi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_dil(&mut self, val: u64) {
-        set_reg8l!(self.rdi, val);
-    }
-
-    #[inline(always)]
-    pub fn set_bpl(&mut self, val: u64) {
-        set_reg8l!(self.rbp, val);
-    }
-
-    #[inline(always)]
-    pub fn set_spl(&mut self, val: u64) {
-        set_reg8l!(self.rsp, val);
+    define_reg_getters! {
+        get_r8u => r8, get_reg32h;
+        get_r9u => r9, get_reg32h;
+        get_r10u => r10, get_reg32h;
+        get_r11u => r11, get_reg32h;
+        get_r12u => r12, get_reg32h;
+        get_r13u => r13, get_reg32h;
+        get_r14u => r14, get_reg32h;
+        get_r15u => r15, get_reg32h;
     }
 
     // xmm
@@ -2314,196 +1771,55 @@ impl Regs64 {
         }
     }
 
-    pub fn show_eax(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "eax", self.get_eax(), pos);
-    }
-
-    pub fn show_ebx(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "ebx", self.get_ebx(), pos);
-    }
-
-    pub fn show_ecx(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "ecx", self.get_ecx(), pos);
-    }
-
-    pub fn show_edx(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "edx", self.get_edx(), pos);
-    }
-
-    pub fn show_esi(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "esi", self.get_esi(), pos);
-    }
-
-    pub fn show_edi(&self, maps: &Maps, pos: u64) {
-        self.show_reg32(maps, "edi", self.get_edi(), pos);
-    }
-
-    pub fn show_rax(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rax", self.rax, pos);
-    }
-
-    pub fn show_rbx(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rbx", self.rbx, pos);
-    }
-
-    pub fn show_rcx(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rcx", self.rcx, pos);
-    }
-
-    pub fn show_rdx(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rdx", self.rdx, pos);
-    }
-
-    pub fn show_rsi(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rsi", self.rsi, pos);
-    }
-
-    pub fn show_rdi(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "rdi", self.rdi, pos);
-    }
-
-    pub fn show_r8(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8 ", self.r8, pos);
-    }
-
-    pub fn show_r9(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9 ", self.r9, pos);
-    }
-
-    pub fn show_r10(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r10", self.r10, pos);
-    }
-
-    pub fn show_r11(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r11", self.r11, pos);
-    }
-
-    pub fn show_r12(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r12", self.r12, pos);
-    }
-
-    pub fn show_r13(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r13", self.r13, pos);
-    }
-
-    pub fn show_r14(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r14", self.r14, pos);
-    }
-
-    pub fn show_r15(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r15", self.r15, pos);
-    }
-
-    pub fn show_r8d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8d", self.get_r8d(), pos);
-    }
-
-    pub fn show_r9d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9d", self.get_r9d(), pos);
-    }
-
-    pub fn show_r10d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r10d", self.get_r10d(), pos);
-    }
-
-    pub fn show_r11d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r11d", self.get_r11d(), pos);
-    }
-
-    pub fn show_r12d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r12d", self.get_r12d(), pos);
-    }
-
-    pub fn show_r13d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r13d", self.get_r13d(), pos);
-    }
-
-    pub fn show_r14d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r14d", self.get_r14d(), pos);
-    }
-
-    pub fn show_r15d(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r15d", self.get_r15d(), pos);
-    }
-
-    pub fn show_r8w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8w", self.get_r8w(), pos);
-    }
-
-    pub fn show_r9w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9w", self.get_r9w(), pos);
-    }
-
-    pub fn show_r10w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r10w", self.get_r10w(), pos);
-    }
-
-    pub fn show_r11w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r11w", self.get_r11w(), pos);
-    }
-
-    pub fn show_r12w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r12w", self.get_r12w(), pos);
-    }
-
-    pub fn show_r13w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r13w", self.get_r13w(), pos);
-    }
-
-    pub fn show_r14w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r14w", self.get_r14w(), pos);
-    }
-
-    pub fn show_r15w(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r15w", self.get_r15w(), pos);
-    }
-
-    pub fn show_r8l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r8l", self.get_r8l(), pos);
-    }
-
-    pub fn show_r9l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r9l", self.get_r9l(), pos);
-    }
-
-    pub fn show_r10l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r10l", self.get_r10l(), pos);
-    }
-
-    pub fn show_r11l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r11l", self.get_r11l(), pos);
-    }
-
-    pub fn show_r12l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r12l", self.get_r12l(), pos);
-    }
-
-    pub fn show_r13l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r13l", self.get_r13l(), pos);
-    }
-
-    pub fn show_r14l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r14l", self.get_r14l(), pos);
-    }
-
-    pub fn show_r15l(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "r15l", self.get_r15l(), pos);
-    }
-
-    pub fn show_sil(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "sil", self.get_sil(), pos);
-    }
-
-    pub fn show_dil(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "dil", self.get_dil(), pos);
-    }
-
-    pub fn show_bpl(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "bpl", self.get_bpl(), pos);
-    }
-
-    pub fn show_spl(&self, maps: &Maps, pos: u64) {
-        self.show_reg64(maps, "spl", self.get_spl(), pos);
+    define_show_wrappers! {
+        show_eax => show_reg32, "eax", |regs: &Regs64| regs.get_eax();
+        show_ebx => show_reg32, "ebx", |regs: &Regs64| regs.get_ebx();
+        show_ecx => show_reg32, "ecx", |regs: &Regs64| regs.get_ecx();
+        show_edx => show_reg32, "edx", |regs: &Regs64| regs.get_edx();
+        show_esi => show_reg32, "esi", |regs: &Regs64| regs.get_esi();
+        show_edi => show_reg32, "edi", |regs: &Regs64| regs.get_edi();
+        show_rax => show_reg64, "rax", |regs: &Regs64| regs.rax;
+        show_rbx => show_reg64, "rbx", |regs: &Regs64| regs.rbx;
+        show_rcx => show_reg64, "rcx", |regs: &Regs64| regs.rcx;
+        show_rdx => show_reg64, "rdx", |regs: &Regs64| regs.rdx;
+        show_rsi => show_reg64, "rsi", |regs: &Regs64| regs.rsi;
+        show_rdi => show_reg64, "rdi", |regs: &Regs64| regs.rdi;
+        show_r8 => show_reg64, "r8 ", |regs: &Regs64| regs.r8;
+        show_r9 => show_reg64, "r9 ", |regs: &Regs64| regs.r9;
+        show_r10 => show_reg64, "r10", |regs: &Regs64| regs.r10;
+        show_r11 => show_reg64, "r11", |regs: &Regs64| regs.r11;
+        show_r12 => show_reg64, "r12", |regs: &Regs64| regs.r12;
+        show_r13 => show_reg64, "r13", |regs: &Regs64| regs.r13;
+        show_r14 => show_reg64, "r14", |regs: &Regs64| regs.r14;
+        show_r15 => show_reg64, "r15", |regs: &Regs64| regs.r15;
+        show_r8d => show_reg64, "r8d", |regs: &Regs64| regs.get_r8d();
+        show_r9d => show_reg64, "r9d", |regs: &Regs64| regs.get_r9d();
+        show_r10d => show_reg64, "r10d", |regs: &Regs64| regs.get_r10d();
+        show_r11d => show_reg64, "r11d", |regs: &Regs64| regs.get_r11d();
+        show_r12d => show_reg64, "r12d", |regs: &Regs64| regs.get_r12d();
+        show_r13d => show_reg64, "r13d", |regs: &Regs64| regs.get_r13d();
+        show_r14d => show_reg64, "r14d", |regs: &Regs64| regs.get_r14d();
+        show_r15d => show_reg64, "r15d", |regs: &Regs64| regs.get_r15d();
+        show_r8w => show_reg64, "r8w", |regs: &Regs64| regs.get_r8w();
+        show_r9w => show_reg64, "r9w", |regs: &Regs64| regs.get_r9w();
+        show_r10w => show_reg64, "r10w", |regs: &Regs64| regs.get_r10w();
+        show_r11w => show_reg64, "r11w", |regs: &Regs64| regs.get_r11w();
+        show_r12w => show_reg64, "r12w", |regs: &Regs64| regs.get_r12w();
+        show_r13w => show_reg64, "r13w", |regs: &Regs64| regs.get_r13w();
+        show_r14w => show_reg64, "r14w", |regs: &Regs64| regs.get_r14w();
+        show_r15w => show_reg64, "r15w", |regs: &Regs64| regs.get_r15w();
+        show_r8l => show_reg64, "r8l", |regs: &Regs64| regs.get_r8l();
+        show_r9l => show_reg64, "r9l", |regs: &Regs64| regs.get_r9l();
+        show_r10l => show_reg64, "r10l", |regs: &Regs64| regs.get_r10l();
+        show_r11l => show_reg64, "r11l", |regs: &Regs64| regs.get_r11l();
+        show_r12l => show_reg64, "r12l", |regs: &Regs64| regs.get_r12l();
+        show_r13l => show_reg64, "r13l", |regs: &Regs64| regs.get_r13l();
+        show_r14l => show_reg64, "r14l", |regs: &Regs64| regs.get_r14l();
+        show_r15l => show_reg64, "r15l", |regs: &Regs64| regs.get_r15l();
+        show_sil => show_reg64, "sil", |regs: &Regs64| regs.get_sil();
+        show_dil => show_reg64, "dil", |regs: &Regs64| regs.get_dil();
+        show_bpl => show_reg64, "bpl", |regs: &Regs64| regs.get_bpl();
+        show_spl => show_reg64, "spl", |regs: &Regs64| regs.get_spl();
     }
 
     pub fn is_xmm_by_name(&self, reg: &str) -> bool {

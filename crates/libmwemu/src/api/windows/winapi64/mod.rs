@@ -52,7 +52,9 @@ pub fn gateway_by_import(import_dll: &str, api: &str, emu: &mut emu::Emu) {
 }
 
 pub fn gateway(addr: u64, name: &str, emu: &mut emu::Emu) {
-    emu.regs_mut().sanitize64();
+    if !emu.cfg.arch.is_aarch64() {
+        emu.regs_mut().sanitize64();
+    }
     match name {
         "kernel32.text" => kernel32::gateway(addr, emu),
         "kernel32.rdata" => kernel32::gateway(addr, emu),

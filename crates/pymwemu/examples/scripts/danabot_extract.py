@@ -1,7 +1,7 @@
 import pymwemu
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32/')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')
 emu.load_binary('mw/dbmm_unpacked.dll')
 emu.disable_ctrlc()
 emu.set_verbose(3)

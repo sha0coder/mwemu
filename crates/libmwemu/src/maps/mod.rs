@@ -1,10 +1,15 @@
 pub mod heap_allocation;
 pub mod mem64;
+pub mod scalar;
 pub mod tlb;
+mod inspection;
+mod search;
+mod utilities;
 
-use crate::windows::constants;
 use crate::maps::mem64::Permission;
+use crate::maps::scalar::{LittleEndianScalar, ScalarKind};
 use crate::maps::tlb::LPF_OF;
+use crate::windows::constants;
 use ahash::AHashMap;
 use mem64::Mem64;
 use serde::{Deserialize, Serialize};
@@ -12,7 +17,6 @@ use slab::Slab;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
-use std::str;
 use tlb::TLB;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -167,29 +171,55 @@ impl Maps {
         Ok(self.mem_slab.get_mut(base_key).unwrap())
     }
 
-    pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
+    fn read_scalar<T: LittleEndianScalar>(&self, addr: u64, kind: ScalarKind) -> Option<T> {
+        let end_addr = addr + T::SIZE as u64 - 1;
+        let banzai = self.banzai;
+        match self.get_mem_by_addr(addr) {
+            Some(mem) if mem.inside(end_addr) && mem.can_read() => {
+                crate::maps::scalar::read_le(mem.read_bytes(addr, T::SIZE))
+            }
+            None if banzai => {
+                log::warn!(
+                    "Reading {} from unmapped region at 0x{:x}",
+                    kind.label(),
+                    addr
+                );
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn write_scalar<T: LittleEndianScalar>(
+        &mut self,
+        addr: u64,
+        value: T,
+        kind: ScalarKind,
+    ) -> bool {
+        let end_addr = addr + T::SIZE as u64 - 1;
         match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(addr) && mem.can_write() => {
-                mem.write_byte(addr, value);
+            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
+                let bytes = value.to_le_vec();
+                mem.write_bytes(addr, &bytes);
                 true
             }
             _ => {
-                log::warn!("Writing byte to unmapped or non-writable region at 0x{:x}", addr);
+                log::warn!(
+                    "Writing {} to unmapped or non-writable region at 0x{:x}",
+                    kind.label(),
+                    addr
+                );
                 false
             }
         }
     }
 
+    pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
+        self.write_scalar(addr, value, ScalarKind::Byte)
+    }
+
     pub fn read_byte(&self, addr: u64) -> Option<u8> {
-        let banzai = self.banzai;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(addr) && mem.can_read() => Some(mem.read_byte(addr)),
-            None if banzai => {
-                log::warn!("Reading byte from unmapped region at 0x{:x}", addr);
-                None
-            }
-            _ => None,
-        }
+        self.read_scalar(addr, ScalarKind::Byte)
     }
 
     pub fn read_f64(&self, addr: u64) -> Option<f64> {
@@ -209,46 +239,15 @@ impl Maps {
     }
 
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
-        let end_addr = addr + 7;
-        match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
-                mem.write_qword(addr, value);
-                true
-            }
-            _ => {
-                log::warn!("Writing qword to unmapped or non-writable region at 0x{:x}", addr);
-                false
-            }
-        }
+        self.write_scalar(addr, value, ScalarKind::Qword)
     }
 
     pub fn write_dword(&mut self, addr: u64, value: u32) -> bool {
-        let end_addr = addr + 3;
-        match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
-                mem.write_dword(addr, value);
-                true
-            }
-            _ => {
-                log::warn!("Writing dword to unmapped or non-writable region at 0x{:x}", addr);
-                false
-            }
-        }
+        self.write_scalar(addr, value, ScalarKind::Dword)
     }
 
     pub fn write_word(&mut self, addr: u64, value: u16) -> bool {
-        let end_addr = addr + 1;
-
-        match self.get_mem_by_addr_mut(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_write() => {
-                mem.write_word(addr, value);
-                true
-            }
-            _ => {
-                log::warn!("Writing word to unmapped or non-writable region at 0x{:x}", addr);
-                false
-            }
-        }
+        self.write_scalar(addr, value, ScalarKind::Word)
     }
 
     pub fn write_bytes_slice(&mut self, addr: u64, data: &[u8]) -> bool {
@@ -288,7 +287,7 @@ impl Maps {
     }
 
     pub fn write_128bits_le(&mut self, addr: u64, value: u128) -> bool {
-        self.write_bytes(addr, &value.to_le_bytes())
+        self.write_scalar(addr, value, ScalarKind::Oword)
     }
 
     pub fn write_128bits_be(&mut self, addr: u64, value: u128) -> bool {
@@ -302,53 +301,19 @@ impl Maps {
     }
 
     pub fn read_128bits_le(&self, addr: u64) -> Option<u128> {
-        let end_addr = addr + 15;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_oword(addr)),
-            _ => {
-                log::warn!("Reading oword from unmapped or non-readable region at 0x{:x}", addr);
-                None
-            }
-        }
+        self.read_scalar(addr, ScalarKind::Oword)
     }
 
     pub fn read_qword(&self, addr: u64) -> Option<u64> {
-        let end_addr = addr + 7;
-        let banzai = self.banzai;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_qword(addr)),
-            None if banzai => {
-                log::warn!("Reading qword from unmapped region at 0x{:x}", addr);
-                None
-            }
-            _ => None,
-        }
+        self.read_scalar(addr, ScalarKind::Qword)
     }
 
     pub fn read_dword(&self, addr: u64) -> Option<u32> {
-        let end_addr = addr + 3;
-        let banzai = self.banzai;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_dword(addr)),
-            None if banzai => {
-                log::warn!("Reading dword from unmapped region at 0x{:x}", addr);
-                None
-            }
-            _ => None,
-        }
+        self.read_scalar(addr, ScalarKind::Dword)
     }
 
     pub fn read_word(&self, addr: u64) -> Option<u16> {
-        let end_addr = addr + 1;
-        let banzai = self.banzai;
-        match self.get_mem_by_addr(addr) {
-            Some(mem) if mem.inside(end_addr) && mem.can_read() => Some(mem.read_word(addr)),
-            None if banzai => {
-                log::warn!("Reading word from unmapped region at 0x{:x}", addr);
-                None
-            }
-            _ => None,
-        }
+        self.read_scalar(addr, ScalarKind::Word)
     }
 
     pub fn get_mem_ref(&self, name: &str) -> &Mem64 {
@@ -437,75 +402,6 @@ impl Maps {
         tlb_entry_mut.lpf = LPF_OF(addr);
         tlb_entry_mut.mem64 = mem_key;
         Some(mem_ref)
-    }
-
-    #[inline(always)]
-    pub fn memset(&mut self, addr: u64, b: u8, amount: usize) {
-        for i in 0..amount {
-            self.write_byte(addr + i as u64, b);
-        }
-    }
-
-    pub fn memcpy(&mut self, to: u64, from: u64, size: usize) -> bool {
-        let b = match self.read_bytes_option(from, size) {
-            None => return false,
-            Some(b) => b.to_vec(),
-        };
-        self.write_bytes(to, &b);
-        true
-    }
-
-    pub fn sizeof_wide(&self, unicode_str_ptr: u64) -> usize {
-        let MAX_STR_LEN: usize = 1_000_000;
-        let mut counter: usize = 0;
-
-        for i in (0..MAX_STR_LEN).step_by(2) {
-            let b = match self.read_word(unicode_str_ptr + i as u64) {
-                Some(w) => w,
-                None => return counter,
-            };
-            if b == 0 {
-                return counter;
-            }
-            counter += 1;
-        }
-
-        0
-    }
-
-    pub fn write_string(&mut self, to: u64, from: &str) {
-        //log::debug!("write_string 0x{:x}: `{}`", to, from);
-        let bs: Vec<u8> = from.bytes().collect();
-
-        self.write_bytes(to, &bs);
-        self.write_byte(to + bs.len() as u64, 0x00);
-    }
-
-    pub fn write_wide_string(&mut self, to: u64, from: &str) {
-        let Some(mem) = self.get_mem_by_addr_mut(to) else {
-            log::warn!("Cannot write wide string: no map at 0x{:x}", to);
-            return;
-        };
-        if !mem.can_write() {
-            log::warn!("Cannot write wide string: non-writable at 0x{:x}", to);
-            return;
-        }
-        mem.write_wide_string(to, from);
-    }
-
-    #[inline(always)]
-    pub fn write_buffer(&mut self, to: u64, from: &[u8]) {
-        self.write_bytes_slice(to, from);
-    }
-
-    pub fn read_bytes_buff(&self, buff: &mut [u8], addr: u64) {
-        let len = buff.len();
-        buff.copy_from_slice(self.read_bytes(addr, len));
-    }
-
-    #[inline(always)]
-    pub fn read_buffer(&mut self, from: u64, sz: usize) -> Vec<u8> {
-        self.read_bytes(from, sz).to_vec()
     }
 
     pub fn print_maps_keyword(&self, kw: &str) {
@@ -656,526 +552,6 @@ impl Maps {
     #[inline(always)]
     pub fn get_addr_name_mut(&mut self, addr: u64) -> Option<&str> {
         self.get_mem_by_addr(addr).map(|mem| mem.get_name())
-    }
-
-    pub fn dump(&self, addr: u64) {
-        let mut count = 0;
-        for i in 0..8 {
-            let mut bytes: Vec<u8> = Vec::new();
-            print!("0x{:x}: ", addr + i * 16);
-            for _ in 0..16 {
-                let b = self.read_byte(addr + count).unwrap_or(0);
-                bytes.push(b);
-                count += 1;
-                print!("{:02x} ", b);
-            }
-
-            let pritable_bytes = self.filter_replace_bytes(&bytes);
-            let s: String = match str::from_utf8(&pritable_bytes) {
-                Ok(v) => v.to_string(),
-                Err(n) => " -utf8err- ".to_string(),
-            };
-
-            println!("    {}", s);
-        }
-    }
-
-    pub fn dump_n(&self, addr: u64, amount: u64) {
-        let mut count: u64 = 0;
-        for i in 0..8 {
-            let mut bytes: Vec<u8> = Vec::new();
-            print!("0x{:x}: ", addr + i * 16);
-            for _ in 0..16 {
-                let b = self.read_byte(addr + count).unwrap_or(0);
-                bytes.push(b);
-                count += 1;
-                print!("{:02x} ", b);
-                if count >= amount {
-                    println!();
-                    return;
-                }
-            }
-
-            let pritable_bytes = self.filter_replace_bytes(&bytes);
-            let s: String = match str::from_utf8(&pritable_bytes) {
-                Ok(v) => v.to_string(),
-                Err(n) => " -utf8err- ".to_string(),
-            };
-
-            println!("    {}", s);
-        }
-    }
-
-    #[deprecated]
-    pub fn dump2(&self, addr: u64) {
-        let mut count = 0;
-        for _ in 0..8 {
-            let mut bytes: Vec<u8> = Vec::new();
-            print!("0x{:x}: ", addr + count * 4);
-            for _ in 0..4 {
-                let dw = match self.read_dword(addr + count * 4) {
-                    Some(v) => v,
-                    None => {
-                        log::trace!("bad address");
-                        return;
-                    }
-                };
-                count += 1;
-                bytes.push((dw & 0xff) as u8);
-                bytes.push(((dw & 0xff00) >> 8) as u8);
-                bytes.push(((dw & 0xff0000) >> 16) as u8);
-                bytes.push(((dw & 0xff000000) >> 24) as u8);
-                print!(
-                    "{:02x} {:02x} {:02x} {:02x}  ",
-                    dw & 0xff,
-                    (dw & 0xff00) >> 8,
-                    (dw & 0xff0000) >> 16,
-                    (dw & 0xff000000) >> 24
-                );
-            }
-
-            let pritable_bytes = self.filter_replace_bytes(&bytes);
-            let s: String = match str::from_utf8(&pritable_bytes) {
-                Ok(v) => v.to_string(),
-                Err(n) => " -utf8err- ".to_string(),
-            };
-
-            log::trace!("{}", s);
-        }
-    }
-
-    pub fn dump_qwords(&self, addr: u64, n: u64) {
-        let mut value: u64;
-
-        for i in 0..n {
-            let a = addr + i * 8;
-            value = match self.read_qword(a) {
-                Some(v) => v,
-                None => break,
-            };
-
-            let name = self.get_addr_name(value).unwrap_or_else(|| "");
-
-            log::trace!(
-                "0x{:x}: 0x{:x} ({}) '{}'",
-                a,
-                value,
-                name,
-                self.filter_replace_string(&self.read_string(value))
-            );
-        }
-    }
-
-    pub fn dump_dwords(&self, addr: u64, n: u64) {
-        let mut value: u32;
-
-        for i in 0..n {
-            let a = addr + i * 4;
-            value = match self.read_dword(a) {
-                Some(v) => v,
-                None => break,
-            };
-
-            if !self.is_64bits {
-                // only in 32bits make sense derreference dwords in memory
-                let name = self.get_addr_name(value.into()).unwrap_or_else(|| "");
-
-                let mut s = "".to_string();
-                if !name.is_empty() {
-                    s = self.read_string(value.into());
-                }
-
-                log::trace!(
-                    "0x{:x}: 0x{:x} ({}) '{}'",
-                    a,
-                    value,
-                    name,
-                    self.filter_replace_string(&s)
-                );
-            } else {
-                log::trace!("0x{:x}: 0x{:x}", a, value);
-            }
-        }
-    }
-
-    /// Returns `None` if the range is not fully mapped or not readable.
-    pub fn try_read_bytes(&self, addr: u64, sz: usize) -> Option<&[u8]> {
-        if sz == 0 {
-            return Some(&[]);
-        }
-        let end_addr = addr + sz as u64 - 1;
-        let mem = self.get_mem_by_addr(addr)?;
-        if !mem.inside(end_addr) || !mem.can_read() {
-            log::warn!(
-                "Reading {} bytes from unmapped or non-readable region at 0x{:x}",
-                sz,
-                addr
-            );
-            return None;
-        }
-        Some(mem.read_bytes(addr, sz))
-    }
-
-    /// Borrows `sz` bytes from mapped readable memory. Length is always `sz` (for `sz > 0`), so
-    /// callers can use `.try_into()` into fixed arrays like before.
-    ///
-    /// If the range is not readable, logs a warning and returns `sz` zeroed bytes via a small
-    /// [`Box::leak`] (avoids panicking; rare bad reads may accumulate leaked memory).
-    pub fn read_bytes(&self, addr: u64, sz: usize) -> &[u8] {
-        match self.try_read_bytes(addr, sz) {
-            Some(s) => s,
-            None => {
-                if sz == 0 {
-                    return &[];
-                }
-                Box::leak(vec![0u8; sz].into_boxed_slice())
-            }
-        }
-    }
-
-    #[inline(always)]
-    pub fn read_bytes_option(&self, addr: u64, sz: usize) -> Option<&[u8]> {
-        self.try_read_bytes(addr, sz)
-    }
-
-    /// Like [`read_bytes`], but copies into a fixed-size array; uses zeros if the read fails.
-    pub fn read_bytes_array<const N: usize>(&self, addr: u64) -> [u8; N] {
-        match self.try_read_bytes(addr, N) {
-            Some(slice) if slice.len() == N => {
-                let mut out = [0u8; N];
-                out.copy_from_slice(slice);
-                out
-            }
-            _ => [0u8; N],
-        }
-    }
-
-    pub fn read_string_of_bytes(&mut self, addr: u64, sz: usize) -> String {
-        let mut svec: Vec<String> = Vec::new();
-        let bytes = match self.try_read_bytes(addr, sz) {
-            Some(b) => b,
-            None => return String::new(),
-        };
-        for bs in bytes.iter() {
-            svec.push(format!("{:02x} ", bs));
-        }
-        let s: String = svec.into_iter().collect();
-        s
-    }
-
-    pub fn read_string(&self, addr: u64) -> String {
-        if addr == 0 {
-            return "".to_string();
-        }
-
-        let mut bytes: Vec<char> = Vec::new();
-        let mut b: u8;
-        let mut i: u64 = 0;
-
-        loop {
-            b = match self.read_byte(addr + i) {
-                Some(v) => v,
-                None => break,
-            };
-
-            if b == 0x00 {
-                break;
-            }
-
-            i += 1;
-            bytes.push(b as char);
-        }
-
-        let s: String = bytes.into_iter().collect();
-        s
-    }
-
-    pub fn read_wide_string_nocrash(&self, addr: u64) -> String {
-        if addr == 0 {
-            return "".to_string();
-        }
-        let mem = match self.get_mem_by_addr(addr) {
-            Some(m) => m,
-            None => {
-                return "".to_string();
-            }
-        };
-        mem.read_wide_string(addr)
-    }
-
-    pub fn read_wide_string(&self, addr: u64) -> String {
-        if addr == 0 {
-            return "".to_string();
-        }
-        let Some(mem) = self.get_mem_by_addr(addr) else {
-            log::warn!("read_wide_string: no map at 0x{:x}", addr);
-            return String::new();
-        };
-        if !mem.can_read() {
-            log::warn!("read_wide_string: non-readable map at 0x{:x}", addr);
-            return String::new();
-        }
-        mem.read_wide_string(addr)
-    }
-
-    pub fn read_wide_string_n(&self, addr: u64, max_chars: usize) -> String {
-        if addr == 0 {
-            return "".to_string();
-        }
-
-        let Some(mem) = self.get_mem_by_addr(addr) else {
-            log::warn!("read_wide_string_n: no map at 0x{:x}", addr);
-            return String::new();
-        };
-        if !mem.can_read() {
-            log::warn!("read_wide_string_n: non-readable map at 0x{:x}", addr);
-            return String::new();
-        }
-        mem.read_wide_string_n(addr, max_chars)
-    }
-
-    pub fn search_string(&self, kw: &str, map_name: &str) -> Option<Vec<u64>> {
-        /*
-        TODO: We can use AVX2 instructions to speed up the comparision but I don't know how to do it in rust
-        reference: https://github.com/0x1F9F1/mem/blob/master/include/mem/simd_scanner.h
-        maybe using https://github.com/greaka/patterns
-         */
-        let map = self.get_map_by_name(map_name);
-        if map.is_none() {
-            log::trace!("map not found");
-            return None;
-        }
-        let mem = map.unwrap();
-        let bkw = kw.as_bytes();
-
-        let mut found: Vec<u64> = Vec::new();
-        for addr in mem.get_base()..mem.get_bottom() {
-            let mut c = 0;
-
-            for (i, bkwi) in bkw.iter().enumerate() {
-                let b = mem.read_byte(addr + (i as u64));
-
-                if b == *bkwi {
-                    c += 1;
-                } else {
-                    break;
-                }
-            }
-
-            if c == kw.len() {
-                found.push(addr);
-            }
-        }
-
-        if !found.is_empty() {
-            Some(found)
-        } else {
-            log::trace!("map not found");
-            None
-        }
-    }
-
-    pub fn write_spaced_bytes(&mut self, addr: u64, sbs: &str) -> bool {
-        let mut waddr = addr;
-        let bs: Vec<&str> = sbs.split(' ').collect();
-        for bsi in bs.iter() {
-            let b = u8::from_str_radix(bsi, 16).expect("bad num conversion");
-            if !self.write_byte(waddr, b) {
-                return false;
-            }
-            waddr += 1;
-        }
-        true
-    }
-
-    pub fn spaced_bytes_to_bytes(&self, sbs: &str) -> Vec<u8> {
-        let bs: Vec<&str> = sbs.split(' ').collect();
-        let mut bytes: Vec<u8> = Vec::new();
-        for bsi in bs.iter() {
-            let b = match u8::from_str_radix(bsi, 16) {
-                Ok(b) => b,
-                Err(_) => {
-                    log::trace!("bad hex bytes");
-                    return bytes;
-                }
-            };
-            bytes.push(b);
-        }
-        bytes
-    }
-
-    #[inline]
-    fn is_pattern_match_at(memory: &Mem64, address: u64, pattern: &Vec<u8>) -> bool {
-        for (i, &pattern_byte) in pattern.iter().enumerate() {
-            let current_addr = address + (i as u64);
-
-            // If we reach the end of the memory region, the pattern doesn't match
-            if current_addr >= memory.get_bottom() {
-                return false;
-            }
-
-            // If the byte doesn't match, the pattern doesn't match
-            if memory.read_byte(current_addr) != pattern_byte {
-                return false;
-            }
-        }
-
-        // All bytes matched
-        true
-    }
-
-    // search only one occurence from specific address
-    pub fn search_spaced_bytes_from(&self, sbs: &str, saddr: u64) -> u64 {
-        let byte_pattern = self.spaced_bytes_to_bytes(sbs);
-
-        // Find the memory region containing the start address
-        for (_, memory) in self.mem_slab.iter() {
-            // Skip memory regions that don't contain the start address
-            if saddr < memory.get_base() || saddr >= memory.get_bottom() {
-                continue;
-            }
-
-            // Search backwards from start_address to base address
-            for current_addr in memory.get_base()..=saddr {
-                if Maps::is_pattern_match_at(memory, current_addr, &byte_pattern) {
-                    return current_addr;
-                }
-            }
-
-            // If we searched the entire memory region and didn't find a match, return 0
-            return 0;
-        }
-
-        // No matching memory region found
-        0
-    }
-
-    // search only one occurence from specific address backward
-    pub fn search_spaced_bytes_from_bw(&self, spaced_bytes: &str, start_address: u64) -> u64 {
-        let byte_pattern = self.spaced_bytes_to_bytes(spaced_bytes);
-
-        // Find the memory region containing the start address
-        for (_, memory) in self.mem_slab.iter() {
-            // Skip memory regions that don't contain the start address
-            if start_address < memory.get_base() || start_address >= memory.get_bottom() {
-                continue;
-            }
-
-            // Search backwards from start_address to base address
-            for current_addr in (memory.get_base()..=start_address).rev() {
-                if Maps::is_pattern_match_at(memory, current_addr, &byte_pattern) {
-                    return current_addr;
-                }
-            }
-
-            // If we searched the entire memory region and didn't find a match, return 0
-            return 0;
-        }
-
-        // No matching memory region found
-        0
-    }
-
-    pub fn search_spaced_bytes(&self, sbs: &str, map_name: &str) -> Vec<u64> {
-        let bytes = self.spaced_bytes_to_bytes(sbs);
-        self.search_bytes(bytes, map_name)
-    }
-
-    pub fn search_spaced_bytes_in_all(&self, sbs: &str) -> Vec<u64> {
-        let bytes = self.spaced_bytes_to_bytes(sbs);
-        let mut found: Vec<u64> = Vec::new();
-
-        for (_, mem) in self.mem_slab.iter() {
-            for addr in mem.get_base()..mem.get_bottom() {
-                if addr < 0x70000000 {
-                    let mut c = 0;
-                    for (i, bi) in bytes.iter().enumerate() {
-                        let addri = addr + (i as u64);
-                        if !mem.inside(addri) {
-                            break;
-                        }
-
-                        let b = mem.read_byte(addri);
-                        if b == *bi {
-                            c += 1;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if c == bytes.len() {
-                        found.push(addr);
-                    }
-                }
-            }
-        }
-
-        found
-    }
-
-    //TODO: return a list with matches.
-    pub fn search_string_in_all(&self, kw: String) {
-        let mut found = false;
-        for (_, mem) in self.mem_slab.iter() {
-            if mem.get_base() >= 0x7000000 {
-                continue;
-            }
-
-            let results = match self.search_string(&kw, &mem.get_name()) {
-                Some(v) => v,
-                None => {
-                    continue;
-                }
-            };
-
-            for addr in results.iter() {
-                if self.is_64bits {
-                    log::trace!("found at 0x{:x} '{}'", addr, self.read_string(*addr));
-                } else {
-                    log::trace!(
-                        "found at 0x{:x} '{}'",
-                        *addr as u32,
-                        self.read_string(*addr)
-                    );
-                }
-                found = true;
-            }
-        }
-
-        if !found {
-            log::trace!("not found.");
-        }
-    }
-
-    pub fn search_bytes(&self, bkw: Vec<u8>, map_name: &str) -> Vec<u64> {
-        let mut addrs: Vec<u64> = Vec::new();
-
-        for (_, mem) in self.mem_slab.iter() {
-            if mem.get_name() == map_name {
-                for addr in mem.get_base()..mem.get_bottom() {
-                    let mut c = 0;
-
-                    for (i, bkwn) in bkw.iter().enumerate() {
-                        if addr + i as u64 >= mem.get_bottom() {
-                            break;
-                        }
-                        let b = mem.read_byte(addr + (i as u64));
-                        if b == *bkwn {
-                            c += 1;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if c == bkw.len() {
-                        addrs.push(addr);
-                    }
-                }
-
-                return addrs;
-            }
-        }
-        addrs
     }
 
     pub fn size(&self) -> usize {
@@ -1405,57 +781,6 @@ impl Maps {
                 log::trace!("this address is not mapped.");
             }
         }
-    }
-
-    pub fn filter_string(&self, s: &mut String) {
-        let valid = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\x00".as_bytes();
-        s.retain(|c| valid.contains(&(c as u8)));
-    }
-
-    pub fn filter_replace_bytes(&self, s: &[u8]) -> Vec<u8> {
-        let mut sanitized: Vec<u8> = Vec::new();
-        let valid = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".as_bytes();
-        let mut p;
-
-        for si in s.iter() {
-            p = false;
-            for validj in valid.iter() {
-                if validj == si {
-                    sanitized.push(*si);
-                    p = true;
-                    break;
-                }
-            }
-            if !p {
-                sanitized.push(b'.');
-            }
-        }
-
-        sanitized
-    }
-
-    pub fn filter_replace_string(&self, s: &str) -> String {
-        let valid = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".as_bytes();
-        let sb = s.as_bytes();
-        let mut p;
-        let mut dst: Vec<char> = Vec::new();
-
-        for i in 0..s.len() {
-            p = false;
-            for j in 0..valid.len() {
-                if sb[i] == valid[j] {
-                    dst.push(sb[i] as char);
-                    p = true;
-                    break;
-                }
-            }
-            if !p {
-                dst.push('.');
-            }
-        }
-
-        let sdst: String = dst.into_iter().collect();
-        sdst
     }
 
     pub fn mem_test(&self) -> bool {

@@ -21,7 +21,10 @@ pub fn gateway(emu: &mut emu::Emu) {
             let status = emu.regs_aarch64().x[0];
             log::info!(
                 "{}** {} macos syscall exit({}) {}",
-                emu.colors.light_red, emu.pos, status, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                status,
+                emu.colors.nc
             );
             emu.stop();
         }
@@ -33,7 +36,12 @@ pub fn gateway(emu: &mut emu::Emu) {
 
             log::info!(
                 "{}** {} macos syscall write(fd={}, buf=0x{:x}, count={}) {}",
-                emu.colors.light_red, emu.pos, fd, buf, count, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                fd,
+                buf,
+                count,
+                emu.colors.nc
             );
 
             if fd == 1 || fd == 2 {
@@ -51,7 +59,12 @@ pub fn gateway(emu: &mut emu::Emu) {
             let count = emu.regs_aarch64().x[2];
             log::info!(
                 "{}** {} macos syscall read(fd={}, buf=0x{:x}, count={}) {}",
-                emu.colors.light_red, emu.pos, fd, buf, count, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                fd,
+                buf,
+                count,
+                emu.colors.nc
             );
             todo!("macos read syscall");
         }
@@ -62,7 +75,11 @@ pub fn gateway(emu: &mut emu::Emu) {
             let path = emu.maps.read_string(path_addr);
             log::info!(
                 "{}** {} macos syscall open(\"{}\", 0x{:x}) {}",
-                emu.colors.light_red, emu.pos, path, flags, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                path,
+                flags,
+                emu.colors.nc
             );
             todo!("macos open syscall");
         }
@@ -71,7 +88,10 @@ pub fn gateway(emu: &mut emu::Emu) {
             let fd = emu.regs_aarch64().x[0];
             log::info!(
                 "{}** {} macos syscall close(fd={}) {}",
-                emu.colors.light_red, emu.pos, fd, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                fd,
+                emu.colors.nc
             );
             todo!("macos close syscall");
         }
@@ -79,7 +99,9 @@ pub fn gateway(emu: &mut emu::Emu) {
         SYS_FORK => {
             log::info!(
                 "{}** {} macos syscall fork() {}",
-                emu.colors.light_red, emu.pos, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                emu.colors.nc
             );
             todo!("macos fork syscall");
         }
@@ -103,7 +125,11 @@ pub fn gateway(emu: &mut emu::Emu) {
             let len = emu.regs_aarch64().x[1];
             log::info!(
                 "{}** {} macos syscall munmap(addr=0x{:x}, len=0x{:x}) {}",
-                emu.colors.light_red, emu.pos, addr, len, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                addr,
+                len,
+                emu.colors.nc
             );
             todo!("macos munmap syscall");
         }
@@ -114,7 +140,12 @@ pub fn gateway(emu: &mut emu::Emu) {
             let prot = emu.regs_aarch64().x[2];
             log::info!(
                 "{}** {} macos syscall mprotect(addr=0x{:x}, len=0x{:x}, prot=0x{:x}) {}",
-                emu.colors.light_red, emu.pos, addr, len, prot, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                addr,
+                len,
+                prot,
+                emu.colors.nc
             );
             todo!("macos mprotect syscall");
         }
@@ -124,7 +155,11 @@ pub fn gateway(emu: &mut emu::Emu) {
             let request = emu.regs_aarch64().x[1];
             log::info!(
                 "{}** {} macos syscall ioctl(fd={}, request=0x{:x}) {}",
-                emu.colors.light_red, emu.pos, fd, request, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                fd,
+                request,
+                emu.colors.nc
             );
             todo!("macos ioctl syscall");
         }
@@ -132,7 +167,9 @@ pub fn gateway(emu: &mut emu::Emu) {
         SYS_ISSETUGID => {
             log::info!(
                 "{}** {} macos syscall issetugid() => 0 {}",
-                emu.colors.light_red, emu.pos, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                emu.colors.nc
             );
             emu.regs_aarch64_mut().x[0] = 0;
         }

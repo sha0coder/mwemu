@@ -36,6 +36,7 @@ pub struct Elf32 {
     pub elf_hdr: Elf32Ehdr,
     pub elf_phdr: Vec<Elf32Phdr>,
     pub elf_shdr: Vec<Elf32Shdr>,
+    pub base: u64,
 }
 
 impl Elf32 {
@@ -53,7 +54,19 @@ impl Elf32 {
             elf_hdr: ehdr,
             elf_phdr: Vec::new(),
             elf_shdr: Vec::new(),
+            base: 0,
         })
+    }
+
+    pub fn is_dynamic(&self) -> bool {
+        const PT_DYNAMIC: u32 = 2;
+        self.elf_phdr.iter().any(|ph| ph.p_type == PT_DYNAMIC)
+    }
+
+    /// Return the base address used when loading this binary.
+    /// Valid after `load()` has been called.
+    pub fn base(&self) -> u64 {
+        self.base
     }
 
     pub fn load(&mut self, maps: &mut Maps) {
@@ -74,28 +87,39 @@ impl Elf32 {
             off += self.elf_hdr.e_shentsize as usize;
         }
 
+        // Dynamic/PIE ELF32 binaries have segments starting at vaddr 0;
+        // rebase them to a sensible load address so we never write to 0x0.
+        let base: u64 = if self.is_dynamic() {
+            constants::ELF32_DYN_BASE
+        } else {
+            0
+        };
+        self.base = base;
+
+        let mut seg_idx = 0u32;
         for phdr in &self.elf_phdr {
             if phdr.p_type == constants::PT_LOAD {
-                /*
-                for shdr in &self.elf_shdr {
-                    if shdr.sh_addr >= phdr.p_vaddr &&
-                        shdr.sh_addr < phdr.p_vaddr+phdr.p_memsz {
-                            let end = self.bin.iter().skip(off)
-                                .position(|&x| x == 0x00).unwrap_or(0) + off;
-                            let name = std::str::from_utf8(&self.bin[off..end]).unwrap();
-                            log::trace!("la seccion {} es pt_load", &name);
+                let vaddr = (phdr.p_vaddr as u64) + base;
 
-                    }
-                }*/
+                // Convert ELF p_flags (PF_X=1, PF_W=2, PF_R=4) to Permission
+                // (READ=1, WRITE=2, EXECUTE=4). R and X bits are swapped.
+                let elf_r = phdr.p_flags & 4 != 0;
+                let elf_w = phdr.p_flags & 2 != 0;
+                let elf_x = phdr.p_flags & 1 != 0;
+                let final_perm = Permission::from_flags(elf_r, elf_w, elf_x);
 
+                // Create with write access so the loader can populate the
+                // segment, then tighten permissions to the ELF flags.
                 let mem = maps
                     .create_map(
-                        &"code".to_string(),
-                        phdr.p_vaddr.into(),
+                        &format!("elf32_seg{}", seg_idx),
+                        vaddr,
                         phdr.p_memsz.into(),
-                        Permission::from_bits(phdr.p_flags as u8),
+                        Permission::READ_WRITE,
                     )
                     .expect("cannot create code map from load_programs elf32");
+                seg_idx += 1;
+
                 if phdr.p_filesz > phdr.p_memsz {
                     log::trace!("p_filesz > p_memsz bigger in file than in memory.");
                 }
@@ -106,7 +130,8 @@ impl Elf32 {
                 );
                 let segment =
                     &self.bin[phdr.p_offset as usize..(phdr.p_offset + phdr.p_filesz) as usize];
-                mem.write_bytes(phdr.p_vaddr.into(), segment);
+                mem.write_bytes(vaddr, segment);
+                mem.set_permission(final_perm);
             }
         }
     }

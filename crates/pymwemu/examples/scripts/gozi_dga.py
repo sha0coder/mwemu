@@ -2,7 +2,7 @@ import pymwemu
 import random 
 
 emu = pymwemu.init64()
-emu.load_maps('/home/sha0/src/mwemu/maps64/')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86_64/')
 emu.set_base_address(0x280000000)
 emu.load_binary('gozi10008.bin')
 emu.set_verbose(0)

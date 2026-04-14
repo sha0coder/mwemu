@@ -308,30 +308,59 @@ impl Emu {
             self.disable_ctrlc();
         }
 
-        //log::trace!("initializing regs");
-        if clear_registers {
-            self.regs_mut().clear::<64>();
+        // Ensure arch_state and thread context match the target architecture before
+        // touching any registers, since regs_mut()/regs_aarch64_mut() panic on mismatch.
+        if self.cfg.is_aarch64() {
+            if matches!(self.arch_state, super::ArchState::X86 { .. }) {
+                self.arch_state = super::ArchState::AArch64 {
+                    instruction: None,
+                    instruction_cache: crate::emu::disassemble::InstructionCache::new(),
+                };
+            }
+            if matches!(
+                self.threads[self.current_thread_id].arch,
+                crate::threading::context::ArchThreadState::X86 { .. }
+            ) {
+                let id = self.threads[self.current_thread_id].id;
+                self.threads[self.current_thread_id] =
+                    crate::threading::context::ThreadContext::new(id, self.cfg.arch);
+            }
         }
-        if clear_flags {
-            self.flags_mut().clear();
-        }
-        //self.regs().rand();
 
-        self.regs_mut().rip = self.cfg.entry_point;
-        if self.cfg.is_x64() {
-            self.maps.is_64bits = self.cfg.arch.is_64bits();
-            self.init_win32_mem64();
-            self.init_stack64();
+        //log::trace!("initializing regs");
+        if self.cfg.is_aarch64() {
+            // AArch64: zero all registers; no x86 flags to clear.
+            if clear_registers {
+                *self.regs_aarch64_mut() = crate::arch::aarch64::regs::RegsAarch64::new();
+            }
+            self.regs_aarch64_mut().pc = self.cfg.entry_point;
+        } else {
+            if clear_registers {
+                self.regs_mut().clear::<64>();
+            }
+            if clear_flags {
+                self.flags_mut().clear();
+            }
+            self.regs_mut().rip = self.cfg.entry_point;
+        }
+        if self.cfg.arch.is_64bits() {
+            self.maps.is_64bits = true;
+            if self.cfg.is_aarch64() {
+                self.init_win_aarch64();
+            } else {
+                self.init_win32_mem64();
+                self.init_stack64();
+            }
         } else {
             // 32bits
-            self.maps.is_64bits = self.cfg.arch.is_64bits();
+            self.maps.is_64bits = false;
             self.regs_mut().sanitize32();
             self.init_win32_mem32();
             self.init_stack32();
         }
 
         // loading banzai on 32bits
-        if !self.cfg.is_x64() {
+        if self.cfg.arch.is_64bits() == false {
             let mut rdr = ReaderBuilder::new()
                 .from_path(format!("{}/banzai.csv", self.cfg.maps_folder))
                 .expect("banzai.csv not found on maps folder, please download last mwemu maps");
@@ -339,7 +368,7 @@ impl Emu {
             for result in rdr.records() {
                 let record = result.expect("error parsing banzai.csv");
                 let api = &record[0];
-                let params: i32 = record[1].parse().expect("error parsing maps32/banzai.csv");
+                let params: i32 = record[1].parse().expect("error parsing banzai.csv");
 
                 self.banzai.add(api, params);
             }
@@ -390,6 +419,77 @@ impl Emu {
         self.init_stack_aarch64();
     }
 
+    /// Write the Linux initial stack layout that _start expects.
+    ///
+    /// The kernel places this on the stack before jumping to the ELF entry point:
+    ///   [SP+0]  argc
+    ///   [SP+8]  argv[0]  (pointer to program name)
+    ///   [SP+16] NULL     (argv terminator)
+    ///   [SP+24] NULL     (envp terminator)
+    ///   auxv[]: AT_PHDR, AT_PHENT, AT_PHNUM, AT_PAGESZ, AT_ENTRY, AT_NULL
+    pub fn write_linux_stack_layout(
+        &mut self,
+        entry: u64,
+        phdr_addr: u64,
+        phentsize: u16,
+        phnum: u16,
+    ) {
+        let sp = if self.cfg.arch.is_aarch64() {
+            self.regs_aarch64().sp
+        } else {
+            self.regs().rsp
+        };
+
+        // Write a program name string above the stack layout area
+        let prog_name_addr = sp + 0x100;
+        let prog_name = b"prog\0";
+        for (i, &b) in prog_name.iter().enumerate() {
+            self.maps.write_byte(prog_name_addr + i as u64, b);
+        }
+
+        let mut off = sp;
+
+        // argc = 1
+        self.maps.write_qword(off, 1);
+        off += 8;
+
+        // argv[0] = pointer to program name
+        self.maps.write_qword(off, prog_name_addr);
+        off += 8;
+
+        // argv terminator
+        self.maps.write_qword(off, 0);
+        off += 8;
+
+        // envp terminator
+        self.maps.write_qword(off, 0);
+        off += 8;
+
+        // Auxiliary vector entries (each is 16 bytes: type + value)
+        const AT_PHDR: u64 = 3;
+        const AT_PHENT: u64 = 4;
+        const AT_PHNUM: u64 = 5;
+        const AT_PAGESZ: u64 = 6;
+        const AT_ENTRY: u64 = 9;
+        const AT_NULL: u64 = 0;
+
+        let auxv: &[(u64, u64)] = &[
+            (AT_PAGESZ, 4096),
+            (AT_PHDR, phdr_addr),
+            (AT_PHENT, phentsize as u64),
+            (AT_PHNUM, phnum as u64),
+            (AT_ENTRY, entry),
+            (AT_NULL, 0),
+        ];
+
+        for &(atype, aval) in auxv {
+            self.maps.write_qword(off, atype);
+            off += 8;
+            self.maps.write_qword(off, aval);
+            off += 8;
+        }
+    }
+
     /// Initialize macOS aarch64 simulation for Mach-O loading.
     pub fn init_macos_aarch64(&mut self) {
         self.os = crate::arch::OperatingSystem::MacOS;
@@ -401,6 +501,39 @@ impl Emu {
         }
 
         self.init_stack_aarch64();
+    }
+
+    /// Initialize macOS x86_64 simulation for Mach-O loading.
+    pub fn init_macos64(&mut self) {
+        self.os = crate::arch::OperatingSystem::MacOS;
+        self.maps.is_64bits = true;
+
+        // Mach-O front-door loading can switch the emulator from an earlier
+        // AArch64 session, so restore the x86 thread/register state explicitly.
+        if matches!(
+            self.threads[self.current_thread_id].arch,
+            crate::threading::context::ArchThreadState::AArch64 { .. }
+        ) {
+            let id = self.threads[self.current_thread_id].id;
+            self.threads[self.current_thread_id] =
+                crate::threading::context::ThreadContext::new(id, self.cfg.arch);
+        }
+
+        if matches!(self.arch_state, super::ArchState::AArch64 { .. }) {
+            let mut formatter = IntelFormatter::new();
+            formatter.options_mut().set_digit_separator("");
+            formatter.options_mut().set_first_operand_char_index(6);
+            self.arch_state = super::ArchState::X86 {
+                instruction: None,
+                formatter,
+                instruction_cache: InstructionCache::new(),
+                decoder_position: 0,
+            };
+        }
+
+        self.flags_mut().clear();
+        self.flags_mut().f_if = true;
+        self.init_stack64();
     }
 
     /// Initialize linux x86_64 simulation, it's called from load_code() if the sample is an ELF.
@@ -588,6 +721,21 @@ impl Emu {
         log::trace!("memory test Ok.");
     }
 
+    /// Initialize Windows ARM64 session: sets up aarch64 stack and full PEB64/TEB64/LDR64
+    /// memory layout. Arch state and thread context must already be switched to AArch64
+    /// before calling this (done at the top of init_win32).
+    ///
+    /// Reuses the same 64-bit Windows memory setup as x86_64 since PEB64/TEB64/LDR
+    /// structures are architecture-neutral; the difference is register semantics and stack init.
+    fn init_win_aarch64(&mut self) {
+        // Set up the aarch64 stack first (uses SP register instead of RSP/RBP)
+        // so that the stack map exists when init_win32_mem64 writes TEB stack bounds.
+        self.init_stack_aarch64();
+
+        // Set up the 64-bit Windows memory (PEB64, TEB64, LDR, DLLs, heap)
+        self.init_win32_mem64();
+    }
+
     /// This is called from init(), this setup the 64bits windows memory simulation.
     pub fn init_win32_mem64(&mut self) {
         log::trace!("loading memory maps");
@@ -706,6 +854,12 @@ impl Emu {
         for dll in &base {
             let filepath = self.cfg.get_maps_folder(dll);
             log::debug!("mapping base lib64: {}", &filepath);
+            assert!(
+                std::path::Path::new(&filepath).exists(),
+                "required base DLL not found: {} (maps_folder={})",
+                filepath,
+                self.cfg.maps_folder
+            );
             let (base, pe64) = self.map_dll_pe64(&filepath);
             let lib = Lib {
                 pe64,
@@ -733,6 +887,12 @@ impl Emu {
         for dll in dependencies {
             let filepath = self.cfg.get_maps_folder(&dll);
             log::debug!("mapping depenency {}", &filepath);
+            assert!(
+                std::path::Path::new(&filepath).exists(),
+                "required dependency DLL not found: {} (maps_folder={})",
+                filepath,
+                self.cfg.maps_folder
+            );
             let (base, pe64) = self.map_dll_pe64(&filepath);
             let lib = Lib {
                 pe64,

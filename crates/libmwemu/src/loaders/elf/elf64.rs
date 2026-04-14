@@ -1,7 +1,8 @@
-use crate::windows::constants;
 use crate::err::MwemuError;
 use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
+use crate::windows::constants;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
@@ -56,11 +57,22 @@ macro_rules! write_u64_le {
 pub const EI_NIDENT: usize = 16;
 pub const ELFCLASS64: u8 = 0x02;
 pub const DT_NEEDED: u64 = 1;
+pub const DT_PLTRELSZ: u64 = 2;
 pub const DT_NULL: u64 = 0;
+pub const DT_SYMTAB: u64 = 6;
+pub const DT_RELA: u64 = 7;
+pub const DT_RELASZ: u64 = 8;
+pub const DT_RELAENT: u64 = 9;
 pub const DT_STRTAB: u64 = 5;
+pub const DT_SYMENT: u64 = 11;
+pub const DT_JMPREL: u64 = 23;
 pub const PT_DYNAMIC: u32 = 2;
 pub const STT_FUNC: u8 = 2;
 pub const STT_OBJECT: u8 = 1;
+pub const R_X86_64_GLOB_DAT: u32 = 6;
+pub const R_X86_64_JUMP_SLOT: u32 = 7;
+pub const R_AARCH64_GLOB_DAT: u32 = 1025;
+pub const R_AARCH64_JUMP_SLOT: u32 = 1026;
 
 #[derive(Debug)]
 pub struct Elf64 {
@@ -74,6 +86,9 @@ pub struct Elf64 {
     pub elf_dynsym: Vec<Elf64Sym>,
     pub elf_dynstr_off: u64,
     pub elf_got_off: u64,
+    pub needed_libs: Vec<String>,
+    pub sym_to_addr: HashMap<String, u64>,
+    pub addr_to_symbol: HashMap<u64, String>,
 }
 
 impl Elf64 {
@@ -116,8 +131,6 @@ impl Elf64 {
         if off_strtab > 0 {
             blob_strtab = bin[off_strtab..(off_strtab + sz_strtab)].to_vec();
         }
-        let dynstr: Vec<String> = Vec::new();
-
         Ok(Elf64 {
             base: 0,
             bin,
@@ -129,6 +142,9 @@ impl Elf64 {
             elf_dynsym: dynsym,
             elf_dynstr_off: 0,
             elf_got_off: 0,
+            needed_libs: Vec::new(),
+            sym_to_addr: HashMap::new(),
+            addr_to_symbol: HashMap::new(),
         })
     }
 
@@ -161,22 +177,365 @@ impl Elf64 {
     }
 
     pub fn sym_get_addr_from_name(&self, name: &str) -> Option<u64> {
-        for sym in self.elf_dynsym.iter() {
-            log::trace!("{} == {}", &sym.st_dynstr_name, name);
-            if sym.st_dynstr_name == name {
-                return Some(sym.st_value);
-            }
-        }
-        None
+        self.sym_to_addr.get(name).copied().or_else(|| {
+            self.elf_dynsym
+                .iter()
+                .find(|sym| sym.st_dynstr_name == name && sym.st_value > 0)
+                .map(|sym| sym.st_value)
+        })
     }
 
     pub fn sym_get_name_from_addr(&self, addr: u64) -> String {
-        for sym in self.elf_dynsym.iter() {
-            if sym.st_value == addr {
-                return sym.st_dynstr_name.clone();
+        self.addr_to_symbol
+            .get(&addr)
+            .cloned()
+            .or_else(|| {
+                self.elf_dynsym
+                    .iter()
+                    .find(|sym| sym.st_value == addr)
+                    .map(|sym| sym.st_dynstr_name.clone())
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn exported_symbols(&self) -> Vec<(String, u64)> {
+        let mut exports = Vec::new();
+        for sym in &self.elf_dynsym {
+            if !sym.st_dynstr_name.is_empty() && sym.st_value > 0 {
+                exports.push((sym.st_dynstr_name.clone(), sym.st_value));
             }
         }
-        String::new()
+        exports
+    }
+
+    pub fn rebase_vaddr(&self, vaddr: u64) -> u64 {
+        if vaddr == 0 {
+            0
+        } else if vaddr < self.base {
+            vaddr + self.base
+        } else {
+            vaddr
+        }
+    }
+
+    fn image_size(&self) -> u64 {
+        let mut max_end = 0;
+        for phdr in &self.elf_phdr {
+            if phdr.p_type == constants::PT_LOAD {
+                max_end = max_end.max(phdr.p_vaddr + phdr.p_memsz);
+            }
+        }
+
+        if max_end == 0 {
+            for shdr in &self.elf_shdr {
+                max_end = max_end.max(shdr.sh_addr + shdr.sh_size);
+            }
+        }
+
+        max_end.max(0x4000)
+    }
+
+    fn read_c_string(&self, offset: usize) -> Option<String> {
+        if offset >= self.bin.len() {
+            return None;
+        }
+        let end = self.bin[offset..]
+            .iter()
+            .position(|&c| c == 0)
+            .unwrap_or(self.bin.len() - offset);
+        std::str::from_utf8(&self.bin[offset..offset + end])
+            .ok()
+            .map(|s| s.to_string())
+    }
+
+    fn dynamic_table_bounds(&self) -> Option<(usize, usize)> {
+        for shdr in &self.elf_shdr {
+            if self.get_section_name(shdr.sh_name as usize) == ".dynamic" {
+                return Some((shdr.sh_offset as usize, shdr.sh_size as usize));
+            }
+        }
+
+        for phdr in &self.elf_phdr {
+            if phdr.p_type == PT_DYNAMIC {
+                return Some((phdr.p_offset as usize, phdr.p_filesz as usize));
+            }
+        }
+
+        None
+    }
+
+    fn vaddr_to_file_offset(&self, vaddr: u64) -> Option<usize> {
+        for phdr in &self.elf_phdr {
+            if phdr.p_type != constants::PT_LOAD {
+                continue;
+            }
+
+            let end = phdr.p_vaddr.saturating_add(phdr.p_filesz.max(phdr.p_memsz));
+            if vaddr >= phdr.p_vaddr && vaddr < end {
+                return Some((phdr.p_offset + (vaddr - phdr.p_vaddr)) as usize);
+            }
+        }
+
+        for shdr in &self.elf_shdr {
+            if shdr.sh_addr == 0 || shdr.sh_size == 0 {
+                continue;
+            }
+            let end = shdr.sh_addr.saturating_add(shdr.sh_size);
+            if vaddr >= shdr.sh_addr && vaddr < end {
+                return Some((shdr.sh_offset + (vaddr - shdr.sh_addr)) as usize);
+            }
+        }
+
+        None
+    }
+
+    pub fn dynamic_info(&self) -> Option<Elf64DynamicInfo> {
+        let (mut off, size) = self.dynamic_table_bounds()?;
+        let end = off.saturating_add(size).min(self.bin.len());
+        let mut info = Elf64DynamicInfo::default();
+        let mut needed_offsets = Vec::new();
+
+        while off + 16 <= end {
+            let d_tag = read_u64_le!(self.bin, off);
+            let d_val = read_u64_le!(self.bin, off + 8);
+
+            if d_tag == DT_NULL {
+                break;
+            }
+
+            match d_tag {
+                DT_NEEDED => needed_offsets.push(d_val),
+                DT_STRTAB => info.strtab_addr = d_val,
+                DT_SYMTAB => info.symtab_addr = d_val,
+                DT_SYMENT => info.syment = d_val,
+                DT_RELA => info.rela_addr = d_val,
+                DT_RELASZ => info.rela_size = d_val,
+                DT_RELAENT => info.rela_ent = d_val,
+                DT_JMPREL => info.jmprel_addr = d_val,
+                DT_PLTRELSZ => info.pltrelsz = d_val,
+                _ => {}
+            }
+
+            off += 16;
+        }
+
+        let strtab_off = self
+            .vaddr_to_file_offset(info.strtab_addr)
+            .or_else(|| usize::try_from(info.strtab_addr).ok())
+            .filter(|off| *off < self.bin.len())?;
+
+        for needed_off in needed_offsets {
+            let name_off = strtab_off.saturating_add(needed_off as usize);
+            if let Some(name) = self.read_c_string(name_off) {
+                info.needed.push(name);
+            }
+        }
+
+        Some(info)
+    }
+
+    pub fn apply_dynamic_relocations(
+        &self,
+        maps: &mut Maps,
+        export_map: &HashMap<String, u64>,
+    ) -> Vec<String> {
+        let mut unresolved = Vec::new();
+        let Some(info) = self.dynamic_info() else {
+            return unresolved;
+        };
+
+        let rela_ent = if info.rela_ent == 0 {
+            Elf64Rela::size()
+        } else {
+            info.rela_ent as usize
+        };
+
+        self.apply_rela_table(
+            maps,
+            export_map,
+            info.rela_addr,
+            info.rela_size,
+            rela_ent,
+            &mut unresolved,
+        );
+
+        self.apply_rela_table(
+            maps,
+            export_map,
+            info.jmprel_addr,
+            info.pltrelsz,
+            rela_ent,
+            &mut unresolved,
+        );
+
+        unresolved
+    }
+
+    fn apply_rela_table(
+        &self,
+        maps: &mut Maps,
+        export_map: &HashMap<String, u64>,
+        rela_addr: u64,
+        rela_size: u64,
+        rela_ent: usize,
+        unresolved: &mut Vec<String>,
+    ) {
+        if rela_addr == 0 || rela_size == 0 || rela_ent == 0 {
+            return;
+        }
+
+        let Some(mut off) = self.vaddr_to_file_offset(rela_addr) else {
+            log::warn!("elf64: could not translate rela addr 0x{:x}", rela_addr);
+            return;
+        };
+        let end = off.saturating_add(rela_size as usize).min(self.bin.len());
+
+        while off + rela_ent <= end {
+            let rela = Elf64Rela::parse(&self.bin, off);
+            let r_type = rela.r_type();
+
+            if r_type != R_X86_64_GLOB_DAT && r_type != R_X86_64_JUMP_SLOT {
+                off += rela_ent;
+                continue;
+            }
+
+            let sym_idx = rela.r_sym() as usize;
+            let Some(sym) = self.elf_dynsym.get(sym_idx) else {
+                off += rela_ent;
+                continue;
+            };
+
+            if sym.st_dynstr_name.is_empty() {
+                off += rela_ent;
+                continue;
+            }
+
+            let resolved = export_map
+                .get(&sym.st_dynstr_name)
+                .copied()
+                .or_else(|| self.sym_get_addr_from_name(&sym.st_dynstr_name));
+
+            let Some(target_addr) = resolved else {
+                if !unresolved.contains(&sym.st_dynstr_name) {
+                    unresolved.push(sym.st_dynstr_name.clone());
+                }
+                off += rela_ent;
+                continue;
+            };
+
+            let patch_addr = self.rebase_vaddr(rela.r_offset);
+            if !maps.write_qword(patch_addr, target_addr) {
+                if let Some(map_name) = maps.get_addr_name(patch_addr).map(|s| s.to_string()) {
+                    maps.get_mem_mut(&map_name)
+                        .force_write_qword(patch_addr, target_addr);
+                } else {
+                    log::warn!(
+                        "elf64: relocation target 0x{:x} for {} is not mapped",
+                        patch_addr,
+                        sym.st_dynstr_name
+                    );
+                }
+            }
+
+            off += rela_ent;
+        }
+    }
+
+    /// Apply AArch64 relocations (.rela.dyn and .rela.plt) using section headers.
+    /// Handles R_AARCH64_GLOB_DAT and R_AARCH64_JUMP_SLOT.
+    pub fn apply_rela_aarch64(
+        &mut self,
+        maps: &mut Maps,
+        export_map: &HashMap<String, u64>,
+    ) {
+        let rela_sections: Vec<(u64, u64)> = self
+            .elf_shdr
+            .iter()
+            .filter(|shdr| {
+                let name = self.get_section_name(shdr.sh_name as usize);
+                name == ".rela.dyn" || name == ".rela.plt"
+            })
+            .map(|shdr| (shdr.sh_offset, shdr.sh_size))
+            .collect();
+
+        let entsize = 24usize; // sizeof(Elf64_Rela)
+
+        for (sh_offset, sh_size) in rela_sections {
+            let mut off = sh_offset as usize;
+            let end = off + sh_size as usize;
+
+            while off + entsize <= end && off + entsize <= self.bin.len() {
+                let r_offset = read_u64_le!(self.bin, off);
+                let r_info = read_u64_le!(self.bin, off + 8);
+
+                let r_type = (r_info & 0xFFFFFFFF) as u32;
+                let r_sym = (r_info >> 32) as u32;
+
+                if r_type != R_AARCH64_GLOB_DAT && r_type != R_AARCH64_JUMP_SLOT {
+                    off += entsize;
+                    continue;
+                }
+
+                let sym_name = self.get_dynsym_name(r_sym);
+                if sym_name.is_empty() {
+                    off += entsize;
+                    continue;
+                }
+
+                if let Some(&target_addr) = export_map.get(&sym_name) {
+                    let got_addr = if r_offset < self.base {
+                        r_offset + self.base
+                    } else {
+                        r_offset
+                    };
+
+                    maps.write_qword(got_addr, target_addr);
+                    self.sym_to_addr.insert(sym_name.clone(), target_addr);
+                    self.addr_to_symbol.insert(target_addr, sym_name);
+                }
+
+                off += entsize;
+            }
+        }
+    }
+
+    /// Look up a symbol name from .dynsym by index.
+    fn get_dynsym_name(&self, sym_index: u32) -> String {
+        let idx = sym_index as usize;
+        if idx < self.elf_dynsym.len() {
+            return self.elf_dynsym[idx].st_dynstr_name.clone();
+        }
+
+        // Fallback: read from raw binary
+        let dynsym_shdr = self.elf_shdr.iter().find(|shdr| {
+            self.get_section_name(shdr.sh_name as usize) == ".dynsym"
+        });
+        let Some(shdr) = dynsym_shdr else {
+            return String::new();
+        };
+
+        let entry_off = shdr.sh_offset as usize + (idx * 24);
+        if entry_off + 4 > self.bin.len() {
+            return String::new();
+        }
+
+        let st_name = read_u32_le!(self.bin, entry_off);
+        if st_name == 0 || self.elf_dynstr_off == 0 {
+            return String::new();
+        }
+
+        let name_off = (self.elf_dynstr_off + st_name as u64) as usize;
+        if name_off >= self.bin.len() {
+            return String::new();
+        }
+
+        let end = self.bin[name_off..]
+            .iter()
+            .position(|&c| c == 0)
+            .unwrap_or(self.bin.len() - name_off);
+        std::str::from_utf8(&self.bin[name_off..name_off + end])
+            .unwrap_or("")
+            .to_string()
     }
 
     /*
@@ -245,7 +604,12 @@ impl Elf64 {
         let elf64_base: u64;
 
         if dynamic_linking {
-            elf64_base = constants::ELF64_DYN_BASE;
+            elf64_base = if is_lib {
+                maps.lib64_alloc(self.image_size())
+                    .expect("cannot allocate elf64 library space")
+            } else {
+                constants::ELF64_DYN_BASE
+            };
             self.load_programs(maps, name, is_lib, dynamic_linking);
         } else {
             if force_base == constants::CFG_DEFAULT_BASE {
@@ -262,6 +626,9 @@ impl Elf64 {
         }
 
         self.base = elf64_base;
+        self.sym_to_addr.clear();
+        self.addr_to_symbol.clear();
+        self.needed_libs = self.get_dynamic();
 
         // pre-load .dynstr
         for shdr in &self.elf_shdr {
@@ -278,9 +645,12 @@ impl Elf64 {
             let sh_size = self.elf_shdr[i].sh_size;
             let mut sh_addr = self.elf_shdr[i].sh_addr;
 
-            let can_write = self.elf_shdr[i].sh_flags & 0x1 != 0;
-            let can_execute = self.elf_shdr[i].sh_flags & 0x4 != 0;
-            let can_read = self.elf_shdr[i].sh_flags & 0x2 != 0;
+            let sh_flags = self.elf_shdr[i].sh_flags;
+            // SHF_ALLOC (0x2) means the section occupies memory at runtime and should be readable
+            let is_alloc = sh_flags & 0x2 != 0;
+            let can_write = sh_flags & 0x1 != 0; // SHF_WRITE
+            let can_execute = sh_flags & 0x4 != 0; // SHF_EXECINSTR
+            let can_read = is_alloc;
             let permission = Permission::from_flags(can_read, can_write, can_execute);
 
             //TODO: align sh_size to page size by extending the size, something like:
@@ -304,32 +674,47 @@ impl Elf64 {
 
             // load dynsym
             if sname == ".dynsym" {
+                self.elf_dynsym.clear();
                 let mut off = sh_offset as usize;
+                let entsize = if self.elf_shdr[i].sh_entsize == 0 {
+                    Elf64Sym::size() as u64
+                } else {
+                    self.elf_shdr[i].sh_entsize
+                };
 
-                for _ in 0..(sh_size / Elf64Sym::size() as u64) {
+                for _ in 0..(sh_size / entsize) {
                     let mut sym = Elf64Sym::parse(&self.bin, off);
 
-                    if (sym.get_st_type() == STT_FUNC || sym.get_st_type() == STT_OBJECT)
-                        && sym.st_value > 0
-                    {
-                        let off2 = (self.elf_dynstr_off + sym.st_name as u64) as usize;
-                        let end = self.bin[off2..]
-                            .iter()
-                            .position(|&c| c == 0)
-                            .unwrap_or(self.bin.len());
-                        if let Ok(string) = std::str::from_utf8(&self.bin[off2..(end + off2)]) {
-                            sym.st_dynstr_name = string.to_string();
-                        }
-
-                        self.elf_dynsym.push(sym);
+                    let off2 = (self.elf_dynstr_off + sym.st_name as u64) as usize;
+                    if let Some(name) = self.read_c_string(off2) {
+                        sym.st_dynstr_name = name;
                     }
-                    off += Elf64Sym::size();
+
+                    if sym.st_value > 0 {
+                        sym.st_value = self.rebase_vaddr(sym.st_value);
+                    }
+
+                    if !sym.st_dynstr_name.is_empty() && sym.st_value > 0 {
+                        self.sym_to_addr
+                            .insert(sym.st_dynstr_name.clone(), sym.st_value);
+                        self.addr_to_symbol
+                            .insert(sym.st_value, sym.st_dynstr_name.clone());
+                    }
+
+                    self.elf_dynsym.push(sym);
+                    off += entsize as usize;
                 }
             }
 
             // map if its vaddr is on a PT_LOAD program
             if self.is_loadable(sh_addr) || !dynamic_linking {
                 if sname == ".shstrtab" || sname == ".tbss" {
+                    continue;
+                }
+
+                // Skip non-allocated sections (e.g. .symtab, .strtab) — they are metadata
+                // and should not be mapped into the runtime address space.
+                if !is_alloc {
                     continue;
                 }
 
@@ -413,69 +798,9 @@ impl Elf64 {
     }
 
     pub fn get_dynamic(&self) -> Vec<String> {
-        let mut libs: Vec<String> = Vec::new();
-
-        for shdr in &self.elf_shdr {
-            if self.get_section_name(shdr.sh_name as usize) == ".dynamic" {
-                let mut off = shdr.sh_offset as usize;
-                let mut off_strtab: u64 = 0;
-
-                loop {
-                    let d_tag: u64 = read_u64_le!(self.bin, off);
-                    let d_val: u64 = read_u64_le!(self.bin, off + 8);
-
-                    if d_tag == DT_NULL {
-                        break;
-                    }
-                    if d_tag == DT_STRTAB {
-                        if d_val > self.bin.len() as u64 {
-                            off_strtab = d_val - self.elf_phdr[2].p_vaddr;
-                        } else {
-                            off_strtab = d_val;
-                        }
-
-                        break;
-                    }
-                    off += 16;
-                }
-
-                if off_strtab == 0 {
-                    log::trace!("dt_strtab not found");
-                    return libs;
-                }
-
-                off = shdr.sh_offset as usize;
-                loop {
-                    let d_tag: u64 = read_u64_le!(self.bin, off);
-                    let d_val: u64 = read_u64_le!(self.bin, off + 8);
-
-                    if d_tag == DT_NULL {
-                        break;
-                    }
-                    if d_tag == DT_NEEDED {
-                        let off_lib = (off_strtab + d_val) as usize;
-                        if off_lib > self.bin.len() {
-                            off += 16;
-                            continue;
-                        }
-                        let off_lib_end = self.bin[off_lib..]
-                            .iter()
-                            .position(|&c| c == 0)
-                            .expect("error searching on DT_STRTAB");
-                        let lib_name =
-                            std::str::from_utf8(&self.bin[off_lib..off_lib + off_lib_end])
-                                .expect("libname on DT_STRTAB is not utf-8");
-                        log::trace!("lib: {}", lib_name);
-                        libs.push(lib_name.to_string());
-                    }
-                    off += 16;
-                }
-
-                break;
-            }
-        }
-
-        libs
+        self.dynamic_info()
+            .map(|info| info.needed)
+            .unwrap_or_default()
     }
 
     pub fn is_elf64_x64(filename: &str) -> bool {
@@ -635,7 +960,7 @@ impl Elf64Shdr {
             sh_link: read_u32_le!(bin, shoff + 40),
             sh_info: read_u32_le!(bin, shoff + 44),
             sh_addralign: read_u64_le!(bin, shoff + 48),
-            sh_entsize: read_u64_le!(bin, 56),
+            sh_entsize: read_u64_le!(bin, shoff + 56),
         }
     }
 }
@@ -649,6 +974,48 @@ pub struct Elf64Sym {
     pub st_shndx: u16,
     pub st_value: u64,
     pub st_size: u64,
+}
+
+#[derive(Debug, Default)]
+pub struct Elf64DynamicInfo {
+    pub needed: Vec<String>,
+    pub strtab_addr: u64,
+    pub symtab_addr: u64,
+    pub syment: u64,
+    pub rela_addr: u64,
+    pub rela_size: u64,
+    pub rela_ent: u64,
+    pub jmprel_addr: u64,
+    pub pltrelsz: u64,
+}
+
+#[derive(Debug)]
+pub struct Elf64Rela {
+    pub r_offset: u64,
+    pub r_info: u64,
+    pub r_addend: i64,
+}
+
+impl Elf64Rela {
+    pub fn parse(bin: &[u8], off: usize) -> Elf64Rela {
+        Elf64Rela {
+            r_offset: read_u64_le!(bin, off),
+            r_info: read_u64_le!(bin, off + 8),
+            r_addend: read_u64_le!(bin, off + 16) as i64,
+        }
+    }
+
+    pub fn size() -> usize {
+        24
+    }
+
+    pub fn r_sym(&self) -> u32 {
+        (self.r_info >> 32) as u32
+    }
+
+    pub fn r_type(&self) -> u32 {
+        self.r_info as u32
+    }
 }
 
 impl Elf64Sym {

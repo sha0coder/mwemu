@@ -298,9 +298,9 @@ fn main() {
     } else {
         // if maps is not selected, by default ...
         if emu.cfg.is_x64() {
-            emu.set_maps_folder("maps/maps64/");
+            emu.set_maps_folder("maps/windows/x86_64/");
         } else {
-            emu.set_maps_folder("maps/maps32/");
+            emu.set_maps_folder("maps/windows/x86/");
         }
     }
 

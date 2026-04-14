@@ -2,6 +2,41 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 use crate::emu;
+use crate::emu::Emu;
+
+/// Windows API ABI helper — Microsoft x64 for x86_64, AAPCS64 for AArch64.
+pub struct WinApiAbi;
+
+impl WinApiAbi {
+    #[inline]
+    pub fn arg(emu: &Emu, idx: usize) -> u64 {
+        if emu.cfg.arch.is_aarch64() {
+            emu.regs_aarch64().x[idx]
+        } else {
+            match idx {
+                0 => emu.regs().rcx,
+                1 => emu.regs().rdx,
+                2 => emu.regs().r8,
+                3 => emu.regs().r9,
+                _ => {
+                    // Stack args: shadow space (32 bytes) + return addr (8 bytes) + 8 bytes per extra arg
+                    let rsp = emu.regs().rsp;
+                    let addr = rsp + 0x28 + ((idx as u64 - 4) * 8);
+                    emu.maps.read_qword(addr).unwrap_or(0)
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn set_ret(emu: &mut Emu, value: u64) {
+        if emu.cfg.arch.is_aarch64() {
+            emu.regs_aarch64_mut().x[0] = value;
+        } else {
+            emu.regs_mut().rax = value;
+        }
+    }
+}
 
 pub struct Handler {
     id: u64,

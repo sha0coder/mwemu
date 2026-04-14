@@ -6,7 +6,7 @@
 import pymwemu
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32')
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86')
 emu.load_binary('mw/dbmm_unpacked.dll')
 emu.set_verbose(0)
 #emu.enable_banzai_mode()

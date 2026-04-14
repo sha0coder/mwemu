@@ -21,7 +21,7 @@ https://github.com/sha0coder/mwemu
 
 ## Usage
 
-Download the maps32 or maps64 from:
+Download the maps from:
 https://github.com/sha0coder/mwemu
 
 Create an emu32 or emu64 and it's important to set the maps folder.
@@ -32,7 +32,7 @@ use libmwemu::emu32;
 
 fn main() {
     let mut emu = emu32();
-    emu.set_maps_folder("/tmp/maps32/");
+    emu.set_maps_folder("/tmp/maps/windows/x86/");
     emu.init_logger();
 ```
 
@@ -138,7 +138,7 @@ fn trace_winapi_call(emu:&mut libmwemu::emu::Emu, ip_addr:u64, api_addr:u64) -> 
 
 fn main() {
     let mut emu = emu32();
-    emu.set_maps_folder("../mwemu/maps32/"); // download the maps, ideally from mwemu git.
+    emu.set_maps_folder("../mwemu/maps/windows/x86/"); // download the maps, ideally from mwemu git.
     emu.init();
 
     emu.load_code("/home/sha0/src/mwemu/shellcodes32/mars.exe");

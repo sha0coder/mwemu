@@ -62,7 +62,7 @@ fn align_up_page(size: u64) -> u64 {
 /// ntdll heap expansion (`RtlAllocateHeap` internals) can leave a `LIST_ENTRY` at
 /// `allocBase + 0xb000` zeroed; the next walk does `mov rax,[rsi]` / follow Flink and faults.
 /// Prime a self-linked sentinel at that offset for large private regions (observed with
-/// `maps64/ntdll.dll` during `LdrInitializeThunk` under `--ssdt --init`).
+/// `maps/windows/x86_64/ntdll.dll` during `LdrInitializeThunk` under `--ssdt --init`).
 fn patch_ldr_heap_list_sentinel(emu: &mut Emu, base: u64, size: u64) {
     if !emu.cfg.emulate_winapi {
         return;

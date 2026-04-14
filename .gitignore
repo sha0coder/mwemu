@@ -1,4 +1,4 @@
-target/
+/target/
 .gitconfig
 shellcodes32/
 shellcodes64/
@@ -25,3 +25,8 @@ test.zip*
 .claude
 __pycache__
 node_modules/
+.cache/
+.zig*
+CACHEDIR.TARGET
+.package-cache
+.cargo/registry

@@ -13,7 +13,7 @@
     -f [filepath]
 
 - maps folder
-    By default it looks for the maps in ./maps32 or ./maps64
+    By default it looks for the maps in ./maps/windows/x86/ or ./maps/windows/x86_64/
     -m [path]
 
 - toggle 64bits 

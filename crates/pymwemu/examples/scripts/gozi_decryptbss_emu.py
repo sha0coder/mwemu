@@ -2,7 +2,7 @@ import pymwemu
 import sys
 
 emu = pymwemu.init32()
-emu.load_maps('/home/sha0/src/mwemu/maps32/')  # Load 32bits dependncies: kernel32, winnet etc 
+emu.load_maps('/home/sha0/src/mwemu/maps/windows/x86/')  # Load 32bits dependncies: kernel32, winnet etc 
 emu.load_binary('../modules/gozi_main_module.bin')  # PE32 load 
 
 

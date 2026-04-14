@@ -7,6 +7,7 @@ use std::io::Read;
 
 const MH_MAGIC_64: u32 = 0xFEEDFACF;
 const CPU_TYPE_ARM64: u32 = 0x0100000C;
+const CPU_TYPE_X86_64: u32 = 0x01000007;
 
 // Chained fixup pointer format constants
 const DYLD_CHAINED_PTR_64_OFFSET: u16 = 6;
@@ -44,22 +45,37 @@ pub struct ChainedImport {
 }
 
 impl Macho64 {
-    /// Detect a 64-bit AArch64 Mach-O file by reading the first 8 bytes.
-    pub fn is_macho64_aarch64(filename: &str) -> bool {
+    fn read_magic_and_cputype(filename: &str) -> Option<(u32, u32)> {
         let mut f = match std::fs::File::open(filename) {
             Ok(f) => f,
-            Err(_) => return false,
+            Err(_) => return None,
         };
         let mut buf = [0u8; 8];
         if f.read_exact(&mut buf).is_err() {
-            return false;
+            return None;
         }
         let magic = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
         let cputype = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-        magic == MH_MAGIC_64 && cputype == CPU_TYPE_ARM64
+        Some((magic, cputype))
     }
 
-    /// Parse a Mach-O 64-bit AArch64 binary using goblin.
+    /// Detect a 64-bit AArch64 Mach-O file by reading the first 8 bytes.
+    pub fn is_macho64_aarch64(filename: &str) -> bool {
+        matches!(
+            Self::read_magic_and_cputype(filename),
+            Some((MH_MAGIC_64, CPU_TYPE_ARM64))
+        )
+    }
+
+    /// Detect a 64-bit x86_64 Mach-O file by reading the first 8 bytes.
+    pub fn is_macho64_x64(filename: &str) -> bool {
+        matches!(
+            Self::read_magic_and_cputype(filename),
+            Some((MH_MAGIC_64, CPU_TYPE_X86_64))
+        )
+    }
+
+    /// Parse a 64-bit Mach-O binary using goblin.
     pub fn parse(filename: &str) -> Result<Macho64, MwemuError> {
         let bin = fs::read(filename)
             .map_err(|e| MwemuError::new(&format!("cannot read macho binary: {}", e)))?;
