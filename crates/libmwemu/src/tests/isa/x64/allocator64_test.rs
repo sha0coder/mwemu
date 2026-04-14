@@ -9,7 +9,7 @@ pub fn allocator64_test() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = "../../maps/windows/x86_64/".to_string();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
     emu.init_win32(false, false);
 
     assert_eq!(emu.maps.exists_mapname("notexist"), false);

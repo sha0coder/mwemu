@@ -53,32 +53,22 @@ pub use utils::disable_color;
 #[cfg(test)]
 mod tests;
 use arch::Arch;
-use config::Config;
 use emu::Emu;
 
 pub fn emu64() -> Emu {
-    let mut emu = Emu::new();
-    let mut cfg = Config::new();
-    cfg.arch = Arch::X86_64;
-    emu.set_config(cfg);
+    let mut emu = Emu::new(Arch::X86_64);
     emu.disable_ctrlc();
     emu
 }
 
 pub fn emu32() -> Emu {
-    let mut emu = Emu::new();
-    let mut cfg = Config::new();
-    cfg.arch = Arch::X86;
-    emu.set_config(cfg);
+    let mut emu = Emu::new(Arch::X86);
     emu.disable_ctrlc();
     emu
 }
 
 pub fn emu_aarch64() -> Emu {
-    let mut emu = Emu::new();
-    let mut cfg = Config::new();
-    cfg.arch = Arch::Aarch64;
-    emu.set_config(cfg);
+    let mut emu = Emu::new(Arch::Aarch64);
     emu.disable_ctrlc();
     emu
 }

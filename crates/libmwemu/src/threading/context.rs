@@ -17,7 +17,7 @@ pub enum ArchThreadState {
         seh: u64,
         veh: u64,
         uef: u64,
-        eh_ctx: u32,
+        eh_ctx: u64,
         tls32: Vec<u32>,
         tls64: Vec<u64>,
         fls: Vec<u32>,

@@ -7,10 +7,10 @@ pub fn sc32win_peb_ldr_rot() {
     helpers::setup();
 
     let mut emu = emu32();
-    emu.cfg.maps_folder = "../../maps/windows/x86/".to_string();
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
 
-    let sample = "../../test/sc32win_peb_ldr_rot.bin";
-    emu.load_code(sample);
+    let sample = helpers::test_data_path("sc32win_peb_ldr_rot.bin");
+    emu.load_code(&sample);
     emu.run(Some(0x3c0116));
 
     let ptr = emu.regs().get_ebx();

@@ -7,10 +7,10 @@ pub fn sc32win_donut() {
     helpers::setup();
 
     let mut emu = emu32();
-    emu.cfg.maps_folder = "../../maps/windows/x86/".to_string();
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
 
-    let sample = "../../test/sc32win_donut.bin";
-    emu.load_code(sample);
+    let sample = helpers::test_data_path("sc32win_donut.bin");
+    emu.load_code(&sample);
     emu.run_to(30_862_819);
 
     assert_eq!(emu.regs().get_eax(), 0xF5B24B1D); // used to be 0x7f937230?

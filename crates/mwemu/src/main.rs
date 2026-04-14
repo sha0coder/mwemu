@@ -518,7 +518,7 @@ fn main() {
 
             // dump on exit
             if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump_to_file(
+                serialization::Serialization::dump(
                     &emu,
                     emu.cfg.dump_filename.as_ref().unwrap(),
                 );
@@ -550,7 +550,7 @@ fn main() {
         let dump_filename = matches.value_of("dump").expect("specify the dump filename");
         log::info!("loading dump from {}", dump_filename);
         let old_config = emu.cfg;
-        emu = serialization::Serialization::load_from_file(dump_filename);
+        emu = serialization::Serialization::load(dump_filename);
         emu.cfg = old_config;
         emu.maps.set_banzai(emu.cfg.skip_unimplemented);
     }

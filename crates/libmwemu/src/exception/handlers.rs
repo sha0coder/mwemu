@@ -72,33 +72,33 @@ pub fn enter32(
     let ctx = emu
         .maps
         .create_map("ctx", ctx_addr, 0x1000, Permission::READ_WRITE_EXECUTE);
-    emu.set_eh_ctx((ctx_addr + 0x100) as u32);
+    emu.set_eh_ctx(ctx_addr + 0x100);
 
     emu.stack_push32(ctx_addr as u32); // 0x10f00
     emu.stack_push32(emu.regs().get_eip() as u32);
 
-    emu.set_eh_ctx(ctx_addr as u32 + 8); // 0x10f08
+    emu.set_eh_ctx(ctx_addr + 8); // 0x10f08
     // ctx header:
     // +0x00 => handler kind (SEH/VEH/UEF), +0x04 => context ptr
     emu.maps.write_dword(ctx_addr, handler_kind.as_u32());
-    emu.maps.write_dword(ctx_addr + 4, emu.eh_ctx()); // 0x10f04
+    emu.maps.write_dword(ctx_addr + 4, emu.eh_ctx() as u32); // 0x10f04
     emu.maps.write_dword(
-        emu.eh_ctx() as u64,
+        emu.eh_ctx(),
         types::exception_type_code(ex_type),
     ); // STATUS_BREAKPOINT
 
     let ctx = Context32::new(&emu.regs());
-    ctx.save(emu.eh_ctx(), &mut emu.maps);
+    ctx.save(emu.eh_ctx() as u32, &mut emu.maps);
 }
 
 pub fn exit32(emu: &mut emu::Emu) {
     let disposition = emu.regs().get_eax() as u32;
-    let ctx_ptr = emu.eh_ctx() as u64;
+    let ctx_ptr = emu.eh_ctx();
     let ex_code = emu.maps.read_dword(ctx_ptr).unwrap_or(0);
     let handler_kind = emu.maps.read_dword(ctx_ptr.saturating_sub(8)).unwrap_or(0);
 
     let mut ctx = Context32::new(&emu.regs());
-    ctx.load(emu.eh_ctx(), &mut emu.maps);
+    ctx.load(emu.eh_ctx() as u32, &mut emu.maps);
     ctx.sync(emu.regs_mut());
     emu.set_eh_ctx(0);
     emu.force_reload = true;
@@ -129,33 +129,29 @@ pub fn enter64(
     emu.stack_push64(ctx_addr); // 0x10f00
     emu.stack_push64(emu.regs().rip);
 
-    if ctx_addr > u32::MAX as u64 {
-        panic!("64bits allocator is giving a too big memory!! for the context64");
-    }
-
-    emu.set_eh_ctx(ctx_addr as u32 + 16);
+    emu.set_eh_ctx(ctx_addr + 16);
     // ctx header:
     // +0x00 => handler kind (SEH/VEH/UEF), +0x08 => context ptr
     emu.maps.write_dword(ctx_addr, handler_kind.as_u32());
-    emu.maps.write_qword(ctx_addr + 8, emu.eh_ctx() as u64);
+    emu.maps.write_qword(ctx_addr + 8, emu.eh_ctx());
     // Store the exception code at the start of the context area (mirrors enter32),
     // so exit64 can retrieve it from `eh_ctx()` (offset +0).
     emu.maps.write_dword(
-        emu.eh_ctx() as u64,
+        emu.eh_ctx(),
         types::exception_type_code(ex_type),
     );
     let ctx = Context64::new(&emu.regs());
-    ctx.save(emu.eh_ctx() as u64, &mut emu.maps);
+    ctx.save(emu.eh_ctx(), &mut emu.maps);
 }
 
 pub fn exit64(emu: &mut emu::Emu) {
     let disposition = emu.regs().rax as u32;
-    let ctx_ptr = emu.eh_ctx() as u64;
+    let ctx_ptr = emu.eh_ctx();
     let ex_code = emu.maps.read_dword(ctx_ptr).unwrap_or(0);
     let handler_kind = emu.maps.read_dword(ctx_ptr.saturating_sub(16)).unwrap_or(0);
 
     let mut ctx = Context64::new(&emu.regs());
-    ctx.load(emu.eh_ctx() as u64, &mut emu.maps);
+    ctx.load(emu.eh_ctx(), &mut emu.maps);
     ctx.sync(emu.regs_mut());
     emu.set_eh_ctx(0);
     emu.force_reload = true;

@@ -12,7 +12,7 @@
 
 use crate::tests::helpers;
 use crate::*;
-use std::path::PathBuf;
+
 use std::time::{Duration, Instant};
 
 /// Default work units: large enough to average out noise, small enough for CI (~seconds on a fast box).
@@ -44,10 +44,10 @@ fn sc32win_donut_emulation_throughput_regression_guard() {
         .unwrap_or(DEFAULT_MIN_IPS);
 
     let mut emu = emu32();
-    emu.cfg.maps_folder = "../../maps/windows/x86/".to_string();
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
 
-    let sample = "../../test/sc32win_donut.bin";
-    emu.load_code(sample);
+    let sample = helpers::test_data_path("sc32win_donut.bin");
+    emu.load_code(&sample);
 
     // `-vv` → verbose level 2 (assembly tracing; same cost profile as CLI)
     emu.set_verbose(2);
@@ -95,13 +95,7 @@ fn benchmark32win_donut() {
     }
 
     let mut emu = emu32();
-    emu.cfg.maps_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../maps/windows/x86")
-        .to_string_lossy()
-        .into_owned();
-    if !emu.cfg.maps_folder.ends_with('/') {
-        emu.cfg.maps_folder.push('/');
-    }
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
 
     // Avoid any interactive console path from blocking the test runner.
     emu.cfg.console = false;
@@ -157,13 +151,7 @@ fn benchmark64with_enigma() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../maps/windows/x86_64")
-        .to_string_lossy()
-        .into_owned();
-    if !emu.cfg.maps_folder.ends_with('/') {
-        emu.cfg.maps_folder.push('/');
-    }
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
 
     emu.cfg.console = false;
     emu.cfg.console_enabled = false;

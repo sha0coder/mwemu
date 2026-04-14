@@ -8,7 +8,7 @@ The main instatiates emu module, set the config, loads the binary and run.
 
 
 ```rust
-    let mut emu = Emu::new();
+    let mut emu = Emu::new(Arch::X86);
     
     emu.set_config(cfg);
     emu.init();
@@ -26,7 +26,7 @@ but run(0) means forever.
 
 ```rust
 
-    let mut emu = Emu::new();
+    let mut emu = Emu::new(Arch::X86);
     
     emu.set_config(cfg);
     emu.init();

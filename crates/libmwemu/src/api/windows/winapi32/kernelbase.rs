@@ -25,7 +25,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         _ => {
             if emu.cfg.skip_unimplemented == false {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump_to_file(
+                    serialization::Serialization::dump(
                         &emu,
                         emu.cfg.dump_filename.as_ref().unwrap(),
                     );

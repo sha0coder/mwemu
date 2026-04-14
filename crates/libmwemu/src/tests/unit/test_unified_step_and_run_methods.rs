@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::maps::mem64::Permission;
 use crate::{tests::helpers, *};
 

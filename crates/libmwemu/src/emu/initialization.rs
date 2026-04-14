@@ -45,7 +45,7 @@ impl CustomLogFormat {
 
 impl Default for Emu {
     fn default() -> Self {
-        Emu::new()
+        Emu::new(crate::arch::Arch::X86)
     }
 }
 
@@ -56,23 +56,39 @@ pub struct Lib {
 }
 
 impl Emu {
-    pub fn new() -> Emu {
-        let mut formatter = IntelFormatter::new();
-        formatter.options_mut().set_digit_separator("");
-        formatter.options_mut().set_first_operand_char_index(6);
-        Emu {
-            arch_state: ArchState::X86 {
+    pub fn new(arch: crate::arch::Arch) -> Emu {
+        let arch_state = if arch.is_aarch64() {
+            ArchState::AArch64 {
+                instruction: None,
+                instruction_cache: InstructionCache::new(),
+            }
+        } else {
+            let mut formatter = IntelFormatter::new();
+            formatter.options_mut().set_digit_separator("");
+            formatter.options_mut().set_first_operand_char_index(6);
+            ArchState::X86 {
                 instruction: None,
                 formatter,
                 instruction_cache: InstructionCache::new(),
                 decoder_position: 0,
+            }
+        };
+
+        let mut cfg = Config::new();
+        cfg.arch = arch;
+
+        Emu {
+            arch_state,
+            maps: {
+                let mut maps = Maps::default();
+                maps.is_64bits = arch.is_64bits();
+                maps
             },
-            maps: Maps::default(),
             hooks: Hooks::new(),
             exp: 0,
             break_on_alert: false,
             bp: Breakpoints::new(),
-            cfg: Config::new(),
+            cfg,
             colors: Colors::new(),
             pos: 0,
             max_pos: None,
@@ -109,8 +125,7 @@ impl Emu {
             base: 0,
             heap_addr: 0,
             rng: RefCell::new(rand::rng()),
-            // Initialize with main thread as thread 0
-            threads: vec![ThreadContext::new(0x1000, crate::arch::Arch::X86)],
+            threads: vec![ThreadContext::new(0x1000, arch)],
             current_thread_id: 0,
             global_locks: GlobalLocks::new(),
             definitions: HashMap::new(),
