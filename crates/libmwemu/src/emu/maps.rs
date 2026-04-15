@@ -132,13 +132,12 @@ impl Emu {
     }
 
     /// From a file-path this returns the filename with no path and no extension.
+    /// Handles both `/` and `\` path separators so Windows CI paths work.
     pub fn filename_to_mapname(&self, filename: &str) -> String {
-        filename
-            .split('/')
-            .last()
-            .map(|x| x.split('.'))
-            .and_then(|x| x.peekable().next())
-            .unwrap()
+        std::path::Path::new(filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(filename)
             .to_string()
     }
 

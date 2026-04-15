@@ -6,10 +6,10 @@ pub fn sc64lin_arith_100iter() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = "../../maps/windows/x86_64/".to_string();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
 
-    let sample = "../../test/sc64lin_arith_100iter.bin";
-    emu.load_code(sample);
+    let sample = helpers::test_data_path("sc64lin_arith_100iter.bin");
+    emu.load_code(&sample);
     emu.run(Some(0x3c0040));
 
     assert_eq!(emu.regs().rax, 0x4d9364d94bc0001e);

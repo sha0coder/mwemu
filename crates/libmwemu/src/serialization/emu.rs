@@ -17,6 +17,7 @@ use crate::emu::Emu;
 use crate::flags::Flags;
 use crate::threading::global_locks::GlobalLocks;
 use crate::hooks::Hooks;
+use crate::regs_aarch64::RegsAarch64;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
 use crate::serialization::instant::SerializableInstant;
@@ -28,7 +29,46 @@ use crate::windows::structures::MemoryOperation;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::object_handle::HandleManagement;
+use crate::arch::Arch;
 use crate::emu::ArchState;
+use crate::threading::context::ArchThreadState;
+
+#[derive(Serialize, Deserialize)]
+pub enum SerializableInstructionState {
+    X86 {
+        instruction: Option<Instruction>,
+        decoder_position: usize,
+    },
+    AArch64,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum SerializableCurrentThreadState {
+    X86 {
+        regs: Regs64,
+        pre_op_regs: Regs64,
+        post_op_regs: Regs64,
+        flags: Flags,
+        pre_op_flags: Flags,
+        post_op_flags: Flags,
+        eflags: Eflags,
+        fpu: SerializableFPU,
+        seh: u64,
+        veh: u64,
+        uef: u64,
+        eh_ctx: u64,
+        tls32: Vec<u32>,
+        tls64: Vec<u64>,
+        fls: Vec<u32>,
+        fs: BTreeMap<u64, u64>,
+        call_stack: Vec<(u64, u64)>,
+    },
+    AArch64 {
+        regs: RegsAarch64,
+        pre_op_regs: RegsAarch64,
+        post_op_regs: RegsAarch64,
+    },
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableEmu {
@@ -46,8 +86,7 @@ pub struct SerializableEmu {
 
     // --- Instruction decoding & disassembly ---
     // NOTE: formatter, instruction_cache are recreated on deserialize
-    pub instruction: Option<Instruction>,
-    pub decoder_position: usize,
+    pub instruction_state: SerializableInstructionState,
     pub last_instruction_size: usize,
     pub rep: Option<u64>,
 
@@ -77,23 +116,7 @@ pub struct SerializableEmu {
     // NOTE: global_locks reset on deserialize
 
     // --- Flattened thread context (from current thread at serialize time) ---
-    pub regs: Regs64,
-    pub pre_op_regs: Regs64,
-    pub post_op_regs: Regs64,
-    pub flags: Flags,
-    pub pre_op_flags: Flags,
-    pub post_op_flags: Flags,
-    pub eflags: Eflags,
-    pub fpu: SerializableFPU,
-    pub seh: u64,
-    pub veh: u64,
-    pub uef: u64,
-    pub eh_ctx: u32,
-    pub tls32: Vec<u32>,
-    pub tls64: Vec<u64>,
-    pub fls: Vec<u32>,
-    pub fs: BTreeMap<u64, u64>,
-    pub call_stack: Vec<(u64, u64)>,
+    pub current_thread: SerializableCurrentThreadState,
 
     // --- API call interception ---
     // NOTE: hooks cannot be serialized
@@ -122,6 +145,67 @@ pub struct SerializableEmu {
 
 impl<'a> From<&'a Emu> for SerializableEmu {
     fn from(emu: &'a Emu) -> Self {
+        let instruction_state = match &emu.arch_state {
+            ArchState::X86 {
+                instruction,
+                decoder_position,
+                ..
+            } => SerializableInstructionState::X86 {
+                instruction: *instruction,
+                decoder_position: *decoder_position,
+            },
+            ArchState::AArch64 { .. } => SerializableInstructionState::AArch64,
+        };
+
+        let current_thread = match &emu.current_thread().arch {
+            ArchThreadState::X86 {
+                regs,
+                pre_op_regs,
+                post_op_regs,
+                flags,
+                pre_op_flags,
+                post_op_flags,
+                eflags,
+                fpu,
+                seh,
+                veh,
+                uef,
+                eh_ctx,
+                tls32,
+                tls64,
+                fls,
+                fs,
+                call_stack,
+            } => SerializableCurrentThreadState::X86 {
+                regs: *regs,
+                pre_op_regs: *pre_op_regs,
+                post_op_regs: *post_op_regs,
+                flags: *flags,
+                pre_op_flags: *pre_op_flags,
+                post_op_flags: *post_op_flags,
+                eflags: eflags.clone(),
+                fpu: fpu.clone().into(),
+                seh: *seh,
+                veh: *veh,
+                uef: *uef,
+                eh_ctx: *eh_ctx,
+                tls32: tls32.clone(),
+                tls64: tls64.clone(),
+                fls: fls.clone(),
+                fs: fs.clone(),
+                call_stack: call_stack.clone(),
+            },
+            ArchThreadState::AArch64 {
+                regs,
+                pre_op_regs,
+                post_op_regs,
+            } => SerializableCurrentThreadState::AArch64 {
+                regs: *regs,
+                pre_op_regs: *pre_op_regs,
+                post_op_regs: *post_op_regs,
+            },
+        };
+
         SerializableEmu {
             // Configuration & display
             cfg: emu.cfg.clone(),
@@ -133,8 +217,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             heap_addr: emu.heap_addr,
             memory_operations: emu.memory_operations.clone(),
             // Instruction decoding
-            instruction: emu.x86_instruction(),
-            decoder_position: emu.x86_decoder_position(),
+            instruction_state,
             last_instruction_size: emu.last_instruction_size,
             rep: emu.rep,
             // Core execution state
@@ -157,23 +240,7 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             main_thread_cont: emu.main_thread_cont,
             gateway_return: emu.gateway_return,
             // Flattened thread context
-            regs: emu.regs().clone(),
-            pre_op_regs: *emu.pre_op_regs(),
-            post_op_regs: *emu.post_op_regs(),
-            flags: *emu.flags(),
-            pre_op_flags: *emu.pre_op_flags(),
-            post_op_flags: *emu.post_op_flags(),
-            eflags: emu.eflags().clone(),
-            fpu: emu.fpu().clone().into(),
-            seh: emu.seh(),
-            veh: emu.veh(),
-            uef: emu.uef(),
-            eh_ctx: emu.eh_ctx(),
-            tls32: emu.tls32().clone(),
-            tls64: emu.tls64().clone(),
-            fls: emu.fls().clone(),
-            fs: emu.fs().clone(),
-            call_stack: emu.call_stack().clone(),
+            current_thread,
             // API call interception
             banzai: emu.banzai.clone(),
             skip_apicall: emu.skip_apicall,
@@ -195,100 +262,289 @@ impl<'a> From<&'a Emu> for SerializableEmu {
 
 impl From<SerializableEmu> for Emu {
     fn from(serialized: SerializableEmu) -> Self {
-        let trace_file = if let Some(trace_filename) = &serialized.cfg.trace_filename {
+        let SerializableEmu {
+            cfg,
+            colors,
+            filename,
+            maps,
+            base,
+            heap_addr,
+            memory_operations,
+            instruction_state,
+            last_instruction_size,
+            rep,
+            pos,
+            max_pos,
+            tick,
+            is_running,
+            now,
+            force_break,
+            force_reload,
+            run_until_ret,
+            os,
+            pe64,
+            pe32,
+            tls_callbacks,
+            threads,
+            current_thread_id,
+            main_thread_cont,
+            gateway_return,
+            current_thread,
+            banzai,
+            skip_apicall,
+            its_apicall,
+            bp,
+            break_on_alert,
+            break_on_next_cmp,
+            break_on_next_return,
+            enabled_ctrlc,
+            running_script,
+            exp,
+            entropy,
+            last_error,
+        } = serialized;
+
+        let trace_file = if let Some(trace_filename) = &cfg.trace_filename {
             let file = File::open(trace_filename.clone()).unwrap();
             Some(file)
         } else {
             None
         };
 
-        Emu {
-            // Configuration & display
-            cfg: serialized.cfg.clone(),
-            colors: serialized.colors,
-            filename: serialized.filename,
-            // Memory & address space
-            maps: serialized.maps.into(),
-            base: serialized.base,
-            heap_addr: serialized.heap_addr,
-            heap_management: None,
-            memory_operations: serialized.memory_operations,
-            // Instruction decoding (formatter, cache recreated)
-            arch_state: ArchState::X86 {
-                instruction: serialized.instruction,
+        let arch_state = match instruction_state {
+            SerializableInstructionState::X86 {
+                instruction,
+                decoder_position,
+            } => ArchState::X86 {
+                instruction,
                 formatter: Default::default(),
                 instruction_cache: InstructionCache::new(),
-                decoder_position: serialized.decoder_position,
+                decoder_position,
             },
+            SerializableInstructionState::AArch64 => ArchState::AArch64 {
+                instruction: None,
+                instruction_cache: InstructionCache::new(),
+            },
+        };
+
+        let mut emu = Emu {
+            // Configuration & display
+            cfg: cfg.clone(),
+            colors,
+            filename,
+            // Memory & address space
+            maps: maps.into(),
+            base,
+            heap_addr,
+            heap_management: None,
+            memory_operations,
+            // Instruction decoding (formatter, cache recreated)
+            arch_state,
             last_decoded: None,
-            last_instruction_size: serialized.last_instruction_size,
-            rep: serialized.rep,
+            last_instruction_size,
+            rep,
             // Core execution state
-            pos: serialized.pos,
-            max_pos: serialized.max_pos,
-            tick: serialized.tick,
-            is_running: Arc::new(atomic::AtomicU32::new(serialized.is_running)),
-            now: serialized.now.to_instant(),
-            force_break: serialized.force_break,
+            pos,
+            max_pos,
+            tick,
+            is_running: Arc::new(atomic::AtomicU32::new(is_running)),
+            now: now.to_instant(),
+            force_break,
             process_terminated: false,
             call_depth: 0,
             ldr_init_done: false,
-            force_reload: serialized.force_reload,
-            run_until_ret: serialized.run_until_ret,
+            force_reload,
+            run_until_ret,
             rng: RefCell::new(rand::rng()),
             // Platform & loaded binary
-            os: serialized.os,
-            pe64: serialized.pe64.map(|x| x.into()),
-            pe32: serialized.pe32.map(|x| x.into()),
+            os,
+            pe64: pe64.map(|x| x.into()),
+            pe32: pe32.map(|x| x.into()),
             elf64: None,    // TODO: not yet serialized
             elf32: None,    // TODO: not yet serialized
             macho64: None,  // TODO: not yet serialized
-            tls_callbacks: serialized.tls_callbacks,
+            tls_callbacks,
             library_loaded: false,
             // Thread management
-            threads: serialized.threads.into_iter().map(|t| t.into()).collect(),
-            current_thread_id: serialized.current_thread_id,
-            main_thread_cont: serialized.main_thread_cont,
-            gateway_return: serialized.gateway_return,
+            threads: threads.into_iter().map(|t| t.into()).collect(),
+            current_thread_id,
+            main_thread_cont,
+            gateway_return,
             global_locks: GlobalLocks::new(),
             // API call interception (hooks cannot be serialized)
             hooks: Hooks::default(),
-            skip_apicall: serialized.skip_apicall,
-            its_apicall: serialized.its_apicall,
+            skip_apicall,
+            its_apicall,
             is_api_run: false,
             is_break_on_api: false,
-            banzai: serialized.banzai,
+            banzai,
             // Debugging & breakpoints
-            bp: serialized.bp,
-            break_on_alert: serialized.break_on_alert,
-            break_on_next_cmp: serialized.break_on_next_cmp,
-            break_on_next_return: serialized.break_on_next_return,
-            enabled_ctrlc: serialized.enabled_ctrlc,
-            running_script: serialized.running_script,
-            exp: serialized.exp,
+            bp,
+            break_on_alert,
+            break_on_next_cmp,
+            break_on_next_return,
+            enabled_ctrlc,
+            running_script,
+            exp,
             definitions: HashMap::new(),
             stored_contexts: HashMap::new(),
             // Tracing & statistics
             trace_file,
             instruction_count: 0,
             fault_count: 0,
-            entropy: 0.0,
-            last_error: 0,
+            entropy,
+            last_error,
             // Win32 resource management
             handle_management: HandleManagement::new(), // TODO: not yet serialized
+        };
+
+        if let Some(thread) = emu.threads.get_mut(current_thread_id) {
+            match current_thread {
+                SerializableCurrentThreadState::X86 {
+                    regs,
+                    pre_op_regs,
+                    post_op_regs,
+                    flags,
+                    pre_op_flags,
+                    post_op_flags,
+                    eflags,
+                    fpu,
+                    seh,
+                    veh,
+                    uef,
+                    eh_ctx,
+                    tls32,
+                    tls64,
+                    fls,
+                    fs,
+                    call_stack,
+                } => match &mut thread.arch {
+                    ArchThreadState::X86 {
+                        regs: thread_regs,
+                        pre_op_regs: thread_pre_op_regs,
+                        post_op_regs: thread_post_op_regs,
+                        flags: thread_flags,
+                        pre_op_flags: thread_pre_op_flags,
+                        post_op_flags: thread_post_op_flags,
+                        eflags: thread_eflags,
+                        fpu: thread_fpu,
+                        seh: thread_seh,
+                        veh: thread_veh,
+                        uef: thread_uef,
+                        eh_ctx: thread_eh_ctx,
+                        tls32: thread_tls32,
+                        tls64: thread_tls64,
+                        fls: thread_fls,
+                        fs: thread_fs,
+                        call_stack: thread_call_stack,
+                    } => {
+                        *thread_regs = regs;
+                        *thread_pre_op_regs = pre_op_regs;
+                        *thread_post_op_regs = post_op_regs;
+                        *thread_flags = flags;
+                        *thread_pre_op_flags = pre_op_flags;
+                        *thread_post_op_flags = post_op_flags;
+                        *thread_eflags = eflags;
+                        *thread_fpu = fpu.into();
+                        *thread_seh = seh;
+                        *thread_veh = veh;
+                        *thread_uef = uef;
+                        *thread_eh_ctx = eh_ctx;
+                        *thread_tls32 = tls32;
+                        *thread_tls64 = tls64;
+                        *thread_fls = fls;
+                        *thread_fs = fs;
+                        *thread_call_stack = call_stack;
+                    }
+                    ArchThreadState::AArch64 { .. } => {
+                        thread.arch = ArchThreadState::X86 {
+                            regs,
+                            pre_op_regs,
+                            post_op_regs,
+                            flags,
+                            pre_op_flags,
+                            post_op_flags,
+                            eflags,
+                            fpu: fpu.into(),
+                            seh,
+                            veh,
+                            uef,
+                            eh_ctx,
+                            tls32,
+                            tls64,
+                            fls,
+                            fs,
+                            call_stack,
+                        };
+                    }
+                },
+                SerializableCurrentThreadState::AArch64 {
+                    regs,
+                    pre_op_regs,
+                    post_op_regs,
+                } => match &mut thread.arch {
+                    ArchThreadState::AArch64 {
+                        regs: thread_regs,
+                        pre_op_regs: thread_pre_op_regs,
+                        post_op_regs: thread_post_op_regs,
+                    } => {
+                        *thread_regs = regs;
+                        *thread_pre_op_regs = pre_op_regs;
+                        *thread_post_op_regs = post_op_regs;
+                    }
+                    ArchThreadState::X86 { .. } => {
+                        thread.arch = ArchThreadState::AArch64 {
+                            regs,
+                            pre_op_regs,
+                            post_op_regs,
+                        };
+                    }
+                },
+            }
         }
+
+        if emu.cfg.arch.is_64bits() {
+            emu.maps.is_64bits = true;
+        }
+
+        emu
     }
 }
 
 impl Default for SerializableEmu {
     fn default() -> Self {
-        SerializableEmu::from(&Emu::new())
+        SerializableEmu::from(&Emu::new(crate::arch::Arch::X86))
     }
 }
 
 impl SerializableEmu {
     pub fn set_regs(&mut self, regs: Regs64) {
-        self.regs = regs;
+        match &mut self.current_thread {
+            SerializableCurrentThreadState::X86 {
+                regs: current_regs, ..
+            } => *current_regs = regs,
+            SerializableCurrentThreadState::AArch64 { .. } => {
+                panic!("set_regs called on aarch64 serialized thread state")
+            }
+        }
+    }
+
+    pub fn set_flags(&mut self, flags: Flags) {
+        match &mut self.current_thread {
+            SerializableCurrentThreadState::X86 {
+                flags: current_flags,
+                pre_op_flags,
+                post_op_flags,
+                ..
+            } => {
+                *current_flags = flags;
+                *pre_op_flags = flags;
+                *post_op_flags = flags;
+            }
+            SerializableCurrentThreadState::AArch64 { .. } => {
+                panic!("set_flags called on aarch64 serialized thread state")
+            }
+        }
     }
 
     pub fn set_maps(&mut self, maps: SerializableMaps) {
@@ -301,5 +557,32 @@ impl SerializableEmu {
 
     pub fn set_pe64(&mut self, pe64: Option<SerializablePE64>) {
         self.pe64 = pe64;
+    }
+
+    pub fn set_regs_aarch64(&mut self, regs: RegsAarch64) {
+        match &mut self.current_thread {
+            SerializableCurrentThreadState::AArch64 {
+                regs: current_regs,
+                pre_op_regs,
+                post_op_regs,
+            } => {
+                *current_regs = regs;
+                *pre_op_regs = regs;
+                *post_op_regs = regs;
+            }
+            SerializableCurrentThreadState::X86 { .. } => {
+                panic!("set_regs_aarch64 called on x86 serialized thread state")
+            }
+        }
+    }
+
+    pub fn default_for_arch(arch: Arch) -> Self {
+        let mut emu = match arch {
+            Arch::Aarch64 => crate::emu_aarch64(),
+            Arch::X86_64 => crate::emu64(),
+            Arch::X86 => crate::emu32(),
+        };
+        emu.init_cpu();
+        SerializableEmu::from(&emu)
     }
 }

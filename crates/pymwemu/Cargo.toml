@@ -21,6 +21,9 @@ log.workspace = true
 iced-x86.workspace = true
 yaxpeax-arm.workspace = true
 
+[build-dependencies]
+pyo3-build-config = "0.26.0"
+
 [features]
 extension-module = ["pyo3/extension-module"]
 default = ["extension-module"]

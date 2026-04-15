@@ -22,6 +22,18 @@ pub fn test_data_path(rel: &str) -> String {
         .into_owned()
 }
 
+/// Maps folder for 32-bit Windows samples (`maps/windows/x86/`).
+pub fn win32_maps_folder() -> String {
+    let mut s = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../maps/windows/x86")
+        .to_string_lossy()
+        .into_owned();
+    if !s.ends_with('/') {
+        s.push('/');
+    }
+    s
+}
+
 /// Maps folder for 64-bit Windows samples (`maps/windows/x86_64/`).
 pub fn win64_maps_folder() -> String {
     let mut s = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

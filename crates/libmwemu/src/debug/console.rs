@@ -1030,7 +1030,7 @@ impl Console {
                 }
                 "dump" => {
                     if emu.cfg.dump_filename.is_some() {
-                        serialization::Serialization::dump_to_file(
+                        serialization::Serialization::dump(
                             &emu,
                             emu.cfg.dump_filename.as_ref().unwrap(),
                         );

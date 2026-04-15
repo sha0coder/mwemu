@@ -8,10 +8,10 @@ pub fn elf64lin_fpu() {
 
     let mut emu = emu64();
 
-    emu.cfg.maps_folder = "../../maps/windows/x86_64/".to_string();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
 
-    let sample = "../../test/elf64lin_fpu.bin";
-    emu.load_code(sample);
+    let sample = helpers::test_data_path("elf64lin_fpu.bin");
+    emu.load_code(&sample);
     emu.fpu_mut().clear();
     emu.fpu_mut().trace = true;
     assert_eq!(emu.fpu_mut().peek_st_u80(7), 0);

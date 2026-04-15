@@ -35,14 +35,14 @@ impl Emu {
         }
     }
 
-    pub fn eh_ctx(&self) -> u32 {
+    pub fn eh_ctx(&self) -> u64 {
         match &self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { eh_ctx, .. } => *eh_ctx,
             _ => panic!("eh_ctx() called on aarch64 emu"),
         }
     }
 
-    pub fn set_eh_ctx(&mut self, value: u32) {
+    pub fn set_eh_ctx(&mut self, value: u64) {
         match &mut self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { eh_ctx, .. } => *eh_ctx = value,
             _ => panic!("set_eh_ctx() called on aarch64 emu"),
