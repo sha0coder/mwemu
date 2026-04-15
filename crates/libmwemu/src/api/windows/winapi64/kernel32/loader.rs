@@ -37,6 +37,16 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             base
         }
         None => {
+            // Guard against re-entrant loading (circular imports): if the .pe map was
+            // already created by an in-progress load_pe64 call further up the stack,
+            // skip loading and register the existing map as the LDR entry.
+            let pe_map_name = format!("{}.pe", dll.trim_end_matches(".dll"));
+            if let Some(existing) = emu.maps.get_map_by_name(&pe_map_name) {
+                let base = existing.get_base();
+                log::trace!("dll {} already mapped (load in progress), skipping reload", dll);
+                return base;
+            }
+
             let path = std::path::Path::new(&dll_path);
             if path.try_exists().unwrap() {
                 let (base, pe_off) = emu.load_pe64(&dll_path, false, 0);
