@@ -140,6 +140,7 @@ impl Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(),
             library_loaded: false,
+            section_handles: HashMap::new(),
         }
     }
 

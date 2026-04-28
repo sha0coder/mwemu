@@ -6,7 +6,7 @@ use crate::loaders::elf::elf32::Elf32;
 use crate::loaders::elf::elf64::Elf64;
 use crate::loaders::macho::macho64::Macho64;
 use crate::loaders::pe::{
-    pe_machine_type, IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_ARM64, IMAGE_FILE_MACHINE_I386,
+    IMAGE_FILE_MACHINE_AMD64, IMAGE_FILE_MACHINE_ARM64, IMAGE_FILE_MACHINE_I386, pe_machine_type,
 };
 use crate::maps::mem64::Permission;
 use crate::winapi::winapi64;
@@ -100,10 +100,12 @@ impl Emu {
             self.load_elf64(filename);
 
         // PE: use COFF Machine field to distinguish x86 / x86_64 / ARM64
-        } else if !self.cfg.shellcode
-            && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_I386)
+        } else if !self.cfg.shellcode && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_I386)
         {
-            log::trace!("PE32 x86 header detected (Machine=0x{:04x}).", IMAGE_FILE_MACHINE_I386);
+            log::trace!(
+                "PE32 x86 header detected (Machine=0x{:04x}).",
+                IMAGE_FILE_MACHINE_I386
+            );
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.cfg.arch = Arch::X86;
@@ -134,8 +136,7 @@ impl Emu {
             self.regs_mut().rip = ep;
 
         // PE64 ARM64
-        } else if !self.cfg.shellcode
-            && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_ARM64)
+        } else if !self.cfg.shellcode && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_ARM64)
         {
             log::trace!(
                 "PE64 ARM64 header detected (Machine=0x{:04x}). Windows AArch64 PE recognized.",
@@ -164,9 +165,9 @@ impl Emu {
                 Some(ref pe64) => {
                     if pe64.is_dll() {
                         let regs = self.regs_aarch64_mut();
-                        regs.x[0] = base;   // hinstDLL
-                        regs.x[1] = 1;      // fdwReason = DLL_PROCESS_ATTACH
-                        regs.x[2] = 0;      // lpvReserved
+                        regs.x[0] = base; // hinstDLL
+                        regs.x[1] = 1; // fdwReason = DLL_PROCESS_ATTACH
+                        regs.x[2] = 0; // lpvReserved
                     }
                 }
                 _ => {
@@ -177,10 +178,12 @@ impl Emu {
             self.set_pc(ep);
 
         // PE64 x86_64
-        } else if !self.cfg.shellcode
-            && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_AMD64)
+        } else if !self.cfg.shellcode && pe_machine_type(filename) == Some(IMAGE_FILE_MACHINE_AMD64)
         {
-            log::trace!("PE64 x86_64 header detected (Machine=0x{:04x}).", IMAGE_FILE_MACHINE_AMD64);
+            log::trace!(
+                "PE64 x86_64 header detected (Machine=0x{:04x}).",
+                IMAGE_FILE_MACHINE_AMD64
+            );
             let clear_registers = false; // TODO: this needs to be more dynamic, like if we have a register set via args or not
             let clear_flags = false; // TODO: this needs to be more dynamic, like if we have a flag set via args or not
             self.cfg.arch = Arch::X86_64;
@@ -213,7 +216,7 @@ impl Emu {
                 }
             }
             // Optional SSDT loader bootstrap: call ntdll!LdrInitializeThunk to perform loader init.
-            if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+            if self.cfg.emulate_winapi {
                 let ldr_init = winapi64::kernel32::resolve_api_name_in_module(
                     self,
                     "ntdll.dll",
@@ -236,9 +239,12 @@ impl Emu {
                     //   +0xF8  Rip            (QWORD)
                     const CTX_SIZE: u64 = 0x4D0;
                     const CONTEXT_FULL: u32 = 0x10_007F;
-                    let ctx_addr = self.maps.lib64_alloc(CTX_SIZE)
+                    let ctx_addr = self
+                        .maps
+                        .lib64_alloc(CTX_SIZE)
                         .expect("cannot alloc CONTEXT for LdrInitializeThunk");
-                    self.maps.create_map("ldr_context", ctx_addr, CTX_SIZE, Permission::READ_WRITE)
+                    self.maps
+                        .create_map("ldr_context", ctx_addr, CTX_SIZE, Permission::READ_WRITE)
                         .expect("cannot create ldr_context map");
                     // ContextFlags
                     let _ = self.maps.write_dword(ctx_addr + 0x30, CONTEXT_FULL);
@@ -257,20 +263,30 @@ impl Emu {
                     // Guest loader often clears `PEB+0x90`; restore before walking modules / main EP.
                     peb64::ensure_peb_system_dependent_07(self);
 
-                    // LdrInitializeThunk reinitializes the Ldr lists; if it didn't
-                    // complete successfully the lists may be empty. Rebuild them
-                    // from the actually-loaded PE images so user code can walk them.
-                    peb64::rebuild_ldr_lists(self);
-
                     // LdrInitializeThunk was expected to bind the main image IAT but
                     // our emulation does not run LdrpProcessInitializationComplete fully.
                     // Bind it now so imported functions resolve to real stubs.
+                    // Must run BEFORE rebuild_ldr_lists so that kernelbase/kernel32 .pe
+                    // maps exist when the list is built.
                     let exe_base = self.base;
                     if let Some(mut pe) = self.pe64.take() {
                         pe.iat_binding(self, exe_base);
                         pe.delay_load_binding(self, exe_base);
                         self.pe64 = Some(pe);
                     }
+
+                    // Ensure essential Windows DLLs are loaded with valid PE content so
+                    // the PEB module list is usable by manual walkers (e.g. MinGW CRT).
+                    // LdrInitializeThunk maps these via NtMapViewOfSection which only creates
+                    // empty placeholder regions; we load the real PE files here.
+                    for essential in &["kernelbase.dll", "kernel32.dll", "user32.dll"] {
+                        winapi64::kernel32::load_library(self, essential);
+                    }
+
+                    // LdrInitializeThunk reinitializes the Ldr lists; if it didn't
+                    // complete successfully the lists may be empty. Rebuild them
+                    // from the actually-loaded PE images so user code can walk them.
+                    peb64::rebuild_ldr_lists(self);
                 } else if self.cfg.verbose >= 1 {
                     log::trace!("ssdt: could not resolve ntdll!LdrInitializeThunk");
                 }

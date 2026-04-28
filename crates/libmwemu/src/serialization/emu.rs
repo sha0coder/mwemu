@@ -396,6 +396,7 @@ impl From<SerializableEmu> for Emu {
             last_error,
             // Win32 resource management
             handle_management: HandleManagement::new(), // TODO: not yet serialized
+            section_handles: HashMap::new(),
         };
 
         if let Some(thread) = emu.threads.get_mut(current_thread_id) {

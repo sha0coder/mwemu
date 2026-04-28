@@ -5,6 +5,7 @@ shellcodes64/
 .DS_Store
 prompt.md
 private
+.offcode.ctx
 *prompt*
 x
 *.txt

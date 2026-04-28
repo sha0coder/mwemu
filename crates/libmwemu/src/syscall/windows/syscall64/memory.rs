@@ -824,9 +824,11 @@ pub fn nt_unmap_view_of_section(emu: &mut Emu) {
 /// [rsp+0x38]=*ViewSize, [rsp+0x40]=InheritDisposition,
 /// [rsp+0x48]=AllocationType, [rsp+0x50]=Win32Protect.
 ///
-/// Allocates a fresh anonymous region and writes its address back to *BaseAddress.
+/// For KnownDll section handles (tracked via NtOpenSection), loads the real
+/// PE from the maps folder so ntdll's loader gets valid image content.
+/// Otherwise allocates a fresh anonymous region.
 pub fn nt_map_view_of_section(emu: &mut Emu) {
-    let _section_handle = emu.regs().rcx;
+    let section_handle = emu.regs().rcx;
     let process_handle = emu.regs().rdx;
     let base_addr_ptr = emu.regs().r8;
     let rsp = emu.regs().rsp;
@@ -859,6 +861,36 @@ pub fn nt_map_view_of_section(emu: &mut Emu) {
     if !is_current_process_handle(process_handle) {
         emu.regs_mut().rax = STATUS_ACCESS_DENIED;
         return;
+    }
+
+    // If this handle corresponds to a KnownDll section (tracked by NtOpenSection),
+    // load the real PE content so ntdll's loader gets valid image data.
+    if let Some(dll_name) = emu.section_handles.get(&section_handle).cloned() {
+        let dll_base = crate::api::windows::winapi64::kernel32::load_library(emu, &dll_name);
+        if dll_base != 0 {
+            log::trace!(
+                "NtMapViewOfSection: KnownDll {} loaded at 0x{:x}",
+                dll_name, dll_base
+            );
+            // Write the real PE base back to *BaseAddress.
+            if base_addr_ptr != 0 && emu.maps.is_mapped(base_addr_ptr) {
+                let _ = emu.maps.write_qword(base_addr_ptr, dll_base);
+            }
+            // Report SizeOfImage as the view size (PE opt header +0x50 on PE64).
+            let size_of_image: u64 = {
+                let pe_off = emu.maps.read_dword(dll_base + 0x3c).unwrap_or(0) as u64;
+                if pe_off > 0 {
+                    emu.maps.read_dword(dll_base + pe_off + 0x50).unwrap_or(0x1000) as u64
+                } else {
+                    0x1000
+                }
+            };
+            if view_size_ptr != 0 && emu.maps.is_mapped(view_size_ptr) {
+                let _ = emu.maps.write_qword(view_size_ptr, size_of_image);
+            }
+            emu.regs_mut().rax = STATUS_SUCCESS;
+            return;
+        }
     }
 
     let perm = nt_page_protection_to_permission(protect);
@@ -948,18 +980,24 @@ pub fn nt_allocate_user_physical_pages_ex(emu: &mut Emu) {
 ///
 /// x64: RCX=SectionHandle(out), RDX=DesiredAccess, R8=ObjectAttributes.
 /// Writes a fake handle and returns STATUS_SUCCESS.
+/// If the section name is a KnownDll path (e.g. `\KnownDlls\kernel32.dll`),
+/// store `handle → dll_name` so NtMapViewOfSection can load real PE content.
 pub fn nt_open_section(emu: &mut Emu) {
     let handle_out = emu.regs().rcx;
     let desired_access = emu.regs().rdx;
     let obj_attr = emu.regs().r8;
 
+    // Parse ObjectAttributes → UNICODE_STRING → section name.
+    let section_name = read_object_attributes_name(emu, obj_attr);
+
     log_orange!(
         emu,
-        "syscall 0x{:x}: NtOpenSection handle_out: 0x{:x}, access: 0x{:x}, obj_attr: 0x{:x}",
+        "syscall 0x{:x}: NtOpenSection handle_out: 0x{:x}, access: 0x{:x}, obj_attr: 0x{:x} name: {:?}",
         WIN64_NTOPENSECTION,
         handle_out,
         desired_access,
         obj_attr,
+        section_name,
     );
 
     if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
@@ -969,7 +1007,57 @@ pub fn nt_open_section(emu: &mut Emu) {
 
     let h = crate::syscall::windows::syscall64::sync::next_handle();
     let _ = emu.maps.write_qword(handle_out, h);
+
+    // Track KnownDll sections so NtMapViewOfSection can load real PE content.
+    // KnownDlls paths look like `\KnownDlls\kernel32.dll` or `\KnownDlls32\kernel32.dll`.
+    if let Some(dll_name) = extract_known_dll_name(&section_name) {
+        log::trace!("NtOpenSection: tracking KnownDll handle 0x{:x} -> {}", h, dll_name);
+        emu.section_handles.insert(h, dll_name);
+    }
+
     emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// Extract the DLL filename from a KnownDlls section path, e.g.:
+/// `\KnownDlls\kernel32.dll`  → `kernel32.dll`
+/// `\KnownDlls32\kernel32.dll` → `kernel32.dll`
+/// Returns `None` if the path is not a KnownDlls path.
+fn extract_known_dll_name(path: &str) -> Option<String> {
+    // Case-insensitive match for \KnownDlls\ prefix.
+    let lower = path.to_lowercase();
+    let prefix = if lower.starts_with("\\knowndlls32\\") {
+        "\\knowndlls32\\"
+    } else if lower.starts_with("\\knowndlls\\") {
+        "\\knowndlls\\"
+    } else {
+        return None;
+    };
+    let rest = &path[prefix.len()..];
+    if rest.is_empty() {
+        return None;
+    }
+    Some(rest.to_lowercase())
+}
+
+fn read_unicode_string(emu: &Emu, addr: u64) -> String {
+    if addr == 0 || !emu.maps.is_mapped(addr) {
+        return String::new();
+    }
+    let _len = emu.maps.read_word(addr).unwrap_or(0);
+    let buf = emu.maps.read_qword(addr + 8).unwrap_or(0);
+    if buf == 0 || !emu.maps.is_mapped(buf) {
+        return String::new();
+    }
+    emu.maps.read_wide_string(buf)
+}
+
+fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
+    if addr == 0 || !emu.maps.is_mapped(addr) {
+        return String::new();
+    }
+    // OBJECT_ATTRIBUTES64: Length(4)+pad(4)+RootDirectory(8)+ObjectName*(8)
+    let object_name_ptr = emu.maps.read_qword(addr + 0x10).unwrap_or(0);
+    read_unicode_string(emu, object_name_ptr)
 }
 
 pub fn nt_create_section(emu: &mut Emu) {

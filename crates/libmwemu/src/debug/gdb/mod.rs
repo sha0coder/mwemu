@@ -9,6 +9,7 @@ mod target;
 mod target_xml;
 
 use std::io::{self, Read as IoRead, Write as IoWrite};
+use std::marker::PhantomData;
 use std::net::{TcpListener, TcpStream};
 
 use gdbstub::common::Signal;
@@ -82,14 +83,11 @@ impl GdbServer {
 fn run_64bit(emu: &mut Emu, stream: TcpStream) -> Result<(), GdbServerError> {
     let conn: Box<dyn ConnectionExt<Error = io::Error>> = Box::new(GdbConnection::new(stream));
 
-    // SAFETY: We're extending the lifetime to 'static because the gdbstub library requires it.
-    // The emulator reference remains valid for the duration of the run_blocking call.
-    let emu_static: &'static mut Emu = unsafe { std::mem::transmute(emu) };
-    let mut target = MwemuTarget64::new(emu_static);
+    let mut target = MwemuTarget64::new(emu);
 
     let gdb = GdbStub::new(conn);
 
-    match gdb.run_blocking::<MwemuEventLoop64>(&mut target) {
+    match gdb.run_blocking::<MwemuEventLoop64<'_>>(&mut target) {
         Ok(disconnect_reason) => {
             match disconnect_reason {
                 DisconnectReason::Disconnect => {
@@ -114,14 +112,11 @@ fn run_64bit(emu: &mut Emu, stream: TcpStream) -> Result<(), GdbServerError> {
 fn run_aarch64(emu: &mut Emu, stream: TcpStream) -> Result<(), GdbServerError> {
     let conn: Box<dyn ConnectionExt<Error = io::Error>> = Box::new(GdbConnection::new(stream));
 
-    // SAFETY: We're extending the lifetime to 'static because the gdbstub library requires it.
-    // The emulator reference remains valid for the duration of the run_blocking call.
-    let emu_static: &'static mut Emu = unsafe { std::mem::transmute(emu) };
-    let mut target = MwemuTargetAarch64::new(emu_static);
+    let mut target = MwemuTargetAarch64::new(emu);
 
     let gdb = GdbStub::new(conn);
 
-    match gdb.run_blocking::<MwemuEventLoopAarch64>(&mut target) {
+    match gdb.run_blocking::<MwemuEventLoopAarch64<'_>>(&mut target) {
         Ok(disconnect_reason) => {
             match disconnect_reason {
                 DisconnectReason::Disconnect => {
@@ -146,14 +141,11 @@ fn run_aarch64(emu: &mut Emu, stream: TcpStream) -> Result<(), GdbServerError> {
 fn run_32bit(emu: &mut Emu, stream: TcpStream) -> Result<(), GdbServerError> {
     let conn: Box<dyn ConnectionExt<Error = io::Error>> = Box::new(GdbConnection::new(stream));
 
-    // SAFETY: We're extending the lifetime to 'static because the gdbstub library requires it.
-    // The emulator reference remains valid for the duration of the run_blocking call.
-    let emu_static: &'static mut Emu = unsafe { std::mem::transmute(emu) };
-    let mut target = MwemuTarget32::new(emu_static);
+    let mut target = MwemuTarget32::new(emu);
 
     let gdb = GdbStub::new(conn);
 
-    match gdb.run_blocking::<MwemuEventLoop32>(&mut target) {
+    match gdb.run_blocking::<MwemuEventLoop32<'_>>(&mut target) {
         Ok(disconnect_reason) => {
             match disconnect_reason {
                 DisconnectReason::Disconnect => {
@@ -254,10 +246,10 @@ impl ConnectionExt for GdbConnection {
 }
 
 /// Event loop implementation for 64-bit targets
-struct MwemuEventLoop64;
+struct MwemuEventLoop64<'a>(PhantomData<&'a mut Emu>);
 
-impl BlockingEventLoop for MwemuEventLoop64 {
-    type Target = MwemuTarget64<'static>;
+impl<'a> BlockingEventLoop for MwemuEventLoop64<'a> {
+    type Target = MwemuTarget64<'a>;
     type Connection = Box<dyn ConnectionExt<Error = io::Error>>;
     type StopReason = SingleThreadStopReason<u64>;
 
@@ -347,10 +339,10 @@ impl BlockingEventLoop for MwemuEventLoop64 {
 }
 
 /// Event loop implementation for AArch64 targets
-struct MwemuEventLoopAarch64;
+struct MwemuEventLoopAarch64<'a>(PhantomData<&'a mut Emu>);
 
-impl BlockingEventLoop for MwemuEventLoopAarch64 {
-    type Target = MwemuTargetAarch64<'static>;
+impl<'a> BlockingEventLoop for MwemuEventLoopAarch64<'a> {
+    type Target = MwemuTargetAarch64<'a>;
     type Connection = Box<dyn ConnectionExt<Error = io::Error>>;
     type StopReason = SingleThreadStopReason<u64>;
 
@@ -438,10 +430,10 @@ impl BlockingEventLoop for MwemuEventLoopAarch64 {
 }
 
 /// Event loop implementation for 32-bit targets
-struct MwemuEventLoop32;
+struct MwemuEventLoop32<'a>(PhantomData<&'a mut Emu>);
 
-impl BlockingEventLoop for MwemuEventLoop32 {
-    type Target = MwemuTarget32<'static>;
+impl<'a> BlockingEventLoop for MwemuEventLoop32<'a> {
+    type Target = MwemuTarget32<'a>;
     type Connection = Box<dyn ConnectionExt<Error = io::Error>>;
     type StopReason = SingleThreadStopReason<u32>;
 

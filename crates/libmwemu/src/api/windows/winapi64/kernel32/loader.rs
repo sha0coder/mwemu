@@ -29,7 +29,21 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     let mut dll_path = emu.cfg.maps_folder.clone();
     dll_path.push_str(&dll);
 
-    match peb64::get_module_base(&dll, emu) {
+    // Check if this DLL is already linked with a valid PE header.
+    // During SSDT emulation, LdrInitializeThunk may have mapped placeholder
+    // regions (from NtMapViewOfSection) that have no actual PE content.
+    // We detect this by checking for the MZ magic at the reported base.
+    let already_linked_base = peb64::get_module_base(&dll, emu).and_then(|base| {
+        let mz = emu.maps.read_word(base).unwrap_or(0);
+        if mz == 0x5A4D {
+            Some(base) // valid PE: keep it
+        } else {
+            log::trace!("load_library: {} found in LDR at 0x{:x} but has no valid PE, reloading", dll, base);
+            None // invalid PE: force reload from file
+        }
+    });
+
+    match already_linked_base {
         Some(base) => {
             if emu.cfg.verbose > 0 {
                 log::trace!("dll {} already linked.", dll);

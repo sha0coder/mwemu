@@ -151,6 +151,7 @@ pub struct Emu {
 
     // --- Win32 resource management ---
     pub handle_management: HandleManagement, // file and object handle table
+    pub section_handles: HashMap<u64, String>, // KnownDll section handle → DLL filename (e.g., "kernel32.dll")
 }
 
 // --- ArchState accessors ---

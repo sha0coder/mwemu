@@ -141,38 +141,10 @@ impl Emu {
                 log::trace!("/!\\ changing RIP to {} ", name);
             }
 
-            // emulate winapi
+            // emulate winapi (SSDT mode): always run real DLL machine code.
+            // Syscall instructions inside the real DLL code are intercepted
+            // by the syscall handler. No Rust stubs are used here.
             if self.cfg.emulate_winapi {
-                // After LdrInitializeThunk completes, intercept API calls from PE
-                // code using virtual Rust stubs. Real DLL code writes non-volatile
-                // registers to shadow space that may overlap with PE frame locals,
-                // corrupting saved RSP values. Virtual stubs avoid this.
-                if self.ldr_init_done {
-                    if self.skip_apicall {
-                        self.its_apicall = Some(addr);
-                        return false;
-                    }
-                    self.gateway_return = self.stack_pop64(false).unwrap_or(0);
-                    self.regs_mut().rip = self.gateway_return;
-                    let map_name = self.maps.get_addr_name(addr)
-                        .map(|n| n.to_string())
-                        .unwrap_or_else(|| "not_loaded".to_string());
-                    let handle_winapi: bool =
-                        if let Some(mut hook_fn) = self.hooks.hook_on_winapi_call.take() {
-                            let rip = self.regs().rip;
-                            let result = hook_fn(self, rip, addr);
-                            self.hooks.hook_on_winapi_call = Some(hook_fn);
-                            result
-                        } else {
-                            true
-                        };
-                    if handle_winapi {
-                        winapi64::gateway(addr, &map_name, self);
-                    }
-                    self.force_break = true;
-                    return true;
-                }
-
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
                 if !api_name.is_empty() {
                     if self.cfg.verbose >= 1 {
