@@ -1,6 +1,6 @@
 [package]
 name = "mwemu"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["sha0coder"]
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ repository.workspace = true
 [dependencies]
 clap.workspace = true
 log.workspace = true
-#libmwemu = "0.23.3"
+#libmwemu = "0.24.3"
 libmwemu.workspace = true
 fast_log.workspace = true
 
