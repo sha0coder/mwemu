@@ -1,6 +1,6 @@
 [package]
 name = "libmwemu"
-version = "0.24.3"
+version = "0.24.4"
 edition.workspace = true
 authors = ["sha0coder"]
 license.workspace = true

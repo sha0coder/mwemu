@@ -1,11 +1,12 @@
 use crate::err::MwemuError;
-use crate::maps::mem64::Permission;
 use crate::maps::Maps;
+use crate::maps::mem64::Permission;
 use goblin::mach::load_command::CommandVariant;
 use std::fs;
 use std::io::Read;
 
 const MH_MAGIC_64: u32 = 0xFEEDFACF;
+const FAT_MAGIC_64: u32 = 0xCAFEBABE;
 const CPU_TYPE_ARM64: u32 = 0x0100000C;
 const CPU_TYPE_X86_64: u32 = 0x01000007;
 
@@ -61,10 +62,17 @@ impl Macho64 {
 
     /// Detect a 64-bit AArch64 Mach-O file by reading the first 8 bytes.
     pub fn is_macho64_aarch64(filename: &str) -> bool {
-        matches!(
-            Self::read_magic_and_cputype(filename),
-            Some((MH_MAGIC_64, CPU_TYPE_ARM64))
-        )
+        if let Some((magic, cpu)) = Self::read_magic_and_cputype(filename) {
+            if magic == MH_MAGIC_64 && cpu == CPU_TYPE_ARM64 {
+                return true;
+            }
+
+            if magic == FAT_MAGIC_64 && cpu == CPU_TYPE_ARM64 {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Detect a 64-bit x86_64 Mach-O file by reading the first 8 bytes.
@@ -110,11 +118,7 @@ impl Macho64 {
             });
         }
 
-        log::info!(
-            "macho64: {} segments, entry=0x{:x}",
-            segments.len(),
-            entry
-        );
+        log::info!("macho64: {} segments, entry=0x{:x}", segments.len(), entry);
 
         Ok(Macho64 {
             bin,
@@ -169,10 +173,7 @@ impl Macho64 {
     pub fn get_exports(&self) -> Vec<(String, u64)> {
         let macho = goblin::mach::MachO::parse(&self.bin, 0).expect("re-parse for exports");
         match macho.exports() {
-            Ok(exports) => exports
-                .iter()
-                .map(|e| (e.name.clone(), e.offset))
-                .collect(),
+            Ok(exports) => exports.iter().map(|e| (e.name.clone(), e.offset)).collect(),
             Err(e) => {
                 log::warn!("macho64: cannot read exports: {}", e);
                 Vec::new()
@@ -196,14 +197,10 @@ impl Macho64 {
 
                 // dyld_chained_fixups_header
                 let starts_offset = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize;
-                let imports_offset =
-                    u32::from_le_bytes(data[8..12].try_into().unwrap()) as usize;
-                let symbols_offset =
-                    u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
-                let imports_count =
-                    u32::from_le_bytes(data[16..20].try_into().unwrap()) as u32;
-                let imports_format =
-                    u32::from_le_bytes(data[20..24].try_into().unwrap());
+                let imports_offset = u32::from_le_bytes(data[8..12].try_into().unwrap()) as usize;
+                let symbols_offset = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+                let imports_count = u32::from_le_bytes(data[16..20].try_into().unwrap()) as u32;
+                let imports_format = u32::from_le_bytes(data[20..24].try_into().unwrap());
 
                 // Parse import table
                 for i in 0..imports_count {
@@ -211,17 +208,14 @@ impl Macho64 {
                         1 => {
                             // DYLD_CHAINED_IMPORT: lib_ordinal:8, weak_import:1, name_offset:23
                             let off = imports_offset + (i as usize * 4);
-                            let raw =
-                                u32::from_le_bytes(data[off..off + 4].try_into().unwrap());
+                            let raw = u32::from_le_bytes(data[off..off + 4].try_into().unwrap());
                             let lib_ordinal = (raw & 0xFF) as i8;
                             let weak = (raw >> 8) & 1 != 0;
                             let name_offset = (raw >> 9) as usize;
                             let name_start = symbols_offset + name_offset;
-                            let name_end = data[name_start..]
-                                .iter()
-                                .position(|b| *b == 0)
-                                .unwrap_or(0)
-                                + name_start;
+                            let name_end =
+                                data[name_start..].iter().position(|b| *b == 0).unwrap_or(0)
+                                    + name_start;
                             let name = std::str::from_utf8(&data[name_start..name_end])
                                 .unwrap_or("")
                                 .to_string();
@@ -243,14 +237,13 @@ impl Macho64 {
                 }
 
                 // Parse starts_in_image to walk chains and find BIND entries
-                let seg_count = u32::from_le_bytes(
-                    data[starts_offset..starts_offset + 4].try_into().unwrap(),
-                ) as usize;
+                let seg_count =
+                    u32::from_le_bytes(data[starts_offset..starts_offset + 4].try_into().unwrap())
+                        as usize;
 
                 for seg_idx in 0..seg_count {
                     let seg_info_off = u32::from_le_bytes(
-                        data[starts_offset + 4 + seg_idx * 4
-                            ..starts_offset + 8 + seg_idx * 4]
+                        data[starts_offset + 4 + seg_idx * 4..starts_offset + 8 + seg_idx * 4]
                             .try_into()
                             .unwrap(),
                     );
@@ -264,8 +257,7 @@ impl Macho64 {
                     let pointer_format =
                         u16::from_le_bytes(data[si + 6..si + 8].try_into().unwrap());
                     let page_count =
-                        u16::from_le_bytes(data[si + 20..si + 22].try_into().unwrap())
-                            as usize;
+                        u16::from_le_bytes(data[si + 20..si + 22].try_into().unwrap()) as usize;
 
                     // Get segment vmaddr and fileoff from goblin's segment list
                     let (seg_vmaddr, seg_fileoff) = macho
@@ -282,17 +274,11 @@ impl Macho64 {
                             continue;
                         }
 
-                        let chain_file_base =
-                            seg_fileoff + p * page_size + page_start as usize;
+                        let chain_file_base = seg_fileoff + p * page_size + page_start as usize;
                         let chain_vm_base =
                             seg_vmaddr + (p as u64 * page_size as u64) + page_start as u64;
 
-                        self.walk_chain(
-                            pointer_format,
-                            chain_file_base,
-                            chain_vm_base,
-                            &mut binds,
-                        );
+                        self.walk_chain(pointer_format, chain_file_base, chain_vm_base, &mut binds);
                     }
                 }
             }
@@ -319,8 +305,7 @@ impl Macho64 {
             if file_off + 8 > self.bin.len() {
                 break;
             }
-            let raw =
-                u64::from_le_bytes(self.bin[file_off..file_off + 8].try_into().unwrap());
+            let raw = u64::from_le_bytes(self.bin[file_off..file_off + 8].try_into().unwrap());
 
             let (bind, next, ordinal) = match pointer_format {
                 DYLD_CHAINED_PTR_64_OFFSET | 2 => {
