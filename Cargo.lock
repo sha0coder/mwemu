@@ -1065,7 +1065,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.24.1"
+version = "0.24.3"
 dependencies = [
  "ahash",
  "atty",
@@ -1079,6 +1079,7 @@ dependencies = [
  "dunce",
  "env_logger",
  "fast_log",
+ "flate2",
  "gdbstub",
  "gdbstub_arch",
  "goblin",
@@ -1458,7 +1459,7 @@ dependencies = [
 
 [[package]]
 name = "pymwemu"
-version = "0.11.1"
+version = "0.11.2"
 dependencies = [
  "env_logger",
  "iced-x86",

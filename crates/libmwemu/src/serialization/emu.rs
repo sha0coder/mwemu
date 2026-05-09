@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::sync::atomic;
 use std::sync::Arc;
@@ -397,6 +397,8 @@ impl From<SerializableEmu> for Emu {
             // Win32 resource management
             handle_management: HandleManagement::new(), // TODO: not yet serialized
             section_handles: HashMap::new(),
+            known_dll_dir_handles: HashSet::new(),
+            ssdt_pad_stack: Vec::new(),
         };
 
         if let Some(thread) = emu.threads.get_mut(current_thread_id) {

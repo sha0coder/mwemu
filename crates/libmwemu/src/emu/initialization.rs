@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use std::time::Instant;
@@ -141,6 +141,8 @@ impl Emu {
             handle_management: HandleManagement::new(),
             library_loaded: false,
             section_handles: HashMap::new(),
+            known_dll_dir_handles: HashSet::new(),
+            ssdt_pad_stack: Vec::new(),
         }
     }
 
@@ -186,7 +188,10 @@ impl Emu {
 
     /// This inits the 64bits stack, it's called from init_cpu() and init()
     pub fn init_stack64(&mut self) {
-        // Large stack only when booting through `ntdll!LdrInitializeThunk` (needs >2 MB).
+        // Large stack only when booting through `ntdll!LdrInitializeThunk`.
+        // 4 MB is enough for the LdrInitializeThunk path itself; the api-set
+        // fallback for unresolved dependencies runs each DllMain once and
+        // unwinds normally, so additional headroom isn't needed in practice.
         let stack_size = if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
             0x400000
         } else {

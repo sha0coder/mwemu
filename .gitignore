@@ -5,6 +5,7 @@ shellcodes64/
 .DS_Store
 prompt.md
 private
+trace_LdrInitializeThunk.txt
 .offcode.ctx
 *prompt*
 x

@@ -99,6 +99,15 @@ pub fn nt_open_directory_object(emu: &mut Emu) {
 
     let h = sync::next_handle();
     let _ = emu.maps.write_qword(handle_out, h);
+
+    // Track \KnownDlls / \KnownDlls32 directory handles so NtOpenSection can
+    // recognise relative DLL opens (RootDirectory = this handle, ObjectName = "kernel32.dll").
+    let lower = dir_name.to_lowercase();
+    if lower == "\\knowndlls" || lower == "\\knowndlls32" {
+        log::trace!("NtOpenDirectoryObject: tracking KnownDlls dir handle 0x{:x} ({})", h, dir_name);
+        emu.known_dll_dir_handles.insert(h);
+    }
+
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 

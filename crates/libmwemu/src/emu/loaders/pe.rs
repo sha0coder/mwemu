@@ -334,10 +334,13 @@ impl Emu {
             }
         }
 
-        if set_entry || self.cfg.emulate_winapi {
-            if !is_maps || self.cfg.emulate_winapi {
-                self.base = base;
-            }
+        // Only the main image owns `self.base` and the initial RIP. System DLLs loaded
+        // via `load_library` (e.g. NtMapViewOfSection's KnownDll path under --ssdt) must
+        // never clobber these — otherwise the post-LdrInitializeThunk IAT binding in
+        // loaders.rs reads the DLL's base instead of the EXE's, and the EXE's IAT stays
+        // unbound (call rax → rax=0 → crash).
+        if set_entry {
+            self.base = base;
 
             // 2. entry point logic (relocs + IAT run after PE maps exist; see step 4b below)
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {

@@ -353,8 +353,26 @@ pub fn nt_allocate_virtual_memory(emu: &mut Emu) {
 
     let permission = nt_page_protection_to_permission(protect);
 
+    // Windows enforces a 64K (`dwAllocationGranularity`) base alignment for any
+    // RESERVE allocation chosen by the kernel. ntdll's heap segment algorithm
+    // relies on this — it computes the segment header address as
+    // `chunk_addr & ~0xFFFF`, so a 4K-aligned reservation base produces an
+    // unmapped read at segment_base + 0x60. Only force this on RESERVE >= 64K;
+    // small COMMIT-only allocations (loader scratch buffers under MinGW init)
+    // keep 4K granularity to avoid disturbing the existing layout.
+    // Windows enforces a 64K (`dwAllocationGranularity`) base alignment for any
+    // RESERVE allocation chosen by the kernel. ntdll's heap segment algorithm
+    // relies on this — it computes the segment header address as
+    // `chunk_addr & ~0xFFFF`, so a 4K-aligned reservation base produces an
+    // unmapped read at segment_base + 0x60. Only force this on RESERVE >= 64K
+    // (the size threshold avoids disturbing small loader scratch buffers).
     let base = if preferred_base == 0 {
-        match emu.maps.alloc(size) {
+        let allocation = if mem_reserve && size >= 0x10000 {
+            alloc_64k_aligned(emu, size)
+        } else {
+            emu.maps.alloc(size)
+        };
+        match allocation {
             Some(a) => a,
             None => {
                 emu.regs_mut().rax = STATUS_NO_MEMORY;
@@ -390,6 +408,34 @@ pub fn nt_allocate_virtual_memory(emu: &mut Emu) {
     }
 
     emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+
+
+/// Allocate a free address range of at least `size` bytes whose base is 64K
+/// aligned (matches Windows `dwAllocationGranularity`). Probes our generic
+/// 4K-aligned allocator with growing offsets until we land on a free 64K
+/// boundary that fits.
+fn alloc_64k_aligned(emu: &mut Emu, size: u64) -> Option<u64> {
+    const GRAN: u64 = 0x10000;
+    // First try: ask for size + GRAN-1 so we can slide forward to a boundary.
+    let probe = emu.maps.alloc(size + GRAN - 1)?;
+    let aligned = (probe + GRAN - 1) & !(GRAN - 1);
+    // Validate the aligned range is still free (the probe gave us [probe, probe+size+GRAN-1)
+    // — sliding to `aligned` keeps us inside that window).
+    if aligned + size <= probe + size + GRAN - 1 && !emu.maps.overlaps(aligned, size) {
+        Some(aligned)
+    } else {
+        // Fallback: scan for a free 64K-aligned region directly.
+        let mut candidate = (probe + GRAN - 1) & !(GRAN - 1);
+        for _ in 0..64 {
+            if !emu.maps.overlaps(candidate, size) {
+                return Some(candidate);
+            }
+            candidate += GRAN;
+        }
+        None
+    }
 }
 
 /// `NtAllocateVirtualMemoryEx` — extended version with MEM_EXTENDED_PARAMETER support.
@@ -470,7 +516,12 @@ pub fn nt_allocate_virtual_memory_ex(emu: &mut Emu) {
     let permission = nt_page_protection_to_permission(protect);
 
     let base = if preferred_base == 0 {
-        match emu.maps.alloc(size) {
+        let allocation = if mem_reserve && size >= 0x10000 {
+            alloc_64k_aligned(emu, size)
+        } else {
+            emu.maps.alloc(size)
+        };
+        match allocation {
             Some(a) => a,
             None => {
                 emu.regs_mut().rax = STATUS_NO_MEMORY;
@@ -574,7 +625,41 @@ pub fn nt_free_virtual_memory(emu: &mut Emu) {
         // exclusive ends (`addr == map.bottom`), etc.; use `alloc_region_base_for_free`.
         let alloc_base = emu.maps.alloc_region_base_for_free(base);
         let base_mapped = emu.maps.is_mapped(base);
-        let released = if base_mapped {
+
+        // SSDT-only: ntdll's heap segment manager calls `MEM_RELEASE` with a
+        // non-zero RegionSize that targets only a sub-range of the original
+        // reservation (real Windows requires size==0 for MEM_RELEASE). Our
+        // single-map model can't shrink a reservation, so destroying the whole
+        // map orphans subsequent COMMITs as scattered 4K maps — an 8-byte qword
+        // write at the last few bytes of one page then straddles into the next
+        // and hits "Writing qword to unmapped or non-writable region". When in
+        // SSDT mode and the request looks partial, skip the dealloc; the
+        // reservation stays and future commits in the same range fall through
+        // with `is_mapped == true`, leaving ntdll's heap with one contiguous
+        // backing map.
+        let region_size = if region_sz_ptr != 0 {
+            emu.maps.read_qword(region_sz_ptr).unwrap_or(0)
+        } else {
+            0
+        };
+        let map_for_base = if base_mapped {
+            emu.maps.get_mem_by_addr(base).map(|m| (m.get_base(), m.size() as u64))
+        } else if let Some(ab) = alloc_base {
+            emu.maps.get_mem_by_addr(ab).map(|m| (m.get_base(), m.size() as u64))
+        } else {
+            None
+        };
+        let is_partial_release = emu.cfg.emulate_winapi
+            && region_size != 0
+            && match map_for_base {
+                Some((mb, msz)) => region_size < msz || base != mb,
+                None => false,
+            };
+
+        let released = if is_partial_release {
+            // Keep the reservation intact; report success.
+            true
+        } else if base_mapped {
             emu.maps.dealloc(base);
             true
         } else if let Some(ab) = alloc_base {
@@ -1005,12 +1090,57 @@ pub fn nt_open_section(emu: &mut Emu) {
         return;
     }
 
+    // The loader can address KnownDll sections two ways:
+    //   1. Absolute path:  ObjectName = `\KnownDlls\kernel32.dll`, RootDirectory = NULL.
+    //   2. Relative open:  ObjectName = `kernel32.dll`, RootDirectory = handle from
+    //      a previous `NtOpenDirectoryObject("\KnownDlls")`. ntdll's LdrpFindKnownDll
+    //      uses this form, so we must resolve it too.
+    let root_dir = read_object_attributes_root_directory(emu, obj_attr);
+    let is_known_dll_dir = root_dir != 0 && emu.known_dll_dir_handles.contains(&root_dir);
+    let dll_name = if is_known_dll_dir {
+        if !section_name.is_empty() {
+            Some(section_name.to_lowercase())
+        } else {
+            None
+        }
+    } else {
+        extract_known_dll_name(&section_name)
+    };
+
+    // KnownDlls open with an empty/invalid section name. These are produced
+    // when ntdll's RtlAnsiStringToUnicodeString / ApiSet resolver fails to
+    // populate a destination buffer (yields `[zeros..., '.', 'D', 'L', 'L']`)
+    // — typically for `ext-ms-*` dependencies of kernelbase that real Windows
+    // redirects via the API-set schema. Returning STATUS_OBJECT_NAME_NOT_FOUND
+    // here causes ntdll to fall through to disk lookup, which also fails, and
+    // terminate the process with STATUS_DLL_NOT_FOUND.
+    //
+    // First few of these are API-set entries that redirect to kernelbase in
+    // real Windows — fall back to a kernelbase section handle so the loader
+    // accepts the dependency. After a small budget, switch to NOT_FOUND: an
+    // unbounded fake fallback causes ntdll to re-init those phantom modules
+    // (TLS callbacks, DllMain) in a tight loop and exhaust the stack.
+    if is_known_dll_dir && dll_name.is_none() {
+        const FALLBACK_BUDGET: usize = 0;
+        if emu.section_handles.values().filter(|n| *n == "kernelbase.dll").count() < FALLBACK_BUDGET {
+            let h = crate::syscall::windows::syscall64::sync::next_handle();
+            let _ = emu.maps.write_qword(handle_out, h);
+            log::trace!(
+                "NtOpenSection: empty-name KnownDll → handle 0x{:x} -> kernelbase.dll (api-set fallback)",
+                h
+            );
+            emu.section_handles.insert(h, "kernelbase.dll".to_string());
+            emu.regs_mut().rax = STATUS_SUCCESS;
+            return;
+        }
+        emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+        return;
+    }
+
     let h = crate::syscall::windows::syscall64::sync::next_handle();
     let _ = emu.maps.write_qword(handle_out, h);
 
-    // Track KnownDll sections so NtMapViewOfSection can load real PE content.
-    // KnownDlls paths look like `\KnownDlls\kernel32.dll` or `\KnownDlls32\kernel32.dll`.
-    if let Some(dll_name) = extract_known_dll_name(&section_name) {
+    if let Some(dll_name) = dll_name {
         log::trace!("NtOpenSection: tracking KnownDll handle 0x{:x} -> {}", h, dll_name);
         emu.section_handles.insert(h, dll_name);
     }
@@ -1058,6 +1188,13 @@ fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
     // OBJECT_ATTRIBUTES64: Length(4)+pad(4)+RootDirectory(8)+ObjectName*(8)
     let object_name_ptr = emu.maps.read_qword(addr + 0x10).unwrap_or(0);
     read_unicode_string(emu, object_name_ptr)
+}
+
+fn read_object_attributes_root_directory(emu: &Emu, addr: u64) -> u64 {
+    if addr == 0 || !emu.maps.is_mapped(addr) {
+        return 0;
+    }
+    emu.maps.read_qword(addr + 0x08).unwrap_or(0)
 }
 
 pub fn nt_create_section(emu: &mut Emu) {

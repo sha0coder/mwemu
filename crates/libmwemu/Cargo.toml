@@ -1,6 +1,6 @@
 [package]
 name = "libmwemu"
-version = "0.24.2"
+version = "0.24.3"
 edition.workspace = true
 authors = ["sha0coder"]
 license.workspace = true
@@ -50,6 +50,7 @@ gdbstub_arch.workspace = true
 serial_test.workspace = true
 dunce.workspace = true
 soft-canonicalize.workspace = true
+flate2 = "1"
 
 [target.'cfg(windows)'.dependencies]
 windows.workspace = true

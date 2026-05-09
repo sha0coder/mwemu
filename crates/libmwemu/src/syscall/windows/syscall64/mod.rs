@@ -3,6 +3,7 @@ use crate::windows::constants::*;
 
 mod alpc;
 pub(crate) mod memory;
+mod nls;
 mod process;
 mod registry;
 mod sync;
@@ -83,6 +84,68 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTALPCREVOKESECURITYCONTEXT => alpc::nt_alpc_revoke_security_context(emu),
         WIN64_NTALPCSENDWAITRECEIVEPORT => alpc::nt_alpc_send_wait_receive_port(emu),
         WIN64_NTALPCSETINFORMATION => alpc::nt_alpc_set_information(emu),
+        // `NtInitializeNlsFiles` (0x108): map `locale.nls` so ntdll's
+        // `RtlInitNlsTables` gets the real Unicode upcase/casing tables.
+        // Without this, every byte→wide conversion in the loader yields zeros
+        // and dependency lookups fail with `STATUS_DLL_NOT_FOUND`. Mirrors
+        // sogen's `handle_NtInitializeNlsFiles`.
+        0x108 => nls::nt_initialize_nls_files(emu),
+        // `NtGetNlsSectionPtr` (0x102): map `C_<n>.NLS` for the requested
+        // codepage (1252 ANSI, 437 OEM, etc.). Same purpose as above —
+        // populates the byte→wide / wide→byte tables consumed by
+        // `RtlAnsiStringToUnicodeString`.
+        0x102 => nls::nt_get_nls_section_ptr(emu),
+        // `NtQueryAttributesFile` (0x3d): ntdll's loader probes optional manifest /
+        // policy / .local files via this syscall. STATUS_NOT_IMPLEMENTED here is
+        // fatal — the loader propagates it up and `LdrInitializeThunk` ends with
+        // `NtTerminateProcess(0xC0000002)`. STATUS_OBJECT_NAME_NOT_FOUND is what
+        // real Windows returns for a missing file and is handled gracefully.
+        WIN64_NTQUERYATTRIBUTESFILE => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtQueryAttributesFile (stub → OBJECT_NAME_NOT_FOUND)",
+                WIN64_NTQUERYATTRIBUTESFILE,
+            );
+            emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+        }
+        // `NtAreMappedFilesTheSame` (0x8e on some Windows builds, 0x90 on others):
+        // ntdll uses it during DLL caching. STATUS_NOT_SAME_DEVICE is the documented
+        // negative answer — callers treat it as "different mappings" and continue.
+        0x8e | 0x90 => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtAreMappedFilesTheSame (stub → NOT_SAME_DEVICE)",
+                nr,
+            );
+            emu.regs_mut().rax = STATUS_NOT_SAME_DEVICE;
+        }
+        // `NtQueryQuotaInformationFile` (0x166): kernelbase's TLS-callback /
+        // process-init path queries this for each loaded module. Returning
+        // STATUS_NOT_IMPLEMENTED here causes ntdll to retry indefinitely
+        // (we observed ~500K calls eating through the entire stack reserve).
+        // STATUS_NOT_SUPPORTED tells the caller "this volume doesn't track
+        // quotas" and is treated as a terminal, non-retryable answer.
+        0x166 => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtQueryQuotaInformationFile (stub → NOT_SUPPORTED)",
+                nr,
+            );
+            emu.regs_mut().rax = STATUS_NOT_SUPPORTED;
+        }
+        // `NtOpenFile` (0x33): ntdll's loader uses this when KnownDlls / api-set
+        // lookup fails. STATUS_NOT_IMPLEMENTED cascades into a process-terminate;
+        // STATUS_OBJECT_NAME_NOT_FOUND signals "file not found" cleanly so the
+        // loader can mark the dependency missing and (for optional imports)
+        // continue.
+        0x33 => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtOpenFile (stub → OBJECT_NAME_NOT_FOUND)",
+                nr,
+            );
+            emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+        }
         _ => {
             let name = what_syscall(nr);
             log_orange!(

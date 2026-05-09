@@ -24,6 +24,14 @@ const LDR_BASE_ADDRESS_INDEX_NODE_OFFSET: u64 = 0xC8;
 // Offset of the DdagNode pointer within an LDR_DATA_TABLE_ENTRY.
 const LDR_DDAG_NODE_OFFSET: u64 = 0x98;
 
+// ntdll global pointing to the 256-entry u16 ANSI→Unicode upcase translation
+// table used by LdrpUnicodeStringToHash / RtlpUpcaseUnicodeStringTo... (case-
+// insensitive name hashing during GetProcAddress). Real ntdll initialises this
+// during NLS table mapping; under --ssdt the memory is allocated but stays
+// zeroed, so every input byte upcases to U+0000 and LdrGetProcedureAddress
+// returns STATUS_ENTRYPOINT_NOT_FOUND for every export lookup.
+const NTDLL_NLS_UPCASE_TABLE_PTR_RVA: u64 = 0x16B6F0;
+
 #[derive(Debug)]
 pub struct Flink {
     flink_addr: u64,
@@ -450,6 +458,32 @@ fn rebuild_ldr_hash_table(emu: &mut emu::Emu, modules: &[ModInfo], entries: &[u6
     }
 }
 
+/// Populate the ASCII portion of ntdll's NLS upcase table so that
+/// case-insensitive name hashing (used by `LdrGetProcedureAddress`) returns
+/// non-zero values. Real ntdll fills this from the NLS data file; under
+/// `--ssdt` no NLS section is provided, so the buffer pointed to by the
+/// global is left zeroed and every export lookup fails with
+/// `STATUS_ENTRYPOINT_NOT_FOUND`. Only entries 0x00..0x7F matter for
+/// imports/exports, which use ASCII names.
+pub fn populate_nls_upcase_table(emu: &mut emu::Emu) {
+    let Some(ntdll_map) = emu.maps.get_map_by_name("ntdll.pe") else {
+        return;
+    };
+    let global_ptr = ntdll_map.get_base() + NTDLL_NLS_UPCASE_TABLE_PTR_RVA;
+    let table = emu.maps.read_qword(global_ptr).unwrap_or(0);
+    if table == 0 || !emu.maps.is_mapped(table) {
+        return;
+    }
+    for b in 0u32..256 {
+        let upper = if (b'a' as u32..=b'z' as u32).contains(&b) {
+            b - 0x20
+        } else {
+            b
+        };
+        let _ = emu.maps.write_word(table + (b as u64) * 2, upper as u16);
+    }
+}
+
 fn ensure_ntdll_loader_globals(emu: &mut emu::Emu) {
     let Some(ntdll_map) = emu.maps.get_map_by_name("ntdll.pe") else {
         return;
@@ -686,6 +720,7 @@ pub fn rebuild_ldr_lists(emu: &mut emu::Emu) {
 
     rebuild_ldr_hash_table(emu, &modules, &entries);
     ensure_ntdll_loader_globals(emu);
+    populate_nls_upcase_table(emu);
     rebuild_ldrp_module_base_address_index(emu, &entries);
 
     if exe_base != 0 {

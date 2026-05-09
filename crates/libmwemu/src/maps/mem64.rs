@@ -748,7 +748,20 @@ impl Mem64 {
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
+        // Bounds check: callers via `Maps::read_scalar` already verify this, but
+        // direct `Mem64::read_word`/`read_dword`/`read_qword` callers don't —
+        // and reading past the slice would panic. Treat out-of-range reads as
+        // zero (matches common emulator semantics for uninitialised memory) so
+        // a stray read at a section boundary doesn't kill the whole run.
         let idx = (addr - self.base_addr) as usize;
+        if idx + T::SIZE > self.mem.len() {
+            log::warn!(
+                "Mem64::read_scalar out-of-bounds: addr=0x{:x} idx={} +{} > len={} ({})",
+                addr, idx, T::SIZE, self.mem.len(), trace.label()
+            );
+            let zeros = vec![0u8; T::SIZE];
+            return crate::maps::scalar::read_le(&zeros).expect("incorrect length");
+        }
         let r: T =
             crate::maps::scalar::read_le(&self.mem[idx..idx + T::SIZE]).expect("incorrect length");
         if cfg!(feature = "log_mem_read") {

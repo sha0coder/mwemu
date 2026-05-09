@@ -1,6 +1,7 @@
 use crate::color;
 use crate::emu::Emu;
 use crate::winapi::{winapi32, winapi64};
+use crate::windows::constants::{LIBS64_MAX, LIBS64_MIN};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
@@ -52,6 +53,23 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.call_stack_mut().push((rip, addr));
 
     if emu.cfg.is_x64() {
+        // SSDT shadow-space padding: real-Windows DLLs use the caller's 32-byte
+        // home space (`[rsp+0x00..rsp+0x20]`) as scratch (e.g. KernelBase spills
+        // `rsi` to `[rsp+0x10]`). Hand-written PE x64 binaries that store data
+        // inside what would be their *callee's* home — like exe64win_msgbox,
+        // which keeps a saved RSP at `[rbp-0x48]` directly overlapping the R8
+        // home — get those locals trashed by the very first DLL call. Shift
+        // the home-space window down by 0x20 only on PE→real-DLL transitions;
+        // a matching RET (back to PE) unwinds the pad in `ret.rs`.
+        let pad_call = emu.cfg.emulate_winapi
+            && rip < LIBS64_MIN
+            && (LIBS64_MIN..=LIBS64_MAX).contains(&addr)
+            && emu.maps.is_mapped(addr);
+        if pad_call {
+            emu.regs_mut().rsp = emu.regs().rsp.wrapping_sub(0x20);
+            let expected_ra = rip + instruction_sz as u64;
+            emu.ssdt_pad_stack.push(expected_ra);
+        }
         if !emu.stack_push64(emu.regs().rip + instruction_sz as u64) {
             return false;
         }

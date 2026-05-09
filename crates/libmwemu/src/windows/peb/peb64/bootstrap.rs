@@ -63,7 +63,23 @@ fn ensure_teb_activation_context_stack(emu: &mut emu::Emu) {
     emu.maps.write_qword(teb_base + 0x2c8, actctx);
 }
 
-/// `PEB+0x68` (`system_dependent_06`) is consumed by loader-side helpers on the real path.
+/// Compressed Win11 (24H2) `API_SET_NAMESPACE` blob, sourced from sogen's
+/// `default_apiset.hpp`. Decompresses to ~128 KB containing the full
+/// virtual-DLL → host-DLL redirect schema for hundreds of `api-ms-*` and
+/// `ext-ms-*` names. Embedding this avoids shipping the ~115 individual
+/// stub DLLs that would otherwise be needed to satisfy ntdll's loader.
+const APISET_W11_ZLIB: &[u8] = include_bytes!("../../../../data/apiset_w11.zlib");
+
+/// `PEB+0x68` = `ApiSetMap` on x64 Windows 10+ ntdll. The loader reads it
+/// during `LdrpInitializeProcess` to redirect virtual API-set names
+/// (`api-ms-*`, `ext-ms-*`) to real DLLs. Without a real schema every
+/// dependency lookup fails: KnownDll has no entry, disk lookup fails, and
+/// the loader terminates with `STATUS_DLL_NOT_FOUND`.
+///
+/// Decompress the embedded Win11 schema and map it at a stable virtual
+/// address; the schema's `EntryOffset`, `HashOffset`, and per-entry name
+/// offsets are all *relative* to the namespace base, so we can map the raw
+/// blob unchanged and ntdll's resolver walks it correctly.
 fn ensure_peb_system_dependent_06(emu: &mut emu::Emu) {
     if !emu.cfg.arch.is_64bits() {
         return;
@@ -77,20 +93,46 @@ fn ensure_peb_system_dependent_06(emu: &mut emu::Emu) {
         return;
     }
 
-    const SD06_NAME: &str = "peb_system_dependent_06";
-    const SD06_SZ: u64 = 0x1000;
+    const SD06_NAME: &str = "peb_apiset_map";
     let sd06 = if let Some(m) = emu.maps.get_map_by_name(SD06_NAME) {
         m.get_base()
     } else {
-        let base = emu.maps.map(SD06_NAME, SD06_SZ, Permission::READ_WRITE);
-        emu.maps.memset(base, 0, SD06_SZ as usize);
-        let _ = emu.maps.write_byte(base, 7);
+        // Decompress the zlib-compressed schema from the embedded blob.
+        use flate2::read::ZlibDecoder;
+        use std::io::Read;
+        let mut decoder = ZlibDecoder::new(APISET_W11_ZLIB);
+        let mut decompressed = Vec::with_capacity(0x20000);
+        if decoder.read_to_end(&mut decompressed).is_err() {
+            log::warn!(
+                "ensure_peb_system_dependent_06: failed to decompress embedded apiset, falling back to empty schema"
+            );
+            return;
+        }
+
+        let sz = ((decompressed.len() + 0xFFF) & !0xFFF) as u64;
+        let base = emu.maps.map(SD06_NAME, sz, Permission::READ_WRITE);
+        emu.maps.memset(base, 0, sz as usize);
+        if let Some(mem) = emu.maps.get_mem_by_addr_mut(base) {
+            mem.memcpy(&decompressed, decompressed.len());
+            mem.set_permission(Permission::READ);
+        }
+        log::trace!(
+            "ensure_peb_system_dependent_06: ApiSetMap (Win11 schema, {} bytes) mapped at 0x{:x}",
+            decompressed.len(),
+            base
+        );
         base
     };
     emu.maps.write_qword(peb_base + 0x68, sd06);
 }
 
-/// Map a minimal NLS data page for the three code-page table pointers stored in the PEB.
+/// Map the three NLS code-page sections that `RtlInitNlsTables` reads via
+/// `PEB.AnsiCodePageData` / `OemCodePageData` / `UnicodeCaseTableData`. In
+/// real Windows the kernel hands ntdll already-populated section views from
+/// `C:\Windows\System32\C_1252.NLS`, `C_437.NLS` and `locale.nls`; we mirror
+/// that by reading those files from `cfg.maps_folder`. Without real NLS
+/// content every byte→wide conversion in the loader produces zeros and DLL
+/// dependency lookups fail with `STATUS_DLL_NOT_FOUND`.
 pub fn ensure_peb_nls_tables(emu: &mut emu::Emu) {
     if !emu.cfg.arch.is_64bits() {
         return;
@@ -100,13 +142,16 @@ pub fn ensure_peb_nls_tables(emu: &mut emu::Emu) {
         None => return,
     };
 
-    const NLS_SZ: u64 = 0x1000;
-    let slots: &[(&str, u64)] = &[
-        ("peb_nls_ansi", peb_base + 0xA0),
-        ("peb_nls_oem", peb_base + 0xA8),
-        ("peb_nls_unicode", peb_base + 0xB0),
+    // Fallback size if the file is missing — ntdll then sees a zero buffer
+    // (same as before this fix), but at least it's mapped so reads don't crash.
+    const FALLBACK_SZ: u64 = 0x1000;
+    // (PEB slot, map name, NLS filename)
+    let slots: &[(&str, u64, &str)] = &[
+        ("peb_nls_ansi",    peb_base + 0xA0, "C_1252.NLS"),
+        ("peb_nls_oem",     peb_base + 0xA8, "C_437.NLS"),
+        ("peb_nls_unicode", peb_base + 0xB0, "locale.nls"),
     ];
-    for (name, slot_addr) in slots {
+    for (name, slot_addr, nls_filename) in slots {
         let cur = emu.maps.read_qword(*slot_addr).unwrap_or(0);
         let page = cur & !0xFFF;
         if cur != 0 && page != 0 && emu.maps.is_mapped(page) {
@@ -115,9 +160,31 @@ pub fn ensure_peb_nls_tables(emu: &mut emu::Emu) {
         let base = if let Some(m) = emu.maps.get_map_by_name(name) {
             m.get_base()
         } else {
-            let b = emu.maps.map(name, NLS_SZ, Permission::READ_WRITE);
-            emu.maps.memset(b, 0, NLS_SZ as usize);
-            b
+            let path = emu.cfg.get_maps_folder(nls_filename);
+            match std::fs::read(&path) {
+                Ok(bytes) => {
+                    let sz = ((bytes.len() + 0xFFF) & !0xFFF) as u64;
+                    let b = emu.maps.map(name, sz, Permission::READ_WRITE);
+                    emu.maps.memset(b, 0, sz as usize);
+                    if let Some(mem) = emu.maps.get_mem_by_addr_mut(b) {
+                        mem.memcpy(&bytes, bytes.len());
+                    }
+                    log::trace!(
+                        "ensure_peb_nls_tables: loaded {} ({} bytes) at 0x{:x}",
+                        nls_filename, bytes.len(), b
+                    );
+                    b
+                }
+                Err(_) => {
+                    log::warn!(
+                        "ensure_peb_nls_tables: missing {} — leaving {} zeroed",
+                        path, name
+                    );
+                    let b = emu.maps.map(name, FALLBACK_SZ, Permission::READ_WRITE);
+                    emu.maps.memset(b, 0, FALLBACK_SZ as usize);
+                    b
+                }
+            }
         };
         emu.maps.write_qword(*slot_addr, base);
     }
