@@ -683,7 +683,6 @@ impl LiefPe {
                 let patch_addr = base_addr + iat_rva;
                 if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                     mem.force_write_qword(patch_addr, real_addr);
-                    log::trace!("Bound {}!{} at 0x{:x} -> 0x{:x}", dll_name, func_name, patch_addr, real_addr);
                 }
             }
         }
@@ -797,7 +796,6 @@ impl LiefPe {
                     let iat_addr = base_addr + entry.delay_iat() as u64 + (addr_off - delay_iat_off) as u64;
                     if let Some(mem) = emu.maps.get_mem_by_addr_mut(iat_addr) {
                         mem.force_write_qword(iat_addr, real_addr);
-                        log::trace!("Bound delay-load {}!{} at 0x{:x} -> 0x{:x}", dll_name, func_name, iat_addr, real_addr);
                     }
                 }
             }
