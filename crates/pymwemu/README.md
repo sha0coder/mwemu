@@ -56,7 +56,7 @@ Loaded nsi.dll
 shellcode detected.
 >>> emu.set_verbose(0)   # by default already 0
 >>> emu.disable_console() # by default already disabled
->>> emu.run()   # 
+>>> emu.run(None)   # 
  ----- emulation -----
 ** 333368 kernel32!LoadLibraryA  'ws2_32' =0x77480000 
 ** 1618021 ws2_32!WsaStartup 
@@ -71,8 +71,8 @@ redirecting code flow to non maped address 0x264
 Help on built-in function run:
 
 run(end_addr) method of builtins.Emu instance
-    start emulating the binary until reach the provided end_addr. 
-    Use run() with no param for emulating forever.
+    Start emulating the binary until reach the provided end_addr.
+    Use run() with no params for emulating forever. or call32/call64 for calling a function.
 ```
 
 
