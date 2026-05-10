@@ -1459,7 +1459,7 @@ dependencies = [
 
 [[package]]
 name = "pymwemu"
-version = "0.11.4"
+version = "0.11.5"
 dependencies = [
  "env_logger",
  "iced-x86",
