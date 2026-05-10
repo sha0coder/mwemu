@@ -12,7 +12,9 @@ use std::collections::BTreeSet;
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
 use crate::maps::mem64::Permission;
-use crate::loaders::pe::pe64;
+use crate::pe::api_set_resolver::ApiSetResolver;
+use crate::pe::lief::lief_pe::LiefPe;
+use crate::pe::lief::traits::LiefPeReader;
 use crate::windows::peb::{peb32, peb64};
 use crate::{
     api::banzai::Banzai, debug::breakpoint::Breakpoints, utils::colors::Colors, config::Config,
@@ -50,7 +52,7 @@ impl Default for Emu {
 }
 
 pub struct Lib {
-    pe64: pe64::PE64,
+    pe64: LiefPe,
     base: u64,
     name: String,
 }
@@ -140,11 +142,6 @@ impl Emu {
             instruction_count: 0,
             fault_count: 0,
             handle_management: HandleManagement::new(),
-            library_loaded: false,
-            section_handles: HashMap::new(),
-            file_handles: HashMap::new(),
-            known_dll_dir_handles: HashSet::new(),
-            ssdt_pad_stack: Vec::new(),
         }
     }
 
@@ -972,6 +969,12 @@ impl Emu {
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
 
+        let apiset_path = self.cfg.get_maps_folder("apisetschema.dll");
+        match ApiSetResolver::from_file(&apiset_path) {
+            Ok(resolver) => self.api_set_resolver = Some(resolver),
+            Err(e) => log::warn!("Failed to load API set resolver from {}: {}", apiset_path, e),
+        }
+
         let mut metadata: Vec<Lib> = Vec::new();
         let base: Vec<&str> = vec!["kernelbase.dll", "kernel32.dll", "ntdll.dll"];
 
@@ -995,9 +998,10 @@ impl Emu {
         }
 
         // Stage 2: get_dependencies
+        let resolver = self.api_set_resolver.as_ref();
         let mut dependencies: BTreeSet<String> = BTreeSet::new();
         for dll in metadata.iter_mut() {
-            for mut dep in dll.pe64.get_dependencies(self) {
+            for mut dep in dll.pe64.get_dependencies(resolver) {
                 dep = dep.to_lowercase();
                 if !dep.ends_with(".dll") {
                     dep.push_str(".dll");
@@ -1008,8 +1012,11 @@ impl Emu {
             }
         }
 
-        // Stage 3: map dependencies
+        // Stage 3: map dependencies (skip already loaded)
         for dll in dependencies {
+            if metadata.iter().any(|lib| lib.name == dll) {
+                continue;
+            }
             let filepath = self.cfg.get_maps_folder(&dll);
             log::debug!("mapping depenency {}", &filepath);
             assert!(
@@ -1030,10 +1037,10 @@ impl Emu {
         // Stage 3: dynamic linking base + deps
         for dll in &metadata {
             log::debug!("dynamic linking {}", &dll.name);
-            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_off(), &dll.name, self);
+            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_offset(), &dll.name, self);
         }
 
-        // Stage 3: IAT binding for base + deps (relocs already applied in `map_dll_pe64`).
+        // Stage 3: IAT Binding  base + deps
         for dll in metadata.iter_mut() {
             log::debug!("iat binding {}", &dll.name);
             dll.pe64.iat_binding(self, dll.base);

@@ -393,6 +393,8 @@ impl From<SerializableEmu> for Emu {
             trace_file,
             instruction_count: 0,
             fault_count: 0,
+            handle_management: HandleManagement::new(), // TODO: for now, we haven't implement HandleManagement as serializable but in the future maybe
+            api_set_resolver: None,
             entropy,
             last_error,
             // Win32 resource management

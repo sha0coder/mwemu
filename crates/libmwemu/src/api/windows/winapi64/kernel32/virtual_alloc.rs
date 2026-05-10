@@ -63,14 +63,19 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
                 base = addr;
             }
 
-            emu.maps
-                .create_map(
-                    format!("alloc_{:x}", base).as_str(),
-                    base,
-                    size,
-                    Permission::from_flags(can_read, can_write, can_execute),
-                )
-                .expect("kernel32!VirtualAlloc out of memory");
+            match emu.maps.create_map(
+                format!("alloc_{:x}", base).as_str(),
+                base,
+                size,
+                Permission::from_flags(can_read, can_write, can_execute),
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::warn!("kernel32!VirtualAlloc {}", e);
+                    emu.regs_mut().rax = 0;
+                    return;
+                }
+            }
         } else if status_already_allocated {
             base = addr;
         } else if status_error {

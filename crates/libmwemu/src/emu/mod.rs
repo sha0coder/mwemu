@@ -25,6 +25,7 @@ use crate::{
     threading::global_locks::GlobalLocks,
     utils::colors::Colors,
     windows::structures::MemoryOperation,
+    pe::{api_set_resolver::ApiSetResolver, lief::lief_pe::LiefPe, pe32::PE32},
 };
 
 /// Architecture-specific instruction decoding and disassembly state.
@@ -95,20 +96,14 @@ pub struct Emu {
                                                   // post-branch / post-advance) and would print
                                                   // the wrong pc next to the last opcode.
     pub last_instruction_size: usize,
-    pub rep: Option<u64>, // REP prefix counter for string operations
-
-    // --- Core execution state ---
-    pub pos: u64, // current instruction position counter (incremented each step)
-    pub max_pos: Option<u64>, // optional execution position limit
-    pub tick: usize, // global tick counter, used for thread scheduling
-    pub is_running: Arc<AtomicU32>, // thread-safe flag for emulation running state
-    pub now: Instant, // timestamp of emulation start (wall-clock timing)
-    pub force_break: bool, // set by breakpoints, memory violations, etc. to stop execution
-    pub process_terminated: bool, // set by NtTerminateProcess; prevents run() from resetting is_running
-    pub call_depth: u32,          // nesting depth of call64/call32 — NtTerminateProcess only exits at depth 0
-    pub ldr_init_done: bool,      // true after LdrInitializeThunk call64 completes; switches API dispatch to virtual stubs
-    pub force_reload: bool,       // trigger instruction re-decode
-    pub run_until_ret: bool,      // step-over mode: run until next RET
+    pub pe64: Option<PE64>,
+    pub pe32: Option<PE32>,
+    pub rep: Option<u64>,
+    pub tick: usize,
+    pub trace_file: Option<File>,
+    pub base: u64,
+    pub formatter: IntelFormatter,
+    pub heap_addr: u64,
     pub rng: RefCell<rand::rngs::ThreadRng>,
 
     // --- Platform & loaded binary ---
@@ -123,43 +118,19 @@ pub struct Emu {
 
     // --- Thread management ---
     pub threads: Vec<ThreadContext>,
-    pub current_thread_id: usize,  // index into threads vec
-    pub main_thread_cont: u64,     // main thread continuation/return address
-    pub gateway_return: u64,       // return address from API gateway trampoline
-    pub global_locks: GlobalLocks, // critical section/mutex tracking
-
-    // --- API call interception ---
-    pub hooks: Hooks,             // registered pre/post-instruction callback hooks
-    pub skip_apicall: bool,       // stub/skip current API call
-    pub its_apicall: Option<u64>, // address of API call currently being dispatched
-    pub is_api_run: bool,         // true while inside a Windows/system API handler
-    pub is_break_on_api: bool,    // break on API calls (internal, for python interface)
-    pub banzai: Banzai,           // auto-recovery: skip unimplemented APIs and continue
-
-    // --- Debugging & breakpoints ---
-    pub bp: Breakpoints, // address, instruction, and memory breakpoints
-    pub break_on_alert: bool,
-    pub break_on_next_cmp: bool,    // pause before next CMP instruction
-    pub break_on_next_return: bool, // pause before next RET instruction
-    pub enabled_ctrlc: bool,
-    pub running_script: bool, // true while executing a debugger script
-    pub exp: u64,             // instruction-count breakpoint: spawn console when pos == exp
-    pub definitions: HashMap<u64, Definition>, // address annotations (duplicated from Config for serialization)
-    pub stored_contexts: HashMap<String, StoredContext>, // named snapshots for breakpoint analysis
-
-    // --- Tracing & statistics ---
-    pub trace_file: Option<File>, // optional file handle for instruction trace output
-    pub instruction_count: u64,   // total instructions executed
-    pub fault_count: u32,         // page faults / exceptions encountered
-    pub entropy: f64,             // entropy measurement for polymorphic code detection
-    pub last_error: u32,          // Win32 GetLastError value
-
-    // --- Win32 resource management ---
-    pub handle_management: HandleManagement, // file and object handle table
-    pub section_handles: HashMap<u64, String>, // KnownDll section handle → DLL filename (e.g., "kernel32.dll")
-    pub file_handles: HashMap<u64, String>,    // NtOpenFile handle → resolved basename (e.g., "kernelbase.dll"); used by NtCreateSection to inherit the dll name
-    pub known_dll_dir_handles: HashSet<u64>,   // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
-    pub ssdt_pad_stack: Vec<u64>,              // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
+    pub current_thread_id: usize,  // Index into threads vec
+    pub global_locks: GlobalLocks, // Critical section lock tracking
+    pub instruction_cache: InstructionCache,
+    pub definitions: HashMap<u64, Definition>,
+    pub stored_contexts: HashMap<String, StoredContext>,
+    pub entropy: f64,
+    pub heap_management: Option<Box<O1Heap>>,
+    pub last_error: u32,
+    pub is_api_run: bool,
+    pub is_break_on_api: bool, // this value will only be modify internally for python use case
+    pub instruction_count: u64,
+    pub fault_count: u32,
+    pub handle_management: HandleManagement,
 }
 
 // --- ArchState accessors ---

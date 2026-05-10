@@ -32,3 +32,7 @@ node_modules/
 CACHEDIR.TARGET
 .package-cache
 .cargo/registry
+
+.kilo/
+
+.kilocodemodes

@@ -1,4 +1,5 @@
 use crate::emu;
+use crate::pe::lief::traits::LiefPeReader;
 use crate::winapi::helper;
 
 pub fn FindResourceW(emu: &mut emu::Emu) {
