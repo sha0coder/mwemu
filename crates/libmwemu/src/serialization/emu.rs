@@ -341,6 +341,7 @@ impl From<SerializableEmu> for Emu {
             // Instruction decoding (formatter, cache recreated)
             arch_state,
             last_decoded: None,
+            last_decoded_addr: 0,
             last_instruction_size,
             rep,
             // Core execution state

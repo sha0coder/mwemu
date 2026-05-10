@@ -59,9 +59,18 @@ impl Emu {
             self.cfg.arch = Arch::Aarch64;
             self.maps.is_64bits = true;
             self.maps.clear();
+            // CLI may have built the emu with x86 defaults; switch the
+            // decode state machinery to AArch64 so the run loop doesn't
+            // hit `unreachable!()` decoding ARM bytes against
+            // `ArchState::X86`.
+            self.ensure_arch_state_aarch64();
 
-            // Set maps folder for macOS dylibs (try repo root, then relative from crate)
-            if self.cfg.maps_folder.is_empty() {
+            // Switch to the macOS dylib folder for arm64. The CLI defaults
+            // `cfg.maps_folder` to `maps/windows/...` before knowing the
+            // binary is a Mach-O, so override when we still see a Windows
+            // path or no path at all.
+            let cur = self.cfg.maps_folder.as_str();
+            if cur.is_empty() || cur.contains("windows") {
                 if std::path::Path::new("maps/macos/aarch64").exists() {
                     self.cfg.maps_folder = "maps/macos/aarch64/".to_string();
                 } else if std::path::Path::new("../../maps/macos/aarch64").exists() {

@@ -6,7 +6,7 @@ use std::fs;
 use std::io::Read;
 
 const MH_MAGIC_64: u32 = 0xFEEDFACF;
-const FAT_MAGIC_64: u32 = 0xCAFEBABE;
+const FAT_MAGIC_64: u32 = 0xBEBAFECA; // = CAFEBABE
 const CPU_TYPE_ARM64: u32 = 0x0100000C;
 const CPU_TYPE_X86_64: u32 = 0x01000007;
 
@@ -28,6 +28,12 @@ pub struct Macho64 {
     pub entry: u64,
     pub segments: Vec<Macho64Segment>,
     pub addr_to_symbol: std::collections::HashMap<u64, String>,
+    /// Byte offset of the active Mach-O slice inside `bin`. `0` for plain
+    /// Mach-O containers; non-zero when `bin` is a FAT (CAFEBABE) container
+    /// and we picked an arch slice further into the file. Load-command
+    /// `dataoff`/`fileoff` fields are relative to the *slice* start, so any
+    /// raw indexing into `bin` for those needs to add this offset.
+    pub slice_offset: u64,
 }
 
 /// A resolved chained fixup bind entry: GOT address -> import ordinal
@@ -63,11 +69,16 @@ impl Macho64 {
     /// Detect a 64-bit AArch64 Mach-O file by reading the first 8 bytes.
     pub fn is_macho64_aarch64(filename: &str) -> bool {
         if let Some((magic, cpu)) = Self::read_magic_and_cputype(filename) {
+            log::info!("MAcho64 magic: {:x} cpu: {:x}", magic, cpu);
+
             if magic == MH_MAGIC_64 && cpu == CPU_TYPE_ARM64 {
                 return true;
             }
 
-            if magic == FAT_MAGIC_64 && cpu == CPU_TYPE_ARM64 {
+            if magic == FAT_MAGIC_64 {
+                if cpu != CPU_TYPE_ARM64 {
+                    log::info!("not type CPU_TYPE_ARM64!");
+                }
                 return true;
             }
         }
@@ -84,7 +95,100 @@ impl Macho64 {
     }
 
     /// Parse a 64-bit Mach-O binary using goblin.
+    /// Supports plain Mach-O and FAT/universal binaries.
     pub fn parse(filename: &str) -> Result<Macho64, MwemuError> {
+        use goblin::mach::Mach;
+
+        let bin = fs::read(filename)
+            .map_err(|e| MwemuError::new(&format!("cannot read macho binary: {}", e)))?;
+
+        let macho = Mach::parse(&bin)
+            .map_err(|e| MwemuError::new(&format!("cannot parse macho binary: {}", e)))?;
+
+        let mut slice_offset: u64 = 0;
+        let macho = match macho {
+            Mach::Binary(m) => m,
+
+            Mach::Fat(fat) => {
+                let mut selected = None;
+
+                for arch in fat.iter_arches() {
+                    let arch = arch
+                        .map_err(|e| MwemuError::new(&format!("cannot parse fat arch: {}", e)))?;
+
+                    if arch.cputype == goblin::mach::constants::cputype::CPU_TYPE_ARM64 {
+                        slice_offset = arch.offset as u64;
+                        selected = Some(
+                            goblin::mach::MachO::parse(&bin, arch.offset as usize).map_err(
+                                |e| MwemuError::new(&format!("cannot parse arm64 slice: {}", e)),
+                            )?,
+                        );
+                        break;
+                    }
+                }
+
+                selected.ok_or_else(|| MwemuError::new("no ARM64 slice found in FAT Mach-O"))?
+            }
+        };
+
+        if !macho.is_64 {
+            return Err(MwemuError::new("not a 64-bit Mach-O"));
+        }
+
+        let entry = macho.entry;
+
+        let mut segments = Vec::new();
+
+        for segment in &macho.segments {
+            let name = segment
+                .name()
+                .map_err(|e| MwemuError::new(&format!("cannot read segment name: {}", e)))?
+                .to_string();
+
+            if name == "__PAGEZERO" {
+                continue;
+            }
+
+            // Extract segment bytes ourselves instead of using `segment.data`.
+            // For FAT (CAFEBABE) containers goblin's `segment.data` is sliced
+            // from offset 0 of the *whole* bin rather than the active slice,
+            // so for the arm64 slice of /bin/ls we'd otherwise see __TEXT
+            // start with `ca fe ba be …` (the FAT magic) and __LINKEDIT
+            // start with the second slice's MH_MAGIC_64 — neither what we
+            // want. `fileoff`/`filesize` are relative to the slice, so add
+            // `slice_offset` to land in the right bytes for both plain and
+            // FAT containers.
+            let slice_start = slice_offset as usize + segment.fileoff as usize;
+            let slice_len = segment.filesize as usize;
+            let slice_end = slice_start.saturating_add(slice_len);
+            let data = if slice_len == 0 || slice_end > bin.len() {
+                Vec::new()
+            } else {
+                bin[slice_start..slice_end].to_vec()
+            };
+
+            segments.push(Macho64Segment {
+                name,
+                vmaddr: segment.vmaddr,
+                vmsize: segment.vmsize,
+                data,
+                initprot: segment.initprot,
+            });
+        }
+
+        log::info!("macho64: {} segments, entry=0x{:x}", segments.len(), entry);
+
+        Ok(Macho64 {
+            bin,
+            entry,
+            segments,
+            addr_to_symbol: std::collections::HashMap::new(),
+            slice_offset,
+        })
+    }
+
+    /// Parse a 64-bit Mach-O binary using goblin.
+    pub fn parse_prev(filename: &str) -> Result<Macho64, MwemuError> {
         let bin = fs::read(filename)
             .map_err(|e| MwemuError::new(&format!("cannot read macho binary: {}", e)))?;
 
@@ -125,6 +229,7 @@ impl Macho64 {
             entry,
             segments,
             addr_to_symbol: std::collections::HashMap::new(),
+            slice_offset: 0,
         })
     }
 
@@ -142,7 +247,7 @@ impl Macho64 {
                 seg.name,
                 seg.vmaddr,
                 seg.vmsize,
-                seg.initprot
+                seg.initprot,
             );
 
             let mem = maps
@@ -159,8 +264,48 @@ impl Macho64 {
     }
 
     /// Get the list of dependent dylib paths from load commands.
+    /// Supports plain Mach-O and FAT/universal binaries.
     pub fn get_libs(&self) -> Vec<String> {
-        let macho = goblin::mach::MachO::parse(&self.bin, 0).expect("re-parse for libs");
+        let macho = self.reparse().expect("re-parse for libs");
+        macho
+            .libs
+            .iter()
+            .filter(|l| **l != "self")
+            .map(|l| l.to_string())
+            .collect()
+    }
+
+    /// Re-parse `self.bin` returning the inner 64-bit slice. Handles both
+    /// `Mach::Binary` (regular Mach-O) and `Mach::Fat` (CAFEBABE) — for FAT
+    /// containers we pick the `arm64` slice (matches the slice we kept at
+    /// load time in `parse_prev` / `parse`). Use this from all helpers that
+    /// need a `goblin::mach::MachO` view of the same bytes; calling
+    /// `MachO::parse(&bin, 0)` directly panics with `BadMagic(0xCAFEBABE)`
+    /// when `bin` is a FAT container.
+    fn reparse(&self) -> Result<goblin::mach::MachO<'_>, MwemuError> {
+        use goblin::mach::Mach;
+
+        match Mach::parse(&self.bin)
+            .map_err(|e| MwemuError::new(&format!("cannot parse mach: {}", e)))?
+        {
+            Mach::Binary(m) => Ok(m),
+            Mach::Fat(fat) => {
+                for arch in fat.iter_arches() {
+                    let arch = arch
+                        .map_err(|e| MwemuError::new(&format!("cannot parse fat arch: {}", e)))?;
+                    if arch.cputype == goblin::mach::constants::cputype::CPU_TYPE_ARM64 {
+                        return goblin::mach::MachO::parse(&self.bin, arch.offset as usize)
+                            .map_err(|e| MwemuError::new(&format!("cannot parse arm64 slice: {}", e)));
+                    }
+                }
+                Err(MwemuError::new("no ARM64 slice found in FAT Mach-O"))
+            }
+        }
+    }
+
+    /// Get the list of dependent dylib paths from load commands.
+    pub fn get_libs_prev(&self) -> Vec<String> {
+        let macho = self.reparse().expect("re-parse for libs");
         macho
             .libs
             .iter()
@@ -171,7 +316,7 @@ impl Macho64 {
 
     /// Get exported symbols with their offsets (relative to binary load address).
     pub fn get_exports(&self) -> Vec<(String, u64)> {
-        let macho = goblin::mach::MachO::parse(&self.bin, 0).expect("re-parse for exports");
+        let macho = self.reparse().expect("re-parse for exports");
         match macho.exports() {
             Ok(exports) => exports.iter().map(|e| (e.name.clone(), e.offset)).collect(),
             Err(e) => {
@@ -185,15 +330,27 @@ impl Macho64 {
     /// Returns (imports_table, bind_entries) where each bind entry references
     /// an import by ordinal and specifies the GOT vmaddr to patch.
     pub fn parse_chained_fixups(&self) -> (Vec<ChainedImport>, Vec<ChainedBind>) {
-        let macho = goblin::mach::MachO::parse(&self.bin, 0).expect("re-parse for fixups");
+        let macho = self.reparse().expect("re-parse for fixups");
 
         let mut imports = Vec::new();
         let mut binds = Vec::new();
 
         for lc in &macho.load_commands {
             if let CommandVariant::DyldChainedFixups(cmd) = &lc.command {
-                let base = cmd.dataoff as usize;
-                let data = &self.bin[base..base + cmd.datasize as usize];
+                // `dataoff` is relative to the Mach-O slice start. For FAT
+                // (CAFEBABE) containers the slice lives at `slice_offset`
+                // inside `bin`; without this adjustment we'd index into the
+                // FAT header bytes (or far past the end of `bin`).
+                let base = self.slice_offset as usize + cmd.dataoff as usize;
+                let end = base.saturating_add(cmd.datasize as usize);
+                if end > self.bin.len() {
+                    log::warn!(
+                        "macho64: chained fixups data range [{:#x}..{:#x}] exceeds bin len {:#x}",
+                        base, end, self.bin.len()
+                    );
+                    continue;
+                }
+                let data = &self.bin[base..end];
 
                 // dyld_chained_fixups_header
                 let starts_offset = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize;
@@ -274,7 +431,13 @@ impl Macho64 {
                             continue;
                         }
 
-                        let chain_file_base = seg_fileoff + p * page_size + page_start as usize;
+                        // `seg_fileoff` is relative to the Mach-O slice; for
+                        // FAT (CAFEBABE) containers we need to index into the
+                        // outer `self.bin` so add `slice_offset`.
+                        let chain_file_base = self.slice_offset as usize
+                            + seg_fileoff
+                            + p * page_size
+                            + page_start as usize;
                         let chain_vm_base =
                             seg_vmaddr + (p as u64 * page_size as u64) + page_start as u64;
 
@@ -307,14 +470,37 @@ impl Macho64 {
             }
             let raw = u64::from_le_bytes(self.bin[file_off..file_off + 8].try_into().unwrap());
 
-            let (bind, next, ordinal) = match pointer_format {
+            // Per `dyld_chained_fixups.h`. We only need bind status, ordinal,
+            // and stride to chain forward; rebase targets are baked into the
+            // raw bytes already and don't need rewriting for our purposes.
+            let (bind, next, ordinal, stride) = match pointer_format {
+                // DYLD_CHAINED_PTR_ARM64E (format 1) — used by macOS arm64e
+                // userland binaries like /bin/ls. 8-byte stride, layout:
+                //   bind:1 (bit 62), auth:1 (bit 63), next:11 (bits 51..61).
+                //   bind variant: ordinal:16 in bits 0..15 (auth uses same 16
+                //   bits for ordinal).
+                1 => {
+                    let bind = (raw >> 62) & 1;
+                    let next = ((raw >> 51) & 0x7FF) as usize;
+                    let ordinal = (raw & 0xFFFF) as u32;
+                    (bind, next, ordinal, 8usize)
+                }
+                // DYLD_CHAINED_PTR_64 (2) / DYLD_CHAINED_PTR_64_OFFSET (6) —
+                // 4-byte stride. bind:1 (bit 63), next:12 (bits 51..62),
+                // ordinal:24 (bits 0..23) for bind variant.
                 DYLD_CHAINED_PTR_64_OFFSET | 2 => {
-                    // DYLD_CHAINED_PTR_64 / DYLD_CHAINED_PTR_64_OFFSET
-                    // bind:1 (bit 63), next:12 (bits 51-62), ordinal:24 (bits 0-23)
                     let bind = raw >> 63;
                     let next = ((raw >> 51) & 0xFFF) as usize;
                     let ordinal = (raw & 0xFFFFFF) as u32;
-                    (bind, next, ordinal)
+                    (bind, next, ordinal, 4usize)
+                }
+                // DYLD_CHAINED_PTR_ARM64E_USERLAND24 (12) — 8-byte stride,
+                // 24-bit ordinal in the bind variant.
+                12 => {
+                    let bind = (raw >> 62) & 1;
+                    let next = ((raw >> 52) & 0x7FF) as usize;
+                    let ordinal = (raw & 0xFFFFFF) as u32;
+                    (bind, next, ordinal, 8usize)
                 }
                 _ => {
                     log::warn!(
@@ -328,9 +514,10 @@ impl Macho64 {
 
             if bind == 1 {
                 log::trace!(
-                    "macho64: chained BIND at 0x{:x} ordinal={}",
+                    "macho64: chained BIND at 0x{:x} ordinal={} (fmt {})",
                     vmaddr,
-                    ordinal
+                    ordinal,
+                    pointer_format,
                 );
                 binds.push(ChainedBind {
                     got_vmaddr: vmaddr,
@@ -341,8 +528,8 @@ impl Macho64 {
             if next == 0 {
                 break;
             }
-            file_off += next * 4;
-            vmaddr += (next * 4) as u64;
+            file_off += next * stride;
+            vmaddr += (next * stride) as u64;
         }
     }
 }

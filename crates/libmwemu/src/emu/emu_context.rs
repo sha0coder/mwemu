@@ -51,11 +51,16 @@ pub fn log_emu_state(emu: &mut Emu) {
     let color = "\x1b[0;31m";
     if let Some(decoded) = emu.last_decoded {
         let out = emu.format_instruction(&decoded);
+        // Use `last_decoded_addr` (where the instruction lived) instead of
+        // `emu.pc()` (which already reflects the *next* instruction after
+        // a `ret`/branch) so the dump shows e.g.
+        //   `2 0x10000036c: ret`
+        // instead of `2 0x0: ret`.
         log::trace!(
             "{}{} 0x{:x}: {}{}",
             color,
             emu.pos,
-            emu.pc(),
+            emu.last_decoded_addr,
             out,
             emu.colors.nc
         );
@@ -129,8 +134,9 @@ pub fn log_emu_state(emu: &mut Emu) {
         log::error!("Instruction size: {}", emu.last_instruction_size);
     }
 
-    // Log call stack
-    if !emu.call_stack().is_empty() {
+    // Log call stack — only x86 has a tracked call stack; aarch64 emu would
+    // panic on `call_stack()` (see `crates/libmwemu/src/emu/call_stack.rs`).
+    if !emu.cfg.arch.is_aarch64() && !emu.call_stack().is_empty() {
         log::error!(
             "Call stack (last {} entries):",
             emu.call_stack().len().min(10)

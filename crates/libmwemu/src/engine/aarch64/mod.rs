@@ -91,6 +91,28 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         Opcode::HINT => true, // NOP is encoded as HINT
         Opcode::DMB(_) | Opcode::DSB(_) | Opcode::ISB => true, // barriers are no-ops in emulation
         Opcode::CLREX => true,
+        // ARMv8.3 Pointer Authentication: signs / authenticates a pointer in
+        // place against a CPU key. We don't model the keys, so treat them as
+        // no-ops — common in macOS arm64 prologues (`pacibsp`) and epilogues
+        // (`autibsp`, `retab`). Without this we'd bail out at the first
+        // instruction of /bin/ls.
+        Opcode::PACIA | Opcode::PACIB | Opcode::PACDA | Opcode::PACDB
+        | Opcode::PACIZA | Opcode::PACIZB | Opcode::PACDZA | Opcode::PACDZB
+        | Opcode::PACGA | Opcode::PACIASP | Opcode::PACIAZ
+        | Opcode::PACIA1716 | Opcode::PACIA171615
+        | Opcode::PACIASPPC | Opcode::PACNBIASPPC
+        | Opcode::PACIBSP | Opcode::PACIBZ
+        | Opcode::PACIB1716 | Opcode::PACIB171615
+        | Opcode::PACIBSPPC | Opcode::PACNBIBSPPC | Opcode::PACM
+        | Opcode::AUTIA | Opcode::AUTIB | Opcode::AUTDA | Opcode::AUTDB
+        | Opcode::AUTIZA | Opcode::AUTIZB | Opcode::AUTDZA | Opcode::AUTDZB
+        | Opcode::AUTIASP | Opcode::AUTIAZ
+        | Opcode::AUTIA1716 | Opcode::AUTIA171615
+        | Opcode::AUTIASPPC | Opcode::AUTIASPPCR
+        | Opcode::AUTIBSP | Opcode::AUTIBZ
+        | Opcode::AUTIB1716 | Opcode::AUTIB171615
+        | Opcode::AUTIBSPPC | Opcode::AUTIBSPPCR
+        | Opcode::XPACI | Opcode::XPACD | Opcode::XPACLRI => true,
 
         _ => {
             log::warn!(

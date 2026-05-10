@@ -89,6 +89,11 @@ pub struct Emu {
     // --- Instruction decoding & disassembly ---
     pub arch_state: ArchState, // architecture-specific decode/cache/formatter state
     pub last_decoded: Option<DecodedInstruction>, // last decoded instruction (arch-neutral)
+    pub last_decoded_addr: u64,                   // address where `last_decoded` lived; needed
+                                                  // for state dumps because `pc()` already
+                                                  // reflects the *next* instruction (post-ret /
+                                                  // post-branch / post-advance) and would print
+                                                  // the wrong pc next to the last opcode.
     pub last_instruction_size: usize,
     pub rep: Option<u64>, // REP prefix counter for string operations
 

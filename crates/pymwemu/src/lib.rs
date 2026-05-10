@@ -198,6 +198,10 @@ impl Emu {
         self.emu.cfg.inspect_seq = seq.to_string();
     }
 
+    fn enable_shellcode_mode(&mut self) {
+        self.emu.cfg.shellcode = true;
+    }
+
     /// disable the memory inspector.
     fn disable_inspect_sequence(&mut self) {
         self.emu.cfg.inspect = false;
@@ -506,7 +510,9 @@ impl Emu {
     /// get the value of a xmm register (x86 only).
     fn get_xmm(&mut self, reg: &str) -> PyResult<u128> {
         if self.emu.cfg.arch.is_aarch64() {
-            return Err(PyValueError::new_err("xmm registers not available on aarch64"));
+            return Err(PyValueError::new_err(
+                "xmm registers not available on aarch64",
+            ));
         }
         if self.emu.regs().is_xmm_by_name(reg) {
             return Ok(self.emu.regs().get_xmm_by_name(reg));
@@ -517,7 +523,9 @@ impl Emu {
     /// set a value to a xmm register (x86 only).
     fn set_xmm(&mut self, reg: &str, value: u128) -> PyResult<u128> {
         if self.emu.cfg.arch.is_aarch64() {
-            return Err(PyValueError::new_err("xmm registers not available on aarch64"));
+            return Err(PyValueError::new_err(
+                "xmm registers not available on aarch64",
+            ));
         }
         if self.emu.regs().is_xmm_by_name(reg) {
             let prev = self.emu.regs().get_xmm_by_name(reg);
@@ -903,7 +911,9 @@ impl Emu {
                 return Ok((addr, name));
             }
 
-            _ => Err(PyException::new_err("breakpoint on apicall fail because there isn't any address return"))
+            _ => Err(PyException::new_err(
+                "breakpoint on apicall fail because there isn't any address return",
+            )),
         }
     }
 }
@@ -913,6 +923,7 @@ fn init32() -> PyResult<Emu> {
     let mut emu = Emu { emu: emu32() };
     emu.emu.cfg.console_enabled = false;
     emu.emu.cfg.verbose = 0;
+    emu.emu.cfg.shellcode = false;
 
     Ok(emu)
 }
@@ -922,13 +933,17 @@ fn init64() -> PyResult<Emu> {
     let mut emu = Emu { emu: emu64() };
     emu.emu.cfg.console_enabled = false;
     emu.emu.cfg.verbose = 0;
+    emu.emu.cfg.shellcode = false;
 
     Ok(emu)
 }
 
 #[pymodule]
 fn pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("trace"))
+    // Filter `goblin=warn` to drop the LoadCommand / Mach-o header / Ctx
+    // spam goblin emits via `debug!()` while parsing Mach-O / PE / ELF —
+    // the mwemu CLI does the equivalent via a fast_log Filter.
+    env_logger::Builder::from_env(Env::default().default_filter_or("trace,goblin=warn"))
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .init();
     log::info!("Initialized logging");

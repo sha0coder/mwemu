@@ -11,9 +11,21 @@ use std::{panic, process};
 use std::path::PathBuf;
 //use libmwemu::definitions;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
+use fast_log::filter::Filter;
 use fast_log::Config;
 use libmwemu::disable_color;
 use libmwemu::emu::object_handle::file_handle::init_file_system;
+
+/// Drop log records emitted by `goblin::*` (Mach-O / ELF / PE parser). It uses
+/// `debug!()` to dump every load command, header, and Ctx — under `-vv` (which
+/// raises our level to TRACE) those drown out our own emulator trace lines.
+struct DropGoblinFilter;
+
+impl Filter for DropGoblinFilter {
+    fn do_log(&self, record: &log::Record) -> bool {
+        !record.module_path().unwrap_or("").starts_with("goblin")
+    }
+}
 
 macro_rules! match_register_arg {
     ($matches:expr, $emu:expr, $reg:expr) => {
@@ -487,7 +499,8 @@ fn main() {
             Config::new()
                 .format(CustomLogFormat::new())
                 .file(filename)
-                .chan_len(Some(100000)),
+                .chan_len(Some(100000))
+                .add_filter(DropGoblinFilter),
         )
         .unwrap();
     } else {
@@ -495,7 +508,8 @@ fn main() {
             Config::new()
                 .format(CustomLogFormat::new())
                 .console()
-                .chan_len(Some(100000)),
+                .chan_len(Some(100000))
+                .add_filter(DropGoblinFilter),
         )
         .unwrap();
     }

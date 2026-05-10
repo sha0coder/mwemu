@@ -113,6 +113,7 @@ impl Emu {
             skip_apicall: false,
             its_apicall: None,
             last_decoded: None,
+            last_decoded_addr: 0,
             last_instruction_size: 0,
             pe64: None,
             pe32: None,
@@ -437,7 +438,24 @@ impl Emu {
             self.threads[self.current_thread_id] = crate::threading::context::ThreadContext::new(id, self.cfg.arch);
         }
 
+        self.ensure_arch_state_aarch64();
         self.init_stack_aarch64();
+    }
+
+    /// Switch `Emu::arch_state` to the AArch64 variant if it isn't already.
+    /// Required when a binary's loader bumps `cfg.arch` to AArch64 at load
+    /// time (e.g. Mach-O / ELF auto-detection from a CLI run that defaulted
+    /// to x86): without this the run loop sees `cfg.arch.is_aarch64() ==
+    /// true` but `arch_state == ArchState::X86 {..}` and panics with
+    /// `unreachable!()` on its first decode iteration.
+    pub fn ensure_arch_state_aarch64(&mut self) {
+        if matches!(self.arch_state, crate::emu::ArchState::AArch64 { .. }) {
+            return;
+        }
+        self.arch_state = crate::emu::ArchState::AArch64 {
+            instruction: None,
+            instruction_cache: crate::emu::disassemble::InstructionCache::new(),
+        };
     }
 
     /// Write the Linux initial stack layout that _start expects.

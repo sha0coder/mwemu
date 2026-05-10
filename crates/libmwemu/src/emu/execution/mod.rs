@@ -3,6 +3,7 @@ use std::sync::atomic;
 
 use iced_x86::{Decoder, DecoderOptions, Instruction};
 
+use crate::color;
 use crate::debug::console::Console;
 use crate::emu::{ArchState, Emu};
 use crate::emu::decoded_instruction::DecodedInstruction;
@@ -79,6 +80,7 @@ impl Emu {
             }
 
             self.last_decoded = Some(DecodedInstruction::AArch64(ins));
+            self.last_decoded_addr = pc;
             let result_ok = engine::aarch64::emulate_instruction(self, &ins);
             self.last_instruction_size = 4;
             (4, result_ok)
@@ -98,6 +100,7 @@ impl Emu {
             self.set_x86_instruction(Some(ins));
             self.set_x86_decoder_position(position);
             self.last_decoded = Some(DecodedInstruction::X86(ins));
+            self.last_decoded_addr = pc;
 
             let result_ok = engine::emulate_instruction(self, &ins, sz, true);
             self.last_instruction_size = sz;
@@ -562,6 +565,7 @@ impl Emu {
         // Run pre-instruction hook
         let decoded = DecodedInstruction::X86(ins);
         self.last_decoded = Some(decoded);
+        self.last_decoded_addr = addr;
         if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
             let rip = self.regs().rip;
             let skip = !hook_fn(self, rip, &decoded, sz);
@@ -767,6 +771,7 @@ impl Emu {
                     }
 
                     self.last_decoded = Some(decoded);
+                    self.last_decoded_addr = addr;
                     self.memory_operations.clear();
                     self.pos += 1;
                     self.instruction_count += 1;
@@ -875,8 +880,11 @@ impl Emu {
                     }
 
                     // --- Verbose output ---
+                    // Use `show_instruction` so the line gets the same color
+                    // as the post-mortem dump and the x86 path; the previous
+                    // raw `log::trace!` left aarch64 traces uncolored.
                     if self.cfg.verbose >= 2 && is_aarch64 {
-                        log::trace!("{} 0x{:x}: {}", self.pos, addr, aarch64_ins);
+                        self.show_instruction(color!("Cyan"), &decoded);
                     }
 
                     if !is_aarch64 {
