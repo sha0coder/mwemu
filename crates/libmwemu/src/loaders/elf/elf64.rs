@@ -619,10 +619,13 @@ impl Elf64 {
             }
 
             // elf executable need to map the header.
+            // Tiny ELFs (hand-crafted) may be smaller than 512 bytes; clamp the
+            // copy length to the actual binary size to avoid a slice OOB panic.
+            let hdr_copy_len = self.bin.len().min(512);
             let hdr = maps
                 .create_map("elf64.hdr", elf64_base, 512, Permission::READ_WRITE)
                 .expect("cannot create elf64.hdr map");
-            hdr.write_bytes(elf64_base, &self.bin[..512]);
+            hdr.write_bytes(elf64_base, &self.bin[..hdr_copy_len]);
         }
 
         self.base = elf64_base;

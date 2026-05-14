@@ -398,6 +398,7 @@ impl From<SerializableEmu> for Emu {
             // Win32 resource management
             handle_management: HandleManagement::new(), // TODO: not yet serialized
             section_handles: HashMap::new(),
+            file_handles: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
             ssdt_pad_stack: Vec::new(),
         };

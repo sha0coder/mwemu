@@ -263,39 +263,8 @@ impl Emu {
                     let _ = self.maps.write_qword(ctx_addr + 0xF8, ep);
 
                     let _ = self.call64(ldr_init, &[ctx_addr, ntdll_base, 0]);
-                    // Switch API dispatch to virtual stubs so PE code uses Rust
-                    // implementations rather than executing real DLL machine code.
-                    // Real DLL code writes non-volatile registers to shadow space,
-                    // which can overlap with PE frame locals and corrupt saved RSP.
                     self.ldr_init_done = true;
                     log::trace!("ntdll!LdrInitializeThunk emulated completely.");
-                    // Guest loader often clears `PEB+0x90`; restore before walking modules / main EP.
-                    peb64::ensure_peb_system_dependent_07(self);
-
-                    // LdrInitializeThunk was expected to bind the main image IAT but
-                    // our emulation does not run LdrpProcessInitializationComplete fully.
-                    // Bind it now so imported functions resolve to real stubs.
-                    // Must run BEFORE rebuild_ldr_lists so that kernelbase/kernel32 .pe
-                    // maps exist when the list is built.
-                    let exe_base = self.base;
-                    if let Some(mut pe) = self.pe64.take() {
-                        pe.iat_binding(self, exe_base);
-                        pe.delay_load_binding(self, exe_base);
-                        self.pe64 = Some(pe);
-                    }
-
-                    // Ensure essential Windows DLLs are loaded with valid PE content so
-                    // the PEB module list is usable by manual walkers (e.g. MinGW CRT).
-                    // LdrInitializeThunk maps these via NtMapViewOfSection which only creates
-                    // empty placeholder regions; we load the real PE files here.
-                    for essential in &["kernelbase.dll", "kernel32.dll", "user32.dll"] {
-                        winapi64::kernel32::load_library(self, essential);
-                    }
-
-                    // LdrInitializeThunk reinitializes the Ldr lists; if it didn't
-                    // complete successfully the lists may be empty. Rebuild them
-                    // from the actually-loaded PE images so user code can walk them.
-                    peb64::rebuild_ldr_lists(self);
                 } else if self.cfg.verbose >= 1 {
                     log::trace!("ssdt: could not resolve ntdll!LdrInitializeThunk");
                 }

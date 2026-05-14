@@ -69,16 +69,11 @@ impl Macho64 {
     /// Detect a 64-bit AArch64 Mach-O file by reading the first 8 bytes.
     pub fn is_macho64_aarch64(filename: &str) -> bool {
         if let Some((magic, cpu)) = Self::read_magic_and_cputype(filename) {
-            log::info!("MAcho64 magic: {:x} cpu: {:x}", magic, cpu);
-
             if magic == MH_MAGIC_64 && cpu == CPU_TYPE_ARM64 {
                 return true;
             }
 
             if magic == FAT_MAGIC_64 {
-                if cpu != CPU_TYPE_ARM64 {
-                    log::info!("not type CPU_TYPE_ARM64!");
-                }
                 return true;
             }
         }
@@ -176,8 +171,6 @@ impl Macho64 {
             });
         }
 
-        log::info!("macho64: {} segments, entry=0x{:x}", segments.len(), entry);
-
         Ok(Macho64 {
             bin,
             entry,
@@ -222,8 +215,6 @@ impl Macho64 {
             });
         }
 
-        log::info!("macho64: {} segments, entry=0x{:x}", segments.len(), entry);
-
         Ok(Macho64 {
             bin,
             entry,
@@ -241,14 +232,6 @@ impl Macho64 {
             }
 
             let perm = prot_to_permission(seg.initprot);
-
-            log::info!(
-                "macho64: mapping segment '{}' at 0x{:x} size 0x{:x} prot=0x{:x}",
-                seg.name,
-                seg.vmaddr,
-                seg.vmsize,
-                seg.initprot,
-            );
 
             let mem = maps
                 .create_map(&seg.name, seg.vmaddr, seg.vmsize, perm)
@@ -447,12 +430,6 @@ impl Macho64 {
             }
         }
 
-        log::info!(
-            "macho64: parsed {} imports, {} bind entries from chained fixups",
-            imports.len(),
-            binds.len()
-        );
-
         (imports, binds)
     }
 
@@ -513,12 +490,6 @@ impl Macho64 {
             };
 
             if bind == 1 {
-                log::trace!(
-                    "macho64: chained BIND at 0x{:x} ordinal={} (fmt {})",
-                    vmaddr,
-                    ordinal,
-                    pointer_format,
-                );
                 binds.push(ChainedBind {
                     got_vmaddr: vmaddr,
                     import_ordinal: ordinal,

@@ -139,7 +139,14 @@ impl Emu {
             let charactis = sect.characteristics;
             let is_exec = charactis & 0x20000000 != 0x0;
             let is_read = charactis & 0x40000000 != 0x0;
-            let is_write = charactis & 0x80000000 != 0x0;
+            let mut is_write = charactis & 0x80000000 != 0x0;
+            // The loader patches `.didat` (delay-load IAT) during init without
+            // calling NtProtectVirtualMemory first — it relies on SEC_IMAGE COW
+            // promotion, which the emulator does not model. Force RW so the
+            // page-touching helper in ntdll does not fault.
+            if sect.get_name().trim() == ".didat" {
+                is_write = true;
+            }
             let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
@@ -235,7 +242,13 @@ impl Emu {
             let charistic = sect.characteristics;
             let is_exec = charistic & 0x20000000 != 0x0;
             let is_read = charistic & 0x40000000 != 0x0;
-            let is_write = charistic & 0x80000000 != 0x0;
+            let mut is_write = charistic & 0x80000000 != 0x0;
+            // The loader patches `.didat` during init without calling
+            // NtProtectVirtualMemory first — relies on SEC_IMAGE COW we do
+            // not model. Force RW so ntdll's page-touching helper succeeds.
+            if sect.get_name().trim() == ".didat" {
+                is_write = true;
+            }
             let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             let map_sz: u64 = if sect.virtual_size > 0 {
@@ -379,7 +392,13 @@ impl Emu {
             let charistic = sect.characteristics;
             let is_exec = charistic & 0x20000000 != 0x0;
             let is_read = charistic & 0x40000000 != 0x0;
-            let is_write = charistic & 0x80000000 != 0x0;
+            let mut is_write = charistic & 0x80000000 != 0x0;
+            // The loader patches `.didat` during init without calling
+            // NtProtectVirtualMemory first — relies on SEC_IMAGE COW we do
+            // not model. Force RW so ntdll's page-touching helper succeeds.
+            if sect.get_name().trim() == ".didat" {
+                is_write = true;
+            }
             let permission = Permission::from_flags(is_read, is_write, is_exec);
 
             // Virtual size determines how much address space the section occupies.

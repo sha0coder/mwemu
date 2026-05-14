@@ -95,18 +95,62 @@ pub fn gateway(emu: &mut Emu) {
         // populates the byte→wide / wide→byte tables consumed by
         // `RtlAnsiStringToUnicodeString`.
         0x102 => nls::nt_get_nls_section_ptr(emu),
-        // `NtQueryAttributesFile` (0x3d): ntdll's loader probes optional manifest /
-        // policy / .local files via this syscall. STATUS_NOT_IMPLEMENTED here is
-        // fatal — the loader propagates it up and `LdrInitializeThunk` ends with
-        // `NtTerminateProcess(0xC0000002)`. STATUS_OBJECT_NAME_NOT_FOUND is what
-        // real Windows returns for a missing file and is handled gracefully.
+        // `NtQueryAttributesFile` (0x3d): ntdll's loader stats DLL files on disk
+        // to validate the module cache after mapping them via KnownDlls. For real
+        // DLLs (kernelbase.dll, kernel32.dll, …) returning OBJECT_NAME_NOT_FOUND
+        // makes the loader treat the module as corrupt and call
+        // `NtTerminateProcess(STATUS_DLL_NOT_FOUND)`. Resolve the NT path against
+        // `cfg.maps_folder` and fill a FILE_BASIC_INFORMATION when the file
+        // exists; only fall back to NOT_FOUND for genuinely missing files
+        // (manifests, .local, policy probes).
         WIN64_NTQUERYATTRIBUTESFILE => {
-            log_orange!(
-                emu,
-                "syscall 0x{:x}: NtQueryAttributesFile (stub → OBJECT_NAME_NOT_FOUND)",
-                WIN64_NTQUERYATTRIBUTESFILE,
-            );
-            emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            let obj_attr = emu.regs().rcx;
+            let file_info_ptr = emu.regs().rdx;
+            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(emu, obj_attr);
+            // Extract the filename (last path segment) from the NT path.
+            let basename = nt_name
+                .rsplit(|c| c == '\\' || c == '/')
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            let resolved = if basename.is_empty() {
+                None
+            } else {
+                let mut p = std::path::PathBuf::from(&emu.cfg.maps_folder);
+                p.push(&basename);
+                if p.exists() { Some(p) } else { None }
+            };
+            if let Some(path) = resolved {
+                if file_info_ptr != 0 && emu.maps.is_mapped(file_info_ptr) {
+                    // FILE_BASIC_INFORMATION: 4× LARGE_INTEGER + ULONG FileAttributes.
+                    // Real timestamps would require unix→FILETIME conversion; the
+                    // loader only checks them against its own cache, so a fixed
+                    // recent value is good enough for any single emulation.
+                    const FAKE_FILETIME: u64 = 0x01DA_0000_0000_0000; // ~2023
+                    const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
+                    let _ = emu.maps.write_qword(file_info_ptr + 0x00, FAKE_FILETIME);
+                    let _ = emu.maps.write_qword(file_info_ptr + 0x08, FAKE_FILETIME);
+                    let _ = emu.maps.write_qword(file_info_ptr + 0x10, FAKE_FILETIME);
+                    let _ = emu.maps.write_qword(file_info_ptr + 0x18, FAKE_FILETIME);
+                    let _ = emu.maps.write_dword(file_info_ptr + 0x20, FILE_ATTRIBUTE_NORMAL);
+                }
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtQueryAttributesFile name={:?} → resolved {:?} (SUCCESS)",
+                    WIN64_NTQUERYATTRIBUTESFILE,
+                    nt_name,
+                    path,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
+            } else {
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtQueryAttributesFile name={:?} → OBJECT_NAME_NOT_FOUND",
+                    WIN64_NTQUERYATTRIBUTESFILE,
+                    nt_name,
+                );
+                emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            }
         }
         // `NtAreMappedFilesTheSame` (0x8e on some Windows builds, 0x90 on others):
         // ntdll uses it during DLL caching. STATUS_NOT_SAME_DEVICE is the documented
@@ -133,18 +177,75 @@ pub fn gateway(emu: &mut Emu) {
             );
             emu.regs_mut().rax = STATUS_NOT_SUPPORTED;
         }
-        // `NtOpenFile` (0x33): ntdll's loader uses this when KnownDlls / api-set
-        // lookup fails. STATUS_NOT_IMPLEMENTED cascades into a process-terminate;
-        // STATUS_OBJECT_NAME_NOT_FOUND signals "file not found" cleanly so the
-        // loader can mark the dependency missing and (for optional imports)
-        // continue.
+        // `NtOpenFile` (0x33): ntdll's loader opens KnownDll files on disk to
+        // verify them after mapping (timestamps, share-mode locks, …). For real
+        // DLLs returning OBJECT_NAME_NOT_FOUND makes the loader treat them as
+        // missing and terminate with STATUS_DLL_NOT_FOUND. Resolve the NT path
+        // against `cfg.maps_folder` and hand out a fake handle when the file
+        // exists; only return NOT_FOUND for genuinely absent paths.
         0x33 => {
+            let file_handle_out = emu.regs().rcx;
+            let obj_attr = emu.regs().r8;
+            let io_status_block = emu.regs().r9;
+            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(emu, obj_attr);
+            let basename = nt_name
+                .rsplit(|c| c == '\\' || c == '/')
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            let exists = if basename.is_empty() {
+                false
+            } else {
+                let mut p = std::path::PathBuf::from(&emu.cfg.maps_folder);
+                p.push(&basename);
+                p.exists()
+            };
+            if exists {
+                let h = crate::syscall::windows::syscall64::sync::next_handle();
+                if file_handle_out != 0 && emu.maps.is_mapped(file_handle_out) {
+                    let _ = emu.maps.write_qword(file_handle_out, h);
+                }
+                if io_status_block != 0 && emu.maps.is_mapped(io_status_block) {
+                    // IO_STATUS_BLOCK: Status (NTSTATUS, 4) + pad(4) + Information (ULONG_PTR, 8).
+                    // Information = FILE_OPENED (1).
+                    let _ = emu.maps.write_dword(io_status_block, STATUS_SUCCESS as u32);
+                    let _ = emu.maps.write_qword(io_status_block + 0x08, 1);
+                }
+                // Track the handle → basename so a follow-up NtCreateSection(file: h)
+                // can mark the new section as backed by this DLL and NtMapViewOfSection
+                // will load the real PE.
+                emu.file_handles.insert(h, basename.clone());
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtOpenFile name={:?} → handle 0x{:x} (SUCCESS)",
+                    nr,
+                    nt_name,
+                    h,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
+            } else {
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtOpenFile name={:?} → OBJECT_NAME_NOT_FOUND",
+                    nr,
+                    nt_name,
+                );
+                emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            }
+        }
+        // `NtApphelpCacheControl` (0x4c): kernel32/kernelbase consult the
+        // app-compat shim cache during process start (`BasepCheckBadapp`,
+        // `BasepCheckAppCompat`, etc.). STATUS_NOT_SUPPORTED tells callers
+        // "no shim infrastructure available" so they skip compat-fixup work
+        // and continue with the normal load — mirrors sogen's
+        // `handle_NtApphelpCacheControl`.
+        WIN64_NTAPPHELPCACHECONTROL => {
             log_orange!(
                 emu,
-                "syscall 0x{:x}: NtOpenFile (stub → OBJECT_NAME_NOT_FOUND)",
+                "syscall 0x{:x}: NtApphelpCacheControl (stub → NOT_SUPPORTED)",
                 nr,
             );
-            emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            emu.regs_mut().rax = STATUS_NOT_SUPPORTED;
         }
         _ => {
             let name = what_syscall(nr);

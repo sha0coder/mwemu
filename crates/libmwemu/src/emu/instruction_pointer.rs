@@ -141,9 +141,12 @@ impl Emu {
                 log::trace!("/!\\ changing RIP to {} ", name);
             }
 
-            // emulate winapi (SSDT mode): always run real DLL machine code.
-            // Syscall instructions inside the real DLL code are intercepted
-            // by the syscall handler. No Rust stubs are used here.
+            // SSDT mode: always run the real DLL machine code; user-level APIs
+            // like `kernel32!LoadLibraryA` execute their full path down to the
+            // `syscall` instruction (which the syscall handler intercepts).
+            // No Rust winapi stubs are used here — the whole point of SSDT is
+            // to emulate the real DLLs and only implement the kernel syscall
+            // surface.
             if self.cfg.emulate_winapi {
                 let api_name = winapi64::kernel32::guess_api_name(self, addr);
                 if !api_name.is_empty() {

@@ -48,6 +48,18 @@ impl Emu {
             }
         }
 
+        // Tiny / hand-crafted ELFs may have no section headers at all (or no
+        // `.text` section). Fall back to the first executable PT_LOAD segment.
+        if text_addr == 0 {
+            for phdr in &elf64.elf_phdr {
+                if phdr.p_type == constants::PT_LOAD && (phdr.p_flags & 1) != 0 {
+                    text_addr = phdr.p_vaddr;
+                    text_sz = phdr.p_memsz;
+                    break;
+                }
+            }
+        }
+
         if text_addr == 0 {
             panic!(".text not found on this elf64");
         }

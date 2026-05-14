@@ -720,7 +720,12 @@ pub fn rebuild_ldr_lists(emu: &mut emu::Emu) {
 
     rebuild_ldr_hash_table(emu, &modules, &entries);
     ensure_ntdll_loader_globals(emu);
-    populate_nls_upcase_table(emu);
+    // NOTE: do NOT call `populate_nls_upcase_table` here. ntdll has already
+    // hashed module names with whatever upcase table it built during
+    // `LdrInitializeThunk`; mutating the table afterwards would cause
+    // `LdrpUnicodeStringToHash` to compute different hashes and miss every
+    // entry it just registered. If a fix-up is ever needed, do it BEFORE
+    // ntdll's first hash use, not after.
     rebuild_ldrp_module_base_address_index(emu, &entries);
 
     if exe_base != 0 {

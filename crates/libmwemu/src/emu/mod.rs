@@ -157,6 +157,7 @@ pub struct Emu {
     // --- Win32 resource management ---
     pub handle_management: HandleManagement, // file and object handle table
     pub section_handles: HashMap<u64, String>, // KnownDll section handle → DLL filename (e.g., "kernel32.dll")
+    pub file_handles: HashMap<u64, String>,    // NtOpenFile handle → resolved basename (e.g., "kernelbase.dll"); used by NtCreateSection to inherit the dll name
     pub known_dll_dir_handles: HashSet<u64>,   // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
     pub ssdt_pad_stack: Vec<u64>,              // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
 }

@@ -17,13 +17,11 @@ impl Emu {
             panic!("unsupported Mach-O architecture: {:?}", self.cfg.arch);
         }
         self.set_pc(macho.entry);
-        log::info!("macho64: entry point set to 0x{:x}", macho.entry);
 
         // --- Dylib loading and GOT resolution ---
 
         // Stage 1: Discover dependent dylibs
         let libs = macho.get_libs();
-        log::info!("macho64: {} dependent dylibs: {:?}", libs.len(), libs);
 
         // Stage 2: Load each dylib from maps/macos/{arch}/
         let mut export_map: HashMap<String, u64> = HashMap::new();
@@ -32,13 +30,7 @@ impl Emu {
             let lib_name = lib_path.rsplit('/').next().unwrap_or(lib_path);
             let local_path = self.cfg.get_maps_folder(lib_name);
             if Path::new(&local_path).exists() {
-                let (base, exports) = self.map_dylib_macho64(&local_path, lib_name);
-                log::info!(
-                    "macho64: loaded dylib {} at 0x{:x} with {} exports",
-                    lib_name,
-                    base,
-                    exports.len()
-                );
+                let (_base, exports) = self.map_dylib_macho64(&local_path, lib_name);
                 for (sym, addr) in exports {
                     macho.addr_to_symbol.insert(addr, sym.clone());
                     export_map.insert(sym, addr);
@@ -57,12 +49,6 @@ impl Emu {
         for bind in &binds {
             if let Some(imp) = imports.get(bind.import_ordinal as usize) {
                 if let Some(&resolved_addr) = export_map.get(&imp.name) {
-                    log::info!(
-                        "macho64: resolved {} -> 0x{:x} (GOT at 0x{:x})",
-                        imp.name,
-                        resolved_addr,
-                        bind.got_vmaddr
-                    );
                     self.maps.write_qword(bind.got_vmaddr, resolved_addr);
                 } else {
                     log::warn!(
@@ -105,13 +91,6 @@ impl Emu {
             let perm = prot_to_permission(seg.initprot);
             let seg_addr = base + seg.vmaddr; // Rebase: dylib vmaddr is relative to 0
             let map_name = format!("{}.{}", base_name, seg.name);
-
-            log::info!(
-                "macho64: mapping dylib segment '{}' at 0x{:x} size 0x{:x}",
-                map_name,
-                seg_addr,
-                seg.vmsize
-            );
 
             let mem = self
                 .maps

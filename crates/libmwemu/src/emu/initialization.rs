@@ -142,6 +142,7 @@ impl Emu {
             handle_management: HandleManagement::new(),
             library_loaded: false,
             section_handles: HashMap::new(),
+            file_handles: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
             ssdt_pad_stack: Vec::new(),
         }
@@ -857,6 +858,91 @@ impl Emu {
                     log::debug!("ntdll CFG RtlFailFast2 patch applied at 0x{:x}", patch_va);
                 } else {
                     log::debug!("ntdll CFG RtlFailFast2 pattern not found — skipping patch");
+                }
+
+                // LdrpInitSecurityCookie double-init patch
+                // ---------------------------------------------------------------
+                // ntdll's per-DLL security-cookie randomiser does:
+                //   mov r12, 0x2b992ddfa232  ; uninitialised "magic"
+                //   cmp [rdi], r12
+                //   jne <fail>               ; not magic → STATUS_INVALID_IMAGE_FORMAT
+                //   ...randomise rbx...
+                //   mov [rdi], rbx           ; store new cookie
+                //   mov eax, 1; ret
+                //
+                // The loader on this ntdll build invokes the routine twice for
+                // kernelbase during LdrInitializeThunk; the second call finds
+                // the cookie already randomised and trips the `jne` → process
+                // aborts with `STATUS_INVALID_IMAGE_FORMAT (0xC000007B)`,
+                // killing every subsequent `LoadLibraryA`.
+                //
+                // Patch the cookie-store `mov [rdi], rbx` (48 89 1f) to three
+                // NOPs.  Effect: the cookie keeps its on-disk "magic" forever.
+                // First and every later call see magic, pass the `cmp`, and
+                // return success without mutating the page. ntdll continues
+                // unaware; stack-canary checks all run against the same magic
+                // value, which is fine for emulation.
+                if let Some(ntdll_pe) = self.maps.get_map_by_name("ntdll.pe") {
+                    let ntdll_base = ntdll_pe.get_base();
+                    let ntdll_size: usize = 0x800000;
+                    // Pattern: movabs r12,0x2b992ddfa232 (49 bc 32 a2 df 2d 99 2b 00 00)
+                    //          cmp [rdi], r12          (4c 39 27)
+                    //          jne short ??            (75 ??)
+                    //          mov rcx, rdi            (48 8b cf)
+                    //          call ??                 (e8 ?? ?? ?? ??)
+                    // followed downstream by the `mov [rdi], rbx` (48 89 1f).
+                    let needle: &[u8] = &[
+                        0x49, 0xbc, 0x32, 0xa2, 0xdf, 0x2d, 0x99, 0x2b, 0x00, 0x00,
+                        0x4c, 0x39, 0x27,
+                    ];
+                    let mut anchor_va: Option<u64> = None;
+                    for off in 0..ntdll_size.saturating_sub(needle.len() + 0x80) {
+                        let va = ntdll_base + off as u64;
+                        let mut matches = true;
+                        for (i, &b) in needle.iter().enumerate() {
+                            if self.maps.read_byte(va + i as u64).unwrap_or(0xff) != b {
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if matches {
+                            anchor_va = Some(va);
+                            break;
+                        }
+                    }
+                    if let Some(anchor) = anchor_va {
+                        // Walk forward looking for `48 89 1f` (mov [rdi], rbx)
+                        // within ~0x80 bytes of the cmp.
+                        let mut store_va: Option<u64> = None;
+                        for d in 0..0x80u64 {
+                            let p = anchor + needle.len() as u64 + d;
+                            if self.maps.read_byte(p).unwrap_or(0) == 0x48
+                                && self.maps.read_byte(p + 1).unwrap_or(0) == 0x89
+                                && self.maps.read_byte(p + 2).unwrap_or(0) == 0x1f
+                            {
+                                store_va = Some(p);
+                                break;
+                            }
+                        }
+                        if let Some(p) = store_va {
+                            let _ = self.maps.write_byte(p, 0x90);
+                            let _ = self.maps.write_byte(p + 1, 0x90);
+                            let _ = self.maps.write_byte(p + 2, 0x90);
+                            log::debug!(
+                                "ntdll LdrpInitSecurityCookie store-cookie nop patch at 0x{:x}",
+                                p
+                            );
+                        } else {
+                            log::debug!(
+                                "ntdll LdrpInitSecurityCookie cookie-store not found near 0x{:x}",
+                                anchor
+                            );
+                        }
+                    } else {
+                        log::debug!(
+                            "ntdll LdrpInitSecurityCookie cmp pattern not found — skipping patch"
+                        );
+                    }
                 }
             }
 

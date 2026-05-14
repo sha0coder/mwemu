@@ -778,7 +778,15 @@ pub fn nt_protect_virtual_memory(emu: &mut Emu) {
     }
 
     if let Some(mem) = emu.maps.get_mem_by_addr_mut(base) {
-        mem.set_permission(nt_page_protection_to_permission(new_protect));
+        let mut new_perm = nt_page_protection_to_permission(new_protect);
+        // Preserve write permission on `.didat` sections. The loader maps them
+        // RW (to apply delay-load patches via SEC_IMAGE COW we do not model)
+        // and then calls NtProtectVirtualMemory(PAGE_READONLY) to mirror the
+        // final state, but later code paths still write to those pages.
+        if mem.get_name().ends_with(".didat") {
+            new_perm = new_perm.add(Permission::WRITE);
+        }
+        mem.set_permission(new_perm);
     }
 
     emu.regs_mut().rax = STATUS_SUCCESS;
@@ -1181,7 +1189,7 @@ fn read_unicode_string(emu: &Emu, addr: u64) -> String {
     emu.maps.read_wide_string(buf)
 }
 
-fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
+pub fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
     if addr == 0 || !emu.maps.is_mapped(addr) {
         return String::new();
     }
@@ -1225,6 +1233,13 @@ pub fn nt_create_section(emu: &mut Emu) {
     }
 
     let h = crate::syscall::windows::syscall64::sync::next_handle();
+    // Inherit the DLL backing from the file handle if we tracked one, so the
+    // subsequent NtMapViewOfSection on this section loads the real PE.
+    if file_handle != 0 {
+        if let Some(dll_name) = emu.file_handles.get(&file_handle).cloned() {
+            emu.section_handles.insert(h, dll_name);
+        }
+    }
     let _ = emu.maps.write_qword(handle_out, h);
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
