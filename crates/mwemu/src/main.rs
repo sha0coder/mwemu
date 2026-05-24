@@ -154,7 +154,20 @@ fn main() {
         .arg(clap_arg!("entropy", "", "entropy", "display changes in the entropy"))
         .arg(clap_arg!("multithread", "", "multithread", "enable multithread emulation"))
         .arg(clap_arg!("is_shellcode", "", "is_shellcode", "Force the binary to be shellcode"))
-        .arg(clap_arg!("ssdt", "", "ssdt", "emulate winapi, use ssdt syscall implementation instead"))
+        // `--ssdt` runs real PE bytes (ntdll, kernel32, kernelbase, …) and
+        // intercepts only at the `syscall` instruction — the opposite of the
+        // default API-stub path. `--syscall-mode` is a more descriptive alias.
+        .arg(
+            Arg::with_name("ssdt")
+                .long("ssdt")
+                .alias("syscall-mode")
+                .help(
+                    "run real DLL PE bytes and intercept only at syscalls \
+                     (alias: --syscall-mode). Slower but more accurate against \
+                     anti-emulation checks.",
+                )
+                .takes_value(false),
+        )
         .arg(clap_arg!("gdb", "g", "gdb", "enable GDB remote debugging server"))
         .arg(clap_arg!("gdb_port", "P", "gdb-port", "set GDB server port (default: 9001)", "PORT"))
         .arg(clap_arg!("gdb_wait", "W", "gdb-wait", "wait for GDB connection before starting"))
