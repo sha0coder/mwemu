@@ -171,3 +171,109 @@ fn ssdt_ldr_initialize_thunk() {
         emu.regs().rip
     );
 }
+
+/// End-to-end `--ssdt` smoke for the MessageBoxA achievement: equivalent to
+/// running `cargo run --release -- -f test/exe64win_msgbox.bin -6 --ssdt`
+/// and confirming the EXE reaches its payload.
+///
+/// Verifies that, with `--ssdt`:
+///   1. `ntdll!LdrInitializeThunk` completes cleanly (`ldr_init_done = true`,
+///      ~6.9M instructions on the current Win2022 build), then
+///   2. the EXE's payload runs, the `LoadLibraryA('user32.dll')` shim returns
+///      the user32 base, and
+///   3. the in-loop `user32!MessageBoxA` shim fires (i.e. execution actually
+///      reaches the address resolved by GetProcAddress).
+///
+/// If this test fails, the `--ssdt` happy path is broken somewhere along the
+/// chain: LdrInit → exe entry → loader.exe-shellcode-style resolver → APIs.
+///
+/// Run with:
+/// ```text
+/// cargo test -p libmwemu ssdt_msgbox_reaches_messageboxa \
+///     --release -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "slow: ~13s in release; run with --release -- --ignored"]
+fn ssdt_msgbox_reaches_messageboxa() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    emu.cfg.emulate_winapi = true; // --ssdt
+
+    let sample = helpers::test_data_path("exe64win_msgbox.bin");
+    assert!(
+        std::path::Path::new(&sample).is_file(),
+        "missing test sample: {}",
+        sample
+    );
+
+    // Strategy: the in-loop MessageBoxA shim short-circuits the function
+    // entry — it sets rax/rsp directly and never decodes the instruction at
+    // `user32!MessageBoxA`. Detecting the shim with `on_pre_instruction(rip
+    // == mba_addr)` therefore misses every call.
+    //
+    // Instead, watch for:
+    //   * `user32_loaded`: the user32 PE map appearing (= LoadLibraryA shim
+    //     fired and `load_library("user32.dll")` succeeded), and
+    //   * `mba_returned`: the EXE's post-call return PC. In the
+    //     loader.exe-style resolver the call to MessageBoxA lives at
+    //     0x14000123f (`call rax`, 2 bytes); the instruction immediately
+    //     after is at 0x140001241, which is only ever reached if the call
+    //     returns normally. Anything that lands there proves the MessageBoxA
+    //     shim ran AND it correctly popped the return address back.
+    let user32_loaded = Rc::new(RefCell::new(false));
+    let mba_returned = Rc::new(RefCell::new(false));
+    let user32_loaded_c = Rc::clone(&user32_loaded);
+    let mba_returned_c = Rc::clone(&mba_returned);
+    const POST_MBA_CALL_RIP: u64 = 0x140001241;
+    emu.hooks
+        .on_pre_instruction(move |emu, rip, _ins, _sz| {
+            if !*user32_loaded_c.borrow()
+                && emu.maps.get_map_by_name("user32.pe").is_some()
+            {
+                *user32_loaded_c.borrow_mut() = true;
+            }
+            if rip == POST_MBA_CALL_RIP {
+                *mba_returned_c.borrow_mut() = true;
+            }
+            true
+        });
+
+    // `load_code` with `emulate_winapi = true` drives LdrInitializeThunk via
+    // `call64` and then leaves RIP at the EXE entry point.
+    emu.load_code(&sample);
+
+    assert!(
+        emu.ldr_init_done,
+        "ntdll!LdrInitializeThunk did not complete (pos={} rip=0x{:x})",
+        emu.pos,
+        emu.regs().rip
+    );
+
+    // 12M instructions is comfortably above the ~7M used by LdrInit and the
+    // ~10K extra used by the EXE payload (loader.exe-style resolver +
+    // MessageBoxA shim). If this cap is hit, something stalled.
+    let cap = 12_000_000u64;
+    let _ = emu.run_to(cap);
+
+    assert!(
+        *user32_loaded.borrow(),
+        "user32.dll was never mapped — LoadLibraryA('user32.dll') shim didn't fire \
+         (pos={} rip=0x{:x})",
+        emu.pos,
+        emu.regs().rip,
+    );
+    assert!(
+        *mba_returned.borrow(),
+        "EXE never returned from `call MessageBoxA` (no execution at 0x{:x}) — \
+         either the MessageBoxA shim didn't fire, didn't pop the return address \
+         correctly, or LdrInit / GetProcAddress regressed (pos={} rip=0x{:x}).",
+        POST_MBA_CALL_RIP,
+        emu.pos,
+        emu.regs().rip,
+    );
+}

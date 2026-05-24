@@ -104,13 +104,48 @@ pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) 
     let module_lc = module.trim().to_lowercase();
 
     if kernel32_common::is_api_set_contract(&module_lc) {
-        let addr = resolve_in_module_exports_depth(emu, "kernelbase.dll", name, 0);
+        // 1) Try the apiset stub itself — its export table is just a list of
+        //    forwarders (`ucrtbase.wcscmp`, `kernelbase.HeapAlloc`, …). When
+        //    the stub DLL is loaded, `resolve_in_module_exports_depth` will
+        //    chase those strings via `resolve_forwarded_export_string_depth`
+        //    and land on the real implementation. This covers contracts that
+        //    don't redirect to kernelbase/kernel32 — most importantly
+        //    `api-ms-win-crt-*` → `ucrtbase.dll`.
+        let addr = resolve_in_module_exports_depth(emu, &module_lc, name, 0);
         if addr != 0 {
             return addr;
         }
-        let addr = resolve_in_module_exports_depth(emu, "kernel32.dll", name, 0);
-        if addr != 0 {
-            return addr;
+        // 2) Fallback: map by contract category. ntdll's ApiSet schema (a
+        //    binary blob compiled per-build) gives the authoritative mapping,
+        //    but the high-traffic prefixes are stable across builds and
+        //    cheaper to check inline.
+        let fallback_modules: &[&str] = if module_lc.starts_with("api-ms-win-crt-") {
+            &["ucrtbase.dll", "msvcp_win.dll", "kernelbase.dll"]
+        } else if module_lc.starts_with("api-ms-win-core-rtlsupport-") {
+            // RtlCompareMemory, RtlUnwind, RtlCaptureContext, … all live in ntdll.
+            &["ntdll.dll", "kernelbase.dll"]
+        } else if module_lc.starts_with("api-ms-win-core-apiquery-") {
+            // ApiSetQueryApiSetPresence — ntdll-resident query helper.
+            &["ntdll.dll", "kernelbase.dll"]
+        } else if module_lc.starts_with("api-ms-win-shcore-") {
+            &["shcore.dll", "kernelbase.dll"]
+        } else if module_lc.starts_with("api-ms-win-eventing-") {
+            // EventRegister, EventWrite*, EventActivityIdControl — in ntdll
+            // on recent Windows (ETW user-mode helpers); fall back to advapi32
+            // for the legacy callers.
+            &["ntdll.dll", "kernelbase.dll", "advapi32.dll"]
+        } else if module_lc.starts_with("api-ms-win-security-") {
+            &["sechost.dll", "advapi32.dll", "kernelbase.dll"]
+        } else if module_lc.starts_with("api-ms-win-service-") {
+            &["sechost.dll", "kernelbase.dll"]
+        } else {
+            &["kernelbase.dll", "kernel32.dll"]
+        };
+        for m in fallback_modules {
+            let addr = resolve_in_module_exports_depth(emu, m, name, 0);
+            if addr != 0 {
+                return addr;
+            }
         }
         return 0;
     }
