@@ -458,7 +458,7 @@ impl Emu {
         if set_entry || self.cfg.emulate_winapi {
             if !is_maps || self.cfg.emulate_winapi {
                 // In SSDT + LdrInitializeThunk bootstrap mode, skip eager IAT binding for the main image.
-                if !(set_entry && self.cfg.emulate_winapi && self.cfg.emulate_winapi) {
+                if !(set_entry && self.cfg.emulate_winapi) {
                     pe64.iat_binding(self, base);
                     pe64.delay_load_binding(self, base);
                 }
@@ -467,13 +467,13 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            if !(self.cfg.emulate_winapi && self.cfg.emulate_winapi) {
+            if !self.cfg.emulate_winapi {
                 let _space_addr =
                     peb64::create_ldr_entry(self, base, self.pc(), &filename2, 0, 0x2c1950);
                 let exe_name = self.cfg.exe_name.clone();
                 peb64::update_ldr_entry_base(&exe_name, base, self);
             }
-            if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+            if self.cfg.emulate_winapi {
                 peb64::update_peb_image_base(self, base);
             }
         }

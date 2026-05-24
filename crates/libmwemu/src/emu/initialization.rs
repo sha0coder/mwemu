@@ -197,7 +197,7 @@ impl Emu {
         // 4 MB is enough for the LdrInitializeThunk path itself; the api-set
         // fallback for unresolved dependencies runs each DllMain once and
         // unwinds normally, so additional headroom isn't needed in practice.
-        let stack_size = if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+        let stack_size = if self.cfg.emulate_winapi {
             0x400000
         } else {
             0x100000
@@ -205,7 +205,7 @@ impl Emu {
 
         // default if not set via clap args
         if self.cfg.stack_addr == 0 {
-            self.cfg.stack_addr = if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+            self.cfg.stack_addr = if self.cfg.emulate_winapi {
                 0x10000
             } else {
                 0x22a000
