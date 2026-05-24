@@ -124,7 +124,8 @@ impl PE64 {
     }
 
     pub fn load(filename: &str) -> PE64 {
-        let mut fd = File::open(filename).expect("pe64 binary not found");
+        let mut fd = File::open(filename)
+            .unwrap_or_else(|e| panic!("pe64 binary not found: {filename}: {e}"));
         let mut raw: Vec<u8> = Vec::new();
         fd.read_to_end(&mut raw)
             .expect("couldnt read the pe64 binary");

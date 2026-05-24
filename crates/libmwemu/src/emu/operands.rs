@@ -150,7 +150,7 @@ impl Emu {
                 }
                 0x30 => {
                     let peb = self.maps.get_mem("peb");
-                    if self.cfg.verbose >= 1 {
+                    if self.cfg.verbose >= 3 {
                         log::trace!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
                     }
                     peb.get_base()
@@ -175,7 +175,7 @@ impl Emu {
                 }
                 0x18 => {
                     let teb = self.maps.get_mem("teb");
-                    if self.cfg.verbose >= 1 {
+                    if self.cfg.verbose >= 3 {
                         log::trace!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
                     }
                     teb.get_base()
@@ -233,14 +233,14 @@ impl Emu {
                 }
                 0x60 => {
                     let peb = self.maps.get_mem("peb");
-                    if self.cfg.verbose >= 1 {
+                    if self.cfg.verbose >= 3 {
                         log::trace!("{} Reading PEB 0x{:x}", self.pos, peb.get_base());
                     }
                     peb.get_base()
                 }
                 0x30 => {
                     let teb = self.maps.get_mem("teb");
-                    if self.cfg.verbose >= 1 {
+                    if self.cfg.verbose >= 3 {
                         log::trace!("{} Reading TEB 0x{:x}", self.pos, teb.get_base());
                     }
                     teb.get_base()
@@ -341,58 +341,54 @@ impl Emu {
 
             value = match sz {
                 64 => match self.maps.read_qword(mem_addr) {
-                    Some(v) => {
-                        /*if self.cfg.verbose >= 3 {
-                            log::debug!("    Read qword: 0x{:x}", v);
-                        }*/
-                        v
-                    }
+                    Some(v) => v,
                     None => {
-                        log::trace!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
-                        self.exception(ExceptionType::QWordDereferencing);
-                        return None;
+                        if self.try_grow_stack(mem_addr) {
+                            self.maps.read_qword(mem_addr).unwrap_or(0)
+                        } else {
+                            log::trace!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
+                            self.exception(ExceptionType::QWordDereferencing);
+                            return None;
+                        }
                     }
                 },
 
                 32 => match self.maps.read_dword(mem_addr) {
-                    Some(v) => {
-                        /*if self.cfg.verbose >= 3 {
-                            log::debug!("    Read dword: 0x{:x}", v);
-                        }*/
-                        v.into()
-                    }
+                    Some(v) => v.into(),
                     None => {
-                        log::trace!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
-                        self.exception(ExceptionType::DWordDereferencing);
-                        return None;
+                        if self.try_grow_stack(mem_addr) {
+                            self.maps.read_dword(mem_addr).unwrap_or(0) as u64
+                        } else {
+                            log::trace!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
+                            self.exception(ExceptionType::DWordDereferencing);
+                            return None;
+                        }
                     }
                 },
 
                 16 => match self.maps.read_word(mem_addr) {
-                    Some(v) => {
-                        /*if self.cfg.verbose >= 3 {
-                            log::debug!("    Read word: 0x{:x}", v);
-                        }*/
-                        v.into()
-                    }
+                    Some(v) => v.into(),
                     None => {
-                        log::trace!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
-                        self.exception(ExceptionType::WordDereferencing);
-                        return None;
+                        if self.try_grow_stack(mem_addr) {
+                            self.maps.read_word(mem_addr).unwrap_or(0) as u64
+                        } else {
+                            log::trace!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
+                            self.exception(ExceptionType::WordDereferencing);
+                            return None;
+                        }
                     }
                 },
 
                 8 => match self.maps.read_byte(mem_addr) {
-                    Some(v) => {
-                        /*if self.cfg.verbose >= 3 {
-                            log::debug!("    Read byte: 0x{:x}", v);
-                        }*/
-                        v.into()
-                    }
+                    Some(v) => v.into(),
                     None => {
-                        log::trace!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
-                        self.exception(ExceptionType::ByteDereferencing);
-                        return None;
+                        if self.try_grow_stack(mem_addr) {
+                            self.maps.read_byte(mem_addr).unwrap_or(0) as u64
+                        } else {
+                            log::trace!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
+                            self.exception(ExceptionType::ByteDereferencing);
+                            return None;
+                        }
                     }
                 },
 
@@ -645,101 +641,128 @@ impl Emu {
                 match sz {
                     64 => {
                         if !self.maps.write_qword(mem_addr, value2) {
-                            return if self.cfg.skip_unimplemented {
-                                let map_name = format!("banzai_{:x}", mem_addr);
-                                let map = self
-                                    .maps
-                                    .create_map(
-                                        &map_name,
-                                        mem_addr,
-                                        100,
-                                        Permission::READ_WRITE_EXECUTE,
-                                    )
-                                    .expect("cannot create banzai map");
-                                map.write_qword(mem_addr, value2);
-                                true
+                            if self.try_grow_stack(mem_addr) && self.maps.write_qword(mem_addr, value2) {
+                                // grew + retry succeeded
                             } else {
-                                log::trace!(
-                                    "/!\\ exception dereferencing bad address. 0x{:x}",
-                                    mem_addr
-                                );
-                                self.exception(ExceptionType::BadAddressDereferencing);
-                                false
+                                return if self.cfg.skip_unimplemented {
+                                    let map_name = format!("banzai_{:x}", mem_addr);
+                                    let map = self
+                                        .maps
+                                        .create_map(
+                                            &map_name,
+                                            mem_addr,
+                                            100,
+                                            Permission::READ_WRITE_EXECUTE,
+                                        )
+                                        .expect("cannot create banzai map");
+                                    map.write_qword(mem_addr, value2);
+                                    true
+                                } else {
+                                    log::trace!(
+                                        "/!\\ exception dereferencing bad address. 0x{:x}",
+                                        mem_addr
+                                    );
+                                    self.exception(ExceptionType::BadAddressDereferencing);
+                                    false
+                                };
                             }
                         }
                     }
                     32 => {
                         if !self.maps.write_dword(mem_addr, to32!(value2)) {
-                            return if self.cfg.skip_unimplemented {
-                                let map_name = format!("banzai_{:x}", mem_addr);
-                                let map = self
-                                    .maps
-                                    .create_map(
-                                        &map_name,
-                                        mem_addr,
-                                        100,
-                                        Permission::READ_WRITE_EXECUTE,
-                                    )
-                                    .expect("cannot create banzai map");
-                                map.write_dword(mem_addr, to32!(value2));
-                                true
+                            if self.try_grow_stack(mem_addr) && self.maps.write_dword(mem_addr, to32!(value2)) {
+                                // grew + retry succeeded
                             } else {
-                                log::trace!(
-                                    "/!\\ exception dereferencing bad address. 0x{:x}",
-                                    mem_addr
-                                );
-                                self.exception(ExceptionType::BadAddressDereferencing);
-                                false
+                                return if self.cfg.skip_unimplemented {
+                                    let map_name = format!("banzai_{:x}", mem_addr);
+                                    let map = self
+                                        .maps
+                                        .create_map(
+                                            &map_name,
+                                            mem_addr,
+                                            100,
+                                            Permission::READ_WRITE_EXECUTE,
+                                        )
+                                        .expect("cannot create banzai map");
+                                    map.write_dword(mem_addr, to32!(value2));
+                                    true
+                                } else {
+                                    log::trace!(
+                                        "/!\\ exception dereferencing bad address. 0x{:x}",
+                                        mem_addr
+                                    );
+                                    self.exception(ExceptionType::BadAddressDereferencing);
+                                    false
+                                };
                             }
                         }
                     }
                     16 => {
                         if !self.maps.write_word(mem_addr, value2 as u16) {
-                            return if self.cfg.skip_unimplemented {
-                                let map_name = format!("banzai_{:x}", mem_addr);
-                                let map = self
-                                    .maps
-                                    .create_map(
-                                        &map_name,
-                                        mem_addr,
-                                        100,
-                                        Permission::READ_WRITE_EXECUTE,
-                                    )
-                                    .expect("cannot create banzai map");
-                                map.write_word(mem_addr, value2 as u16);
-                                true
+                            if self.try_grow_stack(mem_addr) && self.maps.write_word(mem_addr, value2 as u16) {
+                                // grew + retry succeeded
                             } else {
-                                log::trace!(
-                                    "/!\\ exception dereferencing bad address. 0x{:x}",
-                                    mem_addr
-                                );
-                                self.exception(ExceptionType::BadAddressDereferencing);
-                                false
+                                return if self.cfg.skip_unimplemented {
+                                    let map_name = format!("banzai_{:x}", mem_addr);
+                                    let map = self
+                                        .maps
+                                        .create_map(
+                                            &map_name,
+                                            mem_addr,
+                                            100,
+                                            Permission::READ_WRITE_EXECUTE,
+                                        )
+                                        .expect("cannot create banzai map");
+                                    map.write_word(mem_addr, value2 as u16);
+                                    true
+                                } else {
+                                    log::trace!(
+                                        "/!\\ exception dereferencing bad address. 0x{:x}",
+                                        mem_addr
+                                    );
+                                    self.exception(ExceptionType::BadAddressDereferencing);
+                                    false
+                                };
                             }
                         }
                     }
                     8 => {
                         if !self.maps.write_byte(mem_addr, value2 as u8) {
-                            return if self.cfg.skip_unimplemented {
-                                let map_name = format!("banzai_{:x}", mem_addr);
-                                let map = self
-                                    .maps
-                                    .create_map(
-                                        &map_name,
-                                        mem_addr,
-                                        100,
-                                        Permission::READ_WRITE_EXECUTE,
-                                    )
-                                    .expect("cannot create banzai map");
-                                map.write_byte(mem_addr, value2 as u8);
-                                true
+                            if self.try_grow_stack(mem_addr) && self.maps.write_byte(mem_addr, value2 as u8) {
+                                // grew + retry succeeded
                             } else {
-                                log::trace!(
-                                    "/!\\ exception dereferencing bad address. 0x{:x}",
-                                    mem_addr
-                                );
-                                self.exception(ExceptionType::BadAddressDereferencing);
-                                false
+                                static FIRST_BYTE_OOB: std::sync::atomic::AtomicBool =
+                                    std::sync::atomic::AtomicBool::new(false);
+                                if (0x412000..=0x420000).contains(&mem_addr)
+                                    && !FIRST_BYTE_OOB.swap(true, std::sync::atomic::Ordering::Relaxed)
+                                {
+                                    log::trace!(
+                                        "DEBUG first OOB byte write at 0x{:x} from rip=0x{:x} pos={} rcx=0x{:x} rdi=0x{:x} rsi=0x{:x}",
+                                        mem_addr, self.regs().rip, self.pos,
+                                        self.regs().rcx, self.regs().rdi, self.regs().rsi,
+                                    );
+                                }
+                                return if self.cfg.skip_unimplemented {
+                                    let map_name = format!("banzai_{:x}", mem_addr);
+                                    let map = self
+                                        .maps
+                                        .create_map(
+                                            &map_name,
+                                            mem_addr,
+                                            100,
+                                            Permission::READ_WRITE_EXECUTE,
+                                        )
+                                        .expect("cannot create banzai map");
+                                    map.write_byte(mem_addr, value2 as u8);
+                                    true
+                                } else {
+                                    log::trace!(
+                                        "/!\\ exception dereferencing bad address. 0x{:x}",
+                                        mem_addr
+                                    );
+                                    self.exception(ExceptionType::BadAddressDereferencing);
+                                    false
+                                };
                             }
                         }
                     }

@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::{
     console::Console,
     emu::Emu,
@@ -84,21 +86,34 @@ impl Emu {
 
         // aarch64 has no SEH/VEH/UEF
         if self.cfg.arch.is_aarch64() {
-            log::trace!(
-                "exception on aarch64 (no SEH/VEH support). pos = {} pc = {:x}",
+            log::error!(
+                "exception on aarch64 (no SEH/VEH support). pos = {} pc = 0x{:x} type = {:?}",
                 self.pos,
-                self.pc()
+                self.pc(),
+                ex_type,
             );
+            self.process_terminated = true;
+            self.is_running.store(0, Ordering::Relaxed);
             return;
         }
 
-        // No handled exceptions
+        // No handler installed (no SEH chain, no VEH list, no UEF callback).
+        // Real Windows would invoke KiUserExceptionDispatcher → unhandled
+        // exception filter → ExitProcess. We don't have a kernel side, so the
+        // safest answer is to STOP emulation right here: silently dropping the
+        // fault lets ntdll continue with corrupted state and the resulting
+        // crash surfaces millions of instructions later in unrelated code,
+        // which makes diagnosis nearly impossible. Surfacing the fault at its
+        // original RIP gives the operator the exact frame that needs fixing.
         if self.seh() == 0 && self.veh() == 0 && self.uef() == 0 {
-            log::trace!(
-                "exception without any SEH handler nor vector configured. pos = {} rip = {:x}",
+            log::error!(
+                "unhandled exception (no SEH/VEH/UEF configured). pos = {} rip = 0x{:x} type = {:?} — stopping emulation",
                 self.pos,
-                self.pc()
+                self.pc(),
+                ex_type,
             );
+            self.process_terminated = true;
+            self.is_running.store(0, Ordering::Relaxed);
             return;
         }
 
@@ -123,15 +138,34 @@ impl Emu {
         // SEH
         } else if self.seh() > 0 {
             if self.cfg.is_x64() {
-                // 64bits seh
-
-                unimplemented!("check .pdata if exists");
+                // x64 SEH is table-driven via the loaded module's .pdata /
+                // RUNTIME_FUNCTION entries (no per-thread chain like x86).
+                // We don't model the unwind tables, so a configured `seh()`
+                // here means somebody synthesised one — treat it as fatal
+                // rather than silently returning, so the caller sees the
+                // unsupported path.
+                log::error!(
+                    "x64 SEH unwind not implemented (no .pdata walker). \
+                     pos = {} rip = 0x{:x} type = {:?} — stopping emulation",
+                    self.pos,
+                    self.pc(),
+                    ex_type,
+                );
+                self.process_terminated = true;
+                self.is_running.store(0, Ordering::Relaxed);
+                return;
             } else {
                 // 32bits seh
                 next = match self.maps.read_dword(self.seh()) {
                     Some(value) => value.into(),
                     None => {
-                        log::trace!("exception wihout correct SEH");
+                        log::error!(
+                            "SEH record at 0x{:x} unreadable (Next field). \
+                             pos = {} rip = 0x{:x} — stopping emulation",
+                            self.seh(), self.pos, self.pc(),
+                        );
+                        self.process_terminated = true;
+                        self.is_running.store(0, Ordering::Relaxed);
                         return;
                     }
                 };
@@ -139,7 +173,13 @@ impl Emu {
                 addr = match self.maps.read_dword(self.seh() + 4) {
                     Some(value) => value.into(),
                     None => {
-                        log::trace!("exception without correct SEH.");
+                        log::error!(
+                            "SEH record at 0x{:x} unreadable (Handler field). \
+                             pos = {} rip = 0x{:x} — stopping emulation",
+                            self.seh(), self.pos, self.pc(),
+                        );
+                        self.process_terminated = true;
+                        self.is_running.store(0, Ordering::Relaxed);
                         return;
                     }
                 };

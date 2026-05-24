@@ -203,9 +203,29 @@ impl Maps {
                 mem.write_bytes(addr, &bytes);
                 true
             }
-            _ => {
+            Some(mem) => {
+                // Lives in a mapped region but the write is rejected — either
+                // the range spills past the map or the map is read-only. Show
+                // the map name so the operator can tell which section the
+                // caller was targeting.
+                let name = mem.get_name();
+                let base = mem.get_base();
+                let size = mem.size() as u64;
+                let perm = if mem.can_write() { "RW" } else { "RO" };
                 log::warn!(
-                    "Writing {} to unmapped or non-writable region at 0x{:x}",
+                    "Writing {} to non-writable/oob region at 0x{:x} [{} 0x{:x}..0x{:x} {}]",
+                    kind.label(),
+                    addr,
+                    name,
+                    base,
+                    base + size,
+                    perm,
+                );
+                false
+            }
+            None => {
+                log::warn!(
+                    "Writing {} to unmapped region at 0x{:x} (no map covers this address)",
                     kind.label(),
                     addr
                 );

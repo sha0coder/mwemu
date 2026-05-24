@@ -9,8 +9,151 @@ mod registry;
 mod sync;
 mod system;
 
+/// Build a translation table from the syscall numbers the currently-loaded
+/// ntdll actually emits → the "canonical" numbers our dispatcher matches on
+/// (the `WIN64_NT*` constants, which mirror an older Windows build).
+///
+/// We scan every `Nt*` export in `ntdll.pe` for the standard stub prologue
+/// `4c 8b d1 b8 <imm32>` (mov r10, rcx; mov eax, imm32). For each match, if
+/// the same name maps to a constant our dispatcher recognises, we record
+/// the mapping. `gateway()` then translates the incoming `nr` via this map
+/// so cross-build ntdlls Just Work without rewriting every `WIN64_*` const.
+pub fn build_syscall_translation_table(emu: &mut Emu) {
+    use crate::windows::constants::*;
+    let ntdll_pe = match emu.maps.get_map_by_name("ntdll.pe") {
+        Some(m) => m,
+        None => return,
+    };
+    let base = ntdll_pe.get_base();
+    let pe_off = match emu.maps.read_dword(base + 0x3c) {
+        Some(v) => v as u64,
+        None => return,
+    };
+    let exp_rva = emu.maps.read_dword(base + pe_off + 0x88).unwrap_or(0) as u64;
+    if exp_rva == 0 {
+        return;
+    }
+    let exp = base + exp_rva;
+    let nname = emu.maps.read_dword(exp + 0x18).unwrap_or(0) as u64;
+    let aon = base + emu.maps.read_dword(exp + 0x20).unwrap_or(0) as u64;
+    let aono = base + emu.maps.read_dword(exp + 0x24).unwrap_or(0) as u64;
+
+    // Canonical-name → canonical-number table (a subset matching the
+    // syscalls our `gateway()` dispatches and the syscalls we observe
+    // in LdrInit). Add entries here whenever you introduce a new handler.
+    let canonical: &[(&str, u64)] = &[
+        ("NtAccessCheck",                    WIN64_NTACCESSCHECK),
+        ("NtAllocateVirtualMemory",          WIN64_NTALLOCATEVIRTUALMEMORY),
+        ("NtAllocateVirtualMemoryEx",        WIN64_NTALLOCATEVIRTUALMEMORYEX),
+        ("NtFreeVirtualMemory",              WIN64_NTFREEVIRTUALMEMORY),
+        ("NtProtectVirtualMemory",           WIN64_NTPROTECTVIRTUALMEMORY),
+        ("NtQueryVirtualMemory",             WIN64_NTQUERYVIRTUALMEMORY),
+        ("NtReadVirtualMemory",              WIN64_NTREADVIRTUALMEMORY),
+        ("NtWriteVirtualMemory",             WIN64_NTWRITEVIRTUALMEMORY),
+        ("NtCreateSection",                  WIN64_NTCREATESECTION),
+        ("NtOpenSection",                    WIN64_NTOPENSECTION),
+        ("NtMapViewOfSection",               WIN64_NTMAPVIEWOFSECTION),
+        ("NtUnmapViewOfSection",             WIN64_NTUNMAPVIEWOFSECTION),
+        ("NtQuerySystemInformation",         WIN64_NTQUERYSYSTEMINFORMATION),
+        ("NtQueryInformationProcess",        WIN64_NTQUERYINFORMATIONPROCESS),
+        ("NtQueryInformationThread",         WIN64_NTQUERYINFORMATIONTHREAD),
+        ("NtSetInformationProcess",          WIN64_NTSETINFORMATIONPROCESS),
+        ("NtSetInformationThread",           WIN64_NTSETINFORMATIONTHREAD),
+        ("NtOpenProcess",                    WIN64_NTOPENPROCESS),
+        ("NtDuplicateObject",                WIN64_NTDUPLICATEOBJECT),
+        ("NtTerminateProcess",               WIN64_NTTERMINATEPROCESS),
+        ("NtQueryPerformanceCounter",        WIN64_NTQUERYPERFORMANCECOUNTER),
+        ("NtCreateEvent",                    WIN64_NTCREATEEVENT),
+        ("NtSetEvent",                       WIN64_NTSETEVENT),
+        ("NtClose",                          WIN64_NTCLOSE),
+        ("NtOpenKey",                        WIN64_NTOPENKEY),
+        ("NtQueryValueKey",                  WIN64_NTQUERYVALUEKEY),
+        ("NtRaiseException",                 WIN64_NTRAISEEXCEPTION),
+        ("NtContinue",                       WIN64_NTCONTINUE),
+        ("NtQueryAttributesFile",            WIN64_NTQUERYATTRIBUTESFILE),
+        ("NtOpenFile",                       WIN64_NTOPENFILE),
+        ("NtOpenDirectoryObject",            WIN64_NTOPENDIRECTORYOBJECT),
+        ("NtOpenSymbolicLinkObject",         WIN64_NTOPENSYMBOLICLINKOBJECT),
+        ("NtQuerySymbolicLinkObject",        WIN64_NTQUERYSYMBOLICLINKOBJECT),
+        ("NtAlpcConnectPort",                WIN64_NTALPCCONNECTPORT),
+        ("NtAlpcSendWaitReceivePort",        WIN64_NTALPCSENDWAITRECEIVEPORT),
+        ("NtTraceEvent",                     WIN64_NTTRACEEVENT),
+        ("NtOpenEvent",                      WIN64_NTOPENEVENT),
+        ("NtWaitForSingleObject",            WIN64_NTWAITFORSINGLEOBJECT),
+        ("NtApphelpCacheControl",            WIN64_NTAPPHELPCACHECONTROL),
+        ("NtAreMappedFilesTheSame",          WIN64_NTAREMAPPEDFILESTHESAME),
+        ("NtQueryQuotaInformationFile",      WIN64_NTQUERYQUOTAINFORMATIONFILE),
+        ("NtQuerySystemEnvironmentValueEx",  WIN64_NTQUERYSYSTEMENVIRONMENTVALUEEX),
+        ("NtRaiseHardError",                 WIN64_NTRAISEHARDERROR),
+        ("NtRaiseException",                 WIN64_NTRAISEEXCEPTION),
+    ];
+    let by_name: std::collections::HashMap<&'static str, u64> =
+        canonical.iter().copied().collect();
+
+    let mut map = std::collections::HashMap::new();
+    let mut name_map = std::collections::HashMap::new();
+    for i in 0..nname {
+        let nrva = emu.maps.read_dword(aon + i * 4).unwrap_or(0) as u64;
+        if nrva == 0 { continue; }
+        let mut name = String::new();
+        let mut k = 0u64;
+        while k < 128 {
+            let b = emu.maps.read_byte(base + nrva + k).unwrap_or(0);
+            if b == 0 { break; }
+            name.push(b as char);
+            k += 1;
+        }
+        if !name.starts_with("Nt") { continue; }
+        let ord = emu.maps.read_word(aono + i * 2).unwrap_or(0) as u64;
+        let aof_rva = emu.maps.read_dword(exp + 0x1c).unwrap_or(0) as u64;
+        let fn_rva = emu.maps.read_dword(base + aof_rva + ord * 4).unwrap_or(0) as u64;
+        if fn_rva == 0 { continue; }
+        // Stub prologue: 4c 8b d1 b8 <imm32>
+        if emu.maps.read_byte(base + fn_rva).unwrap_or(0) != 0x4c { continue; }
+        if emu.maps.read_byte(base + fn_rva + 1).unwrap_or(0) != 0x8b { continue; }
+        if emu.maps.read_byte(base + fn_rva + 2).unwrap_or(0) != 0xd1 { continue; }
+        if emu.maps.read_byte(base + fn_rva + 3).unwrap_or(0) != 0xb8 { continue; }
+        let real_nr = emu.maps.read_dword(base + fn_rva + 4).unwrap_or(0) as u64;
+        name_map.insert(real_nr, name.clone());
+        if let Some(&canonical_nr) = by_name.get(name.as_str()) {
+            if real_nr != canonical_nr {
+                map.insert(real_nr, canonical_nr);
+            }
+        }
+    }
+    log::trace!(
+        "syscall translation table built: {} entries (real_nr → canonical), {} names indexed (from loaded ntdll)",
+        map.len(), name_map.len(),
+    );
+    emu.syscall_number_map = map;
+    emu.syscall_name_by_real = name_map;
+}
+
 pub fn gateway(emu: &mut Emu) {
-    let nr = emu.regs().rax;
+    let real_nr = emu.regs().rax;
+    let mut nr = real_nr;
+    // Translate the syscall number coming from the loaded ntdll to the
+    // canonical number our dispatcher matches against.
+    if let Some(&translated) = emu.syscall_number_map.get(&nr) {
+        nr = translated;
+    } else if let Some(real_name) = emu.syscall_name_by_real.get(&real_nr) {
+        // No translation. Verify the real-name from the loaded ntdll matches
+        // what our static `what_syscall()` would say — if they differ, the
+        // dispatcher would route this syscall to the wrong handler (e.g.
+        // Win2022's 0x133 is `NtOpenSymbolicLinkObject` but our constant
+        // `WIN64_NTOPENPROCESSTOKEN = 0x133` from an older build). Tag it
+        // as unimplemented under its true name to avoid silent misroute.
+        let canonical_name = what_syscall(real_nr);
+        if &canonical_name != real_name {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: {} (unimplemented; static table would have misrouted as {})",
+                real_nr, real_name, canonical_name,
+            );
+            emu.regs_mut().rax = STATUS_NOT_IMPLEMENTED;
+            return;
+        }
+    }
     match nr {
         WIN64_NTACCESSCHECK => process::nt_access_check(emu),
         WIN64_NTALLOCATEVIRTUALMEMORY => memory::nt_allocate_virtual_memory(emu),
@@ -45,6 +188,8 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTQUERYMULTIPLEVALUEKEY => registry::nt_query_multiple_value_key(emu),
         WIN64_NTOPENDIRECTORYOBJECT => registry::nt_open_directory_object(emu),
         WIN64_NTCREATEDIRECTORYOBJECT => registry::nt_create_directory_object(emu),
+        WIN64_NTOPENSYMBOLICLINKOBJECT => registry::nt_open_symbolic_link_object(emu),
+        WIN64_NTQUERYSYMBOLICLINKOBJECT => registry::nt_query_symbolic_link_object(emu),
         WIN64_NTMANAGEHOTPATCH => system::nt_manage_hot_patch(emu),
         WIN64_NTQUERYDEBUGFILTERSTATE => system::nt_query_debug_filter_state(emu),
         WIN64_NTTRACEEVENT => system::nt_trace_event(emu),
@@ -163,6 +308,54 @@ pub fn gateway(emu: &mut Emu) {
             );
             emu.regs_mut().rax = STATUS_NOT_SAME_DEVICE;
         }
+        // `NtQuerySystemEnvironmentValueEx` (0x16d): newer ntdll enumerates
+        // UEFI variables during init. NOT_IMPLEMENTED and VARIABLE_NOT_FOUND
+        // both cause a tight retry loop (~3K iterations). Return SUCCESS with
+        // ValueLength=0 and ValueBuffer untouched so the caller treats it as
+        // "the variable is empty" and moves on.
+        0x16d => {
+            // NT syscall ABI: rcx=VarName, rdx=VendorGuid, r8=ValueBuffer,
+            // r9=ValueLengthPtr, [rsp+0x28]=Attributes (out, optional).
+            let value_len_ptr = emu.regs().r9;
+            if value_len_ptr != 0 && emu.maps.is_mapped(value_len_ptr) {
+                let _ = emu.maps.write_dword(value_len_ptr, 0);
+            }
+            log_orange!(emu, "syscall 0x{:x}: NtQuerySystemEnvironmentValueEx (stub → SUCCESS, len=0)", nr);
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        // `NtOpenProcessToken` (0x133): return SUCCESS with a fake handle to
+        // bypass ntdll's bail path. (Empirically the loops downstream are
+        // caused by other unstubbed token-using syscalls; we want to see
+        // which ones surface next.)
+        0x133 => {
+            let token_handle_out = emu.regs().r8;
+            if token_handle_out != 0 && emu.maps.is_mapped(token_handle_out) {
+                let h = crate::syscall::windows::syscall64::sync::next_handle();
+                let _ = emu.maps.write_qword(token_handle_out, h);
+            }
+            log_orange!(emu, "syscall 0x{:x}: NtOpenProcessToken (stub → SUCCESS, fake handle)", nr);
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        // `NtQuerySystemInformationEx` (0x16e): newer ntdll uses this during
+        // `LdrpInitializeProcess`. Returning STATUS_SUCCESS with `ReturnLength=0`
+        // is enough to keep init going — the caller treats "no data" as "no
+        // extra info". We do NOT zero the output buffer: callers sometimes
+        // pass wildly inflated `out_len` values and a bulk memset overruns
+        // the destination map, corrupting adjacent regions.
+        0x16e => {
+            let rsp = emu.regs().rsp;
+            let info_class = emu.regs().rcx;
+            let ret_len_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
+            if ret_len_ptr != 0 && emu.maps.is_mapped(ret_len_ptr) {
+                let _ = emu.maps.write_dword(ret_len_ptr, 0);
+            }
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtQuerySystemInformationEx class=0x{:x} (stub → SUCCESS, len=0)",
+                nr, info_class,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
         // `NtQueryQuotaInformationFile` (0x166): kernelbase's TLS-callback /
         // process-init path queries this for each loaded module. Returning
         // STATUS_NOT_IMPLEMENTED here causes ntdll to retry indefinitely
@@ -247,12 +440,47 @@ pub fn gateway(emu: &mut Emu) {
             );
             emu.regs_mut().rax = STATUS_NOT_SUPPORTED;
         }
+        // `NtOpenThreadToken` (0x24): kernel32/kernelbase open a thread's primary
+        // token during `BasepCheckAppCompat`, `BasepCheckWebBlockedFileType`,
+        // and several user32/uxtheme init paths. Returning STATUS_NOT_IMPLEMENTED
+        // makes callers treat the failure as "this thread has no token attached"
+        // and retry against `NtOpenProcessToken` — but the retry doesn't always
+        // happen (e.g. user32!CreateWindowExW init), and the unhandled fail
+        // propagates back as a DllMain `BOOL FALSE`, which makes ntdll roll
+        // back the user32 load and `LoadLibraryA` returns 0. STATUS_NO_TOKEN
+        // is the documented "no impersonation token on this thread" answer
+        // that callers handle gracefully (skip the token-based check and
+        // continue init).
+        0x24 => {
+            let thread_handle = emu.regs().rcx;
+            let access = emu.regs().rdx;
+            let open_as_self = emu.regs().r8 as u8;
+            let handle_out = emu.regs().r9;
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtOpenThreadToken thread: 0x{:x} access: 0x{:x} self: {} out: 0x{:x} (stub → NO_TOKEN)",
+                real_nr, thread_handle, access, open_as_self, handle_out,
+            );
+            // Zero the out-handle so callers don't accidentally re-use a
+            // stale pointer value.
+            if handle_out != 0 && emu.maps.is_mapped(handle_out) {
+                let _ = emu.maps.write_qword(handle_out, 0);
+            }
+            emu.regs_mut().rax = STATUS_NO_TOKEN;
+        }
         _ => {
-            let name = what_syscall(nr);
+            // Prefer the syscall name we extracted from the loaded ntdll
+            // (matches the actual build), falling back to the static table
+            // for older builds where the dispatch covers without translation.
+            let name = emu
+                .syscall_name_by_real
+                .get(&real_nr)
+                .cloned()
+                .unwrap_or_else(|| what_syscall(real_nr));
             log_orange!(
                 emu,
                 "syscall 0x{:x}: {} (unimplemented)",
-                nr,
+                real_nr,
                 name,
             );
             // Return STATUS_NOT_IMPLEMENTED so callers using `test eax,eax; js` take

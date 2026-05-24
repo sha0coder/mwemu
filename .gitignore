@@ -1,5 +1,6 @@
 /target/
 .gitconfig
+win32_2022/
 shellcodes32/
 shellcodes64/
 .DS_Store

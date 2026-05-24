@@ -158,7 +158,10 @@ pub struct Emu {
     pub handle_management: HandleManagement, // file and object handle table
     pub section_handles: HashMap<u64, String>, // KnownDll section handle → DLL filename (e.g., "kernel32.dll")
     pub file_handles: HashMap<u64, String>,    // NtOpenFile handle → resolved basename (e.g., "kernelbase.dll"); used by NtCreateSection to inherit the dll name
+    pub syscall_number_map: HashMap<u64, u64>, // real_nr (from loaded ntdll) → canonical_nr (the value our gateway dispatcher matches on). Built at init by scanning ntdll exports; empty means no translation.
+    pub syscall_name_by_real: HashMap<u64, String>, // real_nr → "Nt<Name>" as exported by the loaded ntdll. Used in diagnostics so unimplemented-syscall logs name the right function (the static `what_syscall()` table is tied to a single Windows build and would otherwise mislabel cross-build syscalls).
     pub known_dll_dir_handles: HashSet<u64>,   // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
+    pub symbolic_link_targets: HashMap<u64, String>, // NtOpenSymbolicLinkObject handle → resolved link target (e.g. "\KnownDlls\KnownDllPath" → "C:\\Windows\\System32"); read back by NtQuerySymbolicLinkObject so ntdll's LdrInit can resolve the KnownDlls search path
     pub ssdt_pad_stack: Vec<u64>,              // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
 }
 

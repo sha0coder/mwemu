@@ -25,6 +25,7 @@ pub mod call;
 pub mod cbw;
 pub mod cdq;
 pub mod cdqe;
+pub mod cet;
 pub mod clc;
 pub mod cld;
 pub mod cmc;

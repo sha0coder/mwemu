@@ -367,6 +367,21 @@ pub fn emulate_instruction(
         Mnemonic::Mwait => instructions::mwait::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Endbr64 => instructions::endbr64::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Endbr32 => instructions::endbr32::execute(emu, ins, instruction_sz, rep_step),
+        // CET shadow-stack instructions — NOPs on hardware without CET enabled.
+        // ntdll uses RDSSPQ in exception-cleanup paths and expects the destination
+        // to keep its prior value (real CPUs without CET also treat these as NOPs).
+        Mnemonic::Rdsspd
+        | Mnemonic::Rdsspq
+        | Mnemonic::Incsspd
+        | Mnemonic::Incsspq
+        | Mnemonic::Rstorssp
+        | Mnemonic::Saveprevssp
+        | Mnemonic::Setssbsy
+        | Mnemonic::Clrssbsy
+        | Mnemonic::Wrssd
+        | Mnemonic::Wrssq
+        | Mnemonic::Wrussd
+        | Mnemonic::Wrussq => instructions::cet::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Enqcmd => instructions::enqcmd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Enqcmds => instructions::enqcmds::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Enter => instructions::enter::execute(emu, ins, instruction_sz, rep_step),

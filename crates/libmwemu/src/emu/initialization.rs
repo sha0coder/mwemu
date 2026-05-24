@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU32;
 use std::time::Instant;
 
 use atty::Stream;
@@ -11,18 +11,18 @@ use std::collections::BTreeSet;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
-use crate::maps::mem64::Permission;
 use crate::loaders::pe::pe64;
+use crate::maps::mem64::Permission;
 use crate::windows::peb::{peb32, peb64};
 use crate::{
-    api::banzai::Banzai, debug::breakpoint::Breakpoints, utils::colors::Colors, config::Config,
-    threading::global_locks::GlobalLocks, hooks::Hooks, maps::Maps, threading::context::ThreadContext,
+    api::banzai::Banzai, config::Config, debug::breakpoint::Breakpoints, hooks::Hooks, maps::Maps,
+    threading::context::ThreadContext, threading::global_locks::GlobalLocks, utils::colors::Colors,
 };
-use crate::{windows::kuser_shared, windows::structures, winapi::winapi32, winapi::winapi64};
+use crate::{winapi::winapi32, winapi::winapi64, windows::kuser_shared, windows::structures};
 
+use crate::emu::object_handle::HandleManagement;
 use crate::maps::heap_allocation::O1Heap;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
-use crate::emu::object_handle::HandleManagement;
 
 pub struct CustomLogFormat;
 impl RecordFormat for CustomLogFormat {
@@ -143,7 +143,10 @@ impl Emu {
             library_loaded: false,
             section_handles: HashMap::new(),
             file_handles: HashMap::new(),
+            syscall_number_map: HashMap::new(),
+            syscall_name_by_real: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
+            symbolic_link_targets: HashMap::new(),
             ssdt_pad_stack: Vec::new(),
         }
     }
@@ -407,9 +410,13 @@ impl Emu {
 
         // Ensure thread context matches the target architecture
         if self.cfg.arch.is_aarch64() {
-            if matches!(self.threads[self.current_thread_id].arch, crate::threading::context::ArchThreadState::X86 { .. }) {
+            if matches!(
+                self.threads[self.current_thread_id].arch,
+                crate::threading::context::ArchThreadState::X86 { .. }
+            ) {
                 let id = self.threads[self.current_thread_id].id;
-                self.threads[self.current_thread_id] = crate::threading::context::ThreadContext::new(id, self.cfg.arch);
+                self.threads[self.current_thread_id] =
+                    crate::threading::context::ThreadContext::new(id, self.cfg.arch);
             }
         }
 
@@ -434,9 +441,13 @@ impl Emu {
     /// Initialize linux aarch64 simulation for ELF loading.
     pub fn init_linux64_aarch64(&mut self) {
         // Ensure thread context is aarch64
-        if matches!(self.threads[self.current_thread_id].arch, crate::threading::context::ArchThreadState::X86 { .. }) {
+        if matches!(
+            self.threads[self.current_thread_id].arch,
+            crate::threading::context::ArchThreadState::X86 { .. }
+        ) {
             let id = self.threads[self.current_thread_id].id;
-            self.threads[self.current_thread_id] = crate::threading::context::ThreadContext::new(id, self.cfg.arch);
+            self.threads[self.current_thread_id] =
+                crate::threading::context::ThreadContext::new(id, self.cfg.arch);
         }
 
         self.ensure_arch_state_aarch64();
@@ -535,9 +546,13 @@ impl Emu {
         self.os = crate::arch::OperatingSystem::MacOS;
 
         // Ensure thread context is aarch64
-        if matches!(self.threads[self.current_thread_id].arch, crate::threading::context::ArchThreadState::X86 { .. }) {
+        if matches!(
+            self.threads[self.current_thread_id].arch,
+            crate::threading::context::ArchThreadState::X86 { .. }
+        ) {
             let id = self.threads[self.current_thread_id].id;
-            self.threads[self.current_thread_id] = crate::threading::context::ThreadContext::new(id, self.cfg.arch);
+            self.threads[self.current_thread_id] =
+                crate::threading::context::ThreadContext::new(id, self.cfg.arch);
         }
 
         self.init_stack_aarch64();
@@ -582,8 +597,10 @@ impl Emu {
         self.flags_mut().clear();
         self.flags_mut().f_if = true;
 
-        let orig_path = std::env::current_dir().unwrap();
-        std::env::set_current_dir(self.cfg.maps_folder.clone());
+        // Avoid `set_current_dir` here: the process-wide CWD races with any
+        // sibling test running in parallel (cargo test uses many threads) —
+        // most visibly causing the Win64 auto-detect in `init_win32_mem64`
+        // to miss `maps/windows/x86_64`. Build absolute paths instead.
         if dyn_link {
             //self.regs_mut().rsp = 0x7fffffffe2b0;
             self.regs_mut().rsp = 0x7fffffffe790;
@@ -625,9 +642,10 @@ impl Emu {
             .maps
             .create_map("tls", 0x7ffff8fff000, 0xfff, Permission::READ_WRITE)
             .expect("cannot create tls map");
-        tls.load("tls.bin");
-
-        std::env::set_current_dir(orig_path);
+        // Resolve `tls.bin` against `cfg.maps_folder` so we don't depend on
+        // the process-wide CWD (which a parallel test may have changed).
+        let tls_path = self.cfg.get_maps_folder("tls.bin");
+        tls.load(&tls_path);
 
         if dyn_link {
             //heap.set_base(0x555555579000);
@@ -663,16 +681,9 @@ impl Emu {
 
         self.maps.is_64bits = self.cfg.arch.is_64bits();
 
-        let orig_path = std::env::current_dir().unwrap();
-        std::env::set_current_dir(self.cfg.maps_folder.clone());
-
-        //self.maps.create_map("m10000", 0x10000, 0).expect("cannot create m10000 map");
-        //self.maps.create_map("m20000", 0x20000, 0).expect("cannot create m20000 map");
-        //self.maps.create_map("code", self.cfg.code_base_addr, 0);
-
-        //self.maps.write_byte(0x2c3000, 0x61); // metasploit trick
-
-        std::env::set_current_dir(orig_path);
+        // (Historic `set_current_dir(maps_folder)` removed — the block in
+        // between had no file-system calls and the chdir raced with parallel
+        // tests that needed the process CWD to point at the repo root.)
 
         peb32::init_peb(self);
         winapi32::kernel32::load_library(self, "ntdll.dll");
@@ -783,13 +794,37 @@ impl Emu {
 
         // In SSDT mode we can optionally let `ntdll!LdrInitializeThunk` bootstrap the loader.
         // This path intentionally maps far fewer DLLs up front.
-        if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+        if self.cfg.emulate_winapi {
+            // Make sure cfg.exe_name reflects the real image basename BEFORE
+            // PEB/LDR init writes it into the canonical structures.
+            peb64::refresh_exe_name_from_filename(self);
             // Empty PEB + TEB only; `ntdll!LdrInitializeThunk` is expected to initialize loader state.
             peb64::init_peb_teb_empty(self);
             kuser_shared::init_kuser_shared_data(self);
 
-            // Map ntdll (LdrInitializeThunk lives here).
+            // ntdll must be pre-mapped so we can resolve and call
+            // `LdrInitializeThunk`.
             winapi64::kernel32::load_library(self, "ntdll.dll");
+
+            // Build the syscall number translation table from this ntdll's
+            // actual syscall stubs. Microsoft renumbers syscalls between
+            // builds (Win10 vs Win11/Server2022 are notably different), and
+            // our dispatcher matches on hard-coded constants tied to one
+            // build. Without this step a Win2022 ntdll calling syscall 0x16d
+            // (NtRaiseException) lands in our 0x16d handler (was the older
+            // NtQuerySystemEnvironmentValueEx) and silently misroutes —
+            // RtlRaiseException then returns "0" instead of dispatching the
+            // exception, leading to a RtlRaiseStatus(0) recursion.
+            crate::syscall::windows::syscall64::build_syscall_translation_table(self);
+
+            // Pre-map kernel32 and kernelbase even though modern ntdll
+            // clears the legacy `InMemoryOrderModuleList` during init —
+            // we don't pre-load them for ordering, but so their `.pe`
+            // maps exist when we re-populate the linked list afterwards
+            // (LdrInit on Win10+ relies on syscalls we don't fully model,
+            // and bails before bringing these in via the KnownDll path).
+            winapi64::kernel32::load_library(self, "kernel32.dll");
+            winapi64::kernel32::load_library(self, "kernelbase.dll");
 
             // ntdll patches its own globals during LdrInitializeThunk (LdrpHashTable,
             // LdrpModuleBaseAddressIndex, etc.).  These often fall in the .rdata section
@@ -821,7 +856,9 @@ impl Emu {
                 let ntdll_size: usize = 0x800000;
                 // Search for the pattern in the ntdll image.
                 // We look for mov-edx + mov-rcx(-1) = ba 09 04 00 c0  48 c7 c1 ff ff ff ff
-                let needle: &[u8] = &[0xba, 0x09, 0x04, 0x00, 0xc0, 0x48, 0xc7, 0xc1, 0xff, 0xff, 0xff, 0xff];
+                let needle: &[u8] = &[
+                    0xba, 0x09, 0x04, 0x00, 0xc0, 0x48, 0xc7, 0xc1, 0xff, 0xff, 0xff, 0xff,
+                ];
                 let mut found_va: Option<u64> = None;
                 for off in 0..ntdll_size.saturating_sub(needle.len() + 10) {
                     let va = ntdll_base + off as u64;
@@ -850,7 +887,7 @@ impl Emu {
                     //  +0x11 add rsp,0x88          (7 bytes)  ← jump TARGET (must not skip this)
                     //  +0x18 ret
                     // displacement = 0x11 - 5 = 0x0C
-                    let _ = self.maps.write_byte(patch_va,     0xe9); // jmp rel32
+                    let _ = self.maps.write_byte(patch_va, 0xe9); // jmp rel32
                     let _ = self.maps.write_byte(patch_va + 1, 0x0c); // disp: jump to add rsp,0x88
                     let _ = self.maps.write_byte(patch_va + 2, 0x00);
                     let _ = self.maps.write_byte(patch_va + 3, 0x00);
@@ -892,8 +929,8 @@ impl Emu {
                     //          call ??                 (e8 ?? ?? ?? ??)
                     // followed downstream by the `mov [rdi], rbx` (48 89 1f).
                     let needle: &[u8] = &[
-                        0x49, 0xbc, 0x32, 0xa2, 0xdf, 0x2d, 0x99, 0x2b, 0x00, 0x00,
-                        0x4c, 0x39, 0x27,
+                        0x49, 0xbc, 0x32, 0xa2, 0xdf, 0x2d, 0x99, 0x2b, 0x00, 0x00, 0x4c, 0x39,
+                        0x27,
                     ];
                     let mut anchor_va: Option<u64> = None;
                     for off in 0..ntdll_size.saturating_sub(needle.len() + 0x80) {
@@ -944,24 +981,161 @@ impl Emu {
                         );
                     }
                 }
+
+                // LdrInitializeThunk error-status bypass patch
+                // ---------------------------------------------------------------
+                // After `LdrpInitializeProcess` returns, LdrInitializeThunk
+                // checks the status with:
+                //   41 bc 00 20 00 00   mov  r12d, 0x2000
+                //   85 ff               test edi, edi
+                //   0f 88 .. .. .. ..   js   <fatal-error path>
+                //
+                // The fatal path calls `LdrpLogFatalUserError` (→
+                // `NtRaiseHardError(STATUS_APP_INIT_FAILURE)`) and then
+                // `NtTerminateProcess(edi)`. In Win2022 emulation,
+                // LdrpInitializeProcess fails inside `LdrpResGetMappingSize`
+                // (resource-section processing of a KnownDll) — a path we
+                // don't fully model — and returns STATUS_INTERNAL_ERROR.
+                // The rest of the loader state is already populated, so the
+                // failure isn't actually fatal for the EXE we want to run.
+                //
+                // Replace the 6-byte `js rel32` with 6 NOPs so the test
+                // result is ignored. Execution falls through to the normal
+                // post-LdrInit path that does `test [r14+0x17ee], r12w;
+                // call ZwTestAlert; add rsp, 0x40; ret` — leaving the
+                // partially-initialised loader state in place for the EXE
+                // entrypoint. (Combined with the AC-bypass patch above this
+                // gets us all the way past LdrInit on Win2022 ntdll.)
+                if let Some(ntdll_pe) = self.maps.get_map_by_name("ntdll.pe") {
+                    let ntdll_base = ntdll_pe.get_base();
+                    let ntdll_size: usize = 0x800000;
+                    // Pattern: `mov r12d, 0x2000 ; test edi, edi ; js rel32`
+                    let needle: &[u8] = &[
+                        0x41, 0xbc, 0x00, 0x20, 0x00, 0x00, 0x85, 0xff, 0x0f, 0x88,
+                    ];
+                    let mut found_va: Option<u64> = None;
+                    for off in 0..ntdll_size.saturating_sub(needle.len() + 4) {
+                        let va = ntdll_base + off as u64;
+                        let mut matches = true;
+                        for (i, &b) in needle.iter().enumerate() {
+                            if self.maps.read_byte(va + i as u64).unwrap_or(0xff) != b {
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if matches {
+                            found_va = Some(va);
+                            break;
+                        }
+                    }
+                    if let Some(anchor) = found_va {
+                        // The 6-byte `js rel32` starts at anchor + 8.
+                        let js_va = anchor + 8;
+                        for i in 0..6 {
+                            let _ = self.maps.write_byte(js_va + i, 0x90);
+                        }
+                        log::debug!(
+                            "ntdll LdrInitializeThunk status-check bypass patch applied at 0x{:x}",
+                            js_va,
+                        );
+                    } else {
+                        log::debug!(
+                            "ntdll LdrInitializeThunk status-check pattern not found — skipping patch"
+                        );
+                    }
+                }
+
+                // RtlpGetSystemDefaultUILanguage AC-init-call bypass patch
+                // ---------------------------------------------------------------
+                // Win2022 `ntdll!RtlpGetSystemDefaultUILanguage` (the function
+                // body around RVA 0x3b4a0) reaches an internal helper whose
+                // job is to write into an activation-context-derived struct.
+                // The relevant fragment is:
+                //
+                //   83 79 38 00       cmp dword ptr [rcx + 0x38], 0
+                //   48 8b cb          mov rcx, rbx
+                //   74 1a             je  skip                    ; ← patched
+                //   e8 .. .. .. ..    call <internal AC helper>   ; faults
+                //
+                // The helper reads `arg->[0x38]->[0x30]` as a base pointer and
+                // adds `arg->[0x84] * 8` as an index, writing one qword at the
+                // computed address. Under emulation we don't initialise the
+                // activation-context table the helper expects, so the index
+                // ends up landing inside `kernelbase.rdata` (read-only) and
+                // the write faults — taking the whole `LdrInitializeThunk`
+                // down with it (now that the no-handler exception path stops
+                // emulation).
+                //
+                // The branch ABOVE this site (`je 0x18003b4f8`) is the normal
+                // "AC table absent → skip helper" path on real Windows; we
+                // flip it to an unconditional `jmp` so the call is *always*
+                // skipped. Downstream code reads the function's return value
+                // as an NTSTATUS, but the success path in the caller already
+                // jumps to the same continuation when the helper is skipped,
+                // so bypassing it leaves the function semantically equivalent
+                // to "no activation context applied" — which matches what
+                // mwemu actually models.
+                //
+                // Pattern intentionally omits the rel8 displacement of the
+                // `je` (the last byte): the offset varies between builds, but
+                // the cmp/mov-rcx-rbx/je-against-zero sequence is unique.
+                if let Some(ntdll_pe) = self.maps.get_map_by_name("ntdll.pe") {
+                    let ntdll_base = ntdll_pe.get_base();
+                    let ntdll_size: usize = 0x800000;
+                    let needle: &[u8] = &[0x83, 0x79, 0x38, 0x00, 0x48, 0x8b, 0xcb, 0x74];
+                    let mut found_va: Option<u64> = None;
+                    for off in 0..ntdll_size.saturating_sub(needle.len() + 1) {
+                        let va = ntdll_base + off as u64;
+                        let mut matches = true;
+                        for (i, &b) in needle.iter().enumerate() {
+                            if self.maps.read_byte(va + i as u64).unwrap_or(0xff) != b {
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if matches {
+                            found_va = Some(va);
+                            break;
+                        }
+                    }
+                    if let Some(anchor) = found_va {
+                        // `je` opcode lives at anchor + 7; rewrite as `jmp short`.
+                        let je_va = anchor + 7;
+                        let _ = self.maps.write_byte(je_va, 0xeb);
+                        log::debug!(
+                            "ntdll RtlpGetSystemDefaultUILanguage AC bypass patch applied at 0x{:x}",
+                            je_va,
+                        );
+                    } else {
+                        log::debug!(
+                            "ntdll RtlpGetSystemDefaultUILanguage AC bypass pattern not found — skipping patch"
+                        );
+                    }
+                }
             }
 
             // Minimal TEB stack bounds (NtTib) so stack probes do not fault.
-            // NtTib.StackBase (off +0x08) = HIGH address (top of stack, where RSP starts).
+            // NtTib.StackBase (off +0x08) = HIGH address — the address where RSP
+            //   was at thread creation (the "top of stack"). On Windows this is
+            //   *not* the end of the reservation but the initial RSP value.
             // NtTib.StackLimit (off +0x10) = LOW address (bottom of committed region).
-            let (stack_lo, stack_hi) = self
+            //
+            // We previously used `map.get_bottom()` for StackBase, which is the end
+            // of the underlying mwemu map and sits 0x2000 above the initial RSP.
+            // ntdll's exception dispatcher uses NtTib.StackBase as the upper bound
+            // for stack scratch buffers; if it's past the real stack top, those
+            // writes spill past the map and fault. Use the initial RSP instead.
+            let stack_lo = self
                 .maps
                 .get_map_by_name("stack")
-                .map(|s| (s.get_base(), s.get_bottom()))
-                .unwrap_or((
-                    self.cfg.stack_addr,
-                    self.cfg.stack_addr + 0x400000 + 0x2000,
-                ));
+                .map(|s| s.get_base())
+                .unwrap_or(self.cfg.stack_addr);
+            let stack_hi = self.regs().rsp; // initial RSP = canonical NtTib.StackBase
             let teb_map = self.maps.get_mem_mut("teb");
             let teb_addr = teb_map.get_base();
             let mut teb = structures::TEB64::load_map(teb_addr, teb_map);
-            teb.nt_tib.stack_base = stack_hi;   // high address = top of stack
-            teb.nt_tib.stack_limit = stack_lo;  // low address = bottom of committed pages
+            teb.nt_tib.stack_base = stack_hi;
+            teb.nt_tib.stack_limit = stack_lo;
             // NtTib.Self must point to the TEB itself (gs:[0x30] canonical value).
             teb.nt_tib.self_pointer = teb_addr;
             teb.save(teb_map);
@@ -969,6 +1143,8 @@ impl Emu {
             return;
         }
 
+        // Update exe_name from the real EXE basename before PEB init writes it.
+        peb64::refresh_exe_name_from_filename(self);
         peb64::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
 
@@ -1048,10 +1224,7 @@ impl Emu {
             .maps
             .get_map_by_name("stack")
             .map(|s| (s.get_base(), s.get_bottom()))
-            .unwrap_or((
-                self.cfg.stack_addr,
-                self.cfg.stack_addr + 0x100000 + 0x2000,
-            ));
+            .unwrap_or((self.cfg.stack_addr, self.cfg.stack_addr + 0x100000 + 0x2000));
         let teb_map = self.maps.get_mem_mut("teb");
         let mut teb = structures::TEB64::load_map(teb_map.get_base(), teb_map);
         teb.nt_tib.stack_base = stack_base;
@@ -1067,17 +1240,20 @@ impl Emu {
 
         // Native ntdll!RtlAllocateHeap expects SegmentSignature at offset 0x10
         self.maps.write_dword(self.heap_addr + 0x10, 0x0DDEEDDEE);
-        
+
         // ntdll!RtlAllocateHeap accesses FreeLists/BlocksIndex. If 0, it crashes dereferencing NULL.
         // We put a self-referential or valid pointer so it doesn't crash on [r10+2].
         // At 0x5203D8 (rsi+rcx*8+80h) it expects a pointer to something. We point it to 0x520400.
-        self.maps.write_qword(self.heap_addr + 0x3D8, self.heap_addr + 0x400);
+        self.maps
+            .write_qword(self.heap_addr + 0x3D8, self.heap_addr + 0x400);
 
         // Later accesses [0x520480] and passes it as locking structure. Needs to be != 0 to avoid [0x10] unmapped array
-        self.maps.write_qword(self.heap_addr + 0x480, self.heap_addr + 0x500);
+        self.maps
+            .write_qword(self.heap_addr + 0x480, self.heap_addr + 0x500);
 
         // At 0x520418 it checks [rdi] == rdi to see if list is empty
-        self.maps.write_qword(self.heap_addr + 0x418, self.heap_addr + 0x418);
+        self.maps
+            .write_qword(self.heap_addr + 0x418, self.heap_addr + 0x418);
 
         self.heap_management = Some(Box::new(
             O1Heap::new(self.heap_addr, heap_sz as u32)

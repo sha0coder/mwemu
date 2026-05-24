@@ -375,4 +375,75 @@ impl Emu {
 
         panic!("weird size: {}", operand);
     }
+
+    /// Attempt to auto-extend the thread stack to cover `fault_addr`.
+    ///
+    /// On real Windows the stack starts as a small committed region with a
+    /// PAGE_GUARD page at the bottom; touching the guard page raises
+    /// STATUS_GUARD_PAGE_VIOLATION, which the kernel transparently handles by
+    /// committing a new page and moving the guard. We don't model guard pages,
+    /// so we approximate the same effect here: if a memory fault lands inside
+    /// (or just under) the current "stack" map and within a sensible distance
+    /// of RSP, we map a new RW region covering the faulting page so the
+    /// instruction can be retried.
+    ///
+    /// Returns `true` if a new region was mapped (caller should retry the
+    /// access); `false` if the fault is unrelated to stack growth.
+    pub fn try_grow_stack(&mut self, fault_addr: u64) -> bool {
+        // Tunables. Real Windows reserves 1 MiB by default and lets it grow up
+        // to the reserve limit; we keep the same upper bound on the growth we
+        // are willing to do per fault — but we cap how far below RSP we grow,
+        // since wild pointers are not stack overflows.
+        const MAX_DIST_BELOW_RSP: u64 = 0x100000; // 1 MiB
+        const GROW_PAGE_SIZE: u64 = 0x1000;       // 4 KiB
+
+        if !self.cfg.is_x64() {
+            return false;
+        }
+
+        let rsp = self.regs().rsp;
+        // The fault must be reasonably close to the current stack pointer.
+        // Below RSP is the typical case (`_chkstk` / large frame); slightly
+        // above RSP also happens with red-zone-like writes.
+        if fault_addr >= rsp {
+            // Above RSP: only allow a small overshoot (8 KB) — anything more
+            // is a wild pointer rather than a stack reference.
+            if fault_addr.saturating_sub(rsp) > 0x2000 {
+                return false;
+            }
+        } else if rsp.saturating_sub(fault_addr) > MAX_DIST_BELOW_RSP {
+            return false;
+        }
+
+        // Page-align the faulting address.
+        let page_base = fault_addr & !(GROW_PAGE_SIZE - 1);
+
+        // If the address is already mapped, nothing to do here.
+        if self.maps.is_mapped(page_base) {
+            return false;
+        }
+
+        // Prefer extending the existing "stack" map downward by creating a new
+        // adjacent map for the page. We give it a stable name so subsequent
+        // faults extend with separate maps rather than fail to allocate.
+        let name = format!("stack_grow_{:x}", page_base);
+        match self.maps.create_map(
+            &name,
+            page_base,
+            GROW_PAGE_SIZE,
+            crate::maps::mem64::Permission::READ_WRITE,
+        ) {
+            Ok(_) => {
+                log::trace!(
+                    "stack auto-grow: mapped {} at 0x{:x} (rsp=0x{:x}, fault=0x{:x})",
+                    name, page_base, rsp, fault_addr
+                );
+                true
+            }
+            Err(e) => {
+                log::trace!("stack auto-grow failed for 0x{:x}: {:?}", page_base, e);
+                false
+            }
+        }
+    }
 }

@@ -399,7 +399,10 @@ impl From<SerializableEmu> for Emu {
             handle_management: HandleManagement::new(), // TODO: not yet serialized
             section_handles: HashMap::new(),
             file_handles: HashMap::new(),
+            syscall_number_map: HashMap::new(),
+            syscall_name_by_real: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
+            symbolic_link_targets: HashMap::new(),
             ssdt_pad_stack: Vec::new(),
         };
 

@@ -20,6 +20,17 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
         if !emu.maps.write_byte(emu.regs().rdi, val) {
+            static FIRST_OOB: std::sync::atomic::AtomicBool =
+                std::sync::atomic::AtomicBool::new(false);
+            let rdi = emu.regs().rdi;
+            if (0x412000..=0x420000).contains(&rdi)
+                && !FIRST_OOB.swap(true, std::sync::atomic::Ordering::Relaxed)
+            {
+                log::trace!(
+                    "DEBUG first movsb OOB rdi=0x{:x} rsi=0x{:x} rcx=0x{:x} rip=0x{:x} pos={}",
+                    rdi, emu.regs().rsi, emu.regs().rcx, emu.regs().rip, emu.pos,
+                );
+            }
             log::trace!("cannot write memoryh on rdi");
             return false;
         }
