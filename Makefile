@@ -13,7 +13,7 @@ all:
 	cargo build --release $(CARGO_TARGET)
 
 sloppy:
-	python3 scripts/sloppy.py
+	-python3 scripts/sloppy.py
 
 tests: sloppy
 	if [ ! -d test ]; then \
