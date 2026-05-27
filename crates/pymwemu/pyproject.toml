@@ -17,6 +17,16 @@ classifiers = [
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+# Location of the source code for the python module
+python-source = "python"
+# Internal name of the Rust library, as defined in Cargo.toml
+module-name = "pymwemu._pymwemu"
+# Tell Maturin to explicitly include the stub files (generated from the lib) in the final wheel
+include = ["python/pymwemu/_pymwemu/*.pyi"]
+
+# Generate __init__.py for the module
+[tool.pyo3-stub-gen]
+generate-init-py = true
 
 [metadata]
 description = "x86 32/64bits and systems emulation"
