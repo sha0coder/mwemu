@@ -9,7 +9,7 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "pymwemu"
+name = "_pymwemu"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
@@ -20,6 +20,7 @@ libmwemu = { path = "../libmwemu" }
 log.workspace = true
 iced-x86.workspace = true
 yaxpeax-arm.workspace = true
+pyo3-stub-gen = "0.22.3"
 
 [build-dependencies]
 pyo3-build-config = "0.26.0"

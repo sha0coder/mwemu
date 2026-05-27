@@ -71,3 +71,6 @@ docs/_build/
 
 # Pyenv
 .python-version
+
+# Exclude src/bin for stubgen
+!src/bin/
