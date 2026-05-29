@@ -416,10 +416,10 @@ impl Emu {
         Ok(self.emu.disassemble(addr, amount))
     }
 
-    /*
+    /// stop emulation
     fn stop(&mut self) {
         self.emu.stop();
-    }*/
+    }
 
     /// start emulating the binary after finding the first return.
     fn run_until_return(&mut self) -> PyResult<u64> {
@@ -703,7 +703,7 @@ impl Emu {
     }
 
     /// visualize the bytes on the given address.
-    pub fn dump(&self, addr: u64) {
+    pub fn dump_memory(&self, addr: u64) {
         self.emu.maps.dump(addr);
     }
 
@@ -923,7 +923,67 @@ impl Emu {
             )),
         }
     }
+
+
+    // --- Serialization ---
+    /// serialize the whole emulator state to a bytes object, which can be saved to disk for example
+    pub fn serialize(&self) -> PyResult<Vec<u8>> {
+        Ok(libmwemu::serialization::Serialization::serialize(&self.emu))
+    }
+
+    /// serialize the whole emulator state to a file, which can be loaded later with deserialize_dump
+    pub fn dump_to_file(&self, filename: &str) {
+        libmwemu::serialization::Serialization::dump_to_file(&self.emu, filename);
+    }
+
+    /// serialize the whole emulator state to a minidump file, which can be loaded later with load_from_minidump
+    pub fn dump_to_minidump(&self, filename: &str) {
+        let _ = libmwemu::serialization::Serialization::dump_to_minidump(&self.emu, filename);
+    }
+
+    pub fn dump(&self, filename: &str) {
+        libmwemu::serialization::Serialization::dump(&self.emu, filename);
+    }
 }
+
+// --- Serialization ---
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a bytes object, which can be loaded from disk for example
+pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::deserialize(&data),
+    })
+}
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a minidump file, which can be dumped with dump_to_minidump
+pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load_from_minidump(filename),
+    })
+}
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a file, which can be dumped with dump_to_file
+pub fn load_from_file(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load_from_file(filename),
+    })
+}
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a file, which can be dumped with dump
+pub fn load(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load(filename),
+    })
+}
+
+
 
 #[gen_stub_pyfunction(module="pymwemu._pymwemu")]
 #[pyfunction]
@@ -961,6 +1021,14 @@ fn _pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Emu>()?;
     m.add_function(wrap_pyfunction!(init32, m)?)?;
     m.add_function(wrap_pyfunction!(init64, m)?)?;
+
+
+    // Serialization functions
+    m.add_function(wrap_pyfunction!(deserialize, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_minidump, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_file, m)?)?;
+    m.add_function(wrap_pyfunction!(load, m)?)?;
+
     Ok(())
 }
 //

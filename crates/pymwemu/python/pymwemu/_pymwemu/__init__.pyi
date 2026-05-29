@@ -5,8 +5,12 @@ import builtins
 import typing
 __all__ = [
     "Emu",
+    "deserialize",
     "init32",
     "init64",
+    "load",
+    "load_from_file",
+    "load_from_minidump",
 ]
 
 @typing.final
@@ -283,6 +287,10 @@ class Emu:
         r"""
         disassemble an address.
         """
+    def stop(self) -> None:
+        r"""
+        stop emulation
+        """
     def run_until_return(self) -> builtins.int:
         r"""
         start emulating the binary after finding the first return.
@@ -418,7 +426,7 @@ class Emu:
         get the memory map name where is the given address.
         Will cause an exception if the address is not allocated.
         """
-    def dump(self, addr: builtins.int) -> None:
+    def dump_memory(self, addr: builtins.int) -> None:
         r"""
         visualize the bytes on the given address.
         """
@@ -576,8 +584,41 @@ class Emu:
         r"""
         emulate until next winapi call
         """
+    def serialize(self) -> builtins.list[builtins.int]:
+        r"""
+        serialize the whole emulator state to a bytes object, which can be saved to disk for example
+        """
+    def dump_to_file(self, filename: builtins.str) -> None:
+        r"""
+        serialize the whole emulator state to a file, which can be loaded later with deserialize_dump
+        """
+    def dump_to_minidump(self, filename: builtins.str) -> None:
+        r"""
+        serialize the whole emulator state to a minidump file, which can be loaded later with load_from_minidump
+        """
+    def dump(self, filename: builtins.str) -> None: ...
+
+def deserialize(data: typing.Sequence[builtins.int]) -> Emu:
+    r"""
+    deserialize the emulator state from a bytes object, which can be loaded from disk for example
+    """
 
 def init32() -> Emu: ...
 
 def init64() -> Emu: ...
+
+def load(filename: builtins.str) -> Emu:
+    r"""
+    deserialize the emulator state from a file, which can be dumped with dump
+    """
+
+def load_from_file(filename: builtins.str) -> Emu:
+    r"""
+    deserialize the emulator state from a file, which can be dumped with dump_to_file
+    """
+
+def load_from_minidump(filename: builtins.str) -> Emu:
+    r"""
+    deserialize the emulator state from a minidump file, which can be dumped with dump_to_minidump
+    """
 
