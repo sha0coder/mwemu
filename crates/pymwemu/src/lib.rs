@@ -14,6 +14,107 @@ use libmwemu::console::Console;
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::maps::mem64::Permission;
+use pyo3::class::basic::CompareOp;
+
+
+#[gen_stub_pyclass]
+#[pyclass(name = "Permission", module = "pymwemu._pymwemu")]
+#[derive(Clone, Copy)]
+pub struct PyPermission(pub Permission);
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl PyPermission {
+    #[classattr]
+    const NONE: PyPermission = PyPermission(Permission::NONE);
+
+    #[classattr]
+    const READ: PyPermission = PyPermission(Permission::READ);
+
+    #[classattr]
+    const WRITE: PyPermission = PyPermission(Permission::WRITE);
+    
+    #[classattr]
+    const EXECUTE: PyPermission = PyPermission(Permission::EXECUTE);
+
+    #[classattr]
+    const READ_WRITE: PyPermission = PyPermission(Permission::READ_WRITE);
+
+    #[classattr]
+    const READ_EXECUTE: PyPermission = PyPermission(Permission::READ_EXECUTE);
+
+    #[classattr]
+    const WRITE_EXECUTE: PyPermission = PyPermission(Permission::WRITE_EXECUTE);
+
+    #[classattr]
+    const READ_WRITE_EXECUTE: PyPermission = PyPermission(Permission::READ_WRITE_EXECUTE);
+
+    #[new]
+    #[pyo3(signature = (read=false, write=false, execute=false))]
+    fn new(read: bool, write: bool, execute: bool) -> Self {
+        PyPermission(Permission::from_flags(read, write, execute))
+    }
+
+    #[staticmethod]
+    fn from_bits(bits: u8) -> Self {
+        PyPermission(Permission::from_bits(bits))
+    }
+
+    #[getter]
+    fn bits(&self) -> u8 {
+        self.0.bits()
+    }
+
+    #[getter]
+    fn can_read(&self) -> bool {
+        self.0.can_read()
+    }
+
+    #[getter]
+    fn can_write(&self) -> bool {
+        self.0.can_write()
+    }
+
+    #[getter]
+    fn is_accessible(&self) -> bool {
+        self.0.is_accessible()
+    }
+
+    fn __or__(&self, rhs: Self) -> Self {
+        PyPermission(self.0 | rhs.0)
+    }
+
+    fn __and__(&self, rhs: Self) -> Self {
+        PyPermission(self.0 & rhs.0)
+    }
+
+    fn __xor__(&self, rhs: Self) -> Self {
+        PyPermission(self.0 ^ rhs.0)
+    }
+
+    fn __invert__(&self) -> Self {
+        PyPermission(!self.0)
+    }
+
+    fn __richcmp__(&self, other: Self, op: CompareOp) -> bool {
+        match op {
+            CompareOp::Eq => self.0.bits() == other.0.bits(),
+            CompareOp::Ne => self.0.bits() != other.0.bits(),
+            _ => false,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Permission(bits={:#05b}, R={}, W={}, X={})",
+            self.0.bits(),
+            self.0.can_read(),
+            self.0.can_write(),
+            self.0.can_execute()
+        )
+    }   
+
+}
 
 #[gen_stub_pyclass]
 #[pyclass(unsendable, module="pymwemu._pymwemu")]
@@ -313,16 +414,18 @@ impl Emu {
         self.emu.load_code_bytes(&bytes);
     }
 
-    /// allocate a buffer on the emulated process address space.
-    fn alloc(&mut self, name: &str, size: u64) -> PyResult<u64> {
-        Ok(self.emu.alloc(name, size, Permission::READ_WRITE_EXECUTE))
+    /// allocate a buffer on the emulated process address space. (permission defaults to RWX)
+    #[pyo3(signature = (name, size, permission=None))]
+    fn alloc(&mut self, name: &str, size: u64, permission: Option<PyPermission>) -> PyResult<u64> {
+        Ok(self.emu.alloc(name, size, permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0)))
     }
 
-    /// allocate at specific address
-    fn alloc_at(&mut self, name: &str, addr: u64, size: u64) {
+    /// allocate at specific address (permission defaults to RWX)
+    #[pyo3(signature = (name, addr, size, permission=None))]
+    fn alloc_at(&mut self, name: &str, addr: u64, size: u64, permission: Option<PyPermission>) {
         self.emu
             .maps
-            .create_map(name, addr, size, Permission::READ_WRITE_EXECUTE)
+            .create_map(name, addr, size, permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0))
             .expect("pymwemu alloc_at out of memory");
     }
 
@@ -416,10 +519,10 @@ impl Emu {
         Ok(self.emu.disassemble(addr, amount))
     }
 
-    /*
+    /// stop emulation
     fn stop(&mut self) {
         self.emu.stop();
-    }*/
+    }
 
     /// start emulating the binary after finding the first return.
     fn run_until_return(&mut self) -> PyResult<u64> {
@@ -703,7 +806,7 @@ impl Emu {
     }
 
     /// visualize the bytes on the given address.
-    pub fn dump(&self, addr: u64) {
+    pub fn dump_memory(&self, addr: u64) {
         self.emu.maps.dump(addr);
     }
 
@@ -923,7 +1026,307 @@ impl Emu {
             )),
         }
     }
+
+
+    // --- Serialization ---
+    /// serialize the whole emulator state to a bytes object, which can be saved to disk for example
+    pub fn serialize(&self) -> PyResult<Vec<u8>> {
+        Ok(libmwemu::serialization::Serialization::serialize(&self.emu))
+    }
+
+    /// serialize the whole emulator state to a file, which can be loaded later with deserialize_dump
+    pub fn dump_to_file(&self, filename: &str) {
+        libmwemu::serialization::Serialization::dump_to_file(&self.emu, filename);
+    }
+
+    /// serialize the whole emulator state to a minidump file, which can be loaded later with load_from_minidump
+    pub fn dump_to_minidump(&self, filename: &str) {
+        let _ = libmwemu::serialization::Serialization::dump_to_minidump(&self.emu, filename);
+    }
+
+    pub fn dump(&self, filename: &str) {
+        libmwemu::serialization::Serialization::dump(&self.emu, filename);
+    }
+
+    // -- CFG getters/setters --
+    // execution limits
+    #[setter]
+    pub fn set_max_instructions(&mut self, max: Option<u64>) {
+        self.emu.cfg.max_instructions = max;
+    }
+
+    #[getter]
+    pub fn get_max_instructions(&self) -> Option<u64> {
+        self.emu.cfg.max_instructions
+    }
+
+    #[setter]
+    pub fn set_timeout_secs(&mut self, secs: Option<f64>) {
+        self.emu.cfg.timeout_secs = secs;
+    }
+
+    #[getter]
+    pub fn get_timeout_secs(&self) -> Option<f64> {
+        self.emu.cfg.timeout_secs
+    }
+
+    #[setter]
+    pub fn set_max_faults(&mut self, faults: Option<u32>) {
+        self.emu.cfg.max_faults = faults;
+    }
+
+    #[getter]
+    pub fn get_max_faults(&self) -> Option<u32> {
+        self.emu.cfg.max_faults
+    }
+
+    #[setter]
+    pub fn set_exit_position(&mut self, pos: u64) {
+        self.emu.cfg.exit_position = pos;
+    }
+
+    #[getter]
+    pub fn get_exit_position(&self) -> u64 {
+        self.emu.cfg.exit_position
+    }
+
+    #[setter]
+    pub fn set_dump_on_exit(&mut self, dump: bool) {
+        self.emu.cfg.dump_on_exit = dump;
+    }
+
+    #[getter]
+    pub fn get_dump_on_exit(&self) -> bool {
+        self.emu.cfg.dump_on_exit
+    }
+
+    #[setter]
+    pub fn set_dump_filename(&mut self, filename: Option<String>) {
+        self.emu.cfg.dump_filename = filename;
+    }
+
+    #[getter]
+    pub fn get_dump_filename(&self) -> Option<String> {
+        self.emu.cfg.dump_filename.clone()
+    }
+
+    // tracing
+    pub fn open_trace_file(&mut self)
+    {
+        self.emu.open_trace_file();
+    }
+
+    #[setter]
+    pub fn set_trace_filename(&mut self, filename: Option<String>) {
+        self.emu.cfg.trace_filename = filename;
+    }
+
+    #[getter]
+    pub fn get_trace_filename(&self) -> Option<String> {
+        self.emu.cfg.trace_filename.clone()
+    }
+
+    #[setter]
+    pub fn set_trace_start(&mut self, start: u64) {
+        self.emu.cfg.trace_start = start;
+    }
+
+    #[getter]
+    pub fn get_trace_start(&self) -> u64 {
+        self.emu.cfg.trace_start
+    }
+
+    #[setter]
+    pub fn set_trace_calls(&mut self, calls: bool) {
+        self.emu.cfg.trace_calls = calls;
+    }
+
+    #[getter]
+    pub fn get_trace_calls(&self) -> bool {
+        self.emu.cfg.trace_calls
+    }
+
+    #[setter]
+    pub fn set_trace_flags(&mut self, flags: bool) {
+        self.emu.cfg.trace_flags = flags;
+    }
+
+    // Environnement identity
+    #[setter]
+    pub fn set_module_name(&mut self, name: String) {
+        self.emu.cfg.module_name = name;
+    }
+
+    #[getter]
+    pub fn get_module_name(&self) -> String {
+        self.emu.cfg.module_name.clone()
+    }
+
+    #[setter]
+    pub fn set_exe_name(&mut self, name: String) {
+        self.emu.cfg.exe_name = name;
+    }
+
+    #[getter]
+    pub fn get_exe_name(&self) -> String {
+        self.emu.cfg.exe_name.clone()
+    }
+
+    #[setter]
+    pub fn set_user_name(&mut self, name: String) {
+        self.emu.cfg.user_name = name;
+    }
+
+    #[getter]
+    pub fn get_user_name(&self) -> String {
+        self.emu.cfg.user_name.clone()
+    }
+
+    #[setter]
+    pub fn set_host_name(&mut self, name: String) {
+        self.emu.cfg.host_name = name;
+    }
+
+    #[setter]
+    pub fn set_temp_path(&mut self, path: String) {
+        self.emu.cfg.temp_path = path;
+    }
+
+    #[getter]
+    pub fn get_temp_path(&self) -> String {
+        self.emu.cfg.temp_path.clone()
+    }
+
+    #[setter]
+    pub fn set_cwd_path(&mut self, path: String) {
+        self.emu.cfg.cwd_path = path;
+    }
+
+    #[getter]
+    pub fn get_cwd_path(&self) -> String {
+        self.emu.cfg.cwd_path.clone()
+    }
+
+    #[setter]
+    pub fn set_windows_directory(&mut self, path: String) {
+        self.emu.cfg.windows_directory = path;
+    }
+
+    #[getter]
+    pub fn get_windows_directory(&self) -> String {
+        self.emu.cfg.windows_directory.clone()
+    }
+
+    #[setter]
+    pub fn set_system_directory(&mut self, path: String) {
+        self.emu.cfg.system_directory = path;
+    }
+
+    #[getter]
+    pub fn get_system_directory(&self) -> String {
+        self.emu.cfg.system_directory.clone()
+    }
+
+    #[setter]
+    pub fn set_emulate_winapi(&mut self, emulate: bool) {
+        self.emu.cfg.emulate_winapi = emulate;
+    }
+
+    #[getter]
+    pub fn get_emulate_winapi(&self) -> bool {
+        self.emu.cfg.emulate_winapi
+    }
+
+    #[setter]
+    pub fn set_short_circuit_sleep(&mut self, short_circuit: bool) {
+        self.emu.cfg.short_circuit_sleep = short_circuit;
+    }
+
+    #[getter]
+    pub fn get_short_circuit_sleep(&self) -> bool {
+        self.emu.cfg.short_circuit_sleep
+    }
+
+    #[setter]
+    pub fn set_heap_alloc_min_size(&mut self, size: u64) {
+        self.emu.cfg.heap_alloc_min_size = size;
+    }
+
+    #[getter]
+    pub fn get_heap_alloc_min_size(&self) -> u64 {
+        self.emu.cfg.heap_alloc_min_size
+    }
+
+    #[setter]
+    pub fn set_heap_free_soft(&mut self, free: bool) {
+        self.emu.cfg.heap_free_soft = free;
+    }
+
+    #[getter]
+    pub fn get_heap_free_soft(&self) -> bool {
+        self.emu.cfg.heap_free_soft
+    }
+
+    #[setter]
+    pub fn set_ssdt_use_ldr_initialize_thunk(&mut self, use_ldr: bool) {
+        self.emu.cfg.ssdt_use_ldr_initialize_thunk = use_ldr;
+    }
+
+    #[getter]
+    pub fn get_ssdt_use_ldr_initialize_thunk(&self) -> bool {
+        self.emu.cfg.ssdt_use_ldr_initialize_thunk
+    }
+
+    // call stack
+    pub fn get_call_stack(&self) -> Vec<(u64, u64)> {
+        self.emu.call_stack().clone()
+    }
+
+
+    // enable-threading
+    pub fn enable_threading(&mut self, enable: bool) {
+        self.emu.enable_threading(enable);
+    }
 }
+
+// --- Serialization ---
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a bytes object, which can be loaded from disk for example
+pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::deserialize(&data),
+    })
+}
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a minidump file, which can be dumped with dump_to_minidump
+pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load_from_minidump(filename),
+    })
+}
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a file, which can be dumped with dump_to_file
+pub fn load_from_file(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load_from_file(filename),
+    })
+}
+
+#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[pyfunction]
+/// deserialize the emulator state from a file, which can be dumped with dump
+pub fn load(filename: &str) -> PyResult<Emu> {
+    Ok(Emu {
+        emu: libmwemu::serialization::Serialization::load(filename),
+    })
+}
+
+
 
 #[gen_stub_pyfunction(module="pymwemu._pymwemu")]
 #[pyfunction]
@@ -961,6 +1364,16 @@ fn _pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Emu>()?;
     m.add_function(wrap_pyfunction!(init32, m)?)?;
     m.add_function(wrap_pyfunction!(init64, m)?)?;
+
+
+    // Serialization functions
+    m.add_function(wrap_pyfunction!(deserialize, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_minidump, m)?)?;
+    m.add_function(wrap_pyfunction!(load_from_file, m)?)?;
+    m.add_function(wrap_pyfunction!(load, m)?)?;
+
+    m.add_class::<PyPermission>()?;
+
     Ok(())
 }
 //

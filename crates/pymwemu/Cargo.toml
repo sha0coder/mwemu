@@ -27,4 +27,6 @@ pyo3-build-config = "0.26.0"
 
 [features]
 extension-module = ["pyo3/extension-module"]
-default = ["extension-module"]
+# cargo strips libpython from stub_gen, because of extension-module
+# so we set default to none
+default = []

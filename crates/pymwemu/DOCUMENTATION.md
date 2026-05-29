@@ -213,10 +213,10 @@ set_xmm(reg:str, value:int) -> int
 
 ```python
     # allocate a buffer on the emulated process address space. It returns an address.
-alloc(map_name:str, size:int) -> int
+alloc(map_name:str, size:int, permission: None | pymwemu.Permission) -> int
 
     # allocate a buffer on the emulated process at specific space, check first to avoid collisions.
-alloc_at(map_name:str, addr:int, size:int)
+alloc_at(map_name:str, addr:int, size:int, permission: None | pymwemu.Permission)
 
     # Link DLL library
 link_library(filepath:str) -> int {
