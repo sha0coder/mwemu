@@ -140,8 +140,25 @@ impl Emu {
 
             self.last_decoded = Some(DecodedInstruction::AArch64(ins));
             self.last_decoded_addr = pc;
+
+            // Pre-instruction hook
+            if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+                let skip = !hook_fn(self, pc, &self.last_decoded.unwrap(), 4);
+                self.hooks.hook_on_pre_instruction = Some(hook_fn);
+                if skip {
+                    return (4, true); // skip instruction emulation but report as successful
+                }
+            }
+
             let result_ok = engine::aarch64::emulate_instruction(self, &ins);
             self.last_instruction_size = 4;
+
+            // Post-instruction hook
+            if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+                hook_fn(self, pc, &self.last_decoded.unwrap(), 4, result_ok);
+                self.hooks.hook_on_post_instruction = Some(hook_fn);
+            }
+
             (4, result_ok)
         } else {
             // --- x86 decode & execute ---
@@ -161,8 +178,25 @@ impl Emu {
             self.last_decoded = Some(DecodedInstruction::X86(ins));
             self.last_decoded_addr = pc;
 
+            // Pre-instruction hook
+            if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
+                let skip = !hook_fn(self, pc, &self.last_decoded.unwrap(), sz);
+                self.hooks.hook_on_pre_instruction = Some(hook_fn);
+                if skip {
+                    return (sz, true); // skip instruction emulation but report as successful
+                }
+            }
+
             let result_ok = engine::emulate_instruction(self, &ins, sz, true);
             self.last_instruction_size = sz;
+
+
+            // Post-instruction hook
+            if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
+                hook_fn(self, pc, &self.last_decoded.unwrap(), sz, result_ok);
+                self.hooks.hook_on_post_instruction = Some(hook_fn);
+            }
+
             (sz, result_ok)
         }
     }
@@ -456,26 +490,6 @@ impl Emu {
         let (sz, result_ok) = self.decode_and_execute();
         if sz == 0 {
             return false;
-        }
-
-        // Pre-instruction hook
-        if let Some(mut hook_fn) = self.hooks.hook_on_pre_instruction.take() {
-            let pc = self.pc();
-            let decoded = self.last_decoded.unwrap();
-            let skip = !hook_fn(self, pc, &decoded, sz);
-            self.hooks.hook_on_pre_instruction = Some(hook_fn);
-            if skip {
-                self.advance_pc(sz);
-                return true;
-            }
-        }
-
-        // Post-instruction hook
-        if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
-            let pc = self.pc();
-            let decoded = self.last_decoded.unwrap();
-            hook_fn(self, pc, &decoded, sz, result_ok);
-            self.hooks.hook_on_post_instruction = Some(hook_fn);
         }
 
         // Advance PC
