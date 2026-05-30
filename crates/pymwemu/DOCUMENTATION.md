@@ -8,6 +8,10 @@ emu = pymwemu.init32()
 or
 emu = pymwemu.init64()
 
+    # you can also skip loading apps and maps manually by initializing for a specific OS:
+emu.init_win32()
+    # For linux: dynamic bool flag determines if the environment should be set up for a dynamically linked executable.
+emu.init_linux64(dynamic=True)
 
     # It is necessary to load the 32bits or 64bits maps folder for having a realistic memory layout.
     # The maps can be downloaded from the https://github.com/sha0coder/mwemu
@@ -17,6 +21,12 @@ emu.load_maps(folder:str)
 emu.load_binary(filename:str)
     # Load the bytes to be emulated.
 emu.load_code_bytes(bytes:bytearray)
+
+    # load from existing serialization/dumps
+emu = pymwemu.deserialize(data:list)
+emu = pymwemu.load(filename:str)
+emu = pymwemu.load_from_file(filename:str)
+emu = pymwemu.load_from_minidump(filename:str)
 ```
 
 optionally is possible to change entry point and base address
@@ -58,6 +68,38 @@ set_64bits()
     # Set 32bits mode, it's necessary to load the 32bits maps with load_maps() method.
     # Or better can use: emu = pymwemu.init32()
 set_32bits()
+
+    # set execution limits and settings (properties)
+    emu.max_instructions = 1000 # int | None
+    print(emu.max_instructions)
+    
+    emu.timeout_secs = 5.0 # float | None
+    
+    emu.max_faults = 10 # int | None
+    
+    emu.exit_position = 0x1000 # int
+    
+    emu.dump_on_exit = True # bool
+    
+    emu.dump_filename = "dump.bin" # str | None
+
+    # enable experimental threading support.
+enable_threading(enable:bool)
+
+    # get the current call stack as a list of tuples (return_address, stack_frame_address).
+get_call_stack() -> list
+
+    # dump trace into a file.
+open_trace_file()
+
+    # serialize the whole emulator state to a bytes object, which can be saved to disk
+serialize() -> list
+
+    # serialize the whole emulator state to a file
+dump_to_file(filename:str)
+
+    # serialize the whole emulator state to a Windows minidump file
+dump_to_minidump(filename:str)
 
     # disable the colored mode for instructions, api calls and other logs.
 disable_colors()
@@ -181,6 +223,12 @@ api_addr_to_name(addr:int) -> str
 ### stack
 
 ```python
+    # get stack pointer (works for any arch).
+get_sp() -> int
+
+    # set stack pointer (works for any arch).
+set_sp(addr:int)
+
     # push a 32bits value to the stack.
 stack_push32(value:int) -> bool
 
@@ -196,6 +244,12 @@ stack_pop64() -> int
 
 ### registers
 ```python
+    # get program counter (works for any arch).
+get_pc() -> int
+
+    # set program counter (works for any arch).
+set_pc(addr:int)
+
     # read register value ie get_reg('rax')
 get_reg(reg:str) -> int
 
@@ -207,6 +261,23 @@ get_xmm(reg:str) -> int
 
     # set a value to a xmm register.
 set_xmm(reg:str, value:int) -> int
+```
+
+### permissions
+
+```python
+    # Permissions for memory allocation
+    pymwemu.Permission.NONE
+    pymwemu.Permission.READ
+    pymwemu.Permission.WRITE
+    pymwemu.Permission.EXECUTE
+    pymwemu.Permission.READ_WRITE
+    pymwemu.Permission.READ_EXECUTE
+    pymwemu.Permission.WRITE_EXECUTE
+    pymwemu.Permission.READ_WRITE_EXECUTE
+
+    # Permissions can be retrieved from an int using from_bits or combined with bitwise operators
+    # for example: `pymwemu.Permission.READ | pymwemu.Permission.WRITE`
 ```
 
 ### memory
@@ -269,6 +340,9 @@ sizeof_wide(unicode_str_ptr:str) -> int
     # write a python bytes() or b'' to an emulator memory address.
 write_buffer(to:addr, from:bytes)
 
+    # write a python list of int bytes to the emulator memory.
+write_bytes(to:int, from:list)
+
     # read a buffer from the emulator memory to a python list of int bytes.
 read_buffer(from:int, sz:int) -> list
 
@@ -288,8 +362,11 @@ is_mapped(addr:int) -> bool
     # Will cause an exception if the address is not allocated.
 get_addr_name(addr:int) -> str
 
+    # serialize the whole emulator state to a file
+dump(filename:str)
+
     # visualize the bytes on the given address.
-dump(addr:int)
+dump_memory(addr:int)
 
     # visualize the `amount` of bytes provided on `address`.
 dump_n(addr:int, amount:int)
@@ -431,9 +508,15 @@ run_until_return() -> int
     # emulate a single step, this is slower than run(address) or run(0)
 step() -> bool
 
+    # stop emulation
+stop()
+
     # start emulating the binary until reach the provided end_addr. 
     # Use run() with no params for emulating forever.
 run(end_addr:int) -> int
+
+    # Emulate until reaching a specific instruction position (number of instructions).
+run_to(position:int) -> int
 
     # read the number of instructions emulated since now.
 get_position() -> int
@@ -443,6 +526,9 @@ call32(addr:int, params:list) -> int
 
     # call a 64bits function, internally pushes params in reverse order.
 call64(addr:int, params:list) -> int
+
+    # call a 64bits linux function
+linux_call64(address:int, params:list) -> int
 
     # emulate until a specific winapi is called.
 run_until_winapi(winapi_name:str)
