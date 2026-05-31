@@ -1291,11 +1291,33 @@ impl Emu {
 
 // --- Serialization ---
 
+// The libmwemu deserialization/load routines (and the PE parser they re-run on
+// the embedded `raw` bytes) are full of `.unwrap()`/`panic!` and take no
+// fallible path. Feeding them a corrupt, truncated or hostile blob therefore
+// aborts the whole process instead of raising a catchable Python error. Since
+// these inputs are attacker-controllable in a malware-analysis workflow (state
+// dumps / minidumps from untrusted samples or sandboxes), we contain the panic
+// here at the FFI boundary and surface it as a normal `ValueError`.
+//
+// This is the minimal containment; the deeper fix is to make the PE parser
+// bounds-check and return `Result` upstream in libmwemu.
+// TODO: harden PE parser bounds (PE64/PE32::load_from_raw) to remove panics at the source.
+fn catch_deserialize<F>(what: &str, f: F) -> PyResult<Emu>
+where
+    F: FnOnce() -> Emu,
+{
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).map_err(|_| {
+        PyValueError::new_err(format!(
+            "failed to {what}: input is corrupt, truncated, or malformed"
+        ))
+    })
+}
+
 #[gen_stub_pyfunction(module="pymwemu._pymwemu")]
 #[pyfunction]
 /// deserialize the emulator state from a bytes object, which can be loaded from disk for example
 pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
-    Ok(Emu {
+    catch_deserialize("deserialize emulator state", || Emu {
         emu: libmwemu::serialization::Serialization::deserialize(&data),
     })
 }
@@ -1303,7 +1325,7 @@ pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
 #[pyfunction]
 /// deserialize the emulator state from a minidump file, which can be dumped with dump_to_minidump
 pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
-    Ok(Emu {
+    catch_deserialize("load emulator state from minidump", || Emu {
         emu: libmwemu::serialization::Serialization::load_from_minidump(filename),
     })
 }
@@ -1312,7 +1334,7 @@ pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
 #[pyfunction]
 /// deserialize the emulator state from a file, which can be dumped with dump_to_file
 pub fn load_from_file(filename: &str) -> PyResult<Emu> {
-    Ok(Emu {
+    catch_deserialize("load emulator state from file", || Emu {
         emu: libmwemu::serialization::Serialization::load_from_file(filename),
     })
 }
@@ -1321,7 +1343,7 @@ pub fn load_from_file(filename: &str) -> PyResult<Emu> {
 #[pyfunction]
 /// deserialize the emulator state from a file, which can be dumped with dump
 pub fn load(filename: &str) -> PyResult<Emu> {
-    Ok(Emu {
+    catch_deserialize("load emulator state", || Emu {
         emu: libmwemu::serialization::Serialization::load(filename),
     })
 }
@@ -1383,3 +1405,31 @@ pyo3_stub_gen::reexport_module_members!("pymwemu" from "pymwemu._pymwemu");
 
 //  Define a stub info gatherer, to generate the .pyi
 define_stub_info_gatherer!(stub_gen);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A corrupt/hostile blob must surface as a catchable Python error instead of
+    // aborting the process (the previous behaviour, via libmwemu's `.unwrap()`s).
+    #[test]
+    fn deserialize_rejects_garbage_without_panicking() {
+        let garbage = vec![0xFFu8; 64];
+        let result = deserialize(garbage);
+        assert!(
+            result.is_err(),
+            "corrupt blob must return Err, not a valid Emu"
+        );
+    }
+
+    #[test]
+    fn deserialize_rejects_empty_input() {
+        assert!(deserialize(Vec::new()).is_err());
+    }
+
+    #[test]
+    fn load_from_file_rejects_missing_file() {
+        let result = load_from_file("/nonexistent/path/should/not/exist.bin");
+        assert!(result.is_err(), "missing file must return Err, not abort");
+    }
+}

@@ -5,6 +5,7 @@ members = [
     "crates/libmwemu",
     "crates/mwemu",
     "crates/mwemu-test",
+    "crates/mwemu-mcp",
 ]
 # `cargo run` / `cargo build` / `cargo test` at repo root target these by default (not mwemu-test),
 # so `cargo run` runs the main `mwemu` CLI without choosing a package.
