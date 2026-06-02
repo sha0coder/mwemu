@@ -1,9 +1,9 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::windows::peb::peb64::bootstrap::ensure_peb_system_dependent_07;
-use std::sync::atomic::{AtomicU32, Ordering};
 use crate::windows::structures::LdrDataTableEntry64;
 use crate::windows::structures::OrdinalTable;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 const NTDLL_LDRP_HASH_TABLE_RVA64: u64 = 0x16a140;
 const NTDLL_LDRP_HASH_BUCKETS64: u64 = 32;
@@ -124,7 +124,10 @@ impl Flink {
             None => 0,
         };
 
-        self.export_dir_size = emu.maps.read_dword(self.mod_base + self.pe_hdr + 0x8c).unwrap_or(0) as u64;
+        self.export_dir_size = emu
+            .maps
+            .read_dword(self.mod_base + self.pe_hdr + 0x8c)
+            .unwrap_or(0) as u64;
 
         if self.export_table_rva == 0 {
             return;
@@ -147,14 +150,24 @@ impl Flink {
         forward_depth: u32,
     ) -> OrdinalTable {
         let mut ordinal = OrdinalTable::new();
-        let func_name_rva = emu.maps.read_dword(self.func_name_tbl + function_id * 4).unwrap_or(0) as u64;
+        let func_name_rva = emu
+            .maps
+            .read_dword(self.func_name_tbl + function_id * 4)
+            .unwrap_or(0) as u64;
         ordinal.func_name = emu.maps.read_string(func_name_rva + self.mod_base);
         ordinal.ordinal_tbl_rva = emu.maps.read_dword(self.export_table + 0x24).unwrap_or(0) as u64;
         ordinal.ordinal_tbl = ordinal.ordinal_tbl_rva + self.mod_base;
-        ordinal.ordinal = emu.maps.read_word(ordinal.ordinal_tbl + 2 * function_id).unwrap_or(0) as u64;
-        ordinal.func_addr_tbl_rva = emu.maps.read_dword(self.export_table + 0x1c).unwrap_or(0) as u64;
+        ordinal.ordinal = emu
+            .maps
+            .read_word(ordinal.ordinal_tbl + 2 * function_id)
+            .unwrap_or(0) as u64;
+        ordinal.func_addr_tbl_rva =
+            emu.maps.read_dword(self.export_table + 0x1c).unwrap_or(0) as u64;
         ordinal.func_addr_tbl = ordinal.func_addr_tbl_rva + self.mod_base;
-        ordinal.func_rva = emu.maps.read_dword(ordinal.func_addr_tbl + 4 * ordinal.ordinal).unwrap_or(0) as u64;
+        ordinal.func_rva = emu
+            .maps
+            .read_dword(ordinal.func_addr_tbl + 4 * ordinal.ordinal)
+            .unwrap_or(0) as u64;
 
         if self.export_dir_size > 0
             && ordinal.func_rva >= self.export_table_rva
@@ -231,7 +244,10 @@ pub fn show_linked_modules(emu: &mut emu::Emu) {
     let first_flink = flink.get_ptr();
 
     loop {
-        let pe1 = emu.maps.read_byte(flink.mod_base + flink.pe_hdr).unwrap_or_default();
+        let pe1 = emu
+            .maps
+            .read_byte(flink.mod_base + flink.pe_hdr)
+            .unwrap_or_default();
         let pe2 = emu
             .maps
             .read_byte(flink.mod_base + flink.pe_hdr + 1)
@@ -305,13 +321,22 @@ pub fn dynamic_link_module(base: u64, pe_off: u32, libname: &str, emu: &mut emu:
 
     // Sentinel LIST_ENTRY nodes inside PEB_LDR_DATA (address, not value).
     let sentinel_load = ldr_addr + 0x10;
-    let sentinel_mem  = ldr_addr + 0x20;
+    let sentinel_mem = ldr_addr + 0x20;
     let sentinel_init = ldr_addr + 0x30;
 
     // Tail = sentinel.Blink (the last real entry in each ordered list).
-    let last_load = emu.maps.read_qword(sentinel_load + 8).unwrap_or(sentinel_load);
-    let last_mem  = emu.maps.read_qword(sentinel_mem  + 8).unwrap_or(sentinel_mem);
-    let last_init = emu.maps.read_qword(sentinel_init + 8).unwrap_or(sentinel_init);
+    let last_load = emu
+        .maps
+        .read_qword(sentinel_load + 8)
+        .unwrap_or(sentinel_load);
+    let last_mem = emu
+        .maps
+        .read_qword(sentinel_mem + 8)
+        .unwrap_or(sentinel_mem);
+    let last_init = emu
+        .maps
+        .read_qword(sentinel_init + 8)
+        .unwrap_or(sentinel_init);
 
     // Derive the real DLL entry point from the PE optional header.
     let entry_point = if base > 0 {
@@ -330,13 +355,13 @@ pub fn dynamic_link_module(base: u64, pe_off: u32, libname: &str, emu: &mut emu:
     let space_addr = create_ldr_entry(emu, base, entry_point, libname, sentinel_load, last_load);
 
     // Patch the old tail to point forward to the new entry.
-    emu.maps.write_qword(last_load,  space_addr);
-    emu.maps.write_qword(last_mem,   space_addr + 0x10);
-    emu.maps.write_qword(last_init,  space_addr + 0x20);
+    emu.maps.write_qword(last_load, space_addr);
+    emu.maps.write_qword(last_mem, space_addr + 0x10);
+    emu.maps.write_qword(last_init, space_addr + 0x20);
 
     // Patch sentinel.Blink to the new entry (it is now the new tail).
     emu.maps.write_qword(sentinel_load + 8, space_addr);
-    emu.maps.write_qword(sentinel_mem  + 8, space_addr + 0x10);
+    emu.maps.write_qword(sentinel_mem + 8, space_addr + 0x10);
     emu.maps.write_qword(sentinel_init + 8, space_addr + 0x20);
 }
 
@@ -358,7 +383,11 @@ pub fn create_ldr_entry(
     if emu.maps.exists_mapname(&lib) {
         use std::sync::atomic::{AtomicU32, Ordering};
         static LDR_SEQ: AtomicU32 = AtomicU32::new(0);
-        lib = format!("{}.ldr.{}", libname, LDR_SEQ.fetch_add(1, Ordering::Relaxed));
+        lib = format!(
+            "{}.ldr.{}",
+            libname,
+            LDR_SEQ.fetch_add(1, Ordering::Relaxed)
+        );
     }
     let mut image_sz = 0;
     if base > 0 {
@@ -427,7 +456,11 @@ pub fn create_ldr_entry(
 fn ldr_hash_bucket_index(libname: &str) -> u64 {
     let mut hash: u32 = 0;
     for ch in libname.encode_utf16() {
-        let folded = if ch >= b'a' as u16 && ch <= b'z' as u16 { ch - 0x20 } else { ch };
+        let folded = if ch >= b'a' as u16 && ch <= b'z' as u16 {
+            ch - 0x20
+        } else {
+            ch
+        };
         hash = hash.wrapping_mul(0x1003f).wrapping_add(folded as u32);
     }
     (hash & 0x1f) as u64
@@ -510,7 +543,7 @@ fn ensure_ntdll_loader_globals(emu: &mut emu::Emu) {
     if emu.maps.is_mapped(loader_lock) {
         let debug_info = emu.maps.read_qword(loader_lock).unwrap_or(0);
         if debug_info == 0 {
-            let _ = emu.maps.write_qword(loader_lock, u64::MAX);        // DebugInfo = -1 (no debug)
+            let _ = emu.maps.write_qword(loader_lock, u64::MAX); // DebugInfo = -1 (no debug)
             let _ = emu.maps.write_dword(loader_lock + 0x08, u32::MAX); // LockCount = -1 (unlocked)
         }
     }
@@ -531,13 +564,17 @@ fn rebuild_ldrp_module_base_address_index(emu: &mut emu::Emu, entries: &[u64]) {
     let ntdll_base = ntdll_map.get_base();
 
     let tree_root_ptr = ntdll_base + NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA;
-    let tree_min_ptr  = ntdll_base + NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA + 8;
+    let tree_min_ptr = ntdll_base + NTDLL_LDRP_MODULE_BASE_ADDRESS_INDEX_RVA + 8;
 
     let mut items: Vec<(u64, u64)> = entries
         .iter()
         .filter_map(|&entry| {
             let dll_base = emu.maps.read_qword(entry + 0x30).unwrap_or(0);
-            if dll_base == 0 { None } else { Some((dll_base, entry)) }
+            if dll_base == 0 {
+                None
+            } else {
+                Some((dll_base, entry))
+            }
         })
         .collect();
     items.sort_by_key(|&(base, _)| base);
@@ -553,7 +590,12 @@ fn rebuild_ldrp_module_base_address_index(emu: &mut emu::Emu, entries: &[u64]) {
         let ddag_addr = emu.maps.alloc(DDAG_SIZE).expect("cannot alloc DdagNode");
         let seq = DDAG_SEQ.fetch_add(1, Ordering::Relaxed);
         emu.maps
-            .create_map(&format!("ddag_node.{}", seq), ddag_addr, DDAG_SIZE, Permission::READ_WRITE)
+            .create_map(
+                &format!("ddag_node.{}", seq),
+                ddag_addr,
+                DDAG_SIZE,
+                Permission::READ_WRITE,
+            )
             .expect("cannot create DdagNode map");
 
         // LDR_DDAG_NODE.LoadCount (+0x18) == -1 means "untracked / system" module.
@@ -561,7 +603,9 @@ fn rebuild_ldrp_module_base_address_index(emu: &mut emu::Emu, entries: &[u64]) {
         // LDR_DDAG_NODE.State (+0x38) must be >= 9 (LdrModulesInitialized).
         let _ = emu.maps.write_dword(ddag_addr + 0x38, 9);
 
-        let _ = emu.maps.write_qword(entry_addr + LDR_DDAG_NODE_OFFSET, ddag_addr);
+        let _ = emu
+            .maps
+            .write_qword(entry_addr + LDR_DDAG_NODE_OFFSET, ddag_addr);
         node_addrs.push(entry_addr + LDR_BASE_ADDRESS_INDEX_NODE_OFFSET);
     }
 
@@ -569,11 +613,11 @@ fn rebuild_ldrp_module_base_address_index(emu: &mut emu::Emu, entries: &[u64]) {
     // RTL_BALANCED_NODE: [+0x00] Left, [+0x08] Right, [+0x10] ParentValue
     let n = node_addrs.len();
     for i in 0..n {
-        let node   = node_addrs[i];
-        let left   = 0u64;
-        let right  = if i + 1 < n { node_addrs[i + 1] } else { 0 };
-        let parent = if i > 0     { node_addrs[i - 1] } else { 0 };
-        let _ = emu.maps.write_qword(node,        left);
+        let node = node_addrs[i];
+        let left = 0u64;
+        let right = if i + 1 < n { node_addrs[i + 1] } else { 0 };
+        let parent = if i > 0 { node_addrs[i - 1] } else { 0 };
+        let _ = emu.maps.write_qword(node, left);
         let _ = emu.maps.write_qword(node + 0x08, right);
         let _ = emu.maps.write_qword(node + 0x10, parent);
     }
@@ -687,17 +731,37 @@ pub fn rebuild_ldr_lists(emu: &mut emu::Emu) {
     // detection works: Flink == sentinel means end of list).
     let n = entries.len();
     let sentinel_load = ldr_addr + 0x10;
-    let sentinel_mem  = ldr_addr + 0x20;
+    let sentinel_mem = ldr_addr + 0x20;
     let sentinel_init = ldr_addr + 0x30;
     for i in 0..n {
-        let flink_load = if i + 1 < n { entries[i + 1]        } else { sentinel_load };
-        let blink_load = if i > 0     { entries[i - 1]        } else { sentinel_load };
-        let flink_mem  = if i + 1 < n { entries[i + 1] + 0x10 } else { sentinel_mem  };
-        let blink_mem  = if i > 0     { entries[i - 1] + 0x10 } else { sentinel_mem  };
-        let flink_init = if i + 1 < n { entries[i + 1] + 0x20 } else { sentinel_init };
-        let blink_init = if i > 0     { entries[i - 1] + 0x20 } else { sentinel_init };
+        let flink_load = if i + 1 < n {
+            entries[i + 1]
+        } else {
+            sentinel_load
+        };
+        let blink_load = if i > 0 { entries[i - 1] } else { sentinel_load };
+        let flink_mem = if i + 1 < n {
+            entries[i + 1] + 0x10
+        } else {
+            sentinel_mem
+        };
+        let blink_mem = if i > 0 {
+            entries[i - 1] + 0x10
+        } else {
+            sentinel_mem
+        };
+        let flink_init = if i + 1 < n {
+            entries[i + 1] + 0x20
+        } else {
+            sentinel_init
+        };
+        let blink_init = if i > 0 {
+            entries[i - 1] + 0x20
+        } else {
+            sentinel_init
+        };
         // InLoadOrderLinks
-        emu.maps.write_qword(entries[i],        flink_load);
+        emu.maps.write_qword(entries[i], flink_load);
         emu.maps.write_qword(entries[i] + 0x08, blink_load);
         // InMemoryOrderLinks
         emu.maps.write_qword(entries[i] + 0x10, flink_mem);
@@ -710,12 +774,12 @@ pub fn rebuild_ldr_lists(emu: &mut emu::Emu) {
     // Point sentinels to first and last entries.
     let first = entries[0];
     let last = entries[n - 1];
-    emu.maps.write_qword(ldr_addr + 0x10, first);          // InLoadOrder sentinel.Flink
-    emu.maps.write_qword(ldr_addr + 0x18, last);           // InLoadOrder sentinel.Blink
-    emu.maps.write_qword(ldr_addr + 0x20, first + 0x10);   // InMemoryOrder sentinel.Flink
-    emu.maps.write_qword(ldr_addr + 0x28, last + 0x10);    // InMemoryOrder sentinel.Blink
-    emu.maps.write_qword(ldr_addr + 0x30, first + 0x20);   // InInitializationOrder sentinel.Flink
-    emu.maps.write_qword(ldr_addr + 0x38, last + 0x20);    // InInitializationOrder sentinel.Blink
+    emu.maps.write_qword(ldr_addr + 0x10, first); // InLoadOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x18, last); // InLoadOrder sentinel.Blink
+    emu.maps.write_qword(ldr_addr + 0x20, first + 0x10); // InMemoryOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x28, last + 0x10); // InMemoryOrder sentinel.Blink
+    emu.maps.write_qword(ldr_addr + 0x30, first + 0x20); // InInitializationOrder sentinel.Flink
+    emu.maps.write_qword(ldr_addr + 0x38, last + 0x20); // InInitializationOrder sentinel.Blink
     emu.maps.write_dword(ldr_addr + 4, 1); // Initialized = TRUE
 
     rebuild_ldr_hash_table(emu, &modules, &entries);

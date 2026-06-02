@@ -5,12 +5,7 @@ use super::{HintNameItem, PE32};
 
 macro_rules! read_u32_le {
     ($raw:expr, $off:expr) => {
-        u32::from_le_bytes([
-            $raw[$off],
-            $raw[$off + 1],
-            $raw[$off + 2],
-            $raw[$off + 3],
-        ])
+        u32::from_le_bytes([$raw[$off], $raw[$off + 1], $raw[$off + 2], $raw[$off + 3]])
     };
 }
 
@@ -96,7 +91,10 @@ impl PE32 {
             }
 
             if winapi32::kernel32::load_library(emu, &iim_name) == 0 {
-                log::trace!("cannot find the library `{}` in maps/windows/x86/", &iim_name);
+                log::trace!(
+                    "cannot find the library `{}` in maps/windows/x86/",
+                    &iim_name
+                );
                 continue;
             } else if dbg {
                 log::trace!("library `{}` loaded", &iim_name);
@@ -184,7 +182,8 @@ impl PE32 {
                 continue;
             }
 
-            let mut off_name = PE32::vaddr_to_off(&self.sect_hdr, iim.original_first_thunk) as usize;
+            let mut off_name =
+                PE32::vaddr_to_off(&self.sect_hdr, iim.original_first_thunk) as usize;
             let mut off_addr = PE32::vaddr_to_off(&self.sect_hdr, iim.first_thunk) as usize;
 
             loop {

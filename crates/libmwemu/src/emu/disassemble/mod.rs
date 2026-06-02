@@ -204,7 +204,10 @@ impl InstructionCache<iced_x86::Instruction> {
             }
         }
 
-        assert!(self.lookup_entry(rip_addr, 0), "Cache Insertion FAILED: There is support to be entry after insertion using insert_from_decoder");
+        assert!(
+            self.lookup_entry(rip_addr, 0),
+            "Cache Insertion FAILED: There is support to be entry after insertion using insert_from_decoder"
+        );
     }
 
     pub fn insert_instruction(&mut self, addr: u64, instrs: Vec<iced_x86::Instruction>) {

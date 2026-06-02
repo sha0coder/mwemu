@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::winapi::helper;
+use crate::windows::constants;
 use crate::{console, emu};
 
 pub fn CreateThread(emu: &mut emu::Emu) {

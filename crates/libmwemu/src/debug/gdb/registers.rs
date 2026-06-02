@@ -45,22 +45,8 @@ pub fn read_regs_64(emu: &Emu) -> gdbstub_arch::x86::reg::X86_64CoreRegs {
     // General purpose registers
     // Order: rax, rbx, rcx, rdx, rsi, rdi, rbp, rsp, r8-r15
     gdb_regs.regs = [
-        regs.rax,
-        regs.rbx,
-        regs.rcx,
-        regs.rdx,
-        regs.rsi,
-        regs.rdi,
-        regs.rbp,
-        regs.rsp,
-        regs.r8,
-        regs.r9,
-        regs.r10,
-        regs.r11,
-        regs.r12,
-        regs.r13,
-        regs.r14,
-        regs.r15,
+        regs.rax, regs.rbx, regs.rcx, regs.rdx, regs.rsi, regs.rdi, regs.rbp, regs.rsp, regs.r8,
+        regs.r9, regs.r10, regs.r11, regs.r12, regs.r13, regs.r14, regs.r15,
     ];
 
     // Instruction pointer
@@ -71,12 +57,12 @@ pub fn read_regs_64(emu: &Emu) -> gdbstub_arch::x86::reg::X86_64CoreRegs {
 
     // Segment registers - use typical Windows x64 values
     gdb_regs.segments = gdbstub_arch::x86::reg::X86SegmentRegs {
-        cs: 0x33,  // 64-bit code segment
-        ss: 0x2b,  // Stack segment
-        ds: 0x2b,  // Data segment
-        es: 0x2b,  // Extra segment
-        fs: 0x53,  // FS segment (used for TLS on Windows)
-        gs: 0x2b,  // GS segment
+        cs: 0x33, // 64-bit code segment
+        ss: 0x2b, // Stack segment
+        ds: 0x2b, // Data segment
+        es: 0x2b, // Extra segment
+        fs: 0x53, // FS segment (used for TLS on Windows)
+        gs: 0x2b, // GS segment
     };
 
     // ST registers (FPU) - 80-bit extended precision, stored as [u8; 10]
@@ -85,8 +71,8 @@ pub fn read_regs_64(emu: &Emu) -> gdbstub_arch::x86::reg::X86_64CoreRegs {
         // Convert u128 to [u8; 10] for 80-bit float
         let bytes = st_val.to_le_bytes();
         gdb_regs.st[i] = [
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
-            bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9],
         ];
     }
 
@@ -224,12 +210,12 @@ pub fn read_regs_32(emu: &Emu) -> X86CoreRegs {
 
     // Segment registers - use typical Windows x86 values
     gdb_regs.segments = X86SegmentRegs {
-        cs: 0x1b,  // 32-bit code segment
-        ss: 0x23,  // Stack segment
-        ds: 0x23,  // Data segment
-        es: 0x23,  // Extra segment
-        fs: 0x3b,  // FS segment (used for TEB on Windows)
-        gs: 0x00,  // GS segment
+        cs: 0x1b, // 32-bit code segment
+        ss: 0x23, // Stack segment
+        ds: 0x23, // Data segment
+        es: 0x23, // Extra segment
+        fs: 0x3b, // FS segment (used for TEB on Windows)
+        gs: 0x00, // GS segment
     };
 
     // ST registers (FPU)
@@ -237,8 +223,8 @@ pub fn read_regs_32(emu: &Emu) -> X86CoreRegs {
         let st_val = fpu.st.peek(i).get();
         let bytes = st_val.to_le_bytes();
         gdb_regs.st[i] = [
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
-            bytes[5], bytes[6], bytes[7], bytes[8], bytes[9],
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9],
         ];
     }
 

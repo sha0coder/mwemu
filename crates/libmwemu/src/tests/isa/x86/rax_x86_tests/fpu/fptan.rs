@@ -56,10 +56,10 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fptan_zero() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; Load angle
-                           // FPTAN               ; Compute tangent, push 1.0
-                           // FSTP qword [0x3000] ; Store the 1.0
-                           // FSTP qword [0x3008] ; Store the tangent result
-                           // HLT
+    // FPTAN               ; Compute tangent, push 1.0
+    // FSTP qword [0x3000] ; Store the 1.0
+    // FSTP qword [0x3008] ; Store the tangent result
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xF2, // FPTAN
@@ -574,7 +574,7 @@ fn test_fptan_three_pi_over_8() {
 #[test]
 fn test_fptan_fpatan_cotangent_calculation() {
     let mut emu = emu64(); // FPTAN returns tan(x) in ST(1) and 1.0 in ST(0)
-                           // FDIVR ST(1), ST(0) computes ST(1) = ST(0) / ST(1) = 1.0 / tan(x) = cot(x)
+    // FDIVR ST(1), ST(0) computes ST(1) = ST(0) / ST(1) = 1.0 / tan(x) = cot(x)
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xF2, // FPTAN (ST(0)=1.0, ST(1)=tan)

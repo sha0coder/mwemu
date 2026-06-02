@@ -1,6 +1,6 @@
+use crate::debug::console::Console;
 use crate::emu;
 use crate::windows::constants;
-use crate::debug::console::Console;
 
 pub(super) fn dispatch(emu: &mut emu::Emu) -> bool {
     match emu.regs().rax {

@@ -45,8 +45,8 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fst_m32fp_positive_one() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0
-                           // FST dword ptr [0x3000]  ; Store as f32
-                           // HLT
+    // FST dword ptr [0x3000]  ; Store as f32
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xD9, 0x14, 0x25, 0x00, 0x30, 0x00, 0x00, // FST dword ptr [0x3000]
@@ -159,9 +159,9 @@ fn test_fst_m32fp_nan() {
 #[test]
 fn test_fst_m32fp_no_pop() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0
-                           // FST dword ptr [0x3000]  ; Store (no pop)
-                           // FST dword ptr [0x3004]  ; Store again (should still be 1.0)
-                           // HLT
+    // FST dword ptr [0x3000]  ; Store (no pop)
+    // FST dword ptr [0x3004]  ; Store again (should still be 1.0)
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xD9, 0x14, 0x25, 0x00, 0x30, 0x00, 0x00, // FST dword ptr [0x3000]
@@ -183,8 +183,8 @@ fn test_fst_m32fp_no_pop() {
 #[test]
 fn test_fst_m64fp_positive_one() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0
-                           // FST qword ptr [0x3000]  ; Store as f64
-                           // HLT
+    // FST qword ptr [0x3000]  ; Store as f64
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x14, 0x25, 0x00, 0x30, 0x00, 0x00, // FST qword ptr [0x3000]
@@ -302,10 +302,10 @@ fn test_fstp_m32fp_large_value() {
 #[test]
 fn test_fstp_m32fp_with_pop() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0
-                           // FLD qword ptr [0x2008]  ; Load 2.0 (now ST(0))
-                           // FSTP dword ptr [0x3000] ; Store 2.0 and pop
-                           // FSTP dword ptr [0x3004] ; Store 1.0 and pop
-                           // HLT
+    // FLD qword ptr [0x2008]  ; Load 2.0 (now ST(0))
+    // FSTP dword ptr [0x3000] ; Store 2.0 and pop
+    // FSTP dword ptr [0x3004] ; Store 1.0 and pop
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword ptr [0x2008]
@@ -404,11 +404,11 @@ fn test_fstp_m64fp_with_pop() {
 #[test]
 fn test_fst_st1() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0 into ST(0)
-                           // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 -> ST(1)
-                           // FST ST(1)               ; Copy ST(0) to ST(1) (both should be 2.0)
-                           // FSTP qword ptr [0x3000] ; Pop ST(0) (2.0)
-                           // FSTP qword ptr [0x3008] ; Pop ST(0) (was ST(1), now 2.0)
-                           // HLT
+    // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 -> ST(1)
+    // FST ST(1)               ; Copy ST(0) to ST(1) (both should be 2.0)
+    // FSTP qword ptr [0x3000] ; Pop ST(0) (2.0)
+    // FSTP qword ptr [0x3008] ; Pop ST(0) (was ST(1), now 2.0)
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword ptr [0x2008]
@@ -457,10 +457,10 @@ fn test_fst_st2() {
 #[test]
 fn test_fstp_st1() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0 into ST(0)
-                           // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 -> ST(1)
-                           // FSTP ST(1)              ; Copy ST(0) to ST(1) and pop
-                           // FSTP qword ptr [0x3000] ; Pop remaining value
-                           // HLT
+    // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 -> ST(1)
+    // FSTP ST(1)              ; Copy ST(0) to ST(1) and pop
+    // FSTP qword ptr [0x3000] ; Pop remaining value
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword ptr [0x2008]

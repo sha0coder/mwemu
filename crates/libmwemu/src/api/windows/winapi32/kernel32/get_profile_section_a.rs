@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetProfileSectionA(emu: &mut emu::Emu) {
     let lpAppName = emu

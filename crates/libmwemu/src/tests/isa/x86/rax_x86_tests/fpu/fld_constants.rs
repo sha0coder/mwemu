@@ -47,8 +47,8 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fld1_basic() {
     let mut emu = emu64(); // FLD1                ; D9 E8
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xE8, // FLD1
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -127,8 +127,8 @@ fn test_fld1_precision() {
 #[test]
 fn test_fldz_basic() {
     let mut emu = emu64(); // FLDZ                ; D9 EE
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xEE, // FLDZ
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -212,8 +212,8 @@ fn test_fldz_precision() {
 #[test]
 fn test_fldpi_basic() {
     let mut emu = emu64(); // FLDPI               ; D9 EB
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xEB, // FLDPI
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -304,8 +304,8 @@ fn test_fldpi_arithmetic() {
 #[test]
 fn test_fldl2e_basic() {
     let mut emu = emu64(); // FLDL2E              ; D9 EA
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xEA, // FLDL2E
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -373,8 +373,8 @@ fn test_fldl2e_range() {
 #[test]
 fn test_fldl2t_basic() {
     let mut emu = emu64(); // FLDL2T              ; D9 E9
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xE9, // FLDL2T
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -442,8 +442,8 @@ fn test_fldl2t_range() {
 #[test]
 fn test_fldlg2_basic() {
     let mut emu = emu64(); // FLDLG2              ; D9 EC
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xEC, // FLDLG2
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]
@@ -533,8 +533,8 @@ fn test_fldlg2_fldl2t_reciprocal() {
 #[test]
 fn test_fldln2_basic() {
     let mut emu = emu64(); // FLDLN2              ; D9 ED
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xD9, 0xED, // FLDLN2
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword [0x3000]

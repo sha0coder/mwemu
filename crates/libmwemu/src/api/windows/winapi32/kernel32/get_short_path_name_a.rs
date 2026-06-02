@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetShortPathNameA(emu: &mut emu::Emu) {
     let lpszLongPath = emu

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn EnumDateFormatsA(emu: &mut emu::Emu) {
     let _lpDateFmtEnumProc = emu

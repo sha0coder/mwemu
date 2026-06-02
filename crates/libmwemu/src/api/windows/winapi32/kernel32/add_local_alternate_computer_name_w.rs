@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn AddLocalAlternateComputerNameW(emu: &mut emu::Emu) {
     let Hostname = emu
@@ -13,11 +13,7 @@ pub fn AddLocalAlternateComputerNameW(emu: &mut emu::Emu) {
 
     let Hostname = emu.maps.read_wide_string(Hostname as u64);
 
-    log_red!(
-        emu,
-        "kernel32!AddLocalAlternateComputerNameW {}",
-        Hostname
-    );
+    log_red!(emu, "kernel32!AddLocalAlternateComputerNameW {}", Hostname);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

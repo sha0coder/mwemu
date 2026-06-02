@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn Heap32First(emu: &mut emu::Emu) {
     let _lphe = emu

@@ -136,11 +136,7 @@ impl PE64 {
         None
     }
 
-    pub(crate) fn pe64_read_resource_name_from_rsrc(
-        &self,
-        rsrc: &[u8],
-        offset: usize,
-    ) -> String {
+    pub(crate) fn pe64_read_resource_name_from_rsrc(&self, rsrc: &[u8], offset: usize) -> String {
         if offset + 1 >= rsrc.len() {
             return String::new();
         }

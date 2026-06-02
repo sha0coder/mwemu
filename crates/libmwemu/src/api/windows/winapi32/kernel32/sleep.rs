@@ -10,7 +10,11 @@ pub fn Sleep(emu: &mut emu::Emu) {
         emu,
         "kernel32!Sleep millis: {}{}",
         millis,
-        if emu.cfg.short_circuit_sleep { " [short-circuited]" } else { "" }
+        if emu.cfg.short_circuit_sleep {
+            " [short-circuited]"
+        } else {
+            ""
+        }
     );
 
     if emu.cfg.short_circuit_sleep {

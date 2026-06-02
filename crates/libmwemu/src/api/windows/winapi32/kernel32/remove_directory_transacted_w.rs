@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn RemoveDirectoryTransactedW(emu: &mut emu::Emu) {
     let lpPathName = emu
@@ -13,11 +13,7 @@ pub fn RemoveDirectoryTransactedW(emu: &mut emu::Emu) {
 
     let lpPathName = emu.maps.read_wide_string(lpPathName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!RemoveDirectoryTransactedW {}",
-        lpPathName
-    );
+    log_red!(emu, "kernel32!RemoveDirectoryTransactedW {}", lpPathName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

@@ -13,16 +13,16 @@ use gdbstub::target::ext::target_description_xml_override::{
     TargetDescriptionXmlOverride, TargetDescriptionXmlOverrideOps,
 };
 use gdbstub::target::{Target, TargetError, TargetResult};
-use gdbstub_arch::x86::reg::id::{X86CoreRegId, X86SegmentRegId};
 use gdbstub_arch::x86::reg::X86CoreRegs;
+use gdbstub_arch::x86::reg::id::{X86CoreRegId, X86SegmentRegId};
 
 use crate::debug::gdb::registers::{read_regs_32, write_regs_32};
 use crate::emu::Emu;
 
 use crate::debug::gdb::target_xml;
 
-use super::shared::{copy_range, generate_library_list_xml};
 use super::MwemuGdbError;
+use super::shared::{copy_range, generate_library_list_xml};
 
 /// GDB target wrapper for 32-bit emulation
 pub struct MwemuTarget32<'a> {
@@ -49,7 +49,9 @@ impl Target for MwemuTarget32<'_> {
     }
 
     #[inline(always)]
-    fn support_breakpoints(&mut self) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
+    fn support_breakpoints(
+        &mut self,
+    ) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
         Some(self)
     }
 
@@ -72,10 +74,7 @@ impl Target for MwemuTarget32<'_> {
 }
 
 impl SingleThreadBase for MwemuTarget32<'_> {
-    fn read_registers(
-        &mut self,
-        regs: &mut X86CoreRegs,
-    ) -> TargetResult<(), Self> {
+    fn read_registers(&mut self, regs: &mut X86CoreRegs) -> TargetResult<(), Self> {
         *regs = read_regs_32(self.emu);
         Ok(())
     }
@@ -85,11 +84,7 @@ impl SingleThreadBase for MwemuTarget32<'_> {
         Ok(())
     }
 
-    fn read_addrs(
-        &mut self,
-        start_addr: u32,
-        data: &mut [u8],
-    ) -> TargetResult<usize, Self> {
+    fn read_addrs(&mut self, start_addr: u32, data: &mut [u8]) -> TargetResult<usize, Self> {
         let start_addr = start_addr as u64;
         let mut bytes_read = 0;
         for (i, byte) in data.iter_mut().enumerate() {
@@ -244,6 +239,11 @@ impl ExecFile for MwemuTarget32<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
-        Ok(copy_range(self.emu.filename.as_bytes(), offset, length, buf))
+        Ok(copy_range(
+            self.emu.filename.as_bytes(),
+            offset,
+            length,
+            buf,
+        ))
     }
 }

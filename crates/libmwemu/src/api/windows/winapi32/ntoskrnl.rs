@@ -1,9 +1,9 @@
 use crate::emu;
 use crate::serialization;
 //use crate::winapi::helper;
+use crate::winapi::winapi32::kernel32;
 use crate::windows::constants;
 use crate::windows::structures::UnicodeString;
-use crate::winapi::winapi32::kernel32;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);

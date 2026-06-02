@@ -172,18 +172,18 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp() + 4)
         .expect("ntdll!NtProtectVirtualMemory error reading status param") as u64;
-    let page_number = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ntdll!NtProtectVirtualMemory error reading page_number param") as u64;
+    let page_number =
+        emu.maps
+            .read_dword(emu.regs().get_esp() + 8)
+            .expect("ntdll!NtProtectVirtualMemory error reading page_number param") as u64;
     let page = emu
         .maps
         .read_dword(emu.regs().get_esp() + 12)
         .expect("ntdll!NtProtectVirtualMemory error reading page param") as u64;
-    let old_prot_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("ntdll!NtProtectVirtualMemory error reading old prot param") as u64;
+    let old_prot_ptr =
+        emu.maps
+            .read_dword(emu.regs().get_esp() + 16)
+            .expect("ntdll!NtProtectVirtualMemory error reading old prot param") as u64;
 
     log_red!(emu, "ntdll!NtProtectVirtualMemory sz: {}", sz);
 
@@ -199,10 +199,10 @@ fn CheckRemoteDebuggerPresent(emu: &mut emu::Emu) {
         .maps
         .read_dword(emu.regs().get_esp())
         .expect("ntdll! CheckRemoteDebuggerPresenterror reading hndl param") as u64;
-    let bool_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ntdll!CheckRemoteDebuggerPresent reading bool ptr param") as u64;
+    let bool_ptr =
+        emu.maps
+            .read_dword(emu.regs().get_esp() + 4)
+            .expect("ntdll!CheckRemoteDebuggerPresent reading bool ptr param") as u64;
 
     log_red!(emu, "ntdll!CheckRemoteDebuggerPresent");
 

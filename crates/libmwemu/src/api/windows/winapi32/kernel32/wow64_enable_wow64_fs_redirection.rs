@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn Wow64EnableWow64FsRedirection(emu: &mut emu::Emu) {
     let _Wow64FsEnableRedirection = emu

@@ -1,4 +1,4 @@
-use crate::maps::{mem64::Mem64, Maps};
+use crate::maps::{Maps, mem64::Mem64};
 
 // 64bits
 // https://bytepointer.com/resources/tebpeb64.htm   (from xp to win8)

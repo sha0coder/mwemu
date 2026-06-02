@@ -46,8 +46,8 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         Opcode::LDRSH => instructions::ldrsh::execute(emu, ins),
         Opcode::LDRSW => instructions::ldrsw::execute(emu, ins),
         Opcode::LDP => instructions::ldp::execute(emu, ins),
-        Opcode::LDXR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
-        Opcode::LDAR => instructions::ldr::execute(emu, ins),  // treat as LDR for now
+        Opcode::LDXR => instructions::ldr::execute(emu, ins), // treat as LDR for now
+        Opcode::LDAR => instructions::ldr::execute(emu, ins), // treat as LDR for now
         Opcode::LDUR => instructions::ldur::execute(emu, ins),
         Opcode::LDURB => instructions::ldurb::execute(emu, ins),
         Opcode::LDURH => instructions::ldurh::execute(emu, ins),
@@ -61,7 +61,7 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         Opcode::STRH => instructions::strh::execute(emu, ins),
         Opcode::STP => instructions::stp::execute(emu, ins),
         Opcode::STXR => instructions::stxr::execute(emu, ins),
-        Opcode::STLR => instructions::str::execute(emu, ins),  // treat as STR for now
+        Opcode::STLR => instructions::str::execute(emu, ins), // treat as STR for now
         Opcode::STUR => instructions::stur::execute(emu, ins),
         Opcode::STURB => instructions::sturb::execute(emu, ins),
         Opcode::STURH => instructions::sturh::execute(emu, ins),
@@ -96,28 +96,57 @@ pub fn emulate_instruction(emu: &mut Emu, ins: &Instruction) -> bool {
         // no-ops — common in macOS arm64 prologues (`pacibsp`) and epilogues
         // (`autibsp`, `retab`). Without this we'd bail out at the first
         // instruction of /bin/ls.
-        Opcode::PACIA | Opcode::PACIB | Opcode::PACDA | Opcode::PACDB
-        | Opcode::PACIZA | Opcode::PACIZB | Opcode::PACDZA | Opcode::PACDZB
-        | Opcode::PACGA | Opcode::PACIASP | Opcode::PACIAZ
-        | Opcode::PACIA1716 | Opcode::PACIA171615
-        | Opcode::PACIASPPC | Opcode::PACNBIASPPC
-        | Opcode::PACIBSP | Opcode::PACIBZ
-        | Opcode::PACIB1716 | Opcode::PACIB171615
-        | Opcode::PACIBSPPC | Opcode::PACNBIBSPPC | Opcode::PACM
-        | Opcode::AUTIA | Opcode::AUTIB | Opcode::AUTDA | Opcode::AUTDB
-        | Opcode::AUTIZA | Opcode::AUTIZB | Opcode::AUTDZA | Opcode::AUTDZB
-        | Opcode::AUTIASP | Opcode::AUTIAZ
-        | Opcode::AUTIA1716 | Opcode::AUTIA171615
-        | Opcode::AUTIASPPC | Opcode::AUTIASPPCR
-        | Opcode::AUTIBSP | Opcode::AUTIBZ
-        | Opcode::AUTIB1716 | Opcode::AUTIB171615
-        | Opcode::AUTIBSPPC | Opcode::AUTIBSPPCR
-        | Opcode::XPACI | Opcode::XPACD | Opcode::XPACLRI => true,
+        Opcode::PACIA
+        | Opcode::PACIB
+        | Opcode::PACDA
+        | Opcode::PACDB
+        | Opcode::PACIZA
+        | Opcode::PACIZB
+        | Opcode::PACDZA
+        | Opcode::PACDZB
+        | Opcode::PACGA
+        | Opcode::PACIASP
+        | Opcode::PACIAZ
+        | Opcode::PACIA1716
+        | Opcode::PACIA171615
+        | Opcode::PACIASPPC
+        | Opcode::PACNBIASPPC
+        | Opcode::PACIBSP
+        | Opcode::PACIBZ
+        | Opcode::PACIB1716
+        | Opcode::PACIB171615
+        | Opcode::PACIBSPPC
+        | Opcode::PACNBIBSPPC
+        | Opcode::PACM
+        | Opcode::AUTIA
+        | Opcode::AUTIB
+        | Opcode::AUTDA
+        | Opcode::AUTDB
+        | Opcode::AUTIZA
+        | Opcode::AUTIZB
+        | Opcode::AUTDZA
+        | Opcode::AUTDZB
+        | Opcode::AUTIASP
+        | Opcode::AUTIAZ
+        | Opcode::AUTIA1716
+        | Opcode::AUTIA171615
+        | Opcode::AUTIASPPC
+        | Opcode::AUTIASPPCR
+        | Opcode::AUTIBSP
+        | Opcode::AUTIBZ
+        | Opcode::AUTIB1716
+        | Opcode::AUTIB171615
+        | Opcode::AUTIBSPPC
+        | Opcode::AUTIBSPPCR
+        | Opcode::XPACI
+        | Opcode::XPACD
+        | Opcode::XPACLRI => true,
 
         _ => {
             log::warn!(
                 "unimplemented aarch64 instruction: {} at 0x{:x}",
-                ins, emu.regs_aarch64().pc
+                ins,
+                emu.regs_aarch64().pc
             );
             false
         }

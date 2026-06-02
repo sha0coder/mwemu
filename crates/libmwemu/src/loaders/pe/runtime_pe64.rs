@@ -4,19 +4,30 @@
 //! the underlying implementation to be either the legacy parser or the LIEF-based
 //! parser.
 
-use crate::emu::Emu;
 use crate::config::Pe64Backend;
-use crate::loaders::pe::pe64::PE64;
+use crate::emu::Emu;
 use crate::loaders::pe::lief::LiefPe;
-use crate::loaders::pe::lief::traits::LiefPeReader;
 use crate::loaders::pe::lief::error::LiefError;
+use crate::loaders::pe::lief::traits::LiefPeReader;
+use crate::loaders::pe::pe64::PE64;
 use lief::generic::Section as _;
 
 #[derive(Debug)]
 pub enum RuntimePeError {
-    LiefLoad { path: String, source: LiefError },
-    Relocation { path: String, backend: Pe64Backend, source: LiefError },
-    HeaderTruncated { path: String, expected: usize, actual: usize },
+    LiefLoad {
+        path: String,
+        source: LiefError,
+    },
+    Relocation {
+        path: String,
+        backend: Pe64Backend,
+        source: LiefError,
+    },
+    HeaderTruncated {
+        path: String,
+        expected: usize,
+        actual: usize,
+    },
 }
 
 impl std::fmt::Display for RuntimePeError {
@@ -25,11 +36,27 @@ impl std::fmt::Display for RuntimePeError {
             RuntimePeError::LiefLoad { path, source } => {
                 write!(f, "LIEF load failed for {}: {}", path, source)
             }
-            RuntimePeError::Relocation { path, backend, source } => {
-                write!(f, "Relocation error for {} (backend {:?}): {}", path, backend, source)
+            RuntimePeError::Relocation {
+                path,
+                backend,
+                source,
+            } => {
+                write!(
+                    f,
+                    "Relocation error for {} (backend {:?}): {}",
+                    path, backend, source
+                )
             }
-            RuntimePeError::HeaderTruncated { path, expected, actual } => {
-                write!(f, "Header truncated for {}: expected {} bytes, got {}", path, expected, actual)
+            RuntimePeError::HeaderTruncated {
+                path,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Header truncated for {}: expected {} bytes, got {}",
+                    path, expected, actual
+                )
             }
         }
     }
@@ -86,7 +113,11 @@ impl RuntimePe64 {
         match LiefPe::load(path) {
             Ok(lief_pe) => RuntimePe64::Lief(lief_pe),
             Err(e) => {
-                log::warn!("LIEF loading failed for {}, falling back to legacy parser: {}", path, e);
+                log::warn!(
+                    "LIEF loading failed for {}, falling back to legacy parser: {}",
+                    path,
+                    e
+                );
                 RuntimePe64::Legacy(PE64::load(path))
             }
         }
@@ -113,32 +144,30 @@ impl RuntimePe64 {
                 log::trace!("PE64 backend: forced legacy for {}", path);
                 Ok(RuntimePe64::Legacy(PE64::load(path)))
             }
-            Pe64Backend::Lief => {
-                match LiefPe::load(path) {
-                    Ok(lief_pe) => {
-                        log::trace!("PE64 backend: forced LIEF for {}", path);
-                        Ok(RuntimePe64::Lief(lief_pe))
-                    }
-                    Err(e) => {
-                        Err(RuntimePeError::LiefLoad {
-                            path: path.to_string(),
-                            source: e,
-                        })
-                    }
+            Pe64Backend::Lief => match LiefPe::load(path) {
+                Ok(lief_pe) => {
+                    log::trace!("PE64 backend: forced LIEF for {}", path);
+                    Ok(RuntimePe64::Lief(lief_pe))
                 }
-            }
-            Pe64Backend::Auto => {
-                match LiefPe::load(path) {
-                    Ok(lief_pe) => {
-                        log::trace!("PE64 backend: auto-selected LIEF for {}", path);
-                        Ok(RuntimePe64::Lief(lief_pe))
-                    }
-                    Err(e) => {
-                        log::warn!("PE64 backend: LIEF failed for {}, falling back to legacy: {}", path, e);
-                        Ok(RuntimePe64::Legacy(PE64::load(path)))
-                    }
+                Err(e) => Err(RuntimePeError::LiefLoad {
+                    path: path.to_string(),
+                    source: e,
+                }),
+            },
+            Pe64Backend::Auto => match LiefPe::load(path) {
+                Ok(lief_pe) => {
+                    log::trace!("PE64 backend: auto-selected LIEF for {}", path);
+                    Ok(RuntimePe64::Lief(lief_pe))
                 }
-            }
+                Err(e) => {
+                    log::warn!(
+                        "PE64 backend: LIEF failed for {}, falling back to legacy: {}",
+                        path,
+                        e
+                    );
+                    Ok(RuntimePe64::Legacy(PE64::load(path)))
+                }
+            },
         }
     }
 
@@ -245,7 +274,11 @@ impl RuntimePe64 {
         }
     }
 
-    pub fn apply_relocations(&mut self, emu: &mut Emu, base_addr: u64) -> Result<(), RuntimePeError> {
+    pub fn apply_relocations(
+        &mut self,
+        emu: &mut Emu,
+        base_addr: u64,
+    ) -> Result<(), RuntimePeError> {
         match self {
             RuntimePe64::Legacy(pe) => {
                 pe.apply_relocations(emu, base_addr);

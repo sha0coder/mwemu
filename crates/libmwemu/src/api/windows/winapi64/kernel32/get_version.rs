@@ -1,4 +1,4 @@
-use crate::{windows::constants, emu};
+use crate::{emu, windows::constants};
 
 pub fn GetVersion(emu: &mut emu::Emu) {
     emu.regs_mut().rax = constants::VERSION;

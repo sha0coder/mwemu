@@ -229,18 +229,15 @@ fn ssdt_msgbox_reaches_messageboxa() {
     let user32_loaded_c = Rc::clone(&user32_loaded);
     let mba_returned_c = Rc::clone(&mba_returned);
     const POST_MBA_CALL_RIP: u64 = 0x140001241;
-    emu.hooks
-        .on_pre_instruction(move |emu, rip, _ins, _sz| {
-            if !*user32_loaded_c.borrow()
-                && emu.maps.get_map_by_name("user32.pe").is_some()
-            {
-                *user32_loaded_c.borrow_mut() = true;
-            }
-            if rip == POST_MBA_CALL_RIP {
-                *mba_returned_c.borrow_mut() = true;
-            }
-            true
-        });
+    emu.hooks.on_pre_instruction(move |emu, rip, _ins, _sz| {
+        if !*user32_loaded_c.borrow() && emu.maps.get_map_by_name("user32.pe").is_some() {
+            *user32_loaded_c.borrow_mut() = true;
+        }
+        if rip == POST_MBA_CALL_RIP {
+            *mba_returned_c.borrow_mut() = true;
+        }
+        true
+    });
 
     // `load_code` with `emulate_winapi = true` drives LdrInitializeThunk via
     // `call64` and then leaves RIP at the EXE entry point.

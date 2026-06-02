@@ -1,5 +1,5 @@
-use crate::windows::constants::*;
 use crate::emu::Emu;
+use crate::windows::constants::*;
 
 use super::sync;
 
@@ -19,7 +19,14 @@ fn alpc_query_info(emu: &mut Emu, nr: u64, name: &str) {
     let info_buf = emu.regs().r9;
     let rsp = emu.regs().rsp;
     let length = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
-    log_orange!(emu, "syscall 0x{:x}: {} buf: 0x{:x} len: 0x{:x}", nr, name, info_buf, length);
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: {} buf: 0x{:x} len: 0x{:x}",
+        nr,
+        name,
+        info_buf,
+        length
+    );
     if info_buf != 0 && emu.maps.is_mapped(info_buf) {
         let sz = length.min(0x1000) as usize;
         for i in 0..sz {
@@ -75,16 +82,32 @@ pub fn nt_alpc_create_port(emu: &mut Emu) {
     alpc_create_handle(emu, WIN64_NTALPCCREATEPORT, "NtAlpcCreatePort");
 }
 pub fn nt_alpc_create_port_section(emu: &mut Emu) {
-    alpc_create_handle(emu, WIN64_NTALPCCREATEPORTSECTION, "NtAlpcCreatePortSection");
+    alpc_create_handle(
+        emu,
+        WIN64_NTALPCCREATEPORTSECTION,
+        "NtAlpcCreatePortSection",
+    );
 }
 pub fn nt_alpc_create_resource_reserve(emu: &mut Emu) {
-    alpc_create_handle(emu, WIN64_NTALPCCREATERESOURCERESERVE, "NtAlpcCreateResourceReserve");
+    alpc_create_handle(
+        emu,
+        WIN64_NTALPCCREATERESOURCERESERVE,
+        "NtAlpcCreateResourceReserve",
+    );
 }
 pub fn nt_alpc_create_section_view(emu: &mut Emu) {
-    alpc_create_handle(emu, WIN64_NTALPCCREATESECTIONVIEW, "NtAlpcCreateSectionView");
+    alpc_create_handle(
+        emu,
+        WIN64_NTALPCCREATESECTIONVIEW,
+        "NtAlpcCreateSectionView",
+    );
 }
 pub fn nt_alpc_create_security_context(emu: &mut Emu) {
-    alpc_create_handle(emu, WIN64_NTALPCCREATESECURITYCONTEXT, "NtAlpcCreateSecurityContext");
+    alpc_create_handle(
+        emu,
+        WIN64_NTALPCCREATESECURITYCONTEXT,
+        "NtAlpcCreateSecurityContext",
+    );
 }
 
 pub fn nt_alpc_query_information(emu: &mut Emu) {
@@ -96,12 +119,12 @@ pub fn nt_alpc_query_information(emu: &mut Emu) {
 /// RCX = PortHandle, RDX = PortMessage, R8 = MessageInfoClass,
 /// R9 = MessageInformation (out), [rsp+28] = Length, [rsp+30] = ReturnLength.
 pub fn nt_alpc_query_information_message(emu: &mut Emu) {
-    let port   = emu.regs().rcx;
-    let class  = emu.regs().r8;
-    let info   = emu.regs().r9;
-    let rsp    = emu.regs().rsp;
+    let port = emu.regs().rcx;
+    let class = emu.regs().r8;
+    let info = emu.regs().r9;
+    let rsp = emu.regs().rsp;
     let length = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
-    let ret_len= emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
+    let ret_len = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
 
     log_orange!(
         emu,
@@ -129,34 +152,66 @@ pub fn nt_alpc_cancel_message(emu: &mut Emu) {
     alpc_noop(emu, WIN64_NTALPCCANCELMESSAGE, "NtAlpcCancelMessage");
 }
 pub fn nt_alpc_delete_port_section(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCDELETEPORTSECTION, "NtAlpcDeletePortSection");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCDELETEPORTSECTION,
+        "NtAlpcDeletePortSection",
+    );
 }
 pub fn nt_alpc_delete_resource_reserve(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCDELETERESOURCERESERVE, "NtAlpcDeleteResourceReserve");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCDELETERESOURCERESERVE,
+        "NtAlpcDeleteResourceReserve",
+    );
 }
 pub fn nt_alpc_delete_section_view(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCDELETESECTIONVIEW, "NtAlpcDeleteSectionView");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCDELETESECTIONVIEW,
+        "NtAlpcDeleteSectionView",
+    );
 }
 pub fn nt_alpc_delete_security_context(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCDELETESECURITYCONTEXT, "NtAlpcDeleteSecurityContext");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCDELETESECURITYCONTEXT,
+        "NtAlpcDeleteSecurityContext",
+    );
 }
 pub fn nt_alpc_disconnect_port(emu: &mut Emu) {
     alpc_noop(emu, WIN64_NTALPCDISCONNECTPORT, "NtAlpcDisconnectPort");
 }
 pub fn nt_alpc_impersonate_client_container_of_port(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCIMPERSONATECLIENTCONTAINEROFPORT, "NtAlpcImpersonateClientContainerOfPort");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCIMPERSONATECLIENTCONTAINEROFPORT,
+        "NtAlpcImpersonateClientContainerOfPort",
+    );
 }
 pub fn nt_alpc_impersonate_client_of_port(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCIMPERSONATECLIENTOFPORT, "NtAlpcImpersonateClientOfPort");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCIMPERSONATECLIENTOFPORT,
+        "NtAlpcImpersonateClientOfPort",
+    );
 }
 pub fn nt_alpc_open_sender_process(emu: &mut Emu) {
-    alpc_create_handle(emu, WIN64_NTALPCOPENSENDERPROCESS, "NtAlpcOpenSenderProcess");
+    alpc_create_handle(
+        emu,
+        WIN64_NTALPCOPENSENDERPROCESS,
+        "NtAlpcOpenSenderProcess",
+    );
 }
 pub fn nt_alpc_open_sender_thread(emu: &mut Emu) {
     alpc_create_handle(emu, WIN64_NTALPCOPENSENDERTHREAD, "NtAlpcOpenSenderThread");
 }
 pub fn nt_alpc_revoke_security_context(emu: &mut Emu) {
-    alpc_noop(emu, WIN64_NTALPCREVOKESECURITYCONTEXT, "NtAlpcRevokeSecurityContext");
+    alpc_noop(
+        emu,
+        WIN64_NTALPCREVOKESECURITYCONTEXT,
+        "NtAlpcRevokeSecurityContext",
+    );
 }
 
 // PORT_MESSAGE reply type (Windows LPC).
@@ -201,7 +256,10 @@ pub fn nt_alpc_send_wait_receive_port(emu: &mut Emu) {
         }
         // Write PORT_MESSAGE header: DataLength, TotalLength, then Type=LPC_REPLY at +0x04.
         let _ = emu.maps.write_word(recv_msg_ptr + 0x00, send_data_len);
-        let _ = emu.maps.write_word(recv_msg_ptr + 0x02, PORT_MESSAGE_SIZE as u16 + send_data_len);
+        let _ = emu.maps.write_word(
+            recv_msg_ptr + 0x02,
+            PORT_MESSAGE_SIZE as u16 + send_data_len,
+        );
         let _ = emu.maps.write_word(recv_msg_ptr + 0x04, LPC_REPLY);
     }
 

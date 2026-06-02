@@ -3,9 +3,11 @@
 //! This module defines the `LiefPeReader` trait that provides a unified
 //! interface for reading PE file information using LIEF.
 
+use crate::loaders::pe::lief::error::{
+    ExportInfo, ImportInfo, LiefError, RelocationInfo, ResourceInfo,
+};
 use lief::generic::{Binary, Section, Symbol};
-use lief::pe::headers::{MachineType, Characteristics};
-use crate::loaders::pe::lief::error::{ExportInfo, ImportInfo, LiefError, RelocationInfo, ResourceInfo};
+use lief::pe::headers::{Characteristics, MachineType};
 
 /// Core trait for reading PE file information via LIEF
 pub trait LiefPeReader {
@@ -28,7 +30,10 @@ pub trait LiefPeReader {
 
     /// Check if this is a DLL
     fn is_dll(&self) -> bool {
-        self.lief_pe().header().characteristics().contains(Characteristics::DLL)
+        self.lief_pe()
+            .header()
+            .characteristics()
+            .contains(Characteristics::DLL)
     }
 
     /// Get the number of sections in the PE file
@@ -43,9 +48,7 @@ pub trait LiefPeReader {
 
     /// Get a section by name
     fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section> {
-        self.lief_pe()
-            .sections()
-            .find(|s| s.name() == name)
+        self.lief_pe().sections().find(|s| s.name() == name)
     }
 
     /// Convert a virtual address to a file offset
@@ -58,16 +61,12 @@ pub trait LiefPeReader {
 
     /// Get the entry point RVA
     fn entry_point(&self) -> u64 {
-        self.lief_pe()
-            .optional_header()
-            .addressof_entrypoint() as u64
+        self.lief_pe().optional_header().addressof_entrypoint() as u64
     }
 
     /// Get the section alignment
     fn section_alignment(&self) -> u32 {
-        self.lief_pe()
-            .optional_header()
-            .section_alignment()
+        self.lief_pe().optional_header().section_alignment()
     }
 
     /// Get the virtual size of the image
@@ -77,9 +76,7 @@ pub trait LiefPeReader {
 
     /// Get the size of headers
     fn size_of_headers(&self) -> u32 {
-        self.lief_pe()
-            .optional_header()
-            .sizeof_headers()
+        self.lief_pe().optional_header().sizeof_headers()
     }
 
     /// Get a data directory by index

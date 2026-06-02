@@ -101,7 +101,10 @@ impl ApiSetResolver {
             }
 
             let entry_suffix = &entry_str[base_name.len()..];
-            if !entry_suffix.is_empty() && entry_suffix.starts_with('-') && entry_suffix[1..].chars().all(|c| c.is_ascii_digit()) {
+            if !entry_suffix.is_empty()
+                && entry_suffix.starts_with('-')
+                && entry_suffix[1..].chars().all(|c| c.is_ascii_digit())
+            {
                 let value = match entry.value_entries() {
                     Ok(mut iter) => match iter.next() {
                         Some(v) => v,

@@ -1,5 +1,5 @@
-use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
-use crate::{windows::constants, emu};
+use crate::winapi::winapi64::kernel32::{LAST_ERROR, clear_last_error};
+use crate::{emu, windows::constants};
 
 // FROM THE ASSEMBLY FILE - THESE ARE THE CORRECT VALUES:
 const LOCALE_ILANGUAGE: u64 = 0x1;
@@ -108,7 +108,9 @@ pub fn GetLocaleInfoW(emu: &mut emu::Emu) {
     let lp_lc_data = emu.regs().r8 as usize;
     let cch_data = emu.regs().r9 as usize;
 
-    log_red!(emu, "** {} kernel32!GetLocaleInfoW locale: 0x{:x} lctype: 0x{:x} lp_lc_data: 0x{:x} cch_data: {}",
+    log_red!(
+        emu,
+        "** {} kernel32!GetLocaleInfoW locale: 0x{:x} lctype: 0x{:x} lp_lc_data: 0x{:x} cch_data: {}",
         emu.pos,
         locale,
         lctype,

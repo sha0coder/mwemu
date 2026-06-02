@@ -9,7 +9,11 @@ pub fn Sleep(emu: &mut emu::Emu) {
         "kernel32!Sleep thread: 0x{:x} millis: {}{}",
         emu.current_thread().id,
         millis,
-        if emu.cfg.short_circuit_sleep { " [short-circuited]" } else { "" }
+        if emu.cfg.short_circuit_sleep {
+            " [short-circuited]"
+        } else {
+            ""
+        }
     );
 
     if emu.cfg.short_circuit_sleep {

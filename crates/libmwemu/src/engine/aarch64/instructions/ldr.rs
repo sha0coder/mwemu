@@ -9,12 +9,18 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
     let val = if is64 {
         match emu.maps.read_qword(addr) {
             Some(v) => v,
-            None => { log::warn!("LDR: cannot read 8 bytes at 0x{:x}", addr); return false; }
+            None => {
+                log::warn!("LDR: cannot read 8 bytes at 0x{:x}", addr);
+                return false;
+            }
         }
     } else {
         match emu.maps.read_dword(addr) {
             Some(v) => v as u64,
-            None => { log::warn!("LDR: cannot read 4 bytes at 0x{:x}", addr); return false; }
+            None => {
+                log::warn!("LDR: cannot read 4 bytes at 0x{:x}", addr);
+                return false;
+            }
         }
     };
     write_reg(emu, &ins.operands[0], val);

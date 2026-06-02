@@ -7,7 +7,9 @@ pub fn gateway(addr: u64, section_name: &str, symbol: &str, emu: &mut crate::emu
         _ => {
             log::warn!(
                 "macosapi: unhandled call to {} in {} at 0x{:x}",
-                symbol, section_name, addr
+                symbol,
+                section_name,
+                addr
             );
             todo!("macOS API: {} in {}", symbol, section_name);
         }

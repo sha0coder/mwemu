@@ -1,6 +1,6 @@
-use crate::windows::constants::INVALID_HANDLE_VALUE_32;
 use crate::emu;
-use crate::emu::object_handle::{MappingHandle};
+use crate::emu::object_handle::MappingHandle;
+use crate::windows::constants::INVALID_HANDLE_VALUE_32;
 
 pub fn CreateFileMappingW(emu: &mut emu::Emu) {
     let h_file = emu.regs().rcx;

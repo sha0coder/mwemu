@@ -94,9 +94,13 @@ impl From<SerializablePE64> for RuntimePe64 {
                     Err(e) => {
                         log::warn!(
                             "LIEF deserialization failed for {}, falling back to legacy: {}",
-                            serialized.filename, e
+                            serialized.filename,
+                            e
                         );
-                        RuntimePe64::Legacy(PE64::load_from_raw(&serialized.filename, &serialized.raw))
+                        RuntimePe64::Legacy(PE64::load_from_raw(
+                            &serialized.filename,
+                            &serialized.raw,
+                        ))
                     }
                 }
             }

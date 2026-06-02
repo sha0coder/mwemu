@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn RemoveLocalAlternateComputerNameW(emu: &mut emu::Emu) {
     let Hostname = emu

@@ -472,7 +472,14 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
 
     if counter >= size as u64 {
         if emu.cfg.verbose >= 1 {
-            log::trace!("/!\\ SHRD undefined behaviour value0 = 0x{:x} value1 = 0x{:x} pcounter = 0x{:x} counter = 0x{:x} size = 0x{:x}", value0, value1, pcounter, counter, size);
+            log::trace!(
+                "/!\\ SHRD undefined behaviour value0 = 0x{:x} value1 = 0x{:x} pcounter = 0x{:x} counter = 0x{:x} size = 0x{:x}",
+                value0,
+                value1,
+                pcounter,
+                counter,
+                size
+            );
         }
         let result = 0; //inline::shrd(value0, value1, pcounter, size);
         emu.flags_mut().calc_flags(result, size);

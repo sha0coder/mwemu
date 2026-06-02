@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn FoldStringA(emu: &mut emu::Emu) {
     let _dwMapFlags = emu
@@ -26,12 +26,7 @@ pub fn FoldStringA(emu: &mut emu::Emu) {
     let lpSrcStr = emu.maps.read_string(lpSrcStr as u64);
     let lpDestStr = emu.maps.read_string(lpDestStr as u64);
 
-    log_red!(
-        emu,
-        "kernel32!FoldStringA {} {}",
-        lpSrcStr,
-        lpDestStr
-    );
+    log_red!(emu, "kernel32!FoldStringA {} {}", lpSrcStr, lpDestStr);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

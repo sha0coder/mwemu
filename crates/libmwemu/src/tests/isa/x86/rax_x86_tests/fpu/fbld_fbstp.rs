@@ -106,7 +106,7 @@ fn parse_bcd(bcd: &[u8; 10]) -> Option<i64> {
 #[test]
 fn test_fbld_zero() {
     let mut emu = emu64(); // FBLD tbyte ptr [0x2000]
-                           // FSTP qword ptr [0x3000]
+    // FSTP qword ptr [0x3000]
     let code = [
         0xDF, 0x24, 0x25, 0x00, 0x20, 0x00, 0x00, 0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, 0xf4,
     ];

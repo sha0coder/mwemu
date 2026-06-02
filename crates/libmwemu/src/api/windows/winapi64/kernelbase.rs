@@ -171,7 +171,9 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
         "unknown".to_string()
     };
 
-    log_red!(emu, "** {} kernelbase!GetFileVersionInfoA filename: {} dw_handle: 0x{:x} dw_len: 0x{:x} lp_data: 0x{:x}", 
+    log_red!(
+        emu,
+        "** {} kernelbase!GetFileVersionInfoA filename: {} dw_handle: 0x{:x} dw_len: 0x{:x} lp_data: 0x{:x}",
         emu.pos,
         filename,
         dw_handle,
@@ -229,7 +231,9 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
         "\\".to_string()
     };
 
-    log_red!(emu, "** {} kernelbase!VerQueryValueA p_block: 0x{:x} lp_sub_block: {} lplp_buffer: 0x{:x} pu_len: 0x{:x}", 
+    log_red!(
+        emu,
+        "** {} kernelbase!VerQueryValueA p_block: 0x{:x} lp_sub_block: {} lplp_buffer: 0x{:x} pu_len: 0x{:x}",
         emu.pos,
         p_block,
         sub_block,

@@ -1,5 +1,5 @@
-use crate::emu::Emu;
 use crate::config::Pe64Backend;
+use crate::emu::Emu;
 use crate::loaders::pe::pe32::PE32;
 use crate::loaders::pe::pe64::PE64;
 use crate::loaders::pe::runtime_pe64::{RuntimePe64, RuntimePeError};
@@ -38,7 +38,7 @@ impl Emu {
     /// cyclic stuff: [load_pe] -> [iat-binding]  ->  [load_library] -> [load_pe]
     /// Powered by pe32.rs implementation.
     pub fn load_pe32(&mut self, filename: &str, set_entry: bool, force_base: u32) -> (u32, u32) {
-        let is_maps = filename.contains("windows/x86/") ;
+        let is_maps = filename.contains("windows/x86/");
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let mut pe32 = PE32::load(filename);
@@ -206,8 +206,14 @@ impl Emu {
 
         // 5. ldr table entry creation and link
         if set_entry {
-            let _space_addr =
-                peb32::create_ldr_entry(self, base, self.regs().rip as u32, &filename2, 0, 0x2c1950);
+            let _space_addr = peb32::create_ldr_entry(
+                self,
+                base,
+                self.regs().rip as u32,
+                &filename2,
+                0,
+                0x2c1950,
+            );
             let exe_name = self.cfg.exe_name.clone();
             peb32::update_ldr_entry_base(&exe_name, base as u64, self);
         }
@@ -250,7 +256,9 @@ impl Emu {
         if copy_len < expected_header_len {
             log::warn!(
                 "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
-                copy_len, expected_header_len, filename
+                copy_len,
+                expected_header_len,
+                filename
             );
         }
         for i in 0..pe64.num_of_sections() {
@@ -307,7 +315,9 @@ impl Emu {
                 }
             };
 
-            let copy_len = (sect.size_of_raw_data as usize).min(map_sz as usize).min(ptr.len());
+            let copy_len = (sect.size_of_raw_data as usize)
+                .min(map_sz as usize)
+                .min(ptr.len());
             if copy_len > 0 {
                 map.memcpy(&ptr[..copy_len], copy_len);
             }
@@ -323,7 +333,7 @@ impl Emu {
     /// cyclic stuff: [load_pe] -> [iat-binding]  ->  [load_library] -> [load_pe]
     /// Powered by pe64.rs implementation.
     pub fn load_pe64(&mut self, filename: &str, set_entry: bool, force_base: u64) -> (u64, u32) {
-        let is_maps = filename.contains("windows/x86_64/") || filename.contains("windows/aarch64/") ;
+        let is_maps = filename.contains("windows/x86_64/") || filename.contains("windows/aarch64/");
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let mut pe64 = match RuntimePe64::load_with_backend(filename, self.cfg.pe64_backend) {
@@ -347,7 +357,9 @@ impl Emu {
                     if !pe64.is_lief() {
                         log::warn!(
                             "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
-                            headers.len(), expected_header_len, filename
+                            headers.len(),
+                            expected_header_len,
+                            filename
                         );
                     } else {
                         let err = RuntimePeError::HeaderTruncated {
@@ -363,7 +375,9 @@ impl Emu {
                 Pe64Backend::Legacy => {
                     log::warn!(
                         "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
-                        headers.len(), expected_header_len, filename
+                        headers.len(),
+                        expected_header_len,
+                        filename
                     );
                 }
             }
@@ -382,7 +396,11 @@ impl Emu {
                             panic!("PE64 load failed: {}", err);
                         }
                         Pe64Backend::Auto => {
-                            log::warn!("PE64 Auto: LIEF relocation preflight failed for {}, falling back to legacy before mapping: {}", filename, e);
+                            log::warn!(
+                                "PE64 Auto: LIEF relocation preflight failed for {}, falling back to legacy before mapping: {}",
+                                filename,
+                                e
+                            );
                             pe64 = RuntimePe64::Legacy(PE64::load(filename));
                         }
                         Pe64Backend::Legacy => {}
@@ -399,13 +417,11 @@ impl Emu {
             } else {
                 base = force_base;
             }
-
         } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr;
             if self.maps.overlaps(base, pe64.size()) {
                 panic!("the setted base address overlaps");
             }
-
         } else {
             if set_entry {
                 if pe64.image_base() >= constants::LIBS64_MIN {
@@ -415,7 +431,6 @@ impl Emu {
                 } else {
                     base = pe64.image_base();
                 }
-
             } else {
                 base = self.pick_pe64_dll_base_runtime(&pe64);
             }
@@ -457,7 +472,9 @@ impl Emu {
         if copy_len < expected_header_len {
             log::warn!(
                 "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
-                copy_len, expected_header_len, filename2
+                copy_len,
+                expected_header_len,
+                filename2
             );
         }
 
@@ -489,7 +506,11 @@ impl Emu {
             }
 
             let mut sect_name = sect.name.clone();
-            sect_name = sect_name.replace(" ", "").replace("\t", "").replace("\x0a", "").replace("\x0d", "");
+            sect_name = sect_name
+                .replace(" ", "")
+                .replace("\t", "")
+                .replace("\x0a", "")
+                .replace("\x0d", "");
 
             if sect_name.is_empty() {
                 sect_name = format!("{:x}", sect.virtual_address);
@@ -512,7 +533,9 @@ impl Emu {
                 }
             };
 
-            let copy_len = (sect.size_of_raw_data as usize).min(map_sz as usize).min(ptr.len());
+            let copy_len = (sect.size_of_raw_data as usize)
+                .min(map_sz as usize)
+                .min(ptr.len());
 
             if copy_len > 0 {
                 map.memcpy(&ptr[..copy_len], copy_len);
@@ -522,10 +545,16 @@ impl Emu {
         if let Err(e) = pe64.apply_relocations(self, base) {
             match self.cfg.pe64_backend {
                 Pe64Backend::Lief => {
-                    panic!("LIEF relocation error after mapping (cannot safely fall back): {}", e);
+                    panic!(
+                        "LIEF relocation error after mapping (cannot safely fall back): {}",
+                        e
+                    );
                 }
                 Pe64Backend::Auto => {
-                    panic!("Auto backend relocation error after mapping (cannot safely fall back to legacy; maps already mutated): {}", e);
+                    panic!(
+                        "Auto backend relocation error after mapping (cannot safely fall back to legacy; maps already mutated): {}",
+                        e
+                    );
                 }
                 Pe64Backend::Legacy => {
                     log::warn!("Legacy relocation warning: {}", e);

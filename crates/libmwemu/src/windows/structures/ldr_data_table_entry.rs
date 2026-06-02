@@ -1,5 +1,5 @@
-use crate::maps::Maps;
 use super::{list_entry::ListEntry, unicode_string::UnicodeString};
+use crate::maps::Maps;
 
 #[derive(Debug)]
 pub struct LdrDataTableEntry {

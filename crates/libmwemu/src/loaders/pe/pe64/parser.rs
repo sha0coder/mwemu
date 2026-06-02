@@ -6,17 +6,15 @@ use crate::emu;
 use crate::loaders::pe::pe32::PE32;
 use crate::windows::structures;
 
-use crate::loaders::pe::readers::{
-    read_c_string, read_u64_le as read_u64_le_shared,
-};
 use super::{
-    DelayLoadDirectory, ImageDosHeader, ImageExportDirectory, ImageFileHeader,
-    ImageImportDescriptor, ImageNtHeaders, ImageOptionalHeader64, ImageSectionHeader, PE64,
-    TlsDirectory64, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
+    DelayLoadDirectory, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
     IMAGE_DIRECTORY_ENTRY_IAT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_DIRECTORY_ENTRY_TLS,
-    IMAGE_FILE_DLL, SECTION_HEADER_SZ,
+    IMAGE_FILE_DLL, ImageDosHeader, ImageExportDirectory, ImageFileHeader, ImageImportDescriptor,
+    ImageNtHeaders, ImageOptionalHeader64, ImageSectionHeader, PE64, SECTION_HEADER_SZ,
+    TlsDirectory64,
 };
 use crate::loaders::pe::lief::DelayLoadDescriptor;
+use crate::loaders::pe::readers::{read_c_string, read_u64_le as read_u64_le_shared};
 
 macro_rules! read_u64_le {
     ($raw:expr, $off:expr) => {
@@ -297,13 +295,7 @@ impl PE64 {
         import_dll: &str,
         resolved_cache: &mut HashMap<String, u64>,
     ) {
-        self.pe64_iat_binding_alternative(
-            emu,
-            base_addr,
-            first_thunk,
-            import_dll,
-            resolved_cache,
-        );
+        self.pe64_iat_binding_alternative(emu, base_addr, first_thunk, import_dll, resolved_cache);
     }
 
     pub fn iat_binding_original(
@@ -369,17 +361,20 @@ impl PE64 {
     }
 
     pub fn delay_load_descriptors(&self) -> Vec<DelayLoadDescriptor> {
-        self.delay_load_dir.iter().map(|d| DelayLoadDescriptor {
-            dll_name: d.name.clone(),
-            attributes: d.attributes,
-            dll_name_rva: d.name_ptr,
-            module_handle: d.handle,
-            delay_iat: d.address_table,
-            delay_int: d.name_table,
-            bound_iat: d.bound_delay_import_table,
-            unload_table: d.unload_delay_import_table,
-            timestamp: d.tstamp,
-            import_function_names: None,
-        }).collect()
+        self.delay_load_dir
+            .iter()
+            .map(|d| DelayLoadDescriptor {
+                dll_name: d.name.clone(),
+                attributes: d.attributes,
+                dll_name_rva: d.name_ptr,
+                module_handle: d.handle,
+                delay_iat: d.address_table,
+                delay_int: d.name_table,
+                bound_iat: d.bound_delay_import_table,
+                unload_table: d.unload_delay_import_table,
+                timestamp: d.tstamp,
+                import_function_names: None,
+            })
+            .collect()
     }
 }

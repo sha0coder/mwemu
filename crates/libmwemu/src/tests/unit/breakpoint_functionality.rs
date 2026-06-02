@@ -33,7 +33,7 @@ pub fn breakpoint_functionality() {
     bp.set_instruction(200);
 
     assert_eq!(bp.get_bp(), 0); // only one type of bt at once, the setters clear all the
-                                // breakpointts.
+    // breakpointts.
 
     bp.clear_bp();
     assert_eq!(bp.get_bp(), 0);

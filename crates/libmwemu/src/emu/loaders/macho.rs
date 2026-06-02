@@ -1,13 +1,44 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::config::BinaryBackend;
 use crate::emu::Emu;
+use crate::loaders::macho::lief::LiefMacho64;
 use crate::loaders::macho::macho64::Macho64;
 
 impl Emu {
     /// Load a 64-bit Mach-O binary.
     pub fn load_macho64(&mut self, filename: &str) {
-        let mut macho = Macho64::parse(filename).expect("cannot parse macho64 binary");
+        self.load_macho64_with_backend(filename, self.cfg.macho64_backend);
+    }
+
+    /// Load a 64-bit Mach-O binary with the specified backend.
+    pub fn load_macho64_with_backend(&mut self, filename: &str, backend: BinaryBackend) {
+        let preferred_arch = Some(self.cfg.arch);
+
+        let mut macho = match backend {
+            BinaryBackend::Legacy => Macho64::parse(filename).expect("cannot parse macho64 binary"),
+            BinaryBackend::Lief => LiefMacho64::load(filename, preferred_arch)
+                .and_then(|lief| lief.to_macho64())
+                .unwrap_or_else(|e| panic!("LIEF Mach-O parsing failed for {}: {}", filename, e)),
+            BinaryBackend::Auto => {
+                match LiefMacho64::load(filename, preferred_arch).and_then(|lief| lief.to_macho64())
+                {
+                    Ok(macho) => {
+                        log::trace!("macho64: LIEF parsing succeeded (Auto mode)");
+                        macho
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "macho64: LIEF parsing failed, falling back to legacy: {}",
+                            e
+                        );
+                        Macho64::parse(filename).expect("cannot parse macho64 binary")
+                    }
+                }
+            }
+        };
+
         macho.load(&mut self.maps);
         if self.cfg.arch.is_aarch64() {
             self.init_macos_aarch64();
@@ -65,7 +96,11 @@ impl Emu {
 
     /// Load a Mach-O dylib from disk and map its segments into memory.
     /// Returns (base_address, vec of (symbol_name, absolute_address)).
-    pub fn map_dylib_macho64(&mut self, filename: &str, lib_name: &str) -> (u64, Vec<(String, u64)>) {
+    pub fn map_dylib_macho64(
+        &mut self,
+        filename: &str,
+        lib_name: &str,
+    ) -> (u64, Vec<(String, u64)>) {
         use crate::loaders::macho::macho64::prot_to_permission;
 
         let dylib = Macho64::parse(filename).expect("cannot parse dylib");
@@ -95,7 +130,10 @@ impl Emu {
             let mem = self
                 .maps
                 .create_map(&map_name, seg_addr, seg.vmsize, perm)
-                .expect(&format!("cannot create map for dylib segment '{}'", map_name));
+                .expect(&format!(
+                    "cannot create map for dylib segment '{}'",
+                    map_name
+                ));
 
             if !seg.data.is_empty() {
                 mem.force_write_bytes(seg_addr, &seg.data);

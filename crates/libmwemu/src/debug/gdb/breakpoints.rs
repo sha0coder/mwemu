@@ -3,10 +3,10 @@
 //! This module implements the various breakpoint-related extensions
 //! required by gdbstub.
 
+use gdbstub::target::TargetResult;
 use gdbstub::target::ext::breakpoints::{
     Breakpoints, HwWatchpoint, HwWatchpointOps, SwBreakpoint, SwBreakpointOps, WatchKind,
 };
-use gdbstub::target::TargetResult;
 
 use super::target::{MwemuTarget32, MwemuTarget64, MwemuTargetAarch64};
 
@@ -25,21 +25,13 @@ impl Breakpoints for MwemuTarget64<'_> {
 }
 
 impl SwBreakpoint for MwemuTarget64<'_> {
-    fn add_sw_breakpoint(
-        &mut self,
-        addr: u64,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn add_sw_breakpoint(&mut self, addr: u64, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Adding software breakpoint at 0x{:x}", addr);
         self.emu.bp.add_bp(addr);
         Ok(true)
     }
 
-    fn remove_sw_breakpoint(
-        &mut self,
-        addr: u64,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn remove_sw_breakpoint(&mut self, addr: u64, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Removing software breakpoint at 0x{:x}", addr);
         Ok(self.emu.bp.remove_bp_by_addr(addr))
     }
@@ -52,7 +44,11 @@ impl HwWatchpoint for MwemuTarget64<'_> {
         _len: u64,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         match kind {
             WatchKind::Read => {
                 self.emu.bp.add_bp_mem_read(addr);
@@ -74,7 +70,11 @@ impl HwWatchpoint for MwemuTarget64<'_> {
         _len: u64,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         let result = match kind {
             WatchKind::Read => self.emu.bp.remove_mem_read_by_addr(addr),
             WatchKind::Write => self.emu.bp.remove_mem_write_by_addr(addr),
@@ -103,21 +103,13 @@ impl Breakpoints for MwemuTargetAarch64<'_> {
 }
 
 impl SwBreakpoint for MwemuTargetAarch64<'_> {
-    fn add_sw_breakpoint(
-        &mut self,
-        addr: u64,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn add_sw_breakpoint(&mut self, addr: u64, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Adding software breakpoint at 0x{:x}", addr);
         self.emu.bp.add_bp(addr);
         Ok(true)
     }
 
-    fn remove_sw_breakpoint(
-        &mut self,
-        addr: u64,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn remove_sw_breakpoint(&mut self, addr: u64, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Removing software breakpoint at 0x{:x}", addr);
         Ok(self.emu.bp.remove_bp_by_addr(addr))
     }
@@ -130,7 +122,11 @@ impl HwWatchpoint for MwemuTargetAarch64<'_> {
         _len: u64,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         match kind {
             WatchKind::Read => {
                 self.emu.bp.add_bp_mem_read(addr);
@@ -152,7 +148,11 @@ impl HwWatchpoint for MwemuTargetAarch64<'_> {
         _len: u64,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         let result = match kind {
             WatchKind::Read => self.emu.bp.remove_mem_read_by_addr(addr),
             WatchKind::Write => self.emu.bp.remove_mem_write_by_addr(addr),
@@ -181,21 +181,13 @@ impl Breakpoints for MwemuTarget32<'_> {
 }
 
 impl SwBreakpoint for MwemuTarget32<'_> {
-    fn add_sw_breakpoint(
-        &mut self,
-        addr: u32,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn add_sw_breakpoint(&mut self, addr: u32, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Adding software breakpoint at 0x{:x}", addr);
         self.emu.bp.add_bp(addr as u64);
         Ok(true)
     }
 
-    fn remove_sw_breakpoint(
-        &mut self,
-        addr: u32,
-        _kind: usize,
-    ) -> TargetResult<bool, Self> {
+    fn remove_sw_breakpoint(&mut self, addr: u32, _kind: usize) -> TargetResult<bool, Self> {
         log::debug!("GDB: Removing software breakpoint at 0x{:x}", addr);
         Ok(self.emu.bp.remove_bp_by_addr(addr as u64))
     }
@@ -208,7 +200,11 @@ impl HwWatchpoint for MwemuTarget32<'_> {
         _len: u32,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Adding hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         let addr = addr as u64;
         match kind {
             WatchKind::Read => {
@@ -231,7 +227,11 @@ impl HwWatchpoint for MwemuTarget32<'_> {
         _len: u32,
         kind: WatchKind,
     ) -> TargetResult<bool, Self> {
-        log::debug!("GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}", addr, kind);
+        log::debug!(
+            "GDB: Removing hardware watchpoint at 0x{:x}, kind={:?}",
+            addr,
+            kind
+        );
         let addr = addr as u64;
         let result = match kind {
             WatchKind::Read => self.emu.bp.remove_mem_read_by_addr(addr),

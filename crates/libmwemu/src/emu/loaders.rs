@@ -272,12 +272,15 @@ impl Emu {
                     } else if self.regs().rip == ep {
                         log::trace!(
                             "ntdll!LdrInitializeThunk emulated completely. pos={} rip=ep=0x{:x}",
-                            self.pos, ep,
+                            self.pos,
+                            ep,
                         );
                     } else {
                         log::trace!(
                             "ntdll!LdrInitializeThunk returned but rip=0x{:x} (expected ep=0x{:x}). pos={}",
-                            self.regs().rip, ep, self.pos,
+                            self.regs().rip,
+                            ep,
+                            self.pos,
                         );
                     }
 
@@ -295,21 +298,49 @@ impl Emu {
                             let sentinel_mem = ldr_addr + 0x20;
                             let first = self.maps.read_qword(sentinel_mem).unwrap_or(0);
                             if first == 0 || first == sentinel_mem {
-                                log::trace!("LDR InMemoryOrder list empty post-LdrInit — repopulating");
+                                log::trace!(
+                                    "LDR InMemoryOrder list empty post-LdrInit — repopulating"
+                                );
                                 let exe_name = self.cfg.exe_name.clone();
                                 let exe_base = self.base;
                                 // Canonical Win10+ early-list order
                                 let preferred: Vec<(String, u64)> = vec![
-                                    (exe_name.clone(),     exe_base),
-                                    ("ntdll.dll".into(),       self.maps.get_map_by_name("ntdll.pe").map(|m| m.get_base()).unwrap_or(0)),
-                                    ("kernel32.dll".into(),    self.maps.get_map_by_name("kernel32.pe").map(|m| m.get_base()).unwrap_or(0)),
-                                    ("kernelbase.dll".into(),  self.maps.get_map_by_name("kernelbase.pe").map(|m| m.get_base()).unwrap_or(0)),
+                                    (exe_name.clone(), exe_base),
+                                    (
+                                        "ntdll.dll".into(),
+                                        self.maps
+                                            .get_map_by_name("ntdll.pe")
+                                            .map(|m| m.get_base())
+                                            .unwrap_or(0),
+                                    ),
+                                    (
+                                        "kernel32.dll".into(),
+                                        self.maps
+                                            .get_map_by_name("kernel32.pe")
+                                            .map(|m| m.get_base())
+                                            .unwrap_or(0),
+                                    ),
+                                    (
+                                        "kernelbase.dll".into(),
+                                        self.maps
+                                            .get_map_by_name("kernelbase.pe")
+                                            .map(|m| m.get_base())
+                                            .unwrap_or(0),
+                                    ),
                                 ];
                                 for (name, base) in preferred {
-                                    if base == 0 { continue; }
+                                    if base == 0 {
+                                        continue;
+                                    }
                                     let pe_off = self.maps.read_dword(base + 0x3c).unwrap_or(0);
-                                    crate::windows::peb::peb64::dynamic_link_module(base, pe_off, &name, self);
-                                    log::trace!("  repopulated LDR entry {} base=0x{:x}", name, base);
+                                    crate::windows::peb::peb64::dynamic_link_module(
+                                        base, pe_off, &name, self,
+                                    );
+                                    log::trace!(
+                                        "  repopulated LDR entry {} base=0x{:x}",
+                                        name,
+                                        base
+                                    );
                                 }
                             }
                         }
@@ -344,11 +375,19 @@ impl Emu {
                             let mut j = 0u64;
                             while j < name_len.min(128) {
                                 let w = self.maps.read_word(name_buf + j).unwrap_or(0);
-                                if w == 0 { break; }
+                                if w == 0 {
+                                    break;
+                                }
                                 s.push(char::from_u32(w as u32).unwrap_or('?'));
                                 j += 2;
                             }
-                            log::trace!("DEBUG ldr_chain[{}] entry=0x{:x} DllBase=0x{:x} name='{}'", i, entry, dll_base, s);
+                            log::trace!(
+                                "DEBUG ldr_chain[{}] entry=0x{:x} DllBase=0x{:x} name='{}'",
+                                i,
+                                entry,
+                                dll_base,
+                                s
+                            );
                             cur = self.maps.read_qword(cur).unwrap_or(0);
                             i += 1;
                         }

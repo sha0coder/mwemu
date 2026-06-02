@@ -47,7 +47,10 @@ pub fn nt_initialize_nls_files(emu: &mut Emu) {
     let bytes = match std::fs::read(&path) {
         Ok(b) => b,
         Err(_) => {
-            log::warn!("NtInitializeNlsFiles: missing {} — falling back to STATUS_FILE_INVALID", path);
+            log::warn!(
+                "NtInitializeNlsFiles: missing {} — falling back to STATUS_FILE_INVALID",
+                path
+            );
             emu.regs_mut().rax = STATUS_FILE_INVALID;
             return;
         }
@@ -75,7 +78,9 @@ pub fn nt_initialize_nls_files(emu: &mut Emu) {
 
     log::trace!(
         "NtInitializeNlsFiles: locale.nls mapped at 0x{:x} ({} bytes), LCID = 0x{:x}",
-        base, bytes.len(), DEFAULT_LOCALE_ID,
+        base,
+        bytes.len(),
+        DEFAULT_LOCALE_ID,
     );
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
@@ -135,12 +140,16 @@ pub fn nt_get_nls_section_ptr(emu: &mut Emu) {
         let _ = emu.maps.write_qword(section_ptr_out, base);
     }
     if section_size_out != 0 && emu.maps.is_mapped(section_size_out) {
-        let _ = emu.maps.write_dword(section_size_out, page_align_up(bytes.len()) as u32);
+        let _ = emu
+            .maps
+            .write_dword(section_size_out, page_align_up(bytes.len()) as u32);
     }
 
     log::trace!(
         "NtGetNlsSectionPtr: {} mapped at 0x{:x} ({} bytes)",
-        file_name, base, bytes.len()
+        file_name,
+        base,
+        bytes.len()
     );
     emu.regs_mut().rax = STATUS_SUCCESS;
 }

@@ -160,31 +160,33 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
 
     // Simple folder path mapping
     let folder_path = match csidl & 0xFFFF {
-        0x0005 => "C:\\Users\\User\\Documents",           // CSIDL_PERSONAL
-        0x001a => "C:\\Users\\User\\AppData\\Roaming",    // CSIDL_APPDATA
-        0x001c => "C:\\Users\\User\\AppData\\Local",      // CSIDL_LOCAL_APPDATA
+        0x0005 => "C:\\Users\\User\\Documents", // CSIDL_PERSONAL
+        0x001a => "C:\\Users\\User\\AppData\\Roaming", // CSIDL_APPDATA
+        0x001c => "C:\\Users\\User\\AppData\\Local", // CSIDL_LOCAL_APPDATA
         0x0020 => "C:\\Users\\User\\AppData\\Local\\Microsoft\\Windows\\INetCache", // CSIDL_INTERNET_CACHE
         0x0021 => "C:\\Users\\User\\AppData\\Local\\Microsoft\\Windows\\INetCookies", // CSIDL_COOKIES
         0x0022 => "C:\\Users\\User\\AppData\\Local\\Microsoft\\Windows\\History", // CSIDL_HISTORY
-        0x0023 => "C:\\ProgramData",                      // CSIDL_COMMON_APPDATA
-        0x0024 => "C:\\Windows",                          // CSIDL_WINDOWS
-        0x0025 => "C:\\Windows\\System32",                // CSIDL_SYSTEM
-        0x0026 => "C:\\Program Files",                    // CSIDL_PROGRAM_FILES
-        0x0027 => "C:\\Users\\User\\Pictures",            // CSIDL_MYPICTURES
-        0x0028 => "C:\\Users\\User",                      // CSIDL_PROFILE
-        0x0029 => "C:\\Windows\\SysWOW64",                // CSIDL_SYSTEMX86
-        0x002a => "C:\\Program Files (x86)",              // CSIDL_PROGRAM_FILESX86
-        0x002b => "C:\\Program Files\\Common Files",      // CSIDL_PROGRAM_FILES_COMMON
+        0x0023 => "C:\\ProgramData",           // CSIDL_COMMON_APPDATA
+        0x0024 => "C:\\Windows",               // CSIDL_WINDOWS
+        0x0025 => "C:\\Windows\\System32",     // CSIDL_SYSTEM
+        0x0026 => "C:\\Program Files",         // CSIDL_PROGRAM_FILES
+        0x0027 => "C:\\Users\\User\\Pictures", // CSIDL_MYPICTURES
+        0x0028 => "C:\\Users\\User",           // CSIDL_PROFILE
+        0x0029 => "C:\\Windows\\SysWOW64",     // CSIDL_SYSTEMX86
+        0x002a => "C:\\Program Files (x86)",   // CSIDL_PROGRAM_FILESX86
+        0x002b => "C:\\Program Files\\Common Files", // CSIDL_PROGRAM_FILES_COMMON
         0x002c => "C:\\Program Files (x86)\\Common Files", // CSIDL_PROGRAM_FILES_COMMONX86
         0x002d => "C:\\ProgramData\\Microsoft\\Windows\\Templates", // CSIDL_COMMON_TEMPLATES
-        0x002e => "C:\\Users\\Public\\Documents",         // CSIDL_COMMON_DOCUMENTS
+        0x002e => "C:\\Users\\Public\\Documents", // CSIDL_COMMON_DOCUMENTS
         0x002f => "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools", // CSIDL_COMMON_ADMINTOOLS
-        0x0030 => "C:\\Users\\User\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools", // CSIDL_ADMINTOOLS
+        0x0030 => {
+            "C:\\Users\\User\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Administrative Tools"
+        } // CSIDL_ADMINTOOLS
         0x0031 => "C:\\Users\\User\\AppData\\Roaming\\Microsoft\\Windows\\Network Shortcuts", // CSIDL_CONNECTIONS
-        0x0035 => "C:\\Users\\Public\\Music",             // CSIDL_COMMON_MUSIC
-        0x0036 => "C:\\Users\\Public\\Pictures",          // CSIDL_COMMON_PICTURES
-        0x0037 => "C:\\Users\\Public\\Videos",            // CSIDL_COMMON_VIDEO
-        0x0038 => "C:\\Windows\\Resources",               // CSIDL_RESOURCES
+        0x0035 => "C:\\Users\\Public\\Music", // CSIDL_COMMON_MUSIC
+        0x0036 => "C:\\Users\\Public\\Pictures", // CSIDL_COMMON_PICTURES
+        0x0037 => "C:\\Users\\Public\\Videos", // CSIDL_COMMON_VIDEO
+        0x0038 => "C:\\Windows\\Resources",   // CSIDL_RESOURCES
         _ => panic!("Unimplemented CSIDL value: 0x{:x} at {}", csidl, emu.pos),
     };
 

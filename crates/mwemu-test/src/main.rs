@@ -1,6 +1,6 @@
 use iced_x86::{Decoder, DecoderOptions, Instruction};
-use libmwemu::{engine, emu64};
 use libmwemu::maps::mem64::Permission;
+use libmwemu::{emu64, engine};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::env;
@@ -270,7 +270,10 @@ fn run_single_test(
     decoder.decode_out(&mut ins);
 
     if ins.is_invalid() {
-        return Err(format!("Failed to decode instruction: {}", instr_test.assembly));
+        return Err(format!(
+            "Failed to decode instruction: {}",
+            instr_test.assembly
+        ));
     }
 
     // Execute the instruction
@@ -321,7 +324,10 @@ fn main() {
 
     if args.len() < 2 {
         eprintln!("Usage: {} <test_directory> [instruction_filter]", args[0]);
-        eprintln!("Example: {} '/Users/duncan/Downloads/Threadripper PRO 3975WX' adc", args[0]);
+        eprintln!(
+            "Example: {} '/Users/duncan/Downloads/Threadripper PRO 3975WX' adc",
+            args[0]
+        );
         std::process::exit(1);
     }
 
@@ -338,11 +344,7 @@ fn main() {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_lowercase();
-            name.ends_with(".txt")
-                && filter
-                    .as_ref()
-                    .map(|f| name.starts_with(f))
-                    .unwrap_or(true)
+            name.ends_with(".txt") && filter.as_ref().map(|f| name.starts_with(f)).unwrap_or(true)
         })
         .collect();
 
@@ -377,7 +379,10 @@ fn main() {
         let status = if file_failed == 0 { "PASS" } else { "FAIL" };
         println!(
             "  {}: {} passed, {} failed (from {} instruction variants)",
-            status, file_passed, file_failed, tests.len()
+            status,
+            file_passed,
+            file_failed,
+            tests.len()
         );
 
         for err in file_errors.iter().take(3) {

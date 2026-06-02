@@ -5,9 +5,7 @@ use crate::windows::constants;
 pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
     match api {
         "RtlInitializeCriticalSection" => InitializeCriticalSection(emu),
-        "RtlInitializeCriticalSectionAndSpinCount" => {
-            RtlInitializeCriticalSectionAndSpinCount(emu)
-        }
+        "RtlInitializeCriticalSectionAndSpinCount" => RtlInitializeCriticalSectionAndSpinCount(emu),
         "RtlEnterCriticalSection" => RtlEnterCriticalSection(emu),
         "RtlInitializeCriticalSectionEx" => RtlInitializeCriticalSectionEx(emu),
         "RtlQueueWorkItem" => RtlQueueWorkItem(emu),

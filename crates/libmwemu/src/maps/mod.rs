@@ -1,9 +1,9 @@
 pub mod heap_allocation;
+mod inspection;
 pub mod mem64;
 pub mod scalar;
-pub mod tlb;
-mod inspection;
 mod search;
+pub mod tlb;
 mod utilities;
 
 use crate::maps::mem64::Permission;

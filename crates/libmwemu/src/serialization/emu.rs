@@ -2,20 +2,18 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::sync::atomic;
 use std::sync::Arc;
+use std::sync::atomic;
 
 use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
 use crate::api::banzai::Banzai;
-use crate::debug::breakpoint::Breakpoints;
-use crate::utils::colors::Colors;
 use crate::config::Config;
+use crate::debug::breakpoint::Breakpoints;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
-use crate::threading::global_locks::GlobalLocks;
 use crate::hooks::Hooks;
 use crate::regs_aarch64::RegsAarch64;
 use crate::regs64::Regs64;
@@ -25,12 +23,14 @@ use crate::serialization::maps::SerializableMaps;
 use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
 use crate::serialization::thread_context::SerializableThreadContext;
+use crate::threading::global_locks::GlobalLocks;
+use crate::utils::colors::Colors;
 use crate::windows::structures::MemoryOperation;
 
-use crate::emu::disassemble::InstructionCache;
-use crate::emu::object_handle::HandleManagement;
 use crate::arch::Arch;
 use crate::emu::ArchState;
+use crate::emu::disassemble::InstructionCache;
+use crate::emu::object_handle::HandleManagement;
 use crate::threading::context::ArchThreadState;
 
 #[derive(Serialize, Deserialize)]
@@ -361,9 +361,9 @@ impl From<SerializableEmu> for Emu {
             os,
             pe64: pe64.map(|x| x.into()),
             pe32: pe32.map(|x| x.into()),
-            elf64: None,    // TODO: not yet serialized
-            elf32: None,    // TODO: not yet serialized
-            macho64: None,  // TODO: not yet serialized
+            elf64: None,   // TODO: not yet serialized
+            elf32: None,   // TODO: not yet serialized
+            macho64: None, // TODO: not yet serialized
             tls_callbacks,
             library_loaded: false,
             // Thread management

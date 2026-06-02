@@ -20,9 +20,11 @@ fn resource_entries_have_valid_data_rvas() {
     let Some(pe) = load_msgbox() else { return };
     for entry in pe.get_resource_entries() {
         if entry.size > 0 {
-            assert!(entry.data_rva > 0,
+            assert!(
+                entry.data_rva > 0,
                 "resource entry {:?} has size {} but data_rva is 0",
-                entry.name, entry.size
+                entry.name,
+                entry.size
             );
         }
     }

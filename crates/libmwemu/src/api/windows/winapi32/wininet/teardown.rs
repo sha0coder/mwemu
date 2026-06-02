@@ -11,15 +11,13 @@ lazy_static! {
 }
 
 pub(super) fn internet_read_file(emu: &mut emu::Emu) {
-    let file_hndl = read_stack_dword(emu, 0, "wininet!InternetReadFile cannot read file_hndl") as u64;
+    let file_hndl =
+        read_stack_dword(emu, 0, "wininet!InternetReadFile cannot read file_hndl") as u64;
     let buff_ptr = read_stack_dword(emu, 4, "wininet!InternetReadFile cannot read buff_ptr") as u64;
     let bytes_to_read =
         read_stack_dword(emu, 8, "wininet!InternetReadFile cannot read bytes_to_read") as u64;
-    let bytes_read_ptr = read_stack_dword(
-        emu,
-        12,
-        "wininet!InternetReadFile cannot read bytes_read",
-    ) as u64;
+    let bytes_read_ptr =
+        read_stack_dword(emu, 12, "wininet!InternetReadFile cannot read bytes_read") as u64;
 
     log_red!(
         emu,
@@ -73,4 +71,3 @@ pub(super) fn internet_close_handle(emu: &mut emu::Emu) {
     pop_stack32(emu, 1);
     emu.regs_mut().rax = 1;
 }
-

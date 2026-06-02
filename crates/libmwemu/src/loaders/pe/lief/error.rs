@@ -114,7 +114,11 @@ impl fmt::Display for LiefError {
             LiefError::CacheError(msg) => write!(f, "Cache error: {}", msg),
             LiefError::RelocationError(msg) => write!(f, "Relocation error: {}", msg),
             LiefError::UnsupportedRelocationType { reloc_type, rva } => {
-                write!(f, "Unsupported relocation type {} at RVA 0x{:x}", reloc_type, rva)
+                write!(
+                    f,
+                    "Unsupported relocation type {} at RVA 0x{:x}",
+                    reloc_type, rva
+                )
             }
         }
     }

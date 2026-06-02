@@ -1,5 +1,5 @@
-use crate::maps::Maps;
 use super::list_entry64::ListEntry64;
+use crate::maps::Maps;
 
 #[derive(Debug)]
 pub struct PebLdrData64 {

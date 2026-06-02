@@ -5,9 +5,9 @@ use iced_x86::{Decoder, DecoderOptions, Instruction};
 
 use crate::color;
 use crate::debug::console::Console;
-use crate::emu::{ArchState, Emu};
 use crate::emu::decoded_instruction::DecodedInstruction;
 use crate::emu::disassemble::InstructionCache;
+use crate::emu::{ArchState, Emu};
 use crate::err::MwemuError;
 
 use crate::syscall::windows::syscall64::memory as win_syscall64_memory;
@@ -27,10 +27,10 @@ thread_local! {
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct ShimTable {
-    pub lla:  u64,
-    pub lpa:  u64,
+    pub lla: u64,
+    pub lpa: u64,
     pub lpa2: u64,
-    pub mba:  u64,
+    pub mba: u64,
 }
 
 impl Emu {
@@ -47,7 +47,9 @@ impl Emu {
             }
             // user32 is loaded now but mba was 0 — re-resolve just mba.
             let mba = crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
-                self, "user32.dll", "MessageBoxA",
+                self,
+                "user32.dll",
+                "MessageBoxA",
             );
             let new = ShimTable { mba, ..t };
             SHIM_TABLE.with(|c| c.set(Some(new)));
@@ -57,16 +59,35 @@ impl Emu {
             return new;
         }
         let t = ShimTable {
-            lla:  crate::winapi::winapi64::kernel32::resolve_api_name_in_module(self, "kernelbase.dll", "LoadLibraryA"),
-            lpa:  crate::winapi::winapi64::kernel32::resolve_api_name_in_module(self, "kernelbase.dll", "GetProcAddress"),
-            lpa2: crate::winapi::winapi64::kernel32::resolve_api_name_in_module(self, "kernelbase.dll", "GetProcAddressForCaller"),
-            mba:  crate::winapi::winapi64::kernel32::resolve_api_name_in_module(self, "user32.dll", "MessageBoxA"),
+            lla: crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                self,
+                "kernelbase.dll",
+                "LoadLibraryA",
+            ),
+            lpa: crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                self,
+                "kernelbase.dll",
+                "GetProcAddress",
+            ),
+            lpa2: crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                self,
+                "kernelbase.dll",
+                "GetProcAddressForCaller",
+            ),
+            mba: crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                self,
+                "user32.dll",
+                "MessageBoxA",
+            ),
         };
         SHIM_TABLE.with(|c| c.set(Some(t)));
         if self.cfg.verbose >= 1 {
             log::trace!(
                 "shim table resolved: LLA=0x{:x} GPA=0x{:x} GPA-FC=0x{:x} MBA=0x{:x}",
-                t.lla, t.lpa, t.lpa2, t.mba,
+                t.lla,
+                t.lpa,
+                t.lpa2,
+                t.mba,
             );
         }
         t
@@ -189,7 +210,6 @@ impl Emu {
 
             let result_ok = engine::emulate_instruction(self, &ins, sz, true);
             self.last_instruction_size = sz;
-
 
             // Post-instruction hook
             if let Some(mut hook_fn) = self.hooks.hook_on_post_instruction.take() {
@@ -456,7 +476,10 @@ impl Emu {
             return false;
         }
 
-        if !self.os.is_linux() && self.cfg.arch.is_64bits() && self.cfg.ssdt_use_ldr_initialize_thunk {
+        if !self.os.is_linux()
+            && self.cfg.arch.is_64bits()
+            && self.cfg.ssdt_use_ldr_initialize_thunk
+        {
             peb64::ensure_peb_system_dependent_07(self);
         }
 
@@ -471,10 +494,7 @@ impl Emu {
         if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
             log::trace!("exit position reached");
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump(
-                    self,
-                    self.cfg.dump_filename.as_ref().unwrap(),
-                );
+                serialization::Serialization::dump(self, self.cfg.dump_filename.as_ref().unwrap());
             }
             if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
                 self.trace_file
@@ -580,10 +600,7 @@ impl Emu {
             log::trace!("exit position reached");
 
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump(
-                    self,
-                    self.cfg.dump_filename.as_ref().unwrap(),
-                );
+                serialization::Serialization::dump(self, self.cfg.dump_filename.as_ref().unwrap());
             }
 
             if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {
@@ -914,7 +931,9 @@ impl Emu {
                             if self.cfg.verbose >= 1 {
                                 log::trace!(
                                     "** {} kernelbase!LoadLibraryA shim → rax=0x{:x} ret=0x{:x}",
-                                    self.pos, self.regs().rax, ret_addr,
+                                    self.pos,
+                                    self.regs().rax,
+                                    ret_addr,
                                 );
                             }
                             self.regs_mut().rip = ret_addr;
@@ -934,7 +953,9 @@ impl Emu {
                             if self.cfg.verbose >= 1 {
                                 log::trace!(
                                     "** {} kernelbase!GetProcAddress(ForCaller) shim → rax=0x{:x} pc=0x{:x}",
-                                    self.pos, self.regs().rax, pc,
+                                    self.pos,
+                                    self.regs().rax,
+                                    pc,
                                 );
                             }
                             let ret_addr = self.stack_pop64(false).unwrap_or(0);
@@ -958,7 +979,9 @@ impl Emu {
                                 log_red!(
                                     self,
                                     "** {} user32!MessageBoxA caption={:?} text={:?}",
-                                    self.pos, caption, text,
+                                    self.pos,
+                                    caption,
+                                    text,
                                 );
                             }
                             // Print on the *real* stdout too so the operator
@@ -978,7 +1001,11 @@ impl Emu {
                     // DEBUG: trace shellcode resolver checkpoints
                     match addr {
                         0x14000116a => {
-                            log::trace!("DEBUG @0x{:x} after LoadLibraryA('user32.dll') rax=0x{:x}", addr, self.regs().rax);
+                            log::trace!(
+                                "DEBUG @0x{:x} after LoadLibraryA('user32.dll') rax=0x{:x}",
+                                addr,
+                                self.regs().rax
+                            );
                             // Dump LDR chain at this point to see if user32 is linked.
                             let peb_base = self.maps.get_mem("peb").get_base();
                             let ldr = self.maps.read_qword(peb_base + 0x18).unwrap_or(0);
@@ -988,80 +1015,168 @@ impl Emu {
                             while cur != 0 && cur != sentinel && i < 24 {
                                 let entry = cur.wrapping_sub(0x10);
                                 let dll_base = self.maps.read_qword(entry + 0x30).unwrap_or(0);
-                                let name_len = self.maps.read_word(entry + 0x58).unwrap_or(0) as u64;
+                                let name_len =
+                                    self.maps.read_word(entry + 0x58).unwrap_or(0) as u64;
                                 let name_buf = self.maps.read_qword(entry + 0x58 + 8).unwrap_or(0);
                                 let mut s = String::new();
                                 let mut j = 0u64;
                                 while j < name_len.min(128) {
                                     let w = self.maps.read_word(name_buf + j).unwrap_or(0);
-                                    if w == 0 { break; }
+                                    if w == 0 {
+                                        break;
+                                    }
                                     s.push(char::from_u32(w as u32).unwrap_or('?'));
                                     j += 2;
                                 }
-                                log::trace!("  DEBUG_POST_LL [{}] entry=0x{:x} DllBase=0x{:x} name='{}'", i, entry, dll_base, s);
+                                log::trace!(
+                                    "  DEBUG_POST_LL [{}] entry=0x{:x} DllBase=0x{:x} name='{}'",
+                                    i,
+                                    entry,
+                                    dll_base,
+                                    s
+                                );
                                 cur = self.maps.read_qword(cur).unwrap_or(0);
                                 i += 1;
                             }
                         }
-                        0x140001188 => log::trace!("DEBUG @0x{:x} after GetProcAddress(user32, 'MessageBoxA') rax=0x{:x}", addr, self.regs().rax),
-                        0x140001186 => log::trace!("DEBUG @0x{:x} call rax(GetProcAddress) rcx=0x{:x} rdx=0x{:x} rax(target)=0x{:x}", addr, self.regs().rcx, self.regs().rdx, self.regs().rax),
+                        0x140001188 => log::trace!(
+                            "DEBUG @0x{:x} after GetProcAddress(user32, 'MessageBoxA') rax=0x{:x}",
+                            addr,
+                            self.regs().rax
+                        ),
+                        0x140001186 => log::trace!(
+                            "DEBUG @0x{:x} call rax(GetProcAddress) rcx=0x{:x} rdx=0x{:x} rax(target)=0x{:x}",
+                            addr,
+                            self.regs().rcx,
+                            self.regs().rdx,
+                            self.regs().rax
+                        ),
                         0x140001168 => {
-                            log::trace!("DEBUG @0x{:x} call rax(LoadLibraryA) rcx=0x{:x} rax(target)=0x{:x}", addr, self.regs().rcx, self.regs().rax);
+                            log::trace!(
+                                "DEBUG @0x{:x} call rax(LoadLibraryA) rcx=0x{:x} rax(target)=0x{:x}",
+                                addr,
+                                self.regs().rcx,
+                                self.regs().rax
+                            );
                             let thunk = self.regs().rax;
                             let iat_ptr = thunk.wrapping_add(7).wrapping_add(0x610e1);
                             let bound = self.maps.read_qword(iat_ptr).unwrap_or(0);
-                            log::trace!("DEBUG kernel32!LoadLibraryA IAT[0x{:x}] = 0x{:x}", iat_ptr, bound);
+                            log::trace!(
+                                "DEBUG kernel32!LoadLibraryA IAT[0x{:x}] = 0x{:x}",
+                                iat_ptr,
+                                bound
+                            );
                         }
                         // After kernelbase!LoadLibraryA's pre-check call returns
-                        0x7ff000139eca => log::trace!("DEBUG kernelbase!LoadLibraryA pre-check returned eax=0x{:x}", self.regs().get_eax() as u32),
+                        0x7ff000139eca => log::trace!(
+                            "DEBUG kernelbase!LoadLibraryA pre-check returned eax=0x{:x}",
+                            self.regs().get_eax() as u32
+                        ),
                         // The "main" LoadLibraryExW call
-                        0x7ff000139eda => log::trace!("DEBUG kernelbase!LoadLibraryA about to call LoadLibraryExW rcx=0x{:x}", self.regs().rcx),
+                        0x7ff000139eda => log::trace!(
+                            "DEBUG kernelbase!LoadLibraryA about to call LoadLibraryExW rcx=0x{:x}",
+                            self.regs().rcx
+                        ),
                         // The ret of kernelbase!LoadLibraryA
-                        0x7ff000139eee => log::trace!("DEBUG kernelbase!LoadLibraryA RET rax=0x{:x}", self.regs().rax),
+                        0x7ff000139eee => log::trace!(
+                            "DEBUG kernelbase!LoadLibraryA RET rax=0x{:x}",
+                            self.regs().rax
+                        ),
                         // The "error" path
-                        0x7ff000178b32 => log::trace!("DEBUG kernelbase!LoadLibraryA took error path @0xb6b32 (returns 0)"),
+                        0x7ff000178b32 => log::trace!(
+                            "DEBUG kernelbase!LoadLibraryA took error path @0xb6b32 (returns 0)"
+                        ),
                         // LoadLibraryExW internals (kernelbase+0x2bbb0):
-                        0x7ff0000edbcd => log::trace!("DEBUG LoadLibraryExW after BasepConvert/Normalize call eax=0x{:x}", self.regs().get_eax() as u32),
-                        0x7ff0000edc04 => log::trace!("DEBUG LoadLibraryExW jumped to error path 0x2bc04"),
-                        0x7ff0000edbe1 => log::trace!("DEBUG LoadLibraryExW worker returned rax=0x{:x}", self.regs().rax),
+                        0x7ff0000edbcd => log::trace!(
+                            "DEBUG LoadLibraryExW after BasepConvert/Normalize call eax=0x{:x}",
+                            self.regs().get_eax() as u32
+                        ),
+                        0x7ff0000edc04 => {
+                            log::trace!("DEBUG LoadLibraryExW jumped to error path 0x2bc04")
+                        }
+                        0x7ff0000edbe1 => log::trace!(
+                            "DEBUG LoadLibraryExW worker returned rax=0x{:x}",
+                            self.regs().rax
+                        ),
                         // Worker (BasepLoadLibraryExW) branch points (kernelbase+0x235a0):
                         0x7ff0000e571b => log::trace!("DEBUG worker took early-error path 0x2371b"),
-                        0x7ff000161fb8 => log::trace!("DEBUG worker took error path 0x9ffb8 (after first IAT call signed)"),
-                        0x7ff000161fd8 => log::trace!("DEBUG worker took error path 0x9ffd8 (after RtlGetFullPathName signed)"),
+                        0x7ff000161fb8 => log::trace!(
+                            "DEBUG worker took error path 0x9ffb8 (after first IAT call signed)"
+                        ),
+                        0x7ff000161fd8 => log::trace!(
+                            "DEBUG worker took error path 0x9ffd8 (after RtlGetFullPathName signed)"
+                        ),
                         0x7ff0000e970b => log::trace!("DEBUG worker took success path 0x2370b"),
-                        0x7ff0000e96b1 => log::trace!("DEBUG worker xor eax, eax (return 0) reached"),
+                        0x7ff0000e96b1 => {
+                            log::trace!("DEBUG worker xor eax, eax (return 0) reached")
+                        }
                         // After internal calls
-                        0x7ff0000e55ed => log::trace!("DEBUG worker after first IAT call eax=0x{:x} [local=0x{:x}_0x{:x}]",
+                        0x7ff0000e55ed => log::trace!(
+                            "DEBUG worker after first IAT call eax=0x{:x} [local=0x{:x}_0x{:x}]",
                             self.regs().get_eax() as u32,
-                            self.maps.read_word(self.regs().rbp.wrapping_sub(0x10)).unwrap_or(0),
-                            self.maps.read_qword(self.regs().rbp.wrapping_sub(0x8)).unwrap_or(0)),
+                            self.maps
+                                .read_word(self.regs().rbp.wrapping_sub(0x10))
+                                .unwrap_or(0),
+                            self.maps
+                                .read_qword(self.regs().rbp.wrapping_sub(0x8))
+                                .unwrap_or(0)
+                        ),
                         // Right BEFORE the first IAT call: read the IAT to find which function we're invoking
                         0x7ff0000e55e1 => {
                             // call qword ptr [rip + 0x19c400] — 7-byte instruction
                             let iat_ptr = 0x7ff0000e55e1u64.wrapping_add(7).wrapping_add(0x19c400);
                             let bound = self.maps.read_qword(iat_ptr).unwrap_or(0);
-                            log::trace!("DEBUG worker about to call IAT[0x{:x}] = 0x{:x} (rcx=0x{:x} rdx=0x{:x})",
-                                iat_ptr, bound, self.regs().rcx, self.regs().rdx);
+                            log::trace!(
+                                "DEBUG worker about to call IAT[0x{:x}] = 0x{:x} (rcx=0x{:x} rdx=0x{:x})",
+                                iat_ptr,
+                                bound,
+                                self.regs().rcx,
+                                self.regs().rdx
+                            );
                         }
-                        0x7ff0000e565b => log::trace!("DEBUG worker after RtlGetFullPathName_UEx call eax=0x{:x}", self.regs().get_eax() as u32),
-                        0x7ff0000e5680 => log::trace!("DEBUG worker after call 0x20f50 (real loader) eax=0x{:x}", self.regs().get_eax() as u32),
+                        0x7ff0000e565b => log::trace!(
+                            "DEBUG worker after RtlGetFullPathName_UEx call eax=0x{:x}",
+                            self.regs().get_eax() as u32
+                        ),
+                        0x7ff0000e5680 => log::trace!(
+                            "DEBUG worker after call 0x20f50 (real loader) eax=0x{:x}",
+                            self.regs().get_eax() as u32
+                        ),
                         // The "flags == 0" branch (most common, our case):
                         0x7ff0000e56fb => {
                             let iat_ptr = 0x7ff0000e56fbu64.wrapping_add(7).wrapping_add(0x19c92e);
                             let bound = self.maps.read_qword(iat_ptr).unwrap_or(0);
-                            log::trace!("DEBUG worker flags=0 branch: about to call IAT[0x{:x}] = 0x{:x} (LdrLoadDll-like)", iat_ptr, bound);
-                            log::trace!("DEBUG   rcx=0x{:x} rdx=0x{:x} r8=0x{:x} r9=0x{:x}",
-                                self.regs().rcx, self.regs().rdx, self.regs().r8, self.regs().r9);
+                            log::trace!(
+                                "DEBUG worker flags=0 branch: about to call IAT[0x{:x}] = 0x{:x} (LdrLoadDll-like)",
+                                iat_ptr,
+                                bound
+                            );
+                            log::trace!(
+                                "DEBUG   rcx=0x{:x} rdx=0x{:x} r8=0x{:x} r9=0x{:x}",
+                                self.regs().rcx,
+                                self.regs().rdx,
+                                self.regs().r8,
+                                self.regs().r9
+                            );
                         }
-                        0x7ff0000e5702 => log::trace!("DEBUG worker after LdrLoadDll call eax=0x{:x} [rbp+0x38]=0x{:x}",
+                        0x7ff0000e5702 => log::trace!(
+                            "DEBUG worker after LdrLoadDll call eax=0x{:x} [rbp+0x38]=0x{:x}",
                             self.regs().get_eax() as u32,
-                            self.maps.read_qword(self.regs().rbp.wrapping_add(0x38)).unwrap_or(0)),
+                            self.maps
+                                .read_qword(self.regs().rbp.wrapping_add(0x38))
+                                .unwrap_or(0)
+                        ),
                         // Right before the RtlRaiseStatus call inside the unwind/error function
                         0x1800c3e18 => {
-                            static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+                            static ONCE: std::sync::atomic::AtomicBool =
+                                std::sync::atomic::AtomicBool::new(false);
                             if !ONCE.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                                log::trace!("DEBUG @0xc3e18 about to call RtlRaiseStatus rbx=0x{:x} (status) rdi=0x{:x} rsi=0x{:x}",
-                                    self.regs().rbx, self.regs().rdi, self.regs().rsi);
+                                log::trace!(
+                                    "DEBUG @0xc3e18 about to call RtlRaiseStatus rbx=0x{:x} (status) rdi=0x{:x} rsi=0x{:x}",
+                                    self.regs().rbx,
+                                    self.regs().rdi,
+                                    self.regs().rsi
+                                );
                                 // Walk return addresses upward to identify the call chain
                                 for i in 0..16u64 {
                                     let addr = self.regs().rsp.wrapping_add(i * 8);
@@ -1070,7 +1185,7 @@ impl Emu {
                                             || (v >= 0x7ff000000000 && v < 0x7ff800000000)
                                         {
                                             let m = self.maps.get_addr_name(v).unwrap_or("?");
-                                            log::trace!("  rsp+0x{:x}: 0x{:x} ({})", i*8, v, m);
+                                            log::trace!("  rsp+0x{:x}: 0x{:x} ({})", i * 8, v, m);
                                         }
                                     }
                                 }
@@ -1081,7 +1196,11 @@ impl Emu {
                                 for j in 0..64u64 {
                                     let b = self.maps.read_byte(rdi + j).unwrap_or(0);
                                     hex.push_str(&format!("{:02x} ", b));
-                                    ascii.push(if (0x20..=0x7e).contains(&b) { b as char } else { '.' });
+                                    ascii.push(if (0x20..=0x7e).contains(&b) {
+                                        b as char
+                                    } else {
+                                        '.'
+                                    });
                                 }
                                 log::trace!("  rdi[0..64] hex: {}", hex);
                                 log::trace!("  rdi[0..64] asc: {}", ascii);
@@ -1100,15 +1219,28 @@ impl Emu {
                                     let mut s = String::new();
                                     for j in 0..len1.min(128) {
                                         let b = self.maps.read_byte(buf1 + j).unwrap_or(0);
-                                        if b == 0 { break; }
-                                        s.push(if (0x20..=0x7e).contains(&b) { b as char } else { '?' });
+                                        if b == 0 {
+                                            break;
+                                        }
+                                        s.push(if (0x20..=0x7e).contains(&b) {
+                                            b as char
+                                        } else {
+                                            '?'
+                                        });
                                     }
-                                    log::trace!("  [rdi.Buffer1=0x{:x}, len={}]: '{}'", buf1, len1, s);
+                                    log::trace!(
+                                        "  [rdi.Buffer1=0x{:x}, len={}]: '{}'",
+                                        buf1,
+                                        len1,
+                                        s
+                                    );
                                     // Also try as wide string
                                     let mut sw = String::new();
-                                    for j in 0..(len1/2).min(64) {
-                                        let w = self.maps.read_word(buf1 + j*2).unwrap_or(0);
-                                        if w == 0 { break; }
+                                    for j in 0..(len1 / 2).min(64) {
+                                        let w = self.maps.read_word(buf1 + j * 2).unwrap_or(0);
+                                        if w == 0 {
+                                            break;
+                                        }
                                         sw.push(char::from_u32(w as u32).unwrap_or('?'));
                                     }
                                     log::trace!("  [rdi.Buffer1 as wide]: '{}'", sw);
@@ -1119,10 +1251,21 @@ impl Emu {
                                     let mut s = String::new();
                                     for j in 0..len2.min(128) {
                                         let b = self.maps.read_byte(buf2 + j).unwrap_or(0);
-                                        if b == 0 { break; }
-                                        s.push(if (0x20..=0x7e).contains(&b) { b as char } else { '?' });
+                                        if b == 0 {
+                                            break;
+                                        }
+                                        s.push(if (0x20..=0x7e).contains(&b) {
+                                            b as char
+                                        } else {
+                                            '?'
+                                        });
                                     }
-                                    log::trace!("  [rdi.Buffer2=0x{:x}, len={}]: '{}'", buf2, len2, s);
+                                    log::trace!(
+                                        "  [rdi.Buffer2=0x{:x}, len={}]: '{}'",
+                                        buf2,
+                                        len2,
+                                        s
+                                    );
                                 }
                                 // Read 80 bytes at rsp+0x70 (the user32.rdata pointer)
                                 let ptr = self.maps.read_qword(self.regs().rsp + 0x70).unwrap_or(0);
@@ -1132,20 +1275,28 @@ impl Emu {
                                     for j in 0..80u64 {
                                         let b = self.maps.read_byte(ptr + j).unwrap_or(0);
                                         hex.push_str(&format!("{:02x} ", b));
-                                        asc.push(if (0x20..=0x7e).contains(&b) { b as char } else { '.' });
+                                        asc.push(if (0x20..=0x7e).contains(&b) {
+                                            b as char
+                                        } else {
+                                            '.'
+                                        });
                                     }
                                     log::trace!("  [rsp+0x70]@0x{:x} hex: {}", ptr, hex);
                                     log::trace!("  [rsp+0x70]@0x{:x} asc: {}", ptr, asc);
                                 }
                                 // Also check rsp+0x40, +0x50, +0x60 in case they hold the import name
-                                for off in [0x20u64, 0x28, 0x30, 0x40, 0x48, 0x50, 0x58, 0x60, 0x68] {
-                                    let v = self.maps.read_qword(self.regs().rsp + off).unwrap_or(0);
+                                for off in [0x20u64, 0x28, 0x30, 0x40, 0x48, 0x50, 0x58, 0x60, 0x68]
+                                {
+                                    let v =
+                                        self.maps.read_qword(self.regs().rsp + off).unwrap_or(0);
                                     if v != 0 && self.maps.is_mapped(v) {
                                         // Try as ASCII string
                                         let mut s = String::new();
                                         for j in 0..64u64 {
                                             let b = self.maps.read_byte(v + j).unwrap_or(0);
-                                            if b == 0 || !(0x20..=0x7e).contains(&b) { break; }
+                                            if b == 0 || !(0x20..=0x7e).contains(&b) {
+                                                break;
+                                            }
                                             s.push(b as char);
                                         }
                                         if s.len() >= 3 {
@@ -1158,8 +1309,13 @@ impl Emu {
                         // ntdll+0x732b0 — unconditional `mov ebx, 0xc0000139` in some lookup function.
                         // Dump rcx, rdx (likely the DLL handle and the searched name).
                         0x18000732b0 => {
-                            log::trace!("DEBUG ntdll+0x732b0 status=0xc0000139 setup rcx=0x{:x} rdx=0x{:x} r8=0x{:x} r9=0x{:x}",
-                                self.regs().rcx, self.regs().rdx, self.regs().r8, self.regs().r9);
+                            log::trace!(
+                                "DEBUG ntdll+0x732b0 status=0xc0000139 setup rcx=0x{:x} rdx=0x{:x} r8=0x{:x} r9=0x{:x}",
+                                self.regs().rcx,
+                                self.regs().rdx,
+                                self.regs().r8,
+                                self.regs().r9
+                            );
                             // rdx is often a PANSI_STRING for export name
                             if self.regs().rdx != 0 && self.maps.is_mapped(self.regs().rdx) {
                                 // ANSI_STRING { WORD Length; WORD MaxLen; PCHAR Buffer (at +8) }
@@ -1169,7 +1325,9 @@ impl Emu {
                                     let mut s = String::new();
                                     for j in 0..(len as u64).min(256) {
                                         let b = self.maps.read_byte(buf + j).unwrap_or(0);
-                                        if b == 0 { break; }
+                                        if b == 0 {
+                                            break;
+                                        }
                                         s.push(b as char);
                                     }
                                     log::trace!("  rdx as ANSI_STRING (len={}): '{}'", len, s);
@@ -1179,7 +1337,9 @@ impl Emu {
                             let mut s = String::new();
                             for j in 0..128 {
                                 let b = self.maps.read_byte(self.regs().rcx + j).unwrap_or(0);
-                                if b == 0 || !(0x20..=0x7e).contains(&b) { break; }
+                                if b == 0 || !(0x20..=0x7e).contains(&b) {
+                                    break;
+                                }
                                 s.push(b as char);
                             }
                             if !s.is_empty() {
@@ -1190,13 +1350,17 @@ impl Emu {
                         // rdi = pointer to the unresolved name (likely an IMAGE_IMPORT_BY_NAME or similar)
                         // rbx = pointer to the DLL's LDR entry / structure
                         0x18000b075c => {
-                            log::trace!("DEBUG LdrpSnapThunk ENTRYPOINT_NOT_FOUND: rdi=0x{:x} rbx=0x{:x} r13b=0",
-                                self.regs().rdi, self.regs().rbx);
+                            log::trace!(
+                                "DEBUG LdrpSnapThunk ENTRYPOINT_NOT_FOUND: rdi=0x{:x} rbx=0x{:x} r13b=0",
+                                self.regs().rdi,
+                                self.regs().rbx
+                            );
                             // IMAGE_IMPORT_BY_NAME = { WORD Hint; CHAR Name[1]; }
                             // The rdi at this point is offset 0x48 in some struct — read more around it
                             for off in [0u64, 8, 16, 24, 32, 40, 48] {
                                 if self.maps.is_mapped(self.regs().rdi + off) {
-                                    let v = self.maps.read_qword(self.regs().rdi + off).unwrap_or(0);
+                                    let v =
+                                        self.maps.read_qword(self.regs().rdi + off).unwrap_or(0);
                                     log::trace!("  [rdi+0x{:x}] = 0x{:x}", off, v);
                                 }
                             }
@@ -1204,7 +1368,9 @@ impl Emu {
                             let mut s = String::new();
                             for j in 2..130 {
                                 let b = self.maps.read_byte(self.regs().rdi + j).unwrap_or(0);
-                                if b == 0 || !(0x20..=0x7e).contains(&b) { break; }
+                                if b == 0 || !(0x20..=0x7e).contains(&b) {
+                                    break;
+                                }
                                 s.push(b as char);
                             }
                             if !s.is_empty() {
@@ -1214,8 +1380,14 @@ impl Emu {
                         // ntdll+0xc3cb6 — error message prep for STATUS_ENTRYPOINT_NOT_FOUND
                         // Dump rax/rdx/rdi which usually carry pointers to the offending DLL/export.
                         0x1800c3cb6 => {
-                            log::trace!("DEBUG ntdll+0xc3cb6 ENTRYPOINT_NOT_FOUND prep rax=0x{:x} rdx=0x{:x} rdi=0x{:x} r8=0x{:x} r9=0x{:x}",
-                                self.regs().rax, self.regs().rdx, self.regs().rdi, self.regs().r8, self.regs().r9);
+                            log::trace!(
+                                "DEBUG ntdll+0xc3cb6 ENTRYPOINT_NOT_FOUND prep rax=0x{:x} rdx=0x{:x} rdi=0x{:x} r8=0x{:x} r9=0x{:x}",
+                                self.regs().rax,
+                                self.regs().rdx,
+                                self.regs().rdi,
+                                self.regs().r8,
+                                self.regs().r9
+                            );
                             // Try to read string at rdi (could be PUNICODE_STRING or PCSTR)
                             if self.regs().rdi != 0 && self.maps.is_mapped(self.regs().rdi) {
                                 // First try as PUNICODE_STRING (Length WORD, MaxLen WORD, _, Buffer QWORD at +8)
@@ -1224,17 +1396,26 @@ impl Emu {
                                 if len > 0 && len < 512 && buf != 0 && self.maps.is_mapped(buf) {
                                     let mut s = String::new();
                                     for j in 0..(len as u64 / 2).min(128) {
-                                        let w = self.maps.read_word(buf + j*2).unwrap_or(0);
-                                        if w == 0 { break; }
+                                        let w = self.maps.read_word(buf + j * 2).unwrap_or(0);
+                                        if w == 0 {
+                                            break;
+                                        }
                                         s.push(char::from_u32(w as u32).unwrap_or('?'));
                                     }
                                     log::trace!("  rdi as UNICODE_STRING: '{}'", s);
                                 }
                                 // Also try as raw ASCII / WCHAR
-                                let ascii: String = (0..64).filter_map(|j| {
-                                    let b = self.maps.read_byte(self.regs().rdi + j).unwrap_or(0);
-                                    if (0x20..=0x7e).contains(&b) { Some(b as char) } else { None }
-                                }).collect();
+                                let ascii: String = (0..64)
+                                    .filter_map(|j| {
+                                        let b =
+                                            self.maps.read_byte(self.regs().rdi + j).unwrap_or(0);
+                                        if (0x20..=0x7e).contains(&b) {
+                                            Some(b as char)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .collect();
                                 if !ascii.is_empty() {
                                     log::trace!("  rdi as ASCII: '{}'", ascii);
                                 }
@@ -1246,8 +1427,10 @@ impl Emu {
                                 if len > 0 && len < 512 && buf != 0 && self.maps.is_mapped(buf) {
                                     let mut s = String::new();
                                     for j in 0..(len as u64 / 2).min(128) {
-                                        let w = self.maps.read_word(buf + j*2).unwrap_or(0);
-                                        if w == 0 { break; }
+                                        let w = self.maps.read_word(buf + j * 2).unwrap_or(0);
+                                        if w == 0 {
+                                            break;
+                                        }
                                         s.push(char::from_u32(w as u32).unwrap_or('?'));
                                     }
                                     log::trace!("  rax as UNICODE_STRING: '{}'", s);
@@ -1260,13 +1443,20 @@ impl Emu {
                         // to identify the source of the 64 KB byte-wise write at
                         // 0x412000.
                         0x180103f7b => {
-                            static SEEN: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+                            static SEEN: std::sync::atomic::AtomicUsize =
+                                std::sync::atomic::AtomicUsize::new(0);
                             let n = SEEN.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             if n == 0 {
                                 let r = self.regs();
                                 log::trace!(
                                     "DEBUG post-NtRaiseException at 0x180103f7b: rax=0x{:x} rcx=0x{:x} rdx=0x{:x} r8=0x{:x} r9=0x{:x} rsp=0x{:x} rbp=0x{:x}",
-                                    r.rax, r.rcx, r.rdx, r.r8, r.r9, r.rsp, r.rbp,
+                                    r.rax,
+                                    r.rcx,
+                                    r.rdx,
+                                    r.r8,
+                                    r.r9,
+                                    r.rsp,
+                                    r.rbp,
                                 );
                             }
                         }
@@ -1281,7 +1471,9 @@ impl Emu {
                             let status = self.regs().get_ecx() as u32;
                             log::trace!(
                                 "ntdll!RtlRaiseStatus(0x{:x}) at pos={} rsp=0x{:x} — terminating (no handler installed)",
-                                status, self.pos, self.regs().rsp,
+                                status,
+                                self.pos,
+                                self.regs().rsp,
                             );
                             // Dump return-chain hint so it's clear who raised.
                             for i in 0..8u64 {
@@ -1290,12 +1482,13 @@ impl Emu {
                                     if (v >= 0x180000000 && v < 0x180400000)
                                         || (v >= 0x7ff000000000 && v < 0x7ff800000000)
                                     {
-                                        log::trace!("  ret[+0x{:x}] = 0x{:x}", i*8, v);
+                                        log::trace!("  ret[+0x{:x}] = 0x{:x}", i * 8, v);
                                     }
                                 }
                             }
                             self.process_terminated = true;
-                            self.is_running.store(0, std::sync::atomic::Ordering::Relaxed);
+                            self.is_running
+                                .store(0, std::sync::atomic::Ordering::Relaxed);
                             self.force_break = true;
                             return Ok(self.pc());
                         }

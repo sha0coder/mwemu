@@ -1,13 +1,13 @@
-use crate::maps::Maps;
 use super::unicode_string64::UnicodeString64;
+use crate::maps::Maps;
 
 /// Matches the leading fields of Windows `RTL_USER_PROCESS_PARAMETERS` (x64).
 /// `Flags` bit 0 is `RTL_USER_PROCESS_PARAMETERS_NORMALIZED`: `ImagePathName.Buffer` /
 /// `CommandLine.Buffer` are absolute pointers. If this is clear, ntdll treats `Buffer` as an
 /// offset from the process-parameters base (`lea rdx,[rax+rcx]` path).
-pub const RTL_USER_PROCESS_PARAMETERS_NORMALIZED:      u32 = 0x0001;
+pub const RTL_USER_PROCESS_PARAMETERS_NORMALIZED: u32 = 0x0001;
 /// `Flags` bit 0x2000: app manifest is present.
-pub const RTL_USER_PROCESS_PARAMETERS_APP_MANIFEST:    u32 = 0x2000;
+pub const RTL_USER_PROCESS_PARAMETERS_APP_MANIFEST: u32 = 0x2000;
 /// `Flags` bit 0x4000: image registry key is missing (no IFEO entry).
 /// When set ntdll skips Image File Execution Options lookups and the CSRSS
 /// client-connect sequence, preventing `LdrpInitializeCsrss` from reaching

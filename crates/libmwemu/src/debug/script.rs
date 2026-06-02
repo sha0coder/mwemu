@@ -6,11 +6,11 @@ use std::vec::Vec;
 use crate::debug::console::Console;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
+use crate::winapi::winapi32;
+use crate::winapi::winapi64;
 use crate::windows::peb::peb32;
 use crate::windows::peb::peb64;
 use crate::windows::structures;
-use crate::winapi::winapi32;
-use crate::winapi::winapi64;
 
 pub struct Script {
     code: Vec<String>,
@@ -160,7 +160,9 @@ impl Script {
                                 self.result = val;
                                 log::trace!("\t{}: 0x{:016x}", args[1], val);
                             }
-                            None => log::trace!("unknown aarch64 register: {} in line {}", args[1], i),
+                            None => {
+                                log::trace!("unknown aarch64 register: {} in line {}", args[1], i)
+                            }
                         }
                     } else {
                         self.result = emu.regs().get_by_name(args[1]);
@@ -243,7 +245,11 @@ impl Script {
                         let value: u64 = self.resolve(args[2], i, emu);
                         if emu.cfg.arch.is_aarch64() {
                             if !emu.regs_aarch64_mut().set_by_name(args[1], value) {
-                                log::trace!("error in line {}, unknown aarch64 register: {}", i, args[1]);
+                                log::trace!(
+                                    "error in line {}, unknown aarch64 register: {}",
+                                    i,
+                                    args[1]
+                                );
                             }
                         } else {
                             emu.regs_mut().set_by_name(args[1], value);
@@ -377,9 +383,10 @@ impl Script {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
-                        emu.maps
-                            .get_mem("stack")
-                            .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
+                        emu.maps.get_mem("stack").print_dwords_from_to(
+                            emu.regs().get_ebp(),
+                            emu.regs().get_ebp() + 0x100,
+                        );
                     }
                 }
                 "sv" => {
@@ -859,7 +866,10 @@ impl Script {
                 "d" => {
                     // d <addr> <sz>
                     if args.len() != 3 {
-                        log::trace!("error in line {}, `d` command needs an address to disasemble and amount of bytes", i);
+                        log::trace!(
+                            "error in line {}, `d` command needs an address to disasemble and amount of bytes",
+                            i
+                        );
                         return;
                     }
 

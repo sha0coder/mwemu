@@ -1,6 +1,6 @@
-use crate::windows::constants;
 use crate::emu;
 use crate::winapi::helper;
+use crate::windows::constants;
 
 pub fn RegCreateKeyExW(emu: &mut emu::Emu) {
     let h_key = emu.regs().rcx;

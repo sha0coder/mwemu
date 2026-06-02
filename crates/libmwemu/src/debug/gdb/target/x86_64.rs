@@ -13,16 +13,16 @@ use gdbstub::target::ext::target_description_xml_override::{
     TargetDescriptionXmlOverride, TargetDescriptionXmlOverrideOps,
 };
 use gdbstub::target::{Target, TargetError, TargetResult};
-use gdbstub_arch::x86::reg::id::{X86_64CoreRegId, X86SegmentRegId};
 use gdbstub_arch::x86::reg::X86_64CoreRegs;
+use gdbstub_arch::x86::reg::id::{X86_64CoreRegId, X86SegmentRegId};
 
 use crate::debug::gdb::registers::{read_regs_64, write_regs_64};
 use crate::emu::Emu;
 
 use crate::debug::gdb::target_xml;
 
-use super::shared::{copy_range, generate_library_list_xml};
 use super::MwemuGdbError;
+use super::shared::{copy_range, generate_library_list_xml};
 
 /// GDB target wrapper for 64-bit emulation
 pub struct MwemuTarget64<'a> {
@@ -49,7 +49,9 @@ impl Target for MwemuTarget64<'_> {
     }
 
     #[inline(always)]
-    fn support_breakpoints(&mut self) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
+    fn support_breakpoints(
+        &mut self,
+    ) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
         Some(self)
     }
 
@@ -72,10 +74,7 @@ impl Target for MwemuTarget64<'_> {
 }
 
 impl SingleThreadBase for MwemuTarget64<'_> {
-    fn read_registers(
-        &mut self,
-        regs: &mut X86_64CoreRegs,
-    ) -> TargetResult<(), Self> {
+    fn read_registers(&mut self, regs: &mut X86_64CoreRegs) -> TargetResult<(), Self> {
         *regs = read_regs_64(self.emu);
         Ok(())
     }
@@ -85,11 +84,7 @@ impl SingleThreadBase for MwemuTarget64<'_> {
         Ok(())
     }
 
-    fn read_addrs(
-        &mut self,
-        start_addr: u64,
-        data: &mut [u8],
-    ) -> TargetResult<usize, Self> {
+    fn read_addrs(&mut self, start_addr: u64, data: &mut [u8]) -> TargetResult<usize, Self> {
         let mut bytes_read = 0;
         for (i, byte) in data.iter_mut().enumerate() {
             match self.emu.maps.read_byte(start_addr + i as u64) {
@@ -205,7 +200,8 @@ impl SingleRegisterAccess<()> for MwemuTarget64<'_> {
 
         match reg_id {
             X86_64CoreRegId::Gpr(n) => {
-                let value = u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
+                let value =
+                    u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
                 match n {
                     0 => regs.rax = value,
                     1 => regs.rbx = value,
@@ -227,11 +223,13 @@ impl SingleRegisterAccess<()> for MwemuTarget64<'_> {
                 }
             }
             X86_64CoreRegId::Rip => {
-                let value = u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
+                let value =
+                    u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
                 regs.rip = value;
             }
             X86_64CoreRegId::Eflags => {
-                let value = u32::from_le_bytes(val[..4].try_into().map_err(|_| TargetError::NonFatal)?);
+                let value =
+                    u32::from_le_bytes(val[..4].try_into().map_err(|_| TargetError::NonFatal)?);
                 self.emu.flags_mut().load(value);
             }
             _ => return Err(TargetError::NonFatal),
@@ -275,6 +273,11 @@ impl ExecFile for MwemuTarget64<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
-        Ok(copy_range(self.emu.filename.as_bytes(), offset, length, buf))
+        Ok(copy_range(
+            self.emu.filename.as_bytes(),
+            offset,
+            length,
+            buf,
+        ))
     }
 }

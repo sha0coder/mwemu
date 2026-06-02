@@ -84,10 +84,10 @@ fn NtQueryPerformanceCounter(emu: &mut emu::Emu) {
         .read_dword(emu.regs().get_esp())
         .expect("ntdll!NtQueryPerformanceCounter error reading perf_counter_ptr")
         as u64;
-    let perf_freq_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ntdll!NtQueryPerformanceCounter error reading perf_freq_ptr") as u64;
+    let perf_freq_ptr =
+        emu.maps
+            .read_dword(emu.regs().get_esp() + 4)
+            .expect("ntdll!NtQueryPerformanceCounter error reading perf_freq_ptr") as u64;
 
     log_red!(emu, "ntdll!NtQueryPerformanceCounter");
 
@@ -116,10 +116,10 @@ fn RtlGetVersion(emu: &mut emu::Emu) {
 }
 
 fn RtlSetUnhandledExceptionFilter(emu: &mut emu::Emu) {
-    let filter = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ntdll!RtlSetUnhandledExceptionFilter error reading filter") as u64;
+    let filter =
+        emu.maps
+            .read_dword(emu.regs().get_esp())
+            .expect("ntdll!RtlSetUnhandledExceptionFilter error reading filter") as u64;
 
     log_red!(
         emu,

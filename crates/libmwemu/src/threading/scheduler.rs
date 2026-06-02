@@ -260,10 +260,7 @@ impl ThreadScheduler {
     /// Handle emulator exit
     fn handle_exit(emu: &mut Emu) {
         if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-            crate::serialization::Serialization::dump(
-                emu,
-                emu.cfg.dump_filename.as_ref().unwrap(),
-            );
+            crate::serialization::Serialization::dump(emu, emu.cfg.dump_filename.as_ref().unwrap());
         }
 
         if emu.cfg.trace_regs && emu.cfg.trace_filename.is_some() {

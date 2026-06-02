@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn FindActCtxSectionStringA(emu: &mut emu::Emu) {
     let _dwFlags = emu
@@ -25,11 +25,7 @@ pub fn FindActCtxSectionStringA(emu: &mut emu::Emu) {
 
     let lpStringToFind = emu.maps.read_string(lpStringToFind as u64);
 
-    log_red!(
-        emu,
-        "kernel32!FindActCtxSectionStringA {}",
-        lpStringToFind
-    );
+    log_red!(emu, "kernel32!FindActCtxSectionStringA {}", lpStringToFind);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

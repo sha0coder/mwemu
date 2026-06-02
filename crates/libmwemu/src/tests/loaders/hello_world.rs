@@ -101,7 +101,10 @@ fn hello_mac_arm64() {
     let mut emu = emu_aarch64();
     emu.load_code(path.to_str().unwrap());
 
-    assert!(emu.cfg.arch.is_aarch64(), "expected Mach-O aarch64 dispatch");
+    assert!(
+        emu.cfg.arch.is_aarch64(),
+        "expected Mach-O aarch64 dispatch"
+    );
     let pc = emu.regs_aarch64().pc;
     assert!(pc >= 0x100000000, "entry 0x{:x} should be in __TEXT", pc);
 

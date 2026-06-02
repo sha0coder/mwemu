@@ -9,12 +9,12 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::ops::Deref;
 
-use crate::arch::{Arch, OperatingSystem};
 use crate::arch::aarch64::regs::RegsAarch64;
+use crate::arch::{Arch, OperatingSystem};
 use crate::flags::Flags;
+use crate::maps::Maps;
 use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::tlb::TLB;
-use crate::maps::Maps;
 use crate::regs64::Regs64;
 use crate::serialization::emu::SerializableEmu;
 use crate::serialization::maps::SerializableMaps;

@@ -2,9 +2,9 @@ use crate::maps::mem64::Permission;
 use crate::tests::helpers;
 use crate::winapi::winapi64;
 use crate::*; // Assuming crate root has winapi module public or we can access it.
-              // If `winapi` mod is not public, we might have issues.
-              // Existing tests import `use crate::*;`.
-              // `lib.rs` usually has `pub mod winapi;`.
+// If `winapi` mod is not public, we might have issues.
+// Existing tests import `use crate::*;`.
+// `lib.rs` usually has `pub mod winapi;`.
 
 #[test]
 fn test_write_file() {

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetTapeStatus(emu: &mut emu::Emu) {
     let _hDevice = emu

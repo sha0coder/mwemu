@@ -1,8 +1,8 @@
+use crate::config::Pe64Backend;
 use crate::loaders::pe::lief::LiefPe;
 use crate::loaders::pe::lief::traits::LiefPeReader;
 use crate::loaders::pe::runtime_pe64::RuntimePe64;
 use crate::serialization::pe64::{SerializablePE64, SerializablePe64Backend};
-use crate::config::Pe64Backend;
 
 fn load_fixture() -> Option<LiefPe> {
     let path = "test/exe64win_msgbox.bin";
@@ -57,7 +57,10 @@ fn test_get_exports() {
             }
         }
         Err(e) => {
-            println!("get_exports returned error (expected for some PEs): {:?}", e);
+            println!(
+                "get_exports returned error (expected for some PEs): {:?}",
+                e
+            );
         }
     }
 }
@@ -70,12 +73,12 @@ fn test_get_relocations() {
     };
 
     match pe.get_relocations() {
-        Ok(relocations) => {
-            for _reloc in &relocations {
-            }
-        }
+        Ok(relocations) => for _reloc in &relocations {},
         Err(e) => {
-            println!("get_relocations returned error (expected for some PEs): {:?}", e);
+            println!(
+                "get_relocations returned error (expected for some PEs): {:?}",
+                e
+            );
         }
     }
 }
@@ -87,7 +90,10 @@ fn test_basic_pe_info() {
         None => return,
     };
 
-    assert!(pe.is_pe64() || pe.is_pe32(), "Should be either PE32 or PE64");
+    assert!(
+        pe.is_pe64() || pe.is_pe32(),
+        "Should be either PE32 or PE64"
+    );
     assert!(pe.num_sections() > 0, "Should have at least one section");
     assert!(pe.image_base() > 0, "Image base should be non-zero");
 }
@@ -126,15 +132,26 @@ fn test_cache_operations() {
     };
 
     let stats = pe.cache_stats();
-    assert_eq!(stats.cached_sections.len(), 0, "Cache should be empty initially");
+    assert_eq!(
+        stats.cached_sections.len(),
+        0,
+        "Cache should be empty initially"
+    );
     assert_eq!(stats.cached_bytes, 0, "Cache should have 0 bytes initially");
 
     let _ = pe.get_section_ptr(0);
 
     pe.clear_cache();
     let stats = pe.cache_stats();
-    assert_eq!(stats.cached_sections.len(), 0, "Cache should be empty after clear");
-    assert_eq!(stats.cached_bytes, 0, "Cache should have 0 bytes after clear");
+    assert_eq!(
+        stats.cached_sections.len(),
+        0,
+        "Cache should be empty after clear"
+    );
+    assert_eq!(
+        stats.cached_bytes, 0,
+        "Cache should have 0 bytes after clear"
+    );
 }
 
 #[test]
@@ -146,8 +163,15 @@ fn test_forced_legacy_backend() {
 
     let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Legacy)
         .expect("legacy backend should not fail");
-    assert_eq!(pe.backend_name(), "legacy", "forced legacy should use legacy backend");
-    assert!(!pe.is_lief(), "is_lief() should be false for legacy backend");
+    assert_eq!(
+        pe.backend_name(),
+        "legacy",
+        "forced legacy should use legacy backend"
+    );
+    assert!(
+        !pe.is_lief(),
+        "is_lief() should be false for legacy backend"
+    );
 }
 
 #[test]
@@ -159,7 +183,11 @@ fn test_forced_lief_backend() {
 
     let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Lief)
         .expect("LIEF backend should succeed for valid fixture");
-    assert_eq!(pe.backend_name(), "lief", "forced LIEF should use lief backend");
+    assert_eq!(
+        pe.backend_name(),
+        "lief",
+        "forced LIEF should use lief backend"
+    );
     assert!(pe.is_lief(), "is_lief() should be true for LIEF backend");
 }
 
@@ -172,7 +200,11 @@ fn test_auto_backend_prefers_lief() {
 
     let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Auto)
         .expect("auto backend should succeed");
-    assert_eq!(pe.backend_name(), "lief", "auto should prefer LIEF when available");
+    assert_eq!(
+        pe.backend_name(),
+        "lief",
+        "auto should prefer LIEF when available"
+    );
 }
 
 #[test]
@@ -187,7 +219,10 @@ fn test_runtime_pe64_section_access() {
         let section = pe.get_section(i);
         assert!(section.is_some(), "Section {} should be accessible", i);
         let sect = section.unwrap();
-        assert!(!sect.name.is_empty() || sect.virtual_address > 0, "Section should have name or valid VA");
+        assert!(
+            !sect.name.is_empty() || sect.virtual_address > 0,
+            "Section should have name or valid VA"
+        );
     }
 }
 
@@ -202,7 +237,10 @@ fn test_lief_resource_enumeration() {
     match pe.get_resources() {
         Ok(resources) => {
             for res in &resources {
-                assert!(!res.name.is_empty() || res.resource_type > 0, "Resource should have name or type");
+                assert!(
+                    !res.name.is_empty() || res.resource_type > 0,
+                    "Resource should have name or type"
+                );
             }
         }
         Err(e) => {
@@ -227,8 +265,14 @@ fn test_serialization_roundtrip() {
 
     let serialized: SerializablePE64 = (&pe).into();
 
-    assert!(!serialized.filename.is_empty(), "Serialized filename should not be empty");
-    assert!(!serialized.raw.is_empty(), "Serialized raw data should not be empty");
+    assert!(
+        !serialized.filename.is_empty(),
+        "Serialized filename should not be empty"
+    );
+    assert!(
+        !serialized.raw.is_empty(),
+        "Serialized raw data should not be empty"
+    );
     assert_eq!(
         serialized.backend,
         Some(expected_backend),
@@ -236,8 +280,14 @@ fn test_serialization_roundtrip() {
     );
 
     let deserialized: RuntimePe64 = serialized.into();
-    assert!(deserialized.image_base() > 0, "Deserialized image base should be non-zero");
-    assert!(deserialized.num_of_sections() > 0, "Deserialized should have sections");
+    assert!(
+        deserialized.image_base() > 0,
+        "Deserialized image base should be non-zero"
+    );
+    assert!(
+        deserialized.num_of_sections() > 0,
+        "Deserialized should have sections"
+    );
 }
 
 #[test]
@@ -262,12 +312,27 @@ fn test_lief_from_raw_bytes_after_path_deleted() {
 
     let reloaded = match LiefPe::load_from_raw(&fake_path, &raw) {
         Ok(p) => p,
-        Err(e) => panic!("load_from_raw should work even when original path is deleted: {}", e),
+        Err(e) => panic!(
+            "load_from_raw should work even when original path is deleted: {}",
+            e
+        ),
     };
 
-    assert_eq!(reloaded.image_base(), image_base, "image_base should match after raw reload");
-    assert_eq!(reloaded.entry_point(), entry_point, "entry_point should match after raw reload");
-    assert_eq!(reloaded.num_sections(), num_sections, "section count should match after raw reload");
+    assert_eq!(
+        reloaded.image_base(),
+        image_base,
+        "image_base should match after raw reload"
+    );
+    assert_eq!(
+        reloaded.entry_point(),
+        entry_point,
+        "entry_point should match after raw reload"
+    );
+    assert_eq!(
+        reloaded.num_sections(),
+        num_sections,
+        "section count should match after raw reload"
+    );
 }
 
 #[test]
@@ -347,7 +412,10 @@ fn test_section_cache_lru_eviction_order() {
         None => return,
     };
 
-    let pe = match crate::loaders::pe::lief::LiefPe::load_with_policy(path, CachePolicy::LRU { max_bytes: 1 }) {
+    let pe = match crate::loaders::pe::lief::LiefPe::load_with_policy(
+        path,
+        CachePolicy::LRU { max_bytes: 1 },
+    ) {
         Ok(pe) => pe,
         Err(_) => return,
     };
@@ -365,6 +433,8 @@ fn test_section_cache_lru_eviction_order() {
         return;
     }
 
-    assert!(pe.is_section_index_loaded(0) || pe.is_section_index_loaded(1),
-            "at least one section should be cached after eviction");
+    assert!(
+        pe.is_section_index_loaded(0) || pe.is_section_index_loaded(1),
+        "at least one section should be cached after eviction"
+    );
 }

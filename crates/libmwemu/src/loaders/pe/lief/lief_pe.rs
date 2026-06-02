@@ -7,13 +7,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use lief::Relocation;
 use lief::generic::{Section, Symbol};
 use lief::pe::resources::{Node, NodeBase};
-use lief::Relocation;
 use memmap2::Mmap;
 
 use crate::loaders::pe::lief::error::{
-    ExportInfo, ImportFunction, ImportInfo, LiefError, RelocationInfo, ResourceEntryInfo, ResourceInfo,
+    ExportInfo, ImportFunction, ImportInfo, LiefError, RelocationInfo, ResourceEntryInfo,
+    ResourceInfo,
 };
 use crate::loaders::pe::lief::lief_header_parser::LiefHeaderParser;
 use crate::loaders::pe::lief::lief_section_manager::{CachePolicy, LiefSectionManager};
@@ -47,7 +48,11 @@ pub struct CacheStats {
 }
 
 #[derive(Clone, Copy)]
-enum ResourceTreeLevel { Type, Name, Language }
+enum ResourceTreeLevel {
+    Type,
+    Name,
+    Language,
+}
 
 #[derive(Clone, Default)]
 struct ResourceWalkContext {
@@ -84,7 +89,8 @@ impl DelayLoadDescriptor {
 
     pub fn from_raw(raw: &[u8], offset: usize, dll_name: String) -> Option<Self> {
         let data = raw.get(offset..offset + 32)?;
-        let read_u32 = |i: usize| u32::from_le_bytes([data[i], data[i+1], data[i+2], data[i+3]]);
+        let read_u32 =
+            |i: usize| u32::from_le_bytes([data[i], data[i + 1], data[i + 2], data[i + 3]]);
         let d = DelayLoadDescriptor {
             dll_name,
             attributes: read_u32(0),
@@ -139,16 +145,13 @@ impl LiefPe {
 
         let mapped: Arc<Mmap> = Arc::new(
             unsafe { Mmap::map(&file) }
-                .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?
+                .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?,
         );
 
         let header = LiefHeaderParser::from_path(path)?;
 
-        let section_manager = LiefSectionManager::new(
-            PathBuf::from(path),
-            mapped,
-            header.pe_arc().clone(),
-        );
+        let section_manager =
+            LiefSectionManager::new(PathBuf::from(path), mapped, header.pe_arc().clone());
 
         Ok(Self {
             header,
@@ -193,7 +196,7 @@ impl LiefPe {
 
         let mapped: Arc<Mmap> = Arc::new(
             unsafe { Mmap::map(&file) }
-                .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?
+                .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?,
         );
 
         let header = LiefHeaderParser::from_path(path)?;
@@ -338,7 +341,10 @@ impl LiefPe {
     /// - `Ok(Some(Vec::new()))` if the section has zero raw data (valid empty)
     /// - `Ok(Some(data))` with the section data on success
     /// - `Err(LiefError)` if nonzero raw_size with invalid file offset
-    pub fn get_section_data_exact_by_index(&self, index: usize) -> Result<Option<Vec<u8>>, LiefError> {
+    pub fn get_section_data_exact_by_index(
+        &self,
+        index: usize,
+    ) -> Result<Option<Vec<u8>>, LiefError> {
         self.section_manager.get_section_data_exact_by_index(index)
     }
 
@@ -575,19 +581,27 @@ impl LiefPeReader for LiefPe {
     }
 
     fn get_section_vaddr(&self, index: usize) -> Option<u64> {
-        self.header.get_section(index).map(|s| s.virtual_address() as u64)
+        self.header
+            .get_section(index)
+            .map(|s| s.virtual_address() as u64)
     }
 
     fn get_section_size(&self, index: usize) -> Option<u64> {
-        self.header.get_section(index).map(|s| s.virtual_size() as u64)
+        self.header
+            .get_section(index)
+            .map(|s| s.virtual_size() as u64)
     }
 
     fn get_section_raw_size(&self, index: usize) -> Option<u64> {
-        self.header.get_section(index).map(|s| s.sizeof_raw_data() as u64)
+        self.header
+            .get_section(index)
+            .map(|s| s.sizeof_raw_data() as u64)
     }
 
     fn get_section_offset(&self, index: usize) -> Option<u64> {
-        self.header.get_section(index).map(|s| s.pointerto_raw_data() as u64)
+        self.header
+            .get_section(index)
+            .map(|s| s.pointerto_raw_data() as u64)
     }
 
     fn get_section_name(&self, index: usize) -> Option<String> {
@@ -646,11 +660,7 @@ impl LiefPeReader for LiefPe {
                 };
                 let rva = self.normalize_iat_to_rva(function.iat_address() as u64);
 
-                functions.push(ImportFunction {
-                    name,
-                    ordinal,
-                    rva,
-                });
+                functions.push(ImportFunction { name, ordinal, rva });
             }
 
             imports.push(ImportInfo {
@@ -673,11 +683,7 @@ impl LiefPeReader for LiefPe {
             let ordinal = export.value() as u16;
             let rva = export.value() as u64;
 
-            exports.push(ExportInfo {
-                name,
-                ordinal,
-                rva,
-            });
+            exports.push(ExportInfo { name, ordinal, rva });
         }
 
         Ok(exports)
@@ -920,7 +926,12 @@ impl LiefPe {
         if offset + 4 > data.len() {
             return None;
         }
-        Some(u32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]))
+        Some(u32::from_le_bytes([
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+        ]))
     }
 
     /// Read a u64 from data at the given offset
@@ -929,8 +940,14 @@ impl LiefPe {
             return None;
         }
         Some(u64::from_le_bytes([
-            data[offset], data[offset + 1], data[offset + 2], data[offset + 3],
-            data[offset + 4], data[offset + 5], data[offset + 6], data[offset + 7],
+            data[offset],
+            data[offset + 1],
+            data[offset + 2],
+            data[offset + 3],
+            data[offset + 4],
+            data[offset + 5],
+            data[offset + 6],
+            data[offset + 7],
         ]))
     }
 
@@ -1116,7 +1133,10 @@ impl LiefPe {
         if reloc_file_off.saturating_add(reloc_size) > file_data.len() {
             return Err(LiefError::RelocationError(format!(
                 "reloc directory out of bounds: off=0x{:x} size={} file_len={} (file: {})",
-                reloc_file_off, reloc_size, file_data.len(), self.file_path
+                reloc_file_off,
+                reloc_size,
+                file_data.len(),
+                self.file_path
             )));
         }
 
@@ -1216,7 +1236,11 @@ impl LiefPe {
         Ok(entries)
     }
 
-    pub fn apply_relocations(&self, emu: &mut crate::emu::Emu, base_addr: u64) -> Result<u64, LiefError> {
+    pub fn apply_relocations(
+        &self,
+        emu: &mut crate::emu::Emu,
+        base_addr: u64,
+    ) -> Result<u64, LiefError> {
         let delta = base_addr.wrapping_sub(self.image_base());
         if delta == 0 {
             return Ok(delta);
@@ -1227,7 +1251,11 @@ impl LiefPe {
             return Ok(delta);
         }
 
-        log::trace!("Applying {} base relocations with delta 0x{:x}...", entries.len(), delta);
+        log::trace!(
+            "Applying {} base relocations with delta 0x{:x}...",
+            entries.len(),
+            delta
+        );
 
         for entry in &entries {
             self.apply_relocation_entry(emu, base_addr, entry, delta)?;
@@ -1245,7 +1273,13 @@ impl LiefPe {
     }
 
     /// Apply a single relocation entry
-    fn apply_relocation_entry(&self, emu: &mut crate::emu::Emu, base_addr: u64, entry: &ParsedRelocation, delta: u64) -> Result<(), LiefError> {
+    fn apply_relocation_entry(
+        &self,
+        emu: &mut crate::emu::Emu,
+        base_addr: u64,
+        entry: &ParsedRelocation,
+        delta: u64,
+    ) -> Result<(), LiefError> {
         let target_rva = entry.rva;
         let file_data = self.mapped_file_data();
         let target_off = entry.target_file_off;
@@ -1317,11 +1351,15 @@ impl LiefPe {
                     }
 
                     let (cache_key, real_addr) = if !func_name.is_empty() {
-                        let key = format!("{}!{}", dll_name.to_lowercase(), func_name.to_lowercase());
+                        let key =
+                            format!("{}!{}", dll_name.to_lowercase(), func_name.to_lowercase());
                         let addr = if let Some(&cached) = cache.get(&key) {
                             cached
                         } else {
-                            let resolved = crate::winapi::winapi64::kernel32::resolve_api_name_in_module(emu, &dll_name, &func_name);
+                            let resolved =
+                                crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                                    emu, &dll_name, &func_name,
+                                );
                             if resolved != 0 {
                                 cache.insert(key.clone(), resolved);
                             }
@@ -1334,7 +1372,10 @@ impl LiefPe {
                         let addr = if let Some(&cached) = cache.get(&key) {
                             cached
                         } else {
-                            let resolved = crate::winapi::winapi64::kernel32::resolve_api_ordinal_in_module(emu, &dll_name, ordinal);
+                            let resolved =
+                                crate::winapi::winapi64::kernel32::resolve_api_ordinal_in_module(
+                                    emu, &dll_name, ordinal,
+                                );
                             if resolved != 0 {
                                 cache.insert(key.clone(), resolved);
                             }
@@ -1400,7 +1441,12 @@ impl LiefPe {
         self.delay_load_binding_inner(emu, base_addr, &mut cache);
     }
 
-    fn delay_load_binding_inner(&self, emu: &mut crate::emu::Emu, base_addr: u64, cache: &mut HashMap<String, u64>) -> Vec<(u64, String)> {
+    fn delay_load_binding_inner(
+        &self,
+        emu: &mut crate::emu::Emu,
+        base_addr: u64,
+        cache: &mut HashMap<String, u64>,
+    ) -> Vec<(u64, String)> {
         log::trace!("Delay-load binding started...");
 
         let file_data = self.mapped_file_data();
@@ -1422,16 +1468,27 @@ impl LiefPe {
                 continue;
             }
 
-            let bindings = self.process_delay_load_entries(emu, base_addr, &descriptor, &file_data, cache);
+            let bindings =
+                self.process_delay_load_entries(emu, base_addr, &descriptor, &file_data, cache);
             total_bindings.extend(bindings);
         }
 
-        log::trace!("Delay-load binding completed ({} bindings)", total_bindings.len());
+        log::trace!(
+            "Delay-load binding completed ({} bindings)",
+            total_bindings.len()
+        );
         total_bindings
     }
 
     /// Process delay-load entries for a single descriptor
-    fn process_delay_load_entries(&self, emu: &mut crate::emu::Emu, base_addr: u64, descriptor: &DelayLoadDescriptor, file_data: &[u8], cache: &mut HashMap<String, u64>) -> Vec<(u64, String)> {
+    fn process_delay_load_entries(
+        &self,
+        emu: &mut crate::emu::Emu,
+        base_addr: u64,
+        descriptor: &DelayLoadDescriptor,
+        file_data: &[u8],
+        cache: &mut HashMap<String, u64>,
+    ) -> Vec<(u64, String)> {
         let mut bindings = Vec::new();
         let mode = DelayPointerMode::from_descriptor_attrs(descriptor.attributes);
         let dll_name = &descriptor.dll_name;
@@ -1462,7 +1519,9 @@ impl LiefPe {
                 let real_addr = if let Some(&cached) = cache.get(&cache_key) {
                     cached
                 } else {
-                    let addr = crate::winapi::winapi64::kernel32::resolve_api_ordinal_in_module(emu, dll_name, ordinal);
+                    let addr = crate::winapi::winapi64::kernel32::resolve_api_ordinal_in_module(
+                        emu, dll_name, ordinal,
+                    );
                     if addr != 0 {
                         cache.insert(cache_key.clone(), addr);
                     }
@@ -1504,7 +1563,9 @@ impl LiefPe {
                 let real_addr = if let Some(&cached) = cache.get(&cache_key) {
                     cached
                 } else {
-                    let addr = crate::winapi::winapi64::kernel32::resolve_api_name_in_module(emu, dll_name, &func_name);
+                    let addr = crate::winapi::winapi64::kernel32::resolve_api_name_in_module(
+                        emu, dll_name, &func_name,
+                    );
                     if addr != 0 {
                         cache.insert(cache_key.clone(), addr);
                     }
@@ -1533,7 +1594,6 @@ impl LiefPe {
 
         bindings
     }
-
 }
 
 /// Parse delay-load descriptors from raw PE data at the given file offset.

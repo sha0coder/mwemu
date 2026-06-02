@@ -32,7 +32,8 @@ macro_rules! write_u64_le {
 
 impl PE64 {
     pub(crate) fn pe64_apply_relocations(&mut self, emu: &mut emu::Emu, base_addr: u64) {
-        if self.opt.data_directory.len() <= crate::loaders::pe::pe32::IMAGE_DIRECTORY_ENTRY_BASERELOC
+        if self.opt.data_directory.len()
+            <= crate::loaders::pe::pe32::IMAGE_DIRECTORY_ENTRY_BASERELOC
         {
             return;
         }

@@ -21,11 +21,11 @@ use crate::{
     loaders::macho::macho64::Macho64,
     loaders::pe::{pe32::PE32, runtime_pe64::RuntimePe64},
     maps::Maps,
+    pe::api_set_resolver::ApiSetResolver,
     threading::context::ThreadContext,
     threading::global_locks::GlobalLocks,
     utils::colors::Colors,
     windows::structures::MemoryOperation,
-    pe::api_set_resolver::ApiSetResolver,
 };
 
 /// Architecture-specific instruction decoding and disassembly state.
@@ -90,11 +90,11 @@ pub struct Emu {
     // --- Instruction decoding & disassembly ---
     pub arch_state: ArchState, // architecture-specific decode/cache/formatter state
     pub last_decoded: Option<DecodedInstruction>, // last decoded instruction (arch-neutral)
-    pub last_decoded_addr: u64,                   // address where `last_decoded` lived; needed
-                                                  // for state dumps because `pc()` already
-                                                  // reflects the *next* instruction (post-ret /
-                                                  // post-branch / post-advance) and would print
-                                                  // the wrong pc next to the last opcode.
+    pub last_decoded_addr: u64, // address where `last_decoded` lived; needed
+    // for state dumps because `pc()` already
+    // reflects the *next* instruction (post-ret /
+    // post-branch / post-advance) and would print
+    // the wrong pc next to the last opcode.
     pub last_instruction_size: usize,
     pub rep: Option<u64>, // REP prefix counter for string operations
 
@@ -106,21 +106,21 @@ pub struct Emu {
     pub now: Instant, // timestamp of emulation start (wall-clock timing)
     pub force_break: bool, // set by breakpoints, memory violations, etc. to stop execution
     pub process_terminated: bool, // set by NtTerminateProcess; prevents run() from resetting is_running
-    pub call_depth: u32,          // nesting depth of call64/call32 — NtTerminateProcess only exits at depth 0
-    pub ldr_init_done: bool,      // true after LdrInitializeThunk call64 completes; switches API dispatch to virtual stubs
-    pub force_reload: bool,       // trigger instruction re-decode
-    pub run_until_ret: bool,      // step-over mode: run until next RET
+    pub call_depth: u32, // nesting depth of call64/call32 — NtTerminateProcess only exits at depth 0
+    pub ldr_init_done: bool, // true after LdrInitializeThunk call64 completes; switches API dispatch to virtual stubs
+    pub force_reload: bool,  // trigger instruction re-decode
+    pub run_until_ret: bool, // step-over mode: run until next RET
     pub rng: RefCell<rand::rngs::ThreadRng>,
 
     // --- Platform & loaded binary ---
-    pub os: OperatingSystem,      // target OS (set by loader / init)
+    pub os: OperatingSystem,       // target OS (set by loader / init)
     pub pe64: Option<RuntimePe64>, // parsed PE64 (legacy or LIEF) for runtime import resolution & resources
-    pub pe32: Option<PE32>,       // parsed PE32 for runtime import resolution & resources
-    pub elf64: Option<Elf64>,     // parsed ELF64 (Linux x86_64 / AArch64)
-    pub elf32: Option<Elf32>,     // parsed ELF32 (Linux x86)
-    pub macho64: Option<Macho64>, // parsed Mach-O 64 (macOS AArch64), includes addr_to_symbol
-    pub tls_callbacks: Vec<u64>,  // PE TLS callback addresses
-    pub library_loaded: bool,     // flag for GDB to detect library load events
+    pub pe32: Option<PE32>,        // parsed PE32 for runtime import resolution & resources
+    pub elf64: Option<Elf64>,      // parsed ELF64 (Linux x86_64 / AArch64)
+    pub elf32: Option<Elf32>,      // parsed ELF32 (Linux x86)
+    pub macho64: Option<Macho64>,  // parsed Mach-O 64 (macOS AArch64), includes addr_to_symbol
+    pub tls_callbacks: Vec<u64>,   // PE TLS callback addresses
+    pub library_loaded: bool,      // flag for GDB to detect library load events
 
     // --- Thread management ---
     pub threads: Vec<ThreadContext>,
@@ -158,12 +158,12 @@ pub struct Emu {
     // --- Win32 resource management ---
     pub handle_management: HandleManagement, // file and object handle table
     pub section_handles: HashMap<u64, String>, // KnownDll section handle → DLL filename (e.g., "kernel32.dll")
-    pub file_handles: HashMap<u64, String>,    // NtOpenFile handle → resolved basename (e.g., "kernelbase.dll"); used by NtCreateSection to inherit the dll name
+    pub file_handles: HashMap<u64, String>, // NtOpenFile handle → resolved basename (e.g., "kernelbase.dll"); used by NtCreateSection to inherit the dll name
     pub syscall_number_map: HashMap<u64, u64>, // real_nr (from loaded ntdll) → canonical_nr (the value our gateway dispatcher matches on). Built at init by scanning ntdll exports; empty means no translation.
     pub syscall_name_by_real: HashMap<u64, String>, // real_nr → "Nt<Name>" as exported by the loaded ntdll. Used in diagnostics so unimplemented-syscall logs name the right function (the static `what_syscall()` table is tied to a single Windows build and would otherwise mislabel cross-build syscalls).
-    pub known_dll_dir_handles: HashSet<u64>,   // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
+    pub known_dll_dir_handles: HashSet<u64>, // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
     pub symbolic_link_targets: HashMap<u64, String>, // NtOpenSymbolicLinkObject handle → resolved link target (e.g. "\KnownDlls\KnownDllPath" → "C:\\Windows\\System32"); read back by NtQuerySymbolicLinkObject so ntdll's LdrInit can resolve the KnownDlls search path
-    pub ssdt_pad_stack: Vec<u64>,              // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
+    pub ssdt_pad_stack: Vec<u64>, // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
 
     // --- API Set resolver ---
     pub api_set_resolver: Option<ApiSetResolver>, // API set schema resolver for Windows

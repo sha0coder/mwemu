@@ -1,4 +1,4 @@
-use crate::{windows::constants, emu, winapi::winapi64::kernel32::set_last_error};
+use crate::{emu, winapi::winapi64::kernel32::set_last_error, windows::constants};
 
 pub fn GetCurrentDirectoryA(emu: &mut emu::Emu) {
     let buff_len = emu.regs().rcx as u32;

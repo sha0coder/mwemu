@@ -22,7 +22,11 @@ impl Maps {
             if !self.write_byte(addr + i as u64, b) {
                 log::warn!(
                     "memset truncated at 0x{:x} ({} of {} bytes written; destination not fully writable). caller request was addr=0x{:x} amount={}",
-                    addr + i as u64, i, amount, addr, amount,
+                    addr + i as u64,
+                    i,
+                    amount,
+                    addr,
+                    amount,
                 );
                 // Print a small Rust backtrace so we can identify the caller cheaply.
                 let bt = std::backtrace::Backtrace::force_capture();

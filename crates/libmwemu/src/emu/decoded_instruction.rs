@@ -44,13 +44,10 @@ impl DecodedInstruction {
     #[inline]
     pub fn is_return(&self) -> bool {
         match self {
-            DecodedInstruction::X86(ins) => matches!(
-                ins.code(),
-                Code::Retnw | Code::Retnd | Code::Retnq
-            ),
-            DecodedInstruction::AArch64(ins) => {
-                ins.opcode == yaxpeax_arm::armv8::a64::Opcode::RET
+            DecodedInstruction::X86(ins) => {
+                matches!(ins.code(), Code::Retnw | Code::Retnd | Code::Retnq)
             }
+            DecodedInstruction::AArch64(ins) => ins.opcode == yaxpeax_arm::armv8::a64::Opcode::RET,
         }
     }
 

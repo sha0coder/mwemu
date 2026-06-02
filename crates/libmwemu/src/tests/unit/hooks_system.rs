@@ -289,12 +289,13 @@ pub fn test_winapi_hook() {
     mem.set_permission(Permission::READ_WRITE);
     emu.maps.write_string(emu.regs().rdx, "inject");
 
-    emu.hooks.on_winapi_call(|emu: &mut Emu, ip: u64, _called_addr: u64| -> bool {
-        println!("WinAPI call at {:x} {_called_addr:x}", ip);
-        assert_eq!(ip, 0x140001241);
-        assert_eq!(_called_addr, 0x7ff0003420f0); // winapi called
-        true
-    });
+    emu.hooks
+        .on_winapi_call(|emu: &mut Emu, ip: u64, _called_addr: u64| -> bool {
+            println!("WinAPI call at {:x} {_called_addr:x}", ip);
+            assert_eq!(ip, 0x140001241);
+            assert_eq!(_called_addr, 0x7ff0003420f0); // winapi called
+            true
+        });
 
     // launch the msgbox
     emu.step();

@@ -60,7 +60,7 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fist_m16int_zero() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]
-                           // FIST word ptr [0x3000]
+    // FIST word ptr [0x3000]
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, 0xDF, 0x14, 0x25, 0x00, 0x30, 0x00, 0x00, 0xDD,
         0xD8, // FSTP ST(0) to clean up

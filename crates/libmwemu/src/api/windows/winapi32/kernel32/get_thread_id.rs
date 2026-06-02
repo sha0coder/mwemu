@@ -20,6 +20,10 @@ pub fn GetThreadId(emu: &mut emu::Emu) {
             return;
         }
     }
-    log_red!(emu, "kernel32!GetThreadId hndl:{} (requested handle doesn't exist, returning a fake handle for now but should return zero.)", hndl);
+    log_red!(
+        emu,
+        "kernel32!GetThreadId hndl:{} (requested handle doesn't exist, returning a fake handle for now but should return zero.)",
+        hndl
+    );
     emu.regs_mut().rax = 0x2c2878; // if handle not found should return zero.
 }

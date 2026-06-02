@@ -7,8 +7,8 @@ use crate::loaders::pe::readers::{
 };
 use crate::winapi::winapi64;
 
-use crate::loaders::pe::pe32::HintNameItem;
 use super::PE64;
+use crate::loaders::pe::pe32::HintNameItem;
 
 macro_rules! read_u32_le {
     ($raw:expr, $off:expr) => {
@@ -57,8 +57,7 @@ impl PE64 {
                 }
 
                 let func_name = PE64::read_string(&self.raw, off2 + 2);
-                let cache_key =
-                    format!("{}!{}", dld.name.to_lowercase(), func_name.to_lowercase());
+                let cache_key = format!("{}!{}", dld.name.to_lowercase(), func_name.to_lowercase());
                 let real_addr = if let Some(cached) = resolved_cache.get(&cache_key) {
                     *cached
                 } else {
@@ -184,8 +183,7 @@ impl PE64 {
                 println!("---- ordinal: {}", ordinal);
                 unimplemented!("third variation of iat binding not implemented");
             } else {
-                let func_name_addr =
-                    (func_name_addr_or_ordinal & 0x7fff_ffff_ffff_ffff) as u32;
+                let func_name_addr = (func_name_addr_or_ordinal & 0x7fff_ffff_ffff_ffff) as u32;
                 let off_name = PE64::vaddr_to_off(&self.sect_hdr, func_name_addr) as usize;
                 let api_name = PE64::read_string(&self.raw, off_name + 2);
 
@@ -261,8 +259,7 @@ impl PE64 {
             }
 
             let func_name = PE64::read_string(&self.raw, off2 + 2);
-            let cache_key =
-                format!("{}!{}", import_dll.to_lowercase(), func_name.to_lowercase());
+            let cache_key = format!("{}!{}", import_dll.to_lowercase(), func_name.to_lowercase());
             let real_addr = if let Some(cached) = resolved_cache.get(&cache_key) {
                 *cached
             } else {

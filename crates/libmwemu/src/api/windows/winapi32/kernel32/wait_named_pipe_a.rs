@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn WaitNamedPipeA(emu: &mut emu::Emu) {
     let lpNamedPipeName = emu
@@ -13,11 +13,7 @@ pub fn WaitNamedPipeA(emu: &mut emu::Emu) {
 
     let lpNamedPipeName = emu.maps.read_string(lpNamedPipeName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!WaitNamedPipeA {}",
-        lpNamedPipeName
-    );
+    log_red!(emu, "kernel32!WaitNamedPipeA {}", lpNamedPipeName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

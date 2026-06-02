@@ -1,9 +1,9 @@
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
-use std::collections::BTreeSet;
 
 use atty::Stream;
 use csv::ReaderBuilder;
@@ -1012,9 +1012,8 @@ impl Emu {
                     let ntdll_base = ntdll_pe.get_base();
                     let ntdll_size: usize = 0x800000;
                     // Pattern: `mov r12d, 0x2000 ; test edi, edi ; js rel32`
-                    let needle: &[u8] = &[
-                        0x41, 0xbc, 0x00, 0x20, 0x00, 0x00, 0x85, 0xff, 0x0f, 0x88,
-                    ];
+                    let needle: &[u8] =
+                        &[0x41, 0xbc, 0x00, 0x20, 0x00, 0x00, 0x85, 0xff, 0x0f, 0x88];
                     let mut found_va: Option<u64> = None;
                     for off in 0..ntdll_size.saturating_sub(needle.len() + 4) {
                         let va = ntdll_base + off as u64;
@@ -1153,7 +1152,11 @@ impl Emu {
         let apiset_path = self.cfg.get_maps_folder("apisetschema.dll");
         match ApiSetResolver::from_file(&apiset_path) {
             Ok(resolver) => self.api_set_resolver = Some(resolver),
-            Err(e) => log::warn!("Failed to load API set resolver from {}: {}", apiset_path, e),
+            Err(e) => log::warn!(
+                "Failed to load API set resolver from {}: {}",
+                apiset_path,
+                e
+            ),
         }
 
         let mut metadata: Vec<Lib> = Vec::new();

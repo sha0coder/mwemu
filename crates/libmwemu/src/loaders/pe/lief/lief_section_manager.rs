@@ -73,7 +73,12 @@ impl LiefSectionManager {
     }
 
     /// Create a new section manager with custom cache policy
-    pub fn with_policy(file_path: PathBuf, mapped_file: Arc<Mmap>, policy: CachePolicy, pe_binary: Arc<PeBinary>) -> Self {
+    pub fn with_policy(
+        file_path: PathBuf,
+        mapped_file: Arc<Mmap>,
+        policy: CachePolicy,
+        pe_binary: Arc<PeBinary>,
+    ) -> Self {
         let mapped: Arc<[u8]> = Arc::from(&mapped_file[..]);
         Self {
             file_path,
@@ -142,10 +147,17 @@ impl LiefSectionManager {
     ///
     /// This method always validates section bounds against the file regardless
     /// of whether the section data is already cached.
-    pub fn get_section_data_exact_by_index(&self, index: usize) -> Result<Option<Vec<u8>>, LiefError> {
+    pub fn get_section_data_exact_by_index(
+        &self,
+        index: usize,
+    ) -> Result<Option<Vec<u8>>, LiefError> {
         let pe = match self.pe_binary.as_ref() {
             Some(pe) => pe,
-            None => return Err(LiefError::SectionNotFound("PE binary not available".to_string())),
+            None => {
+                return Err(LiefError::SectionNotFound(
+                    "PE binary not available".to_string(),
+                ));
+            }
         };
         let section = match pe.sections().nth(index) {
             Some(s) => s,
@@ -164,7 +176,10 @@ impl LiefSectionManager {
         if file_offset >= mapped.len() {
             return Err(LiefError::InvalidOffset(format!(
                 "section {} raw_size={} but file_offset=0x{:x} >= file_len={}",
-                index, raw_size, file_offset, mapped.len()
+                index,
+                raw_size,
+                file_offset,
+                mapped.len()
             )));
         }
 
@@ -172,7 +187,11 @@ impl LiefSectionManager {
         if raw_size > available {
             return Err(LiefError::InvalidOffset(format!(
                 "section {} raw_size={} exceeds file: file_offset=0x{:x} available={} file_len={}",
-                index, raw_size, file_offset, available, mapped.len()
+                index,
+                raw_size,
+                file_offset,
+                available,
+                mapped.len()
             )));
         }
 
@@ -253,7 +272,8 @@ impl LiefSectionManager {
     pub fn cached_sections(&self) -> Vec<String> {
         let cache = self.section_cache.read().unwrap();
         if let Some(pe) = self.pe_binary.as_ref() {
-            cache.keys()
+            cache
+                .keys()
                 .filter_map(|&idx| pe.sections().nth(idx).map(|s| s.name().to_string()))
                 .collect()
         } else {

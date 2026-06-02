@@ -1,8 +1,8 @@
-use crate::windows::constants;
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::serialization;
 use crate::winapi::winapi64::kernel32;
+use crate::windows::constants;
 //use crate::winapi::helper;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
@@ -53,9 +53,9 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     // Calculate exact sizes like the real API
     let string_bytes = char_count * 2; // Requested characters in bytes
     let total_alloc_size = 4 + string_bytes + 2 + 16; // Length prefix + string + null terminator
-                                                      // the extra 16 byes are not allocated on the
-                                                      // real winapi, but it's needed to allo some
-                                                      // optimizations
+    // the extra 16 byes are not allocated on the
+    // real winapi, but it's needed to allo some
+    // optimizations
 
     // Allocate memory (no extra padding needed)
     let bstr = emu
@@ -119,16 +119,16 @@ fn SysFreeString(emu: &mut emu::Emu) {
         let string_length = length_bytes / 2; // Convert bytes to characters
 
         log_red!(
-        emu,
-        "SysFreeString zeroing {} bytes starting at 0x{:x} (string data was {} bytes, {} chars)",
-        total_size,
-        // Total allocation size
+            emu,
+            "SysFreeString zeroing {} bytes starting at 0x{:x} (string data was {} bytes, {} chars)",
+            total_size,
+            // Total allocation size
             alloc_base,
-        // Base address
+            // Base address
             length_bytes,
-        // String data in bytes
+            // String data in bytes
             string_length
-    );
+        );
 
         // Zero out the entire BSTR allocation
         for i in 0..total_size {

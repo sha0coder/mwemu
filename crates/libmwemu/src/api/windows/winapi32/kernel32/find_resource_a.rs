@@ -2,18 +2,9 @@ use crate::emu;
 use crate::winapi::helper;
 
 pub fn FindResourceA(emu: &mut emu::Emu) {
-    let hModule = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .unwrap_or(0) as usize;
-    let lpName = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .unwrap_or(0) as usize;
-    let lpType = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .unwrap_or(0) as usize;
+    let hModule = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as usize;
+    let lpName = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as usize;
+    let lpType = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as usize;
 
     let x: Option<(u64, usize)>;
 

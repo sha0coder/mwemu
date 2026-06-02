@@ -39,7 +39,8 @@ impl LiefHeaderParser {
     /// Memory-maps the file and parses headers only.
     pub fn from_path(path: &str) -> Result<Self, LiefError> {
         // Open the file
-        let file = File::open(path).map_err(|e| LiefError::FileNotFound(format!("{}: {}", path, e)))?;
+        let file =
+            File::open(path).map_err(|e| LiefError::FileNotFound(format!("{}: {}", path, e)))?;
 
         // Get file size for memory mapping
         let file_size = file
@@ -97,16 +98,22 @@ impl LiefHeaderParser {
 
         let mut temp_file = tempfile::NamedTempFile::new()
             .map_err(|e| LiefError::ParseFailed(format!("Failed to create temp file: {}", e)))?;
-        
+
         use std::io::Write;
-        temp_file.write_all(data)
+        temp_file
+            .write_all(data)
             .map_err(|e| LiefError::ParseFailed(format!("Failed to write temp file: {}", e)))?;
-        temp_file.flush()
+        temp_file
+            .flush()
             .map_err(|e| LiefError::ParseFailed(format!("Failed to flush temp file: {}", e)))?;
-        temp_file.as_file().sync_all()
+        temp_file
+            .as_file()
+            .sync_all()
             .map_err(|e| LiefError::ParseFailed(format!("Failed to sync temp file: {}", e)))?;
 
-        let temp_path = temp_file.path().to_str()
+        let temp_path = temp_file
+            .path()
+            .to_str()
             .ok_or_else(|| LiefError::ParseFailed("Invalid temp path".to_string()))?
             .to_string();
 
@@ -346,7 +353,8 @@ impl LiefPeReader for LiefHeaderParser {
     }
 
     fn get_section_offset(&self, index: usize) -> Option<u64> {
-        self.get_section(index).map(|s| s.pointerto_raw_data() as u64)
+        self.get_section(index)
+            .map(|s| s.pointerto_raw_data() as u64)
     }
 
     fn get_section_name(&self, index: usize) -> Option<String> {

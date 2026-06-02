@@ -173,7 +173,7 @@ fn test_fprem1_ieee_rounding_case2() {
 #[test]
 fn test_fprem1_magnitude_less_than_half() {
     let mut emu = emu64(); // IEEE remainder magnitude should be <= |modulus|/2
-                           // 10.0 % 7.0: Q = 1.428... rounds to 1, remainder = 10.0 - 1*7.0 = 3.0
+    // 10.0 % 7.0: Q = 1.428... rounds to 1, remainder = 10.0 - 1*7.0 = 3.0
     let code = [
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword [0x2008]
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]

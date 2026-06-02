@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn BaseDestroyVDMEnvironment(emu: &mut emu::Emu) {
     let _AnsiString = emu

@@ -3,9 +3,9 @@ use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::windows::structures::LdrDataTableEntry;
 use crate::windows::structures::OrdinalTable;
+use crate::windows::structures::PEB;
 use crate::windows::structures::PebLdrData;
 use crate::windows::structures::RtlUserProcessParameters32;
-use crate::windows::structures::PEB;
 use crate::windows::structures::TEB;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {

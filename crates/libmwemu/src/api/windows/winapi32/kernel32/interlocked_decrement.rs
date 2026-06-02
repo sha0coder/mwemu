@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn InterlockedDecrement(emu: &mut emu::Emu) {
     let _lpAddend = emu

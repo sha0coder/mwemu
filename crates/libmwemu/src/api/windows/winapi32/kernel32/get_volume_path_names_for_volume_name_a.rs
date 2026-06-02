@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetVolumePathNamesForVolumeNameA(emu: &mut emu::Emu) {
     let lpszVolumeName = emu

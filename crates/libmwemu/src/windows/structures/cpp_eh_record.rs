@@ -1,5 +1,5 @@
-use crate::maps::Maps;
 use super::p_scope_table_entry::PScopeTableEntry;
+use crate::maps::Maps;
 
 #[derive(Debug)]
 pub struct CppEhRecord {

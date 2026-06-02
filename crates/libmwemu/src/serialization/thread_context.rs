@@ -50,10 +50,23 @@ impl From<&ThreadContext> for SerializableThreadContext {
     fn from(thread: &ThreadContext) -> Self {
         match &thread.arch {
             ArchThreadState::X86 {
-                regs, pre_op_regs, post_op_regs,
-                flags, pre_op_flags, post_op_flags,
-                eflags, fpu, seh, veh, uef, eh_ctx,
-                tls32, tls64, fls, fs, call_stack,
+                regs,
+                pre_op_regs,
+                post_op_regs,
+                flags,
+                pre_op_flags,
+                post_op_flags,
+                eflags,
+                fpu,
+                seh,
+                veh,
+                uef,
+                eh_ctx,
+                tls32,
+                tls64,
+                fls,
+                fs,
+                call_stack,
             } => SerializableThreadContext {
                 id: thread.id,
                 suspended: thread.suspended,

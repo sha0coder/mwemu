@@ -757,7 +757,11 @@ impl Mem64 {
         if idx + T::SIZE > self.mem.len() {
             log::warn!(
                 "Mem64::read_scalar out-of-bounds: addr=0x{:x} idx={} +{} > len={} ({})",
-                addr, idx, T::SIZE, self.mem.len(), trace.label()
+                addr,
+                idx,
+                T::SIZE,
+                self.mem.len(),
+                trace.label()
             );
             let zeros = vec![0u8; T::SIZE];
             return crate::maps::scalar::read_le(&zeros).expect("incorrect length");

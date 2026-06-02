@@ -1,5 +1,5 @@
 use crate::emu::Emu;
-use yaxpeax_arm::armv8::a64::{Operand, SizeCode, ShiftStyle};
+use yaxpeax_arm::armv8::a64::{Operand, ShiftStyle, SizeCode};
 
 pub enum ShiftOp {
     Lsl,
@@ -96,7 +96,11 @@ pub fn resolve_mem_addr(emu: &Emu, op: &Operand) -> (u64, Option<(usize, u64)>) 
         Operand::RegPreIndex(reg, offset, writeback) => {
             let base = regs.get_x_or_sp(*reg as usize);
             let addr = base.wrapping_add(*offset as i64 as u64);
-            let wb = if *writeback { Some((*reg as usize, addr)) } else { None };
+            let wb = if *writeback {
+                Some((*reg as usize, addr))
+            } else {
+                None
+            };
             (addr, wb)
         }
         Operand::RegPostIndex(reg, offset) => {

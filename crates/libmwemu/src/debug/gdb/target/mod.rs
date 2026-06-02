@@ -23,4 +23,3 @@ impl std::fmt::Display for MwemuGdbError {
 }
 
 impl std::error::Error for MwemuGdbError {}
-

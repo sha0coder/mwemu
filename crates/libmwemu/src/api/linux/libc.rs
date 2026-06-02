@@ -72,7 +72,10 @@ fn api_libc_start_main(emu: &mut Emu) {
             api_exit(emu);
         }
         Err(err) => {
-            log::warn!("linuxapi libc: __libc_start_main failed to run main: {}", err);
+            log::warn!(
+                "linuxapi libc: __libc_start_main failed to run main: {}",
+                err
+            );
             emu.stop();
         }
     }

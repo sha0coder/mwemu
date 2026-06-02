@@ -1,6 +1,6 @@
-use crate::windows::constants;
 use crate::emu;
 use crate::maps::mem64::Permission;
+use crate::windows::constants;
 
 const PAGE_NOACCESS: u32 = 0x01;
 const PAGE_READONLY: u32 = 0x02;

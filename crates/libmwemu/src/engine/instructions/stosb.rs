@@ -5,10 +5,16 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+            emu.show_instruction(
+                color!("LightCyan"),
+                &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+            );
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+        emu.show_instruction(
+            color!("LightCyan"),
+            &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+        );
     }
 
     if emu.cfg.is_x64() {
@@ -24,7 +30,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             {
                 log::trace!(
                     "DEBUG first stosb OOB at rdi=0x{:x} rip=0x{:x} rcx=0x{:x} pos={}",
-                    rdi, emu.regs().rip, emu.regs().rcx, emu.pos,
+                    rdi,
+                    emu.regs().rip,
+                    emu.regs().rcx,
+                    emu.pos,
                 );
             }
             return false;

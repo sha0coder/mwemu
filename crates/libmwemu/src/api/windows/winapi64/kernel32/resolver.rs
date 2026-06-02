@@ -71,7 +71,9 @@ fn resolve_in_module_exports_depth(
     flink.load(emu);
     let first_ptr = flink.get_ptr();
     loop {
-        if flink.export_table_rva > 0 && kernel32_common::module_name_matches(&flink.mod_name, &want) {
+        if flink.export_table_rva > 0
+            && kernel32_common::module_name_matches(&flink.mod_name, &want)
+        {
             for i in 0..flink.num_of_funcs {
                 if flink.pe_hdr == 0 {
                     continue;
@@ -178,38 +180,54 @@ fn resolve_ordinal_in_module_impl(emu: &mut emu::Emu, module_hint: &str, ordinal
     flink.load(emu);
     let first_ptr = flink.get_ptr();
     loop {
-        if flink.export_table_rva > 0 && kernel32_common::module_name_matches(&flink.mod_name, &want) {
+        if flink.export_table_rva > 0
+            && kernel32_common::module_name_matches(&flink.mod_name, &want)
+        {
             if flink.pe_hdr == 0 {
-                if !flink.next(emu) || flink.get_ptr() == first_ptr { break; }
+                if !flink.next(emu) || flink.get_ptr() == first_ptr {
+                    break;
+                }
                 continue;
             }
 
             let ordinal_base = emu.maps.read_dword(flink.export_table + 0x10).unwrap_or(0) as u64;
             let num_of_funcs = flink.num_of_funcs;
-            let func_addr_tbl_rva = emu.maps.read_dword(flink.export_table + 0x1c).unwrap_or(0) as u64;
+            let func_addr_tbl_rva =
+                emu.maps.read_dword(flink.export_table + 0x1c).unwrap_or(0) as u64;
             let func_addr_tbl = func_addr_tbl_rva + flink.mod_base;
 
             let idx = ordinal as u64;
             if idx < ordinal_base || idx >= ordinal_base + num_of_funcs {
-                if !flink.next(emu) || flink.get_ptr() == first_ptr { break; }
+                if !flink.next(emu) || flink.get_ptr() == first_ptr {
+                    break;
+                }
                 continue;
             }
 
             let func_idx = idx - ordinal_base;
             if func_idx >= num_of_funcs {
-                if !flink.next(emu) || flink.get_ptr() == first_ptr { break; }
+                if !flink.next(emu) || flink.get_ptr() == first_ptr {
+                    break;
+                }
                 continue;
             }
 
-            let func_rva = emu.maps.read_dword(func_addr_tbl + 4 * func_idx).unwrap_or(0) as u64;
+            let func_rva = emu
+                .maps
+                .read_dword(func_addr_tbl + 4 * func_idx)
+                .unwrap_or(0) as u64;
             if func_rva == 0 {
-                if !flink.next(emu) || flink.get_ptr() == first_ptr { break; }
+                if !flink.next(emu) || flink.get_ptr() == first_ptr {
+                    break;
+                }
                 continue;
             }
 
             let func_va = func_rva + flink.mod_base;
 
-            if func_rva >= flink.export_table_rva && func_rva < flink.export_table_rva.saturating_add(flink.export_dir_size) {
+            if func_rva >= flink.export_table_rva
+                && func_rva < flink.export_table_rva.saturating_add(flink.export_dir_size)
+            {
                 let forwarder_slice = emu.maps.read_bytes(func_va, 256);
                 let forwarder_owned = forwarder_slice.to_vec();
                 let forwarder_str = String::from_utf8_lossy(&forwarder_owned);

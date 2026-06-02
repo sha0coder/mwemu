@@ -2,8 +2,8 @@ use std::convert::TryInto as _;
 
 use serde::{Deserialize, Serialize};
 
-use crate::fpu::fpu_stack::FPUStack;
 use crate::fpu::FPU;
+use crate::fpu::fpu_stack::FPUStack;
 
 #[derive(Serialize, Deserialize)]
 pub struct SerializableFPU {

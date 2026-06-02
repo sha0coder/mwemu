@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn QuirkIsEnabledForPackage4Worker(emu: &mut emu::Emu) {
     let _userSid = emu

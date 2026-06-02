@@ -1,5 +1,5 @@
-use crate::windows::constants::*;
 use crate::emu::Emu;
+use crate::windows::constants::*;
 
 /// `SYSTEM_TIMEOFDAY_INFORMATION` size (56 bytes).
 const SYSTEM_TIMEOFDAY_INFORMATION_SIZE: u32 = 56;
@@ -58,7 +58,8 @@ pub fn nt_query_system_information(emu: &mut Emu) {
     }
 
     if len > 0 && info != 0 {
-        if !emu.maps.is_mapped(info) || !emu.maps.is_mapped(info + u64::from(len).saturating_sub(1)) {
+        if !emu.maps.is_mapped(info) || !emu.maps.is_mapped(info + u64::from(len).saturating_sub(1))
+        {
             emu.regs_mut().rax = STATUS_ACCESS_VIOLATION;
             return;
         }
@@ -152,8 +153,8 @@ pub fn nt_query_system_information(emu: &mut Emu) {
                 emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
                 return;
             }
-            let _ = emu.maps.write_byte(info, 0);     // DebuggerEnabled = FALSE
-            let _ = emu.maps.write_byte(info + 1, 1);  // DebuggerNotPresent = TRUE
+            let _ = emu.maps.write_byte(info, 0); // DebuggerEnabled = FALSE
+            let _ = emu.maps.write_byte(info + 1, 1); // DebuggerNotPresent = TRUE
             write_return_length(emu, ret_len_ptr, NEED);
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
@@ -316,8 +317,8 @@ pub fn nt_query_information_transaction_manager(emu: &mut Emu) {
     );
 
     let (needed, _desc): (u64, &str) = match info_class {
-        0 => (24, "BasicInformation"),   // GUID(16) + LARGE_INTEGER(8)
-        1 => (16, "LogInformation"),     // GUID(16)
+        0 => (24, "BasicInformation"), // GUID(16) + LARGE_INTEGER(8)
+        1 => (16, "LogInformation"),   // GUID(16)
         _ => {
             emu.regs_mut().rax = STATUS_INVALID_INFO_CLASS;
             return;

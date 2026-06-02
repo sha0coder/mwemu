@@ -1,9 +1,9 @@
 use crate::emu;
 use crate::serialization;
 //use crate::endpoint;
-use crate::windows::structures::*;
 use crate::winapi::helper;
 use crate::winapi::winapi64;
+use crate::windows::structures::*;
 
 use crate::maps::mem64::Permission;
 use lazy_static::lazy_static;

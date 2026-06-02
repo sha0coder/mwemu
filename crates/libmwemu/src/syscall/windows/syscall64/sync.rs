@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::windows::constants::*;
 use crate::emu::Emu;
+use crate::windows::constants::*;
 
 static NEXT_FAKE_SYNC_HANDLE: AtomicU64 = AtomicU64::new(0x1000);
 
@@ -97,7 +97,7 @@ pub fn nt_wait_for_alert_by_thread_id(emu: &mut Emu) {
 /// Stub: write a fake handle and return STATUS_SUCCESS (accept).
 pub fn nt_alpc_accept_connect_port(emu: &mut Emu) {
     let handle_out = emu.regs().rcx;
-    let conn_port  = emu.regs().rdx;
+    let conn_port = emu.regs().rdx;
 
     log_orange!(
         emu,
@@ -119,9 +119,9 @@ pub fn nt_alpc_accept_connect_port(emu: &mut Emu) {
 /// RCX = Handle, RDX = Alertable (BOOLEAN), R8 = Timeout (PLARGE_INTEGER, optional).
 /// Stub: returns STATUS_SUCCESS (object signaled) immediately.
 pub fn nt_wait_for_single_object(emu: &mut Emu) {
-    let handle    = emu.regs().rcx;
+    let handle = emu.regs().rcx;
     let alertable = emu.regs().rdx;
-    let timeout   = emu.regs().r8;
+    let timeout = emu.regs().r8;
 
     log_orange!(
         emu,
@@ -140,9 +140,9 @@ pub fn nt_wait_for_single_object(emu: &mut Emu) {
 /// RCX = EventHandle (out), RDX = DesiredAccess, R8 = ObjectAttributes.
 /// Returns a fake handle; callers use it as an opaque synchronisation token.
 pub fn nt_open_event(emu: &mut Emu) {
-    let handle_out    = emu.regs().rcx;
+    let handle_out = emu.regs().rcx;
     let desired_access = emu.regs().rdx;
-    let object_attr   = emu.regs().r8;
+    let object_attr = emu.regs().r8;
 
     log_orange!(
         emu,
@@ -169,9 +169,9 @@ pub fn nt_open_event(emu: &mut Emu) {
 /// R9 = TimerType (0=Synchronization, 1=Notification), [rsp+0x28] = TimerAttributes.
 /// Returns a fake handle.
 pub fn nt_create_timer2(emu: &mut Emu) {
-    let handle_out   = emu.regs().rcx;
+    let handle_out = emu.regs().rcx;
     let desired_access = emu.regs().rdx;
-    let timer_type   = emu.regs().r9;
+    let timer_type = emu.regs().r9;
 
     log_orange!(
         emu,

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn RegisterApplicationRecoveryCallback(emu: &mut emu::Emu) {
     let _pRecoveyCallback = emu

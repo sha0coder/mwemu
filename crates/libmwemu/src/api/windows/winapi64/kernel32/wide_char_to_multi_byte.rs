@@ -1,5 +1,5 @@
-use crate::winapi::winapi64::kernel32::{clear_last_error, LAST_ERROR};
-use crate::{windows::constants, emu};
+use crate::winapi::winapi64::kernel32::{LAST_ERROR, clear_last_error};
+use crate::{emu, windows::constants};
 
 pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     let code_page = emu.regs().rcx as u64;
@@ -23,7 +23,9 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x38)
         .expect("kernel32!WideCharToMultiByte error reading param");
 
-    log_red!(emu, "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}",
+    log_red!(
+        emu,
+        "** {}:{:x} kernel32!WideCharToMultiByte code_page: {} dw_flags: {} lp_wide_char_str: 0x{:x} cch_wide_char: {} lp_multi_byte_str: 0x{:x} cb_multi_byte: {} lp_default_char: 0x{:x} lp_used_default_char: 0x{:x}",
         emu.pos,
         emu.regs().rip,
         code_page,
