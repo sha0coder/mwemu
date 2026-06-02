@@ -101,7 +101,7 @@ The project was renamed from scemu to mwemu.
 
 ## Capture an emulation moment
 
-During the emulation you can see the numer of cpu insturctions emulated, that's an unique ID for an emulation moment.
+During the emulation you can see the nubmer of cpu instructions emulated, that's an unique ID for an emulation moment.
 
 With -c flag you stop the emulation in a specific moment and inspect what is going on with the console.
 

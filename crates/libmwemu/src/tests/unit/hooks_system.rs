@@ -1,4 +1,11 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicI32;
+
+use crate::emu::decoded_instruction::DecodedInstruction;
+use crate::exception::types::ExceptionType;
+use crate::maps::mem64::Permission;
 use crate::tests::helpers;
+use crate::*;
 
 #[test]
 // test hooks system basic functionality
@@ -46,4 +53,249 @@ pub fn hooks_system() {
     assert!(!hooks.hook_on_pre_instruction.is_none());
     assert!(!hooks.hook_on_post_instruction.is_none());
     assert!(!hooks.hook_on_winapi_call.is_none());
+}
+
+#[test]
+pub fn test_on_interrupt() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    // int 0x80
+    emu.maps.write_spaced_bytes(code_base, &"CD 80".to_string());
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+
+    // clone it for the closure
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks
+        .on_interrupt(move |emu: &mut Emu, ip: u64, int: u64| -> bool {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            assert_eq!(ip, code_base);
+            assert_eq!(int, 0x80);
+            true
+        });
+
+    emu.set_pc(code_base);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+pub fn test_on_exception() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    // int 3 exception
+    emu.maps.write_spaced_bytes(code_base, &"CC".to_string());
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+
+    // clone it for the closure
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks.on_exception(
+        move |emu: &mut Emu, ip: u64, ex_type: ExceptionType| -> bool {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            assert_eq!(ip, code_base);
+            assert_eq!(ex_type, ExceptionType::Int3);
+            true
+        },
+    );
+
+    emu.set_pc(code_base);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+pub fn test_on_memory_read() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    let data_base = emu.alloc("data", 0x2000, Permission::READ_WRITE);
+    // mov eax, [data_base]
+    emu.maps.write_spaced_bytes(
+        code_base,
+        &format!(
+            "A1 {:02X} {:02X} {:02X} {:02X}",
+            data_base as u8,
+            (data_base >> 8) as u8,
+            (data_base >> 16) as u8,
+            (data_base >> 24) as u8
+        ),
+    );
+    emu.maps.write_dword(data_base, 0x12345678);
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+
+    // clone it for the closure
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks
+        .on_memory_read(move |emu: &mut Emu, ip: u64, addr: u64, sz: u32| {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            assert_eq!(ip, code_base);
+            assert_eq!(addr, data_base);
+            assert_eq!(sz, 32); // size in bits
+        });
+
+    emu.set_pc(code_base);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+pub fn test_on_memory_write() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    let data_base = emu.alloc("data", 0x2000, Permission::READ_WRITE);
+    // mov [data_base], eax
+    emu.maps.write_spaced_bytes(
+        code_base,
+        &format!(
+            "A3 {:02X} {:02X} {:02X} {:02X}",
+            data_base as u8,
+            (data_base >> 8) as u8,
+            (data_base >> 16) as u8,
+            (data_base >> 24) as u8
+        ),
+    );
+    emu.regs_mut().set_eax(0x12345678);
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks.on_memory_write(
+        move |emu: &mut Emu, ip: u64, addr: u64, sz: u32, value: u128| -> u128 {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            assert_eq!(ip, code_base);
+            assert_eq!(addr, data_base);
+            assert_eq!(sz, 32); // size in bits
+            assert_eq!(value, 0x12345678);
+            value
+        },
+    );
+
+    emu.set_pc(code_base);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+pub fn test_pre_post_hooks() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    // inc eax , inc eax
+    emu.maps.write_spaced_bytes(code_base, &"40 40".to_string());
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+
+    // clone it for the closure
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks.on_pre_instruction(
+        move |emu: &mut Emu, ip: u64, ins: &DecodedInstruction, sz: usize| -> bool {
+            let ctr_value = counter.load(std::sync::atomic::Ordering::SeqCst);
+            if ctr_value == 1 {
+                println!("Refused to skip");
+                false
+            } else {
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                true
+            }
+        },
+    );
+
+    emu.set_pc(code_base);
+    emu.regs_mut().set_eax(0);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert_eq!(emu.regs().get_eax(), 1);
+
+    // should refuse the skip
+    emu.step();
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert_eq!(emu.regs().get_eax(), 1);
+}
+
+#[test]
+pub fn test_post_instruction_hook() {
+    helpers::setup();
+
+    let mut emu = emu32();
+    let code_base = emu.alloc("code", 0x1000, Permission::READ_WRITE_EXECUTE);
+    // inc eax
+    emu.maps.write_spaced_bytes(code_base, &"40".to_string());
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+    let counter = Arc::clone(&call_counter);
+
+    emu.hooks.on_post_instruction(
+        move |emu: &mut Emu, ip: u64, ins: &DecodedInstruction, sz: usize, ok: bool| {
+            counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            assert_eq!(ip, code_base);
+            assert_eq!(ok, true);
+        },
+    );
+
+    emu.set_pc(code_base);
+    emu.step();
+
+    // it should have been triggered once
+    assert_eq!(call_counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+pub fn test_winapi_hook() {
+    // inspired from os/winapi32_tests.rs test_virtual_alloc_32
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
+
+    let sample = helpers::test_data_path("exe64win_msgbox.bin");
+    emu.load_code(&sample);
+    emu.run(Some(0x14000123f));
+
+    let message = emu.maps.read_string(emu.regs().rdx);
+    let title = emu.maps.read_string(emu.regs().rdi);
+
+    assert_eq!(message, "message");
+    assert_eq!(title, "title");
+
+    // we need to set the permission to use it
+    let mem = emu
+        .maps
+        .get_mem_by_addr_mut(emu.regs().rdx)
+        .expect("the memory need to be there");
+    mem.set_permission(Permission::READ_WRITE);
+    emu.maps.write_string(emu.regs().rdx, "inject");
+
+    emu.hooks.on_winapi_call(|emu: &mut Emu, ip: u64, _called_addr: u64| -> bool {
+        println!("WinAPI call at {:x} {_called_addr:x}", ip);
+        assert_eq!(ip, 0x140001241);
+        assert_eq!(_called_addr, 0x7ff0003420f0); // winapi called
+        true
+    });
+
+    // launch the msgbox
+    emu.step();
 }

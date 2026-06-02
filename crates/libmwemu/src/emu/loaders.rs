@@ -264,7 +264,95 @@ impl Emu {
 
                     let _ = self.call64(ldr_init, &[ctx_addr, ntdll_base, 0]);
                     self.ldr_init_done = true;
-                    log::trace!("ntdll!LdrInitializeThunk emulated completely.");
+                    if self.process_terminated {
+                        log::trace!(
+                            "ntdll!LdrInitializeThunk DID NOT complete — bailed out mid-init (process_terminated set). pos={}",
+                            self.pos,
+                        );
+                    } else if self.regs().rip == ep {
+                        log::trace!(
+                            "ntdll!LdrInitializeThunk emulated completely. pos={} rip=ep=0x{:x}",
+                            self.pos, ep,
+                        );
+                    } else {
+                        log::trace!(
+                            "ntdll!LdrInitializeThunk returned but rip=0x{:x} (expected ep=0x{:x}). pos={}",
+                            self.regs().rip, ep, self.pos,
+                        );
+                    }
+
+                    // Some ntdll versions (notably newer Win10/Win11/Server2022) reset
+                    // PEB_LDR_DATA during LdrInitializeThunk and rely on an internal
+                    // RB-tree (LdrpModuleBaseAddressIndex) for lookups, leaving the
+                    // legacy `In{Load,Memory,Initialization}OrderModuleList` linked
+                    // lists empty. PEB-walking shellcode still walks the linked list,
+                    // so we re-populate it here from our `.pe` maps in the order
+                    // expected on real Windows: EXE, ntdll, kernel32, kernelbase, ...
+                    {
+                        let peb_base = self.maps.get_mem("peb").get_base();
+                        let ldr_addr = self.maps.read_qword(peb_base + 0x18).unwrap_or(0);
+                        if ldr_addr != 0 {
+                            let sentinel_mem = ldr_addr + 0x20;
+                            let first = self.maps.read_qword(sentinel_mem).unwrap_or(0);
+                            if first == 0 || first == sentinel_mem {
+                                log::trace!("LDR InMemoryOrder list empty post-LdrInit — repopulating");
+                                let exe_name = self.cfg.exe_name.clone();
+                                let exe_base = self.base;
+                                // Canonical Win10+ early-list order
+                                let preferred: Vec<(String, u64)> = vec![
+                                    (exe_name.clone(),     exe_base),
+                                    ("ntdll.dll".into(),       self.maps.get_map_by_name("ntdll.pe").map(|m| m.get_base()).unwrap_or(0)),
+                                    ("kernel32.dll".into(),    self.maps.get_map_by_name("kernel32.pe").map(|m| m.get_base()).unwrap_or(0)),
+                                    ("kernelbase.dll".into(),  self.maps.get_map_by_name("kernelbase.pe").map(|m| m.get_base()).unwrap_or(0)),
+                                ];
+                                for (name, base) in preferred {
+                                    if base == 0 { continue; }
+                                    let pe_off = self.maps.read_dword(base + 0x3c).unwrap_or(0);
+                                    crate::windows::peb::peb64::dynamic_link_module(base, pe_off, &name, self);
+                                    log::trace!("  repopulated LDR entry {} base=0x{:x}", name, base);
+                                }
+                            }
+                        }
+                    }
+
+                    // DEBUG: dump InMemoryOrder chain so we can verify a PEB-walking
+                    // shellcode finds the expected DllBase at the expected index.
+                    {
+                        let peb_base = self.maps.get_mem("peb").get_base();
+                        let ldr = self.maps.read_qword(peb_base + 0x18).unwrap_or(0);
+                        log::trace!("DEBUG ldr_chain: PEB=0x{:x} Ldr=0x{:x}", peb_base, ldr);
+                        // Dump first 64 bytes of the PEB_LDR_DATA so we can see if
+                        // ntdll restructured the lists.
+                        let mut hex = String::new();
+                        for j in 0..64u64 {
+                            let b = self.maps.read_byte(ldr + j).unwrap_or(0);
+                            hex.push_str(&format!("{:02x} ", b));
+                        }
+                        log::trace!("DEBUG ldr_dump[0..64]: {}", hex);
+                        let sentinel = ldr + 0x20;
+                        let mut cur = self.maps.read_qword(sentinel).unwrap_or(0);
+                        log::trace!("DEBUG sentinel=0x{:x} first_flink=0x{:x}", sentinel, cur);
+                        let mut i = 0;
+                        while cur != 0 && cur != sentinel && i < 16 {
+                            // cur points to &entry.InMemoryOrderLinks (offset 0x10 in LDR_DATA_TABLE_ENTRY)
+                            let entry = cur.wrapping_sub(0x10);
+                            let dll_base = self.maps.read_qword(entry + 0x30).unwrap_or(0);
+                            // BaseDllName UNICODE_STRING is at offset 0x58: Length(W), MaxLen(W), pad(D), Buffer(Q)
+                            let name_len = self.maps.read_word(entry + 0x58).unwrap_or(0) as u64;
+                            let name_buf = self.maps.read_qword(entry + 0x58 + 8).unwrap_or(0);
+                            let mut s = String::new();
+                            let mut j = 0u64;
+                            while j < name_len.min(128) {
+                                let w = self.maps.read_word(name_buf + j).unwrap_or(0);
+                                if w == 0 { break; }
+                                s.push(char::from_u32(w as u32).unwrap_or('?'));
+                                j += 2;
+                            }
+                            log::trace!("DEBUG ldr_chain[{}] entry=0x{:x} DllBase=0x{:x} name='{}'", i, entry, dll_base, s);
+                            cur = self.maps.read_qword(cur).unwrap_or(0);
+                            i += 1;
+                        }
+                    }
                 } else if self.cfg.verbose >= 1 {
                     log::trace!("ssdt: could not resolve ntdll!LdrInitializeThunk");
                 }
@@ -278,7 +366,20 @@ impl Emu {
                 self.run(Some(base));
             }*/
 
-            self.regs_mut().rip = ep;
+            // If LdrInitializeThunk bailed via NtTerminateProcess, do not
+            // continue with the EXE entry point: ntdll's loader state is
+            // partially initialised and any further execution will crash
+            // somewhere unrelated. Leave RIP at the syscall site so the
+            // operator sees the actual termination point.
+            if self.process_terminated {
+                log::error!(
+                    "ntdll!LdrInitializeThunk terminated the process during init. \
+                     Skipping EXE entry. Last rip=0x{:x}",
+                    self.regs().rip,
+                );
+            } else {
+                self.regs_mut().rip = ep;
+            }
 
         // Shellcode
         } else {

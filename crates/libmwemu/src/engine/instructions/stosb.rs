@@ -16,6 +16,17 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             .maps
             .write_byte(emu.regs().rdi, emu.regs().get_al() as u8)
         {
+            static FIRST_OOB: std::sync::atomic::AtomicBool =
+                std::sync::atomic::AtomicBool::new(false);
+            let rdi = emu.regs().rdi;
+            if (0x412000..=0x420000).contains(&rdi)
+                && !FIRST_OOB.swap(true, std::sync::atomic::Ordering::Relaxed)
+            {
+                log::trace!(
+                    "DEBUG first stosb OOB at rdi=0x{:x} rip=0x{:x} rcx=0x{:x} pos={}",
+                    rdi, emu.regs().rip, emu.regs().rcx, emu.pos,
+                );
+            }
             return false;
         }
         if emu.flags().f_df {

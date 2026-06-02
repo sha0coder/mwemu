@@ -216,6 +216,56 @@ pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
     ldr_addr
 }
 
+/// Peek the PE Characteristics field of `filename` to tell whether it is a DLL
+/// or an EXE without doing the full PE load. Returns `Some(true)` for a DLL
+/// (`IMAGE_FILE_DLL = 0x2000`), `Some(false)` for an EXE, or `None` if the
+/// file cannot be parsed.
+pub fn pe_is_dll(filename: &str) -> Option<bool> {
+    use std::io::Read;
+    if filename.is_empty() {
+        return None;
+    }
+    let mut f = std::fs::File::open(filename).ok()?;
+    let mut hdr = [0u8; 0x140];
+    let _ = f.read(&mut hdr).ok()?;
+    if hdr[0] != b'M' || hdr[1] != b'Z' {
+        return None;
+    }
+    let e_lfanew = u32::from_le_bytes([hdr[0x3c], hdr[0x3d], hdr[0x3e], hdr[0x3f]]) as usize;
+    // COFF FileHeader.Characteristics is at e_lfanew+4 (Signature) +18.
+    let char_off = e_lfanew + 4 + 18;
+    if char_off + 2 > hdr.len() {
+        // Header straddles past the slurped chunk — fetch the bytes directly.
+        use std::io::Seek;
+        let mut f = std::fs::File::open(filename).ok()?;
+        f.seek(std::io::SeekFrom::Start(char_off as u64)).ok()?;
+        let mut buf = [0u8; 2];
+        f.read_exact(&mut buf).ok()?;
+        let ch = u16::from_le_bytes(buf);
+        return Some((ch & 0x2000) != 0);
+    }
+    let ch = u16::from_le_bytes([hdr[char_off], hdr[char_off + 1]]);
+    Some((ch & 0x2000) != 0)
+}
+
+/// If `cfg.filename` is an EXE (not a DLL), set `cfg.exe_name` to its
+/// basename so PEB/LDR setup uses the real image name instead of the
+/// generic "loader.exe" placeholder. Idempotent; safe to call before
+/// PEB init. Leaves the default in place for DLLs and shellcode.
+pub fn refresh_exe_name_from_filename(emu: &mut emu::Emu) {
+    let basename: String = std::path::Path::new(&emu.cfg.filename)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    if basename.is_empty() {
+        return;
+    }
+    if matches!(pe_is_dll(&emu.cfg.filename), Some(false)) {
+        emu.cfg.exe_name = basename;
+    }
+}
+
 pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
     let addr = emu.maps.map(
         "RtlUserProcessParameters64",
@@ -224,36 +274,50 @@ pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
     );
     let mut params_struct = RtlUserProcessParameters64::new();
 
-    let filename_len = emu.cfg.filename.len() as u64 * 2 + 2;
-    let cmdline_len = filename_len + emu.cfg.arguments.len() as u64 * 2 + 2;
+    // `cfg.exe_name` is set to the real EXE basename by
+    // `refresh_exe_name_from_filename` BEFORE `init_ldr` runs, so the LDR
+    // entry created early shares the name `init_arguments` writes into
+    // ImagePathName. Present the path Windows-canonical (`C:\<name>`) so
+    // newer ntdll (`LdrpInitializeProcess` → `RtlGetFullPathName_UEx`)
+    // can derive FullDllName / BaseDllName for the EXE's
+    // LDR_DATA_TABLE_ENTRY — unix-style paths like `test/foo.bin` make
+    // the parser leave the freshly-allocated BaseDllName.Buffer untouched
+    // and the next `RtlHashUnicodeString` faults inside ntdll.
+    let image_path = format!("C:\\{}", emu.cfg.exe_name);
+    let mut cmdline_str = image_path.clone();
+    cmdline_str.push_str(&emu.cfg.arguments);
+
+    // UNICODE_STRING.Length is bytes WITHOUT trailing NUL; MaximumLength
+    // is the buffer capacity INCLUDING space for the NUL terminator.
+    let image_bytes  = image_path.len() as u64 * 2;
+    let image_maxlen = image_bytes + 2;
+    let cmd_bytes    = cmdline_str.len() as u64 * 2;
+    let cmd_maxlen   = cmd_bytes + 2;
 
     let filename = emu
         .maps
-        .map("file_name", filename_len, Permission::READ_WRITE);
+        .map("file_name", image_maxlen, Permission::READ_WRITE);
     let cmdline = emu
         .maps
-        .map("command_line", cmdline_len, Permission::READ_WRITE);
+        .map("command_line", cmd_maxlen, Permission::READ_WRITE);
 
     let dll_path_buf = emu.maps.map("dll_path", 4, Permission::READ_WRITE);
     emu.maps.write_wide_string(dll_path_buf, "");
 
-    params_struct.image_path_name.length = filename_len as u16;
-    params_struct.image_path_name.maximum_length = filename_len as u16;
+    params_struct.image_path_name.length = image_bytes as u16;
+    params_struct.image_path_name.maximum_length = image_maxlen as u16;
     params_struct.image_path_name.buffer = filename;
 
-    params_struct.command_line.length = cmdline_len as u16;
-    params_struct.command_line.maximum_length = cmdline_len as u16;
+    params_struct.command_line.length = cmd_bytes as u16;
+    params_struct.command_line.maximum_length = cmd_maxlen as u16;
     params_struct.command_line.buffer = cmdline;
 
     params_struct.dll_path.length = 0;
     params_struct.dll_path.maximum_length = 4;
     params_struct.dll_path.buffer = dll_path_buf;
 
-    let mut params = emu.cfg.filename.clone();
-    params.push_str(&emu.cfg.arguments);
-
-    emu.maps.write_wide_string(filename, &emu.cfg.filename);
-    emu.maps.write_wide_string(cmdline, &params);
+    emu.maps.write_wide_string(filename, &image_path);
+    emu.maps.write_wide_string(cmdline, &cmdline_str);
 
     params_struct.save(addr, &mut emu.maps);
 

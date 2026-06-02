@@ -304,6 +304,136 @@ pub fn nt_query_open_subkeys_ex(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
+/// `NtOpenSymbolicLinkObject` — RCX `LinkHandle` (out), RDX `DesiredAccess`,
+/// R8 `ObjectAttributes`.
+///
+/// ntdll's `LdrpInitializeProcess` opens `\KnownDlls\KnownDllPath` to discover
+/// the on-disk search path for known DLLs (typically `C:\Windows\System32`).
+/// We return a fake handle and remember the link's resolved target so a follow-up
+/// `NtQuerySymbolicLinkObject` returns the expected path; without this, ntdll
+/// receives STATUS_NOT_IMPLEMENTED, raises a hard error, and terminates the
+/// process with 0xC0000002 mid-LdrInit.
+pub fn nt_open_symbolic_link_object(emu: &mut Emu) {
+    let handle_out        = emu.regs().rcx;
+    let desired_access    = emu.regs().rdx;
+    let object_attributes = emu.regs().r8;
+
+    let link_name = read_object_attributes_name(emu, object_attributes);
+    let root_dir  = read_object_attributes_root_directory(emu, object_attributes);
+    let is_relative_to_known_dlls =
+        root_dir != 0 && emu.known_dll_dir_handles.contains(&root_dir);
+    let full_name = if is_relative_to_known_dlls && !link_name.starts_with('\\') {
+        format!("\\KnownDlls\\{}", link_name)
+    } else {
+        link_name.clone()
+    };
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtOpenSymbolicLinkObject out: 0x{:x}, access: 0x{:x}, name: \"{}\"",
+        WIN64_NTOPENSYMBOLICLINKOBJECT,
+        handle_out,
+        desired_access,
+        full_name,
+    );
+
+    if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    let lower = full_name.to_lowercase();
+    let target: Option<String> = if lower == "\\knowndlls\\knowndllpath"
+        || lower == "knowndllpath"
+    {
+        Some("C:\\Windows\\System32".to_string())
+    } else if lower == "\\knowndlls32\\knowndllpath" {
+        Some("C:\\Windows\\SysWOW64".to_string())
+    } else {
+        // Unknown symbolic link: still hand out a handle so the caller can
+        // proceed; NtQuerySymbolicLinkObject will return an empty target.
+        None
+    };
+
+    let h = sync::next_handle();
+    let _ = emu.maps.write_qword(handle_out, h);
+    emu.symbolic_link_targets
+        .insert(h, target.unwrap_or_default());
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+/// `NtQuerySymbolicLinkObject` — RCX `LinkHandle`, RDX `LinkTarget` (UNICODE_STRING in/out),
+/// R8 `ReturnedLength` (optional ULONG out).
+///
+/// Writes the target previously remembered by `NtOpenSymbolicLinkObject` into the
+/// caller's UNICODE_STRING buffer as wide chars. The UNICODE_STRING points its
+/// `Buffer` field at caller-provided memory whose size is given by `MaximumLength`
+/// (in bytes); we honour that limit and report the required length via the
+/// `Length` field and the `ReturnedLength` out-pointer.
+pub fn nt_query_symbolic_link_object(emu: &mut Emu) {
+    let link_handle      = emu.regs().rcx;
+    let link_target_us   = emu.regs().rdx;
+    let returned_len_ptr = emu.regs().r8;
+
+    let target = emu
+        .symbolic_link_targets
+        .get(&link_handle)
+        .cloned()
+        .unwrap_or_default();
+
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtQuerySymbolicLinkObject h: 0x{:x} target: \"{}\"",
+        WIN64_NTQUERYSYMBOLICLINKOBJECT,
+        link_handle,
+        target,
+    );
+
+    if link_target_us == 0 || !emu.maps.is_mapped(link_target_us) {
+        emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+        return;
+    }
+
+    // UNICODE_STRING: USHORT Length; USHORT MaximumLength; pad(4); PWSTR Buffer;
+    let max_len = emu.maps.read_word(link_target_us + 2).unwrap_or(0) as u64;
+    let buf_ptr = emu.maps.read_qword(link_target_us + 8).unwrap_or(0);
+
+    let wide: Vec<u16> = target.encode_utf16().collect();
+    let needed_bytes = (wide.len() as u64) * 2;
+    // Include trailing NUL when it fits — many callers expect a NUL-terminated buffer.
+    let nul_bytes = if needed_bytes + 2 <= max_len { 2u64 } else { 0u64 };
+
+    if needed_bytes > max_len || buf_ptr == 0 || !emu.maps.is_mapped(buf_ptr) {
+        if returned_len_ptr != 0 && emu.maps.is_mapped(returned_len_ptr) {
+            let _ = emu.maps.write_dword(returned_len_ptr, needed_bytes as u32);
+        }
+        emu.regs_mut().rax = STATUS_BUFFER_TOO_SMALL;
+        return;
+    }
+
+    for (i, w) in wide.iter().enumerate() {
+        let _ = emu.maps.write_word(buf_ptr + (i as u64) * 2, *w);
+    }
+    if nul_bytes == 2 {
+        let _ = emu.maps.write_word(buf_ptr + needed_bytes, 0);
+    }
+    // Length excludes the trailing NUL on Windows (matches MaximumLength semantics).
+    let _ = emu.maps.write_word(link_target_us, needed_bytes as u16);
+    if returned_len_ptr != 0 && emu.maps.is_mapped(returned_len_ptr) {
+        let _ = emu
+            .maps
+            .write_dword(returned_len_ptr, (needed_bytes + nul_bytes) as u32);
+    }
+    emu.regs_mut().rax = STATUS_SUCCESS;
+}
+
+fn read_object_attributes_root_directory(emu: &Emu, addr: u64) -> u64 {
+    if addr == 0 || !emu.maps.is_mapped(addr) {
+        return 0;
+    }
+    emu.maps.read_qword(addr + 0x08).unwrap_or(0)
+}
+
 fn read_unicode_string(emu: &Emu, addr: u64) -> String {
     if addr == 0 || !emu.maps.is_mapped(addr) {
         return String::new();

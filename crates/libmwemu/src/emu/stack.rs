@@ -105,11 +105,15 @@ impl Emu {
         self.set_sp(new_sp);
 
         if self.maps.write_qword(new_sp, value) {
-            true
-        } else {
-            log::trace!("/!\\ pushing in non mapped mem 0x{:x}", new_sp);
-            false
+            return true;
         }
+        // Auto-grow the stack on a fresh push that lands in a yet-uncommitted
+        // page (Windows would have hit a PAGE_GUARD fault and committed it).
+        if self.try_grow_stack(new_sp) && self.maps.write_qword(new_sp, value) {
+            return true;
+        }
+        log::trace!("/!\\ pushing in non mapped mem 0x{:x}", new_sp);
+        false
     }
 
     /// Pop a dword from stack and return it, None if esp points to unmapped zone.

@@ -402,6 +402,47 @@ pub fn nt_raise_hard_error(emu: &mut Emu) {
         response_ptr
     );
 
+    // For diagnostic purposes, dump each Parameter. If `UnicodeStringParameterMask`
+    // has bit N set, parameter N is a `PUNICODE_STRING`; otherwise it is a ULONG_PTR.
+    if num_params > 0 && parameters != 0 && emu.maps.is_mapped(parameters) {
+        for i in 0..num_params.min(4) {
+            let param_addr = parameters + (i as u64) * 8;
+            let pv = emu.maps.read_qword(param_addr).unwrap_or(0);
+            if (unicode_mask >> i) & 1 == 1 {
+                // PUNICODE_STRING — read Buffer + Length and dump the wide string.
+                if pv != 0 && emu.maps.is_mapped(pv) {
+                    let len   = emu.maps.read_word(pv).unwrap_or(0) as u64;
+                    let bufp  = emu.maps.read_qword(pv + 8).unwrap_or(0);
+                    let mut s = String::new();
+                    let mut j = 0u64;
+                    while j < len.min(256) && bufp != 0 {
+                        let w = emu.maps.read_word(bufp + j).unwrap_or(0);
+                        if w == 0 { break; }
+                        s.push(char::from_u32(w as u32).unwrap_or('?'));
+                        j += 2;
+                    }
+                    log_orange!(
+                        emu,
+                        "    NtRaiseHardError param[{}] = UNICODE_STRING@0x{:x} (\"{}\")",
+                        i, pv, s,
+                    );
+                } else {
+                    log_orange!(
+                        emu,
+                        "    NtRaiseHardError param[{}] = UNICODE_STRING@0x{:x} (unmapped)",
+                        i, pv,
+                    );
+                }
+            } else {
+                log_orange!(
+                    emu,
+                    "    NtRaiseHardError param[{}] = 0x{:x}",
+                    i, pv,
+                );
+            }
+        }
+    }
+
     const HARDERROR_RESPONSE_OK: u32 = 6;
     if response_ptr != 0 && emu.maps.is_mapped(response_ptr) {
         let _ = emu.maps.write_dword(response_ptr, HARDERROR_RESPONSE_OK);
@@ -430,14 +471,14 @@ pub fn nt_terminate_process(emu: &mut Emu) {
         return;
     }
 
-    // Only propagate termination to the outer run() when we are in the main
-    // execution loop (call_depth == 0). Inside a call64 context (e.g. the
-    // LdrInitializeThunk bootstrap) ntdll may call NtTerminateProcess on an
-    // error path; we still stop the inner run() via is_running but do not
-    // poison process_terminated so that the outer run() can continue.
-    if emu.call_depth == 0 {
-        emu.process_terminated = true;
-    }
+    // Always propagate termination — including when we are nested inside a
+    // `call64` context (e.g. the LdrInitializeThunk bootstrap). The previous
+    // behaviour was to silently swallow `NtTerminateProcess` at depth > 0 so
+    // the outer `run()` could continue with the EXE entrypoint, but that
+    // hides the fact that ntdll bailed out mid-init: the EXE then runs with
+    // a partially-initialised loader and crashes downstream in a way that
+    // looks unrelated.
+    emu.process_terminated = true;
     emu.is_running.store(0, Ordering::Relaxed);
     emu.regs_mut().rax = STATUS_SUCCESS;
 }

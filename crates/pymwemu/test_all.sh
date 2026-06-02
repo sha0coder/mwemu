@@ -46,6 +46,11 @@ if [ -d "deps" ]; then
     rm -rf deps
 fi
 
+# --- STUB GENERATION ---
+echo "Generating Python stubs..."
+cargo run --bin stub_gen || handle_error "Failed to generate python stubs"
+# -----------------------------------
+
 # Always rebuild to ensure we're testing the latest code
 echo "Building pymwemu with maturin..."
 maturin develop --release || handle_error "Failed to build pymwemu with maturin develop"

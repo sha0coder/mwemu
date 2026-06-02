@@ -25,18 +25,15 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
                 return false;
             }
         };
-        //log::trace!("addr: 0x{:x} value: 0x{:x}", addr, xmm);
-        emu.maps.write_dword(
-            addr,
-            ((xmm & 0xffffffff_00000000_00000000_00000000) >> (12 * 8)) as u32,
-        );
-        emu.maps.write_dword(
-            addr + 4,
-            ((xmm & 0xffffffff_00000000_00000000) >> (8 * 8)) as u32,
-        );
-        emu.maps
-            .write_dword(addr + 8, ((xmm & 0xffffffff_00000000) >> (4 * 8)) as u32);
-        emu.maps.write_dword(addr + 12, (xmm & 0xffffffff) as u32);
+        // movdqa stores in little-endian: the low 32 bits of xmm go to addr+0,
+        // ..., the high 32 bits go to addr+12. (The previous implementation
+        // wrote the dwords reversed, which silently corrupted any UNICODE_STRING
+        // or other 16-byte struct passed through xmm registers — surfaced
+        // during ntdll's `LdrpInitializeProcess` BaseDllName setup.)
+        emu.maps.write_dword(addr, (xmm & 0xffffffff) as u32);
+        emu.maps.write_dword(addr + 4, ((xmm >> 32) & 0xffffffff) as u32);
+        emu.maps.write_dword(addr + 8, ((xmm >> 64) & 0xffffffff) as u32);
+        emu.maps.write_dword(addr + 12, ((xmm >> 96) & 0xffffffff) as u32);
     } else if sz0 == 128 && sz1 == 32 {
         let addr = match emu.get_operand_value(ins, 1, false) {
             Some(v) => v,

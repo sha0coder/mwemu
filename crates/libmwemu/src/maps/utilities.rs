@@ -3,8 +3,32 @@ use super::Maps;
 impl Maps {
     #[inline(always)]
     pub fn memset(&mut self, addr: u64, b: u8, amount: usize) {
+        // Bulk-write when the whole range fits in one writable map. Falls back
+        // to byte-by-byte only for boundary-crossing cases, and stops on the
+        // first failed byte instead of spamming the log with one warning per
+        // out-of-range byte.
+        if amount == 0 {
+            return;
+        }
+        let end_addr = addr + amount as u64 - 1;
+        if let Some(mem) = self.get_mem_by_addr_mut(addr) {
+            if mem.inside(end_addr) && mem.can_write() {
+                let buf = vec![b; amount];
+                mem.write_bytes(addr, &buf);
+                return;
+            }
+        }
         for i in 0..amount {
-            self.write_byte(addr + i as u64, b);
+            if !self.write_byte(addr + i as u64, b) {
+                log::warn!(
+                    "memset truncated at 0x{:x} ({} of {} bytes written; destination not fully writable). caller request was addr=0x{:x} amount={}",
+                    addr + i as u64, i, amount, addr, amount,
+                );
+                // Print a small Rust backtrace so we can identify the caller cheaply.
+                let bt = std::backtrace::Backtrace::force_capture();
+                log::warn!("backtrace:\n{}", bt);
+                return;
+            }
         }
     }
 

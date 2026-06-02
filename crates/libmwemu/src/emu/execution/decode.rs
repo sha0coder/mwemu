@@ -51,10 +51,22 @@ impl Emu {
         }
 
         if !is_aarch64 {
-            let zeros = block.iter().take_while(|&&b| b == 0).count();
-            if !self.cfg.allow_empty_code_blocks && zeros > 100 {
+            // Only abort when the readable portion of the code block is *entirely*
+            // zero AND we reached the end of the underlying map. A long stretch of
+            // leading zeros embedded between real instructions (alignment padding,
+            // string-table gaps, …) is legitimate code — `00 00` decodes to
+            // `add byte ptr [eax], al`, and the donut/SRDi loaders sometimes hit
+            // those regions while iterating exports. Killing them on a 100-byte
+            // run of zeros (the previous threshold) made forward progress
+            // impossible past those gaps.
+            let all_zeros = !block.is_empty() && block.iter().all(|&b| b == 0);
+            let near_map_end = block.len() < constants::BLOCK_LEN;
+            if !self.cfg.allow_empty_code_blocks && all_zeros && near_map_end {
                 if self.cfg.verbose > 0 {
-                    log::trace!("{} empty code block at 0x{:x}", self.pos, pc);
+                    log::trace!(
+                        "{} empty code block at 0x{:x} ({} zero bytes to map end)",
+                        self.pos, pc, block.len(),
+                    );
                 }
                 return Err(MwemuError::new("empty code block"));
             }

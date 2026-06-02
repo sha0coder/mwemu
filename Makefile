@@ -1,4 +1,4 @@
-.PHONY: all tests pytests
+.PHONY: all tests pytests sloppy
 
 # Detect Apple Silicon and set cross-compile target
 UNAME_S := $(shell uname -s)
@@ -12,7 +12,10 @@ endif
 all:
 	cargo build --release $(CARGO_TARGET)
 
-tests:
+sloppy:
+	-python3 scripts/sloppy.py
+
+tests: sloppy
 	if [ ! -d test ]; then \
 		if which wget; then \
 			wget -q https://github.com/sha0coder/mwemu/releases/download/maps/test.zip; \
@@ -32,4 +35,4 @@ test_x86:
 	cargo test --release --features rax_x86_tests rax_x86_tests
 
 test_loader:
-	cargo run --release -- -f test/exe64win_msgbox.bin -6 --ssdt
+	cargo run --release -- -f test/exe64win_msgbox.bin -6 --syscall-mode

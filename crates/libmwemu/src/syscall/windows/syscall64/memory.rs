@@ -890,17 +890,29 @@ pub fn nt_write_virtual_memory(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
-/// `NtUnmapViewOfSection` — stub: succeed if the region is not tracked as a section view.
+/// `NtUnmapViewOfSection` — no-op stub: returns SUCCESS without actually
+/// destroying the mapping. ntdll calls this on temp views during PE
+/// header probing and would re-map at a chosen base; collapsing it to a
+/// no-op keeps the original mapping intact so subsequent reads of the PE
+/// still succeed.
 pub fn nt_unmap_view_of_section(emu: &mut Emu) {
     let process_handle = emu.regs().rcx;
     let base = emu.regs().rdx;
 
+    // Resolve which map (if any) covers the base so the trace shows whether
+    // the caller is unmapping one of our DLL views.
+    let map_name = emu
+        .maps
+        .get_addr_name(base)
+        .unwrap_or_else(|| "<unmapped>")
+        .to_string();
     log_orange!(
         emu,
-        "syscall 0x{:x}: NtUnmapViewOfSection h: 0x{:x} base: 0x{:x}",
+        "syscall 0x{:x}: NtUnmapViewOfSection h: 0x{:x} base: 0x{:x} [{}] (stub → SUCCESS, keeping map intact)",
         WIN64_NTUNMAPVIEWOFSECTION,
         process_handle,
-        base
+        base,
+        map_name,
     );
 
     if !is_current_process_handle(process_handle) {
@@ -1143,6 +1155,20 @@ pub fn nt_open_section(emu: &mut Emu) {
         }
         emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
         return;
+    }
+
+    // For KnownDll opens, only grant a handle if we actually have the file.
+    // Otherwise the subsequent NtMapViewOfSection produces an empty section
+    // and ntdll's LdrLoadDll bails with STATUS_INVALID_IMAGE_FORMAT.
+    // Returning OBJECT_NAME_NOT_FOUND here lets the loader fall through to
+    // the disk-file path, which fails cleanly with STATUS_DLL_NOT_FOUND.
+    if let Some(ref name) = dll_name {
+        let path = format!("{}{}", emu.cfg.maps_folder, name);
+        if !std::path::Path::new(&path).exists() {
+            log::trace!("NtOpenSection: KnownDll {} not in maps_folder → OBJECT_NAME_NOT_FOUND", name);
+            emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            return;
+        }
     }
 
     let h = crate::syscall::windows::syscall64::sync::next_handle();

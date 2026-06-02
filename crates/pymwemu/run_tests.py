@@ -89,6 +89,12 @@ def rebuild_extension(python_exe):
     print("=" * 60)
     
     project_root = Path(__file__).parent
+
+    print("Generating stubs...")
+    if not run_command(["cargo", "run", "--bin", "stub_gen"], cwd=project_root):
+        print("✗ Failed to generate stubs!")
+        return False
+        
     venv_path = project_root / ".env"
     
     if os.name == 'nt':

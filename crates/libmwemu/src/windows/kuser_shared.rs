@@ -301,7 +301,6 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.DismountCount = 0x00000006;
     kusd.ComPlusPackage = 0x00000001;
     kusd.LastSystemRITEventTickCount = 0x01ec1fd3;
-    kusd.NumberOfPhysicalPages = 0x00bf0958;
     kusd.NumberOfPhysicalPages = 0x0000000000bf0958;
     kusd.TickCount.TickCount.LowPart = 0x001f7f05;
     kusd.TickCount.TickCountQuad = 0x00000000001f7f05;

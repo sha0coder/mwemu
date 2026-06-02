@@ -1,0 +1,38 @@
+[package]
+name = "mwemu-mcp"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage = "https://github.com/sha0coder/mwemu"
+readme = "README.md"
+description = "Model Context Protocol (MCP) server for the mwemu x86/x64/arm64 emulator (libmwemu). Open a binary, configure, prepare memory and emulate step by step over MCP."
+keywords = ["mcp", "emulator", "x86", "malware", "reverse-engineering"]
+categories = ["development-tools", "emulators"]
+
+[[bin]]
+name = "mwemu-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# Versioned + path so the crate builds locally inside the workspace and is also
+# publishable to crates.io (crates.io ignores `path` and uses `version`).
+libmwemu = { path = "../libmwemu", version = "0.24.5" }
+serde = { workspace = true }
+serde_json = "1.0"
+log = { workspace = true }
+env_logger = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dependencies.tiny_http]
+version = "0.12"
+optional = true
+
+[features]
+default = []
+# Optional local TCP/HTTP transport (loopback only). Off by default to keep the
+# base server minimal (stdio only, like radare2-mcp).
+http = ["dep:tiny_http"]

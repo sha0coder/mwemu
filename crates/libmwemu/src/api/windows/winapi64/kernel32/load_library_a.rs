@@ -7,12 +7,14 @@ pub fn LoadLibraryA(emu: &mut emu::Emu) {
 
     emu.regs_mut().rax = load_library(emu, &dll);
 
-    log_red!(
-        emu,
-        "** {} kernel32!LoadLibraryA  '{}' =0x{:x} rip: 0x{:x}",
-        emu.pos,
-        &dll,
-        emu.regs().get_eax() as u32,
-        emu.regs().rip
-    );
+    if emu.cfg.verbose >= 1 {
+        log_red!(
+            emu,
+            "** {} kernel32!LoadLibraryA  '{}' =0x{:x} rip: 0x{:x}",
+            emu.pos,
+            &dll,
+            emu.regs().get_eax() as u32,
+            emu.regs().rip
+        );
+    }
 }

@@ -535,6 +535,7 @@ impl Emu {
 
         if set_entry || self.cfg.emulate_winapi {
             if !is_maps || self.cfg.emulate_winapi {
+                // In SSDT + LdrInitializeThunk bootstrap mode, skip eager IAT binding for the main image.
                 if !(set_entry && self.cfg.emulate_winapi) {
                     pe64.iat_binding(self, base);
                     pe64.delay_load_binding(self, base);

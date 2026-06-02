@@ -1,6 +1,6 @@
 use crate::windows::constants;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ExceptionType {
     Int3,                      // int 3 breakpoint
     Div0,                      // division by zero
