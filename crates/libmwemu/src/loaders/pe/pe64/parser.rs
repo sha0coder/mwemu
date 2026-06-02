@@ -16,6 +16,7 @@ use super::{
     IMAGE_DIRECTORY_ENTRY_IAT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_DIRECTORY_ENTRY_TLS,
     IMAGE_FILE_DLL, SECTION_HEADER_SZ,
 };
+use crate::loaders::pe::lief::DelayLoadDescriptor;
 
 macro_rules! read_u64_le {
     ($raw:expr, $off:expr) => {
@@ -364,5 +365,20 @@ impl PE64 {
 
     pub fn get_resource_name(&self, entry: &structures::ImageResourceDirectoryEntry) -> String {
         self.pe64_get_resource_name(entry)
+    }
+
+    pub fn delay_load_descriptors(&self) -> Vec<DelayLoadDescriptor> {
+        self.delay_load_dir.iter().map(|d| DelayLoadDescriptor {
+            dll_name: d.name.clone(),
+            attributes: d.attributes,
+            dll_name_rva: d.name_ptr,
+            module_handle: d.handle,
+            delay_iat: d.address_table,
+            delay_int: d.name_table,
+            bound_iat: d.bound_delay_import_table,
+            unload_table: d.unload_delay_import_table,
+            timestamp: d.tstamp,
+            import_function_names: None,
+        }).collect()
     }
 }

@@ -5,7 +5,7 @@
 
 use lief::generic::{Binary, Section, Symbol};
 use lief::pe::headers::{MachineType, Characteristics};
-use crate::pe::lief::error::{ExportInfo, ImportInfo, LiefError, RelocationInfo, ResourceInfo};
+use crate::loaders::pe::lief::error::{ExportInfo, ImportInfo, LiefError, RelocationInfo, ResourceInfo};
 
 /// Core trait for reading PE file information via LIEF
 pub trait LiefPeReader {
@@ -58,7 +58,9 @@ pub trait LiefPeReader {
 
     /// Get the entry point RVA
     fn entry_point(&self) -> u64 {
-        self.lief_pe().entrypoint()
+        self.lief_pe()
+            .optional_header()
+            .addressof_entrypoint() as u64
     }
 
     /// Get the section alignment
@@ -75,7 +77,9 @@ pub trait LiefPeReader {
 
     /// Get the size of headers
     fn size_of_headers(&self) -> u32 {
-        self.lief_pe().sizeof_headers() as u32
+        self.lief_pe()
+            .optional_header()
+            .sizeof_headers()
     }
 
     /// Get a data directory by index

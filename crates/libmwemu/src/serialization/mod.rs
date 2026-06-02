@@ -12,7 +12,7 @@ mod instant;
 mod maps;
 mod minidump;
 mod pe32;
-mod pe64;
+pub(crate) mod pe64;
 mod thread_context;
 
 pub struct Serialization;

@@ -3,6 +3,8 @@ use minidump::format::MemoryProtection;
 use minidump::*;
 use slab::Slab;
 use std::cell::RefCell;
+
+use crate::serialization::pe64::SerializablePe64Backend;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::ops::Deref;
@@ -70,6 +72,7 @@ impl MinidumpReader {
                                 pe64 = Some(SerializablePE64 {
                                     filename: module.name.to_string(),
                                     raw: raw_data,
+                                    backend: Some(SerializablePe64Backend::Legacy),
                                 });
                             } else {
                                 pe32 = Some(SerializablePE32 {

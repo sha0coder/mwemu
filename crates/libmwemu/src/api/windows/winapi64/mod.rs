@@ -20,7 +20,6 @@ mod wininet;
 mod ws2_32;
 
 use crate::emu;
-use crate::pe::lief::traits::LiefPeReader;
 
 pub fn gateway_by_import(import_dll: &str, api: &str, emu: &mut emu::Emu) {
     let dll = import_dll.trim().to_lowercase();

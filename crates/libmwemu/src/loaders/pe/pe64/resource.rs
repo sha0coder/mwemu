@@ -173,10 +173,7 @@ impl PE64 {
         let rsrc = self.get_section_ptr_by_name(".rsrc")?;
         let data_entry =
             self.pe64_locate_resource_data_entry(rsrc, 0, 0, type_id, name_id, type_name, name)?;
-        let data_off = PE64::vaddr_to_off(&self.sect_hdr, data_entry.offset_to_data as u32)
-            as usize
-            - self.opt.image_base as usize;
-        Some((data_off as u64, data_entry.size as usize))
+        Some((data_entry.offset_to_data as u64, data_entry.size as usize))
     }
 
     pub(crate) fn pe64_get_resource_name(

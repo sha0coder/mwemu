@@ -108,16 +108,15 @@ fn exe64win_msgbox_ssdt_hits_first_windows_syscall() {
 fn exe64win_mingw_ssdt_reaches_early_execution_window() {
     helpers::setup();
 
+    let sample = match helpers::optional_test_data_path("exe64win_mingw.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
     emu.cfg.maps_folder = helpers::win64_maps_folder();
-    emu.cfg.emulate_winapi = true; // same behavior as command line --ssdt
+    emu.cfg.emulate_winapi = true;
 
-    let sample = helpers::test_data_path("exe64win_mingw.bin");
-    assert!(
-        std::path::Path::new(&sample).is_file(),
-        "missing {}",
-        sample
-    );
     emu.load_code(&sample);
 
     emu.run_to(120)

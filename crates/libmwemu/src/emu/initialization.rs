@@ -3,18 +3,16 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 use std::time::Instant;
+use std::collections::BTreeSet;
 
 use atty::Stream;
 use csv::ReaderBuilder;
 use iced_x86::{Formatter as _, IntelFormatter};
-use std::collections::BTreeSet;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
 use crate::maps::mem64::Permission;
 use crate::pe::api_set_resolver::ApiSetResolver;
-use crate::pe::lief::lief_pe::LiefPe;
-use crate::pe::lief::traits::LiefPeReader;
 use crate::windows::peb::{peb32, peb64};
 use crate::{
     api::banzai::Banzai, debug::breakpoint::Breakpoints, utils::colors::Colors, config::Config,
@@ -52,7 +50,7 @@ impl Default for Emu {
 }
 
 pub struct Lib {
-    pe64: LiefPe,
+    pe64: crate::loaders::pe::pe64::PE64,
     base: u64,
     name: String,
 }
@@ -142,6 +140,12 @@ impl Emu {
             instruction_count: 0,
             fault_count: 0,
             handle_management: HandleManagement::new(),
+            api_set_resolver: None,
+            section_handles: HashMap::new(),
+            file_handles: HashMap::new(),
+            known_dll_dir_handles: HashSet::new(),
+            ssdt_pad_stack: Vec::new(),
+            library_loaded: false,
         }
     }
 
@@ -998,10 +1002,9 @@ impl Emu {
         }
 
         // Stage 2: get_dependencies
-        let resolver = self.api_set_resolver.as_ref();
         let mut dependencies: BTreeSet<String> = BTreeSet::new();
         for dll in metadata.iter_mut() {
-            for mut dep in dll.pe64.get_dependencies(resolver) {
+            for mut dep in dll.pe64.get_dependencies(self) {
                 dep = dep.to_lowercase();
                 if !dep.ends_with(".dll") {
                     dep.push_str(".dll");
@@ -1037,7 +1040,7 @@ impl Emu {
         // Stage 3: dynamic linking base + deps
         for dll in &metadata {
             log::debug!("dynamic linking {}", &dll.name);
-            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_offset(), &dll.name, self);
+            peb64::dynamic_link_module(dll.base, dll.pe64.dos.e_lfanew, &dll.name, self);
         }
 
         // Stage 3: IAT Binding  base + deps

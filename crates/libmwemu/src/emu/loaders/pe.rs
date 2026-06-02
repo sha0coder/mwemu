@@ -1,6 +1,8 @@
 use crate::emu::Emu;
+use crate::config::Pe64Backend;
 use crate::loaders::pe::pe32::PE32;
 use crate::loaders::pe::pe64::PE64;
+use crate::loaders::pe::runtime_pe64::{RuntimePe64, RuntimePeError};
 use crate::maps::mem64::Permission;
 use crate::windows::constants;
 use crate::windows::peb::{peb32, peb64};
@@ -216,6 +218,12 @@ impl Emu {
         (base, pe_hdr_off)
     }
 
+    /// Map a DLL using the legacy PE64 parser.
+    ///
+    /// NOTE: This function uses `PE64` directly (not `RuntimePe64`) and is
+    /// intentionally legacy-only. DLL mapping does not yet go through the
+    /// backend policy. If LIEF DLL coverage is needed in the future, add
+    /// a `map_dll_pe64_runtime()` variant using `RuntimePe64`.
     pub fn map_dll_pe64(&mut self, filename: &str) -> (u64, PE64) {
         let map_name = self.filename_to_mapname(filename);
         let mut pe64 = PE64::load(&filename.to_lowercase());
@@ -235,7 +243,16 @@ impl Emu {
                 panic!("cannot create pe64 map: {}", e);
             }
         };
-        pemap.memcpy(pe64.get_headers(), pe64.opt.size_of_headers as usize);
+        let headers = pe64.get_headers();
+        let expected_header_len = pe64.opt.size_of_headers as usize;
+        let copy_len = headers.len().min(expected_header_len);
+        pemap.memcpy(&headers[..copy_len], copy_len);
+        if copy_len < expected_header_len {
+            log::warn!(
+                "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
+                copy_len, expected_header_len, filename
+            );
+        }
         for i in 0..pe64.num_of_sections() {
             let ptr = pe64.get_section_ptr(i);
             let sect = pe64.get_section(i);
@@ -309,12 +326,73 @@ impl Emu {
         let is_maps = filename.contains("windows/x86_64/") || filename.contains("windows/aarch64/") ;
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
-        let mut pe64 = PE64::load(filename);
+        let mut pe64 = match RuntimePe64::load_with_backend(filename, self.cfg.pe64_backend) {
+            Ok(pe) => pe,
+            Err(e) => panic!("PE64 load failed: {}", e),
+        };
+
+        let headers = pe64.get_headers();
+        let expected_header_len = pe64.size_of_headers() as usize;
+        if headers.len() < expected_header_len {
+            match self.cfg.pe64_backend {
+                Pe64Backend::Lief => {
+                    let err = RuntimePeError::HeaderTruncated {
+                        path: filename.to_string(),
+                        expected: expected_header_len,
+                        actual: headers.len(),
+                    };
+                    panic!("PE64 load failed: {}", err);
+                }
+                Pe64Backend::Auto => {
+                    if !pe64.is_lief() {
+                        log::warn!(
+                            "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
+                            headers.len(), expected_header_len, filename
+                        );
+                    } else {
+                        let err = RuntimePeError::HeaderTruncated {
+                            path: filename.to_string(),
+                            expected: expected_header_len,
+                            actual: headers.len(),
+                        };
+                        log::warn!("PE64 Auto: {}; falling back to legacy before mapping", err);
+                        let legacy = PE64::load(filename);
+                        pe64 = RuntimePe64::Legacy(legacy);
+                    }
+                }
+                Pe64Backend::Legacy => {
+                    log::warn!(
+                        "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
+                        headers.len(), expected_header_len, filename
+                    );
+                }
+            }
+        }
+
+        if pe64.is_lief() {
+            if let Some(lief_pe) = pe64.as_lief() {
+                if let Err(e) = lief_pe.validate_relocation_directory() {
+                    match self.cfg.pe64_backend {
+                        Pe64Backend::Lief => {
+                            let err = RuntimePeError::Relocation {
+                                path: filename.to_string(),
+                                backend: self.cfg.pe64_backend,
+                                source: e,
+                            };
+                            panic!("PE64 load failed: {}", err);
+                        }
+                        Pe64Backend::Auto => {
+                            log::warn!("PE64 Auto: LIEF relocation preflight failed for {}, falling back to legacy before mapping: {}", filename, e);
+                            pe64 = RuntimePe64::Legacy(PE64::load(filename));
+                        }
+                        Pe64Backend::Legacy => {}
+                    }
+                }
+            }
+        }
+
         let base: u64;
 
-        // 1. base logic
-
-        // base is setted by libmwemu
         if force_base > 0 {
             if self.maps.overlaps(force_base, pe64.size()) {
                 panic!("the forced base address overlaps");
@@ -322,60 +400,49 @@ impl Emu {
                 base = force_base;
             }
 
-        // base is setted by user
         } else if !is_maps && self.cfg.code_base_addr != constants::CFG_DEFAULT_BASE {
             base = self.cfg.code_base_addr;
             if self.maps.overlaps(base, pe64.size()) {
                 panic!("the setted base address overlaps");
             }
 
-        // base is setted by image base (if overlapps, alloc)
         } else {
-            // user's program
             if set_entry {
-                if pe64.opt.image_base >= constants::LIBS64_MIN {
+                if pe64.image_base() >= constants::LIBS64_MIN {
                     base = self.maps.alloc(pe64.size() + 0xff).expect("out of memory");
-                } else if self.maps.overlaps(pe64.opt.image_base, pe64.size()) {
+                } else if self.maps.overlaps(pe64.image_base(), pe64.size()) {
                     base = self.maps.alloc(pe64.size() + 0xff).expect("out of memory");
                 } else {
-                    base = pe64.opt.image_base;
+                    base = pe64.image_base();
                 }
 
-            // system library
             } else {
-                base = self.pick_pe64_dll_base(&pe64);
+                base = self.pick_pe64_dll_base_runtime(&pe64);
             }
         }
 
-        // Only the main image owns `self.base` and the initial RIP. System DLLs loaded
-        // via `load_library` (e.g. NtMapViewOfSection's KnownDll path under --ssdt) must
-        // never clobber these — otherwise the post-LdrInitializeThunk IAT binding in
-        // loaders.rs reads the DLL's base instead of the EXE's, and the EXE's IAT stays
-        // unbound (call rax → rax=0 → crash).
         if set_entry {
             self.base = base;
 
-            // 2. entry point logic (relocs + IAT run after PE maps exist; see step 4b below)
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
-                self.set_pc(base + pe64.opt.address_of_entry_point as u64);
+                self.set_pc(base + pe64.entry_point());
                 log::trace!("entry point at 0x{:x}", self.pc());
             } else {
                 self.set_pc(self.cfg.entry_point);
                 log::trace!(
                     "entry point at 0x{:x} but forcing it at 0x{:x} by -a flag",
-                    base + pe64.opt.address_of_entry_point as u64,
+                    base + pe64.entry_point(),
                     self.pc()
                 );
             }
             log::trace!("base: 0x{:x}", base);
         }
 
-        let sec_allign = pe64.opt.section_alignment;
-        // 4. map pe and then sections
+        let sec_allign = pe64.section_alignment();
         let pemap = match self.maps.create_map(
             &format!("{}.pe", filename2),
             base,
-            align_up!(pe64.opt.size_of_headers, sec_allign) as u64,
+            align_up!(pe64.size_of_headers(), sec_allign) as u64,
             Permission::READ_WRITE,
         ) {
             Ok(m) => m,
@@ -383,28 +450,33 @@ impl Emu {
                 panic!("cannot create pe64 map: {}", e);
             }
         };
-        pemap.memcpy(pe64.get_headers(), pe64.opt.size_of_headers as usize);
+        let headers = pe64.get_headers();
+        let expected_header_len = pe64.size_of_headers() as usize;
+        let copy_len = headers.len().min(expected_header_len);
+        pemap.memcpy(&headers[..copy_len], copy_len);
+        if copy_len < expected_header_len {
+            log::warn!(
+                "header cache ({} bytes) shorter than SizeOfHeaders ({}) for {}",
+                copy_len, expected_header_len, filename2
+            );
+        }
 
         for i in 0..pe64.num_of_sections() {
             let ptr = pe64.get_section_ptr(i);
-            let sect = pe64.get_section(i);
+            let sect = match pe64.get_section(i) {
+                Some(s) => s,
+                None => continue,
+            };
 
             let charistic = sect.characteristics;
             let is_exec = charistic & 0x20000000 != 0x0;
             let is_read = charistic & 0x40000000 != 0x0;
             let mut is_write = charistic & 0x80000000 != 0x0;
-            // The loader patches `.didat` during init without calling
-            // NtProtectVirtualMemory first — relies on SEC_IMAGE COW we do
-            // not model. Force RW so ntdll's page-touching helper succeeds.
-            if sect.get_name().trim() == ".didat" {
+            if sect.name.trim() == ".didat" {
                 is_write = true;
             }
             let permission = Permission::from_flags(is_read, is_write, is_exec);
 
-            // Virtual size determines how much address space the section occupies.
-            // Raw size is the on-disk data size and may exceed virtual size for
-            // packed/overlay sections — using raw size would create an oversized map
-            // that overlaps subsequent sections.
             let map_sz: u64 = if sect.virtual_size > 0 {
                 sect.virtual_size as u64
             } else {
@@ -412,16 +484,12 @@ impl Emu {
             };
 
             if map_sz == 0 {
-                log::trace!("size of section {} is 0", sect.get_name());
+                log::trace!("size of section {} is 0", sect.name);
                 continue;
             }
 
-            let mut sect_name = sect
-                .get_name()
-                .replace(" ", "")
-                .replace("\t", "")
-                .replace("\x0a", "")
-                .replace("\x0d", "");
+            let mut sect_name = sect.name.clone();
+            sect_name = sect_name.replace(" ", "").replace("\t", "").replace("\x0a", "").replace("\x0d", "");
 
             if sect_name.is_empty() {
                 sect_name = format!("{:x}", sect.virtual_address);
@@ -438,13 +506,12 @@ impl Emu {
                     log::trace!(
                         "weird pe, skipping section because overlaps {} {}",
                         filename2,
-                        sect.get_name()
+                        sect.name
                     );
                     continue;
                 }
             };
 
-            // Copy only as many bytes as fit in the virtual mapping.
             let copy_len = (sect.size_of_raw_data as usize).min(map_sz as usize).min(ptr.len());
 
             if copy_len > 0 {
@@ -452,35 +519,59 @@ impl Emu {
             }
         }
 
-        // 4b. Base relocs on the mapped image (all load paths, including DLL without emulate_winapi).
-        pe64.apply_relocations(self, base);
+        if let Err(e) = pe64.apply_relocations(self, base) {
+            match self.cfg.pe64_backend {
+                Pe64Backend::Lief => {
+                    panic!("LIEF relocation error after mapping (cannot safely fall back): {}", e);
+                }
+                Pe64Backend::Auto => {
+                    panic!("Auto backend relocation error after mapping (cannot safely fall back to legacy; maps already mutated): {}", e);
+                }
+                Pe64Backend::Legacy => {
+                    log::warn!("Legacy relocation warning: {}", e);
+                }
+            }
+        }
 
         if set_entry || self.cfg.emulate_winapi {
             if !is_maps || self.cfg.emulate_winapi {
-                // In SSDT + LdrInitializeThunk bootstrap mode, skip eager IAT binding for the main image.
-                if !(set_entry && self.cfg.emulate_winapi && self.cfg.emulate_winapi) {
+                if !(set_entry && self.cfg.emulate_winapi) {
                     pe64.iat_binding(self, base);
                     pe64.delay_load_binding(self, base);
                 }
             }
         }
 
-        // 5. ldr table entry creation and link
         if set_entry {
-            if !(self.cfg.emulate_winapi && self.cfg.emulate_winapi) {
+            if !self.cfg.emulate_winapi {
                 let _space_addr =
                     peb64::create_ldr_entry(self, base, self.pc(), &filename2, 0, 0x2c1950);
                 let exe_name = self.cfg.exe_name.clone();
                 peb64::update_ldr_entry_base(&exe_name, base, self);
             }
-            if self.cfg.emulate_winapi && self.cfg.emulate_winapi {
+            if self.cfg.emulate_winapi {
                 peb64::update_peb_image_base(self, base);
             }
         }
 
-        // 6. return values
-        let pe_hdr_off = pe64.dos.e_lfanew;
+        let pe_hdr_off = pe64.get_pe_offset();
         self.pe64 = Some(pe64);
         (base, pe_hdr_off)
+    }
+
+    fn pick_pe64_dll_base_runtime(&mut self, pe64: &RuntimePe64) -> u64 {
+        const USER_MAX: u64 = 0x7FFF_FFFF_FFFF;
+        let ib = pe64.image_base();
+        let span = (pe64.size_of_image() as u64).max(pe64.size());
+        if ib < 0x10000 {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        }
+        let Some(end) = ib.checked_add(span) else {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        };
+        if end > USER_MAX || self.maps.overlaps(ib, span) {
+            return self.maps.lib64_alloc(pe64.size()).expect("out of memory");
+        }
+        ib
     }
 }

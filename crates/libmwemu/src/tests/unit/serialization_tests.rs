@@ -306,3 +306,31 @@ fn test_aarch64_minidump_fixture_roundtrip() {
         .unwrap();
     handle.join().unwrap();
 }
+
+#[test]
+fn test_pe64_backend_backward_compat_serde_yaml() {
+    use crate::config::Pe64Backend;
+    use crate::serialization::pe64::{SerializablePE64, SerializablePe64Backend};
+
+    let expected_raw = vec![0x46u8, 0x41u8, 0x4Bu8, 0x39u8];
+
+    let yaml_without_backend = r#"filename: test.exe
+raw: [70, 65, 75, 57]"#;
+    let pe: SerializablePE64 = serde_yaml::from_str(yaml_without_backend)
+        .expect("should deserialize SerializablePE64 without backend field");
+    assert_eq!(pe.backend, None,
+        "missing backend field in serialized PE should be None");
+    assert_eq!(pe.raw, expected_raw);
+
+    let yaml_with_backend = "filename: test.exe\nraw: [70, 65, 75, 57]\nbackend: legacy";
+    let pe2: SerializablePE64 = serde_yaml::from_str(yaml_with_backend)
+        .expect("should deserialize SerializablePE64 with backend: legacy");
+    assert_eq!(pe2.backend, Some(SerializablePe64Backend::Legacy));
+
+    let yaml_lief_backend = "filename: test.exe\nraw: [70, 65, 75, 57]\nbackend: lief";
+    let pe3: SerializablePE64 = serde_yaml::from_str(yaml_lief_backend)
+        .expect("should deserialize SerializablePE64 with backend: lief");
+    assert_eq!(pe3.backend, Some(SerializablePe64Backend::Lief));
+
+    assert_eq!(Pe64Backend::default(), Pe64Backend::Legacy);
+}

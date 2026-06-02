@@ -6,8 +6,13 @@ use crate::*;
 pub fn elf64lin_cpu_arithmetics1() {
     helpers::setup();
 
+    let path = match helpers::optional_test_data_path("elf64lin_cpu_arithmetics1.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
-    emu.load_code(&helpers::test_data_path("elf64lin_cpu_arithmetics1.bin"));
+    emu.load_code(&path);
 
     assert_eq!(emu.flags().dump(), 0x202); // initial flags (match with gdb linux)
 
@@ -95,8 +100,13 @@ pub fn elf64lin_cpu_arithmetics1() {
 pub fn elf64lin_cpu_arithmetics2() {
     helpers::setup();
 
+    let path = match helpers::optional_test_data_path("elf64lin_cpu_arithmetics2.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
-    emu.load_code(&helpers::test_data_path("elf64lin_cpu_arithmetics2.bin"));
+    emu.load_code(&path);
     emu.flags_mut().f_if = true;
     emu.run_to(790022);
 
@@ -116,8 +126,13 @@ pub fn elf64lin_cpu_arithmetics2() {
 pub fn elf64lin_cpu_arithmetics3() {
     helpers::setup();
 
+    let path = match helpers::optional_test_data_path("elf64lin_cpu_arithmetics3.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
-    emu.load_code(&helpers::test_data_path("elf64lin_cpu_arithmetics3.bin"));
+    emu.load_code(&path);
 
     emu.run_to(1513234);
 
@@ -135,8 +150,13 @@ pub fn elf64lin_cpu_arithmetics3() {
 pub fn elf64lin_cpu_arithmetics4() {
     helpers::setup();
 
+    let path = match helpers::optional_test_data_path("elf64lin_cpu_arithmetics4.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
-    emu.load_code(&helpers::test_data_path("elf64lin_cpu_arithmetics4.bin"));
+    emu.load_code(&path);
 
     emu.run_to(294);
 

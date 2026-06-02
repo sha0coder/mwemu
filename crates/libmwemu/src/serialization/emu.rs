@@ -393,16 +393,16 @@ impl From<SerializableEmu> for Emu {
             trace_file,
             instruction_count: 0,
             fault_count: 0,
-            handle_management: HandleManagement::new(), // TODO: for now, we haven't implement HandleManagement as serializable but in the future maybe
-            api_set_resolver: None,
             entropy,
             last_error,
             // Win32 resource management
-            handle_management: HandleManagement::new(), // TODO: not yet serialized
+            handle_management: HandleManagement::new(),
             section_handles: HashMap::new(),
             file_handles: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
             ssdt_pad_stack: Vec::new(),
+            // API Set resolver
+            api_set_resolver: None,
         };
 
         if let Some(thread) = emu.threads.get_mut(current_thread_id) {

@@ -16,8 +16,8 @@ pub mod lief_pe;
 #[cfg(test)]
 mod tests;
 
-pub use error::{ExportInfo, ImportFunction, ImportInfo, LiefError, RelocationInfo, ResourceInfo};
+pub use error::{ExportInfo, ImportFunction, ImportInfo, LiefError, RelocationInfo, ResourceEntryInfo, ResourceInfo};
 pub use traits::LiefPeReader;
 pub use lief_header_parser::LiefHeaderParser;
 pub use lief_section_manager::{CachePolicy, LiefSectionManager};
-pub use lief_pe::{CacheStats, LiefPe};
+pub use lief_pe::{CacheStats, DelayLoadDescriptor, LiefPe};

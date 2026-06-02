@@ -12,10 +12,10 @@ use lief::pe::Binary as PeBinary;
 use lief::pe::headers::MachineType;
 use memmap2::Mmap;
 
-use crate::pe::lief::error::{
+use crate::loaders::pe::lief::error::{
     ExportInfo, ImportInfo, LiefError, RelocationInfo, ResourceInfo,
 };
-use crate::pe::lief::traits::LiefPeReader;
+use crate::loaders::pe::lief::traits::LiefPeReader;
 
 /// Header-only PE parser using LIEF and memory mapping
 ///
@@ -95,30 +95,28 @@ impl LiefHeaderParser {
             return Err(LiefError::ParseFailed("Data is empty".to_string()));
         }
 
-        // Create a temporary file
         let mut temp_file = tempfile::NamedTempFile::new()
             .map_err(|e| LiefError::ParseFailed(format!("Failed to create temp file: {}", e)))?;
         
         use std::io::Write;
         temp_file.write_all(data)
             .map_err(|e| LiefError::ParseFailed(format!("Failed to write temp file: {}", e)))?;
+        temp_file.flush()
+            .map_err(|e| LiefError::ParseFailed(format!("Failed to flush temp file: {}", e)))?;
+        temp_file.as_file().sync_all()
+            .map_err(|e| LiefError::ParseFailed(format!("Failed to sync temp file: {}", e)))?;
 
-        // Get the path to the temp file BEFORE consuming temp_file
         let temp_path = temp_file.path().to_str()
             .ok_or_else(|| LiefError::ParseFailed("Invalid temp path".to_string()))?
             .to_string();
 
-        // Memory-map the temp file for our own access
-        let file = temp_file.into_file();
-        let mapped = unsafe { Mmap::map(&file) }
-            .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map temp file: {}", e)))?;
-        let mapped_file: Arc<[u8]> = Arc::from(&mapped[..]);
+        let mapped_file: Arc<[u8]> = Arc::from(data.to_vec().into_boxed_slice());
 
-        // Parse headers using LIEF
         let pe = PeBinary::parse(&temp_path)
             .ok_or_else(|| LiefError::ParseFailed("Failed to parse PE".to_string()))?;
 
-        // Cache header bytes (up to size_of_headers or data size)
+        drop(temp_file);
+
         let header_size = std::cmp::min(pe.sizeof_headers() as usize, data.len());
         let header_cache = data[..header_size].to_vec();
 
@@ -194,7 +192,7 @@ impl LiefHeaderParser {
 
     /// Get entry point RVA
     pub fn entry_point(&self) -> u64 {
-        self.pe.entrypoint()
+        self.pe.optional_header().addressof_entrypoint() as u64
     }
 
     /// Get section alignment
@@ -222,35 +220,79 @@ impl LiefHeaderParser {
         self.pe.sections().find(|s| s.name() == name)
     }
 
-    /// Convert virtual address to file offset
+    /// Convert RVA to file offset using section table.
     ///
-    /// Uses the section information to perform the conversion.
+    /// This properly translates a Relative Virtual Address to its file offset
+    /// by looking up the section containing the RVA.
+    pub fn rva_to_offset(&self, rva: u64) -> Option<u64> {
+        let size_of_headers = self.pe.sizeof_headers() as u64;
+        let file_size = self.mapped_file.len() as u64;
+
+        // If RVA is within headers, return it directly (headers are at file start)
+        if rva < size_of_headers {
+            // RVA points to header area - only valid if within file bounds
+            if rva < file_size {
+                return Some(rva);
+            }
+            return None;
+        }
+
+        // Find the section containing this RVA
+        for section in self.pe.sections() {
+            let section_rva = section.virtual_address() as u64;
+            let virtual_size = section.virtual_size() as u64;
+            let raw_size = section.sizeof_raw_data() as u64;
+            let section_ptr = section.pointerto_raw_data() as u64;
+
+            // Use max of virtual_size and raw_size for section range check
+            // This handles cases where virtual_size > raw_size (uninitialized data)
+            let section_end = section_rva + virtual_size.max(raw_size);
+
+            if rva >= section_rva && rva < section_end {
+                // Calculate offset within section
+                let offset_in_section = rva - section_rva;
+
+                // The offset must be within the actual raw data, not virtual size
+                // For packed sections where virtual_size > raw_size, accessing
+                // bytes beyond raw_size would be out of bounds
+                if offset_in_section >= raw_size {
+                    return None;
+                }
+
+                // File offset = section pointer to raw data + offset in section
+                let file_offset = section_ptr + offset_in_section;
+
+                // Final bounds check
+                if file_offset < file_size {
+                    return Some(file_offset);
+                }
+                return None;
+            }
+        }
+
+        None
+    }
+
+    /// Convert virtual address to file offset.
+    ///
+    /// A VA is an absolute address (ImageBase + RVA). This function subtracts
+    /// the image base to get the RVA and then converts to file offset.
+    /// Only true VAs (>= image_base) are handled; arbitrary values below
+    /// image_base are not treated as raw file offsets.
     pub fn vaddr_to_offset(&self, vaddr: u64) -> Option<u64> {
         let image_base = self.pe.imagebase();
 
-        // If vaddr is below image base, it might be a file offset already
+        // If vaddr is below image base, it's not a valid VA
+        // Don't treat it as a raw file offset - callers should use proper RVA
         if vaddr < image_base {
-            return Some(vaddr);
+            return None;
         }
 
         // Calculate RVA (relative to image base)
         let rva = vaddr.checked_sub(image_base)?;
 
-        // Find the section containing this RVA
-        for section in self.pe.sections() {
-            let section_rva = section.virtual_address() as u64;
-            let section_size = section.virtual_size() as u64;
-
-            if rva >= section_rva && rva < section_rva + section_size {
-                // Calculate offset within section
-                let offset_in_section = rva - section_rva;
-                // File offset = section pointer to raw data + offset in section
-                let file_offset = section.pointerto_raw_data() as u64 + offset_in_section;
-                return Some(file_offset);
-            }
-        }
-
-        None
+        // Delegate to rva_to_offset
+        self.rva_to_offset(rva)
     }
 
     /// Release the memory-mapped file reference
@@ -270,6 +312,10 @@ impl LiefHeaderParser {
 impl LiefPeReader for LiefHeaderParser {
     fn lief_pe(&self) -> &lief::pe::Binary {
         &self.pe
+    }
+
+    fn rva_to_offset(&self, rva: u64) -> Option<u64> {
+        LiefHeaderParser::rva_to_offset(self, rva)
     }
 
     fn vaddr_to_offset(&self, vaddr: u64) -> Option<u64> {

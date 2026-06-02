@@ -4,6 +4,15 @@ use crate::arch::Arch;
 use crate::{windows::constants, debug::definitions::Definition};
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Pe64Backend {
+    #[default]
+    Legacy,
+    Lief,
+    Auto,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     // --- Binary & architecture ---
@@ -103,6 +112,9 @@ pub struct Config {
 
     // --- Testing ---
     pub test_mode: bool,
+
+    #[serde(default)]
+    pub pe64_backend: Pe64Backend,
 }
 
 impl Default for Config {
@@ -175,6 +187,7 @@ impl Config {
             heap_free_soft: false,
             allow_empty_code_blocks: false,
             ssdt_use_ldr_initialize_thunk: false,
+            pe64_backend: Pe64Backend::default(),
         }
     }
 
