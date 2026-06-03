@@ -55,16 +55,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     match emu.get_operand_sz(ins, 0) {
         64 => {
-            emu.flags_mut().sub64(value0, value1);
+            emu.flags_overwrite_mut().sub64(value0, value1);
         }
         32 => {
-            emu.flags_mut().sub32(value0, value1);
+            emu.flags_overwrite_mut().sub32(value0, value1);
         }
         16 => {
-            emu.flags_mut().sub16(value0, value1);
+            emu.flags_overwrite_mut().sub16(value0, value1);
         }
         8 => {
-            emu.flags_mut().sub8(value0, value1);
+            emu.flags_overwrite_mut().sub8(value0, value1);
         }
         _ => {
             panic!("wrong size {}", emu.get_operand_sz(ins, 0));

@@ -95,23 +95,31 @@ impl Emu {
     }
 
     #[inline(always)]
+    pub fn flags_overwrite_mut(&mut self) -> &mut Flags {
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { flags, .. } => flags,
+            _ => panic!("flags_overwrite_mut() called on aarch64 emu"),
+        }
+    }
+
+    #[inline(always)]
     pub fn flag_cf(&self) -> bool {
-        self.flags_ref().f_cf
+        self.flags_ref().cf()
     }
 
     #[inline(always)]
     pub fn flag_zf(&self) -> bool {
-        self.flags_ref().f_zf
+        self.flags_ref().zf()
     }
 
     #[inline(always)]
     pub fn flag_sf(&self) -> bool {
-        self.flags_ref().f_sf
+        self.flags_ref().sf()
     }
 
     #[inline(always)]
     pub fn flag_of(&self) -> bool {
-        self.flags_ref().f_of
+        self.flags_ref().of()
     }
 
     #[inline(always)]
@@ -120,12 +128,12 @@ impl Emu {
     }
 
     #[inline(always)]
-    pub fn flag_pf(&mut self) -> bool {
-        self.flags().f_pf
+    pub fn flag_pf(&self) -> bool {
+        self.flags_ref().pf()
     }
 
     #[inline(always)]
-    pub fn flag_af(&mut self) -> bool {
-        self.flags().f_af
+    pub fn flag_af(&self) -> bool {
+        self.flags_ref().af()
     }
 }

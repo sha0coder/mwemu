@@ -17,7 +17,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let eax = emu.regs().get_eax();
-    emu.flags_mut().sub32(eax, value0);
+    emu.flags_overwrite_mut().sub32(eax, value0);
 
     if emu.cfg.is_x64() {
         if emu.flag_df() {

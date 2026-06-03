@@ -21,7 +21,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     let sz = emu.get_operand_sz(ins, 0);
     let res: u64 = match sz {
-        64 => emu.flags_mut().sub64(value0, value1.wrapping_add(cf)),
+        64 => emu.flags_overwrite_mut().sub64(value0, value1.wrapping_add(cf)),
         32 => emu
             .flags_mut()
             .sub32(value0, (value1 & 0xffffffff).wrapping_add(cf)),

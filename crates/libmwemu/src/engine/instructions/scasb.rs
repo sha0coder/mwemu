@@ -20,7 +20,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let al = emu.regs().get_al();
-    emu.flags_mut().sub8(al, value0);
+    emu.flags_overwrite_mut().sub8(al, value0);
 
     if emu.cfg.is_x64() {
         if emu.flag_df() {

@@ -22,7 +22,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let result: u128 = value0 & value1;
-    emu.flags_mut().calc_flags(result as u64, 32);
+    emu.flags_overwrite_mut().calc_flags(result as u64, 32);
 
     emu.set_operand_xmm_value_128(ins, 0, result);
     true

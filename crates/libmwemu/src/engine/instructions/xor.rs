@@ -21,7 +21,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     let sz = emu.get_operand_sz(ins, 0);
     let result = value0 ^ value1;
 
-    emu.flags_mut().calc_flags(result, sz);
+    emu.flags_overwrite_mut().calc_flags(result, sz);
     emu.flags_mut().f_of = false;
     emu.flags_mut().f_cf = false;
     emu.flags_mut().calc_pf(result as u8);

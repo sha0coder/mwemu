@@ -36,7 +36,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.regs_mut().rdi += 8;
     }
 
-    emu.flags_mut().sub64(value0, value1);
+    emu.flags_overwrite_mut().sub64(value0, value1);
 
     if emu.cfg.verbose >= 2 {
         if value0 > value1 {

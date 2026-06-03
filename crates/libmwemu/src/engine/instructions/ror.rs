@@ -17,7 +17,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             None => return false,
         };
 
-        result = emu.flags_mut().ror(value0, 1, sz);
+        result = emu.flags_overwrite_mut().ror(value0, 1, sz);
     } else {
         // 2 params
         let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -30,7 +30,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             None => return false,
         };
 
-        result = emu.flags_mut().ror(value0, value1, sz);
+        result = emu.flags_overwrite_mut().ror(value0, value1, sz);
     }
 
     if !emu.set_operand_value(ins, 0, result) {

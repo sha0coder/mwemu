@@ -38,10 +38,10 @@ fn run_eager(iterations: u64) -> (Duration, u64, u32) {
         let addend = i.wrapping_mul(0x9e37_79b1) ^ acc.rotate_left(7);
         acc = eager_add32(&mut flags, acc ^ addend, addend.wrapping_add(i & 0xff));
 
-        if !flags.f_cf && !flags.f_zf {
+        if !flags.cf() && !flags.zf() {
             branch_score ^= acc;
         }
-        if flags.f_sf == flags.f_of {
+        if flags.sf() == flags.of() {
             branch_score = branch_score.wrapping_add(3);
         }
     }

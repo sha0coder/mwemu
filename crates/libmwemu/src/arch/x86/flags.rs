@@ -70,29 +70,28 @@ pub const F_VIP: u32 = 20;
 pub const F_ID: u32 = 21;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-enum LazyFlagsOp {
+enum LazyFlagsKind {
     None,
-    Add,
-    Sub,
-    Logic,
+    Oszapc,
+    SzpClearOac,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 struct LazyFlags {
-    op: LazyFlagsOp,
-    lhs: u64,
-    rhs: u64,
-    result: u64,
+    kind: LazyFlagsKind,
+    result_lo: u64,
+    result_xor: u64,
+    result_ofv: u64,
     bits: u32,
 }
 
 impl Default for LazyFlags {
     fn default() -> Self {
         Self {
-            op: LazyFlagsOp::None,
-            lhs: 0,
-            rhs: 0,
-            result: 0,
+            kind: LazyFlagsKind::None,
+            result_lo: 0,
+            result_xor: 0,
+            result_ofv: 0,
             bits: 0,
         }
     }
@@ -158,14 +157,36 @@ impl Flags {
     }
 
     #[inline]
-    fn set_lazy_flags(&mut self, op: LazyFlagsOp, lhs: u64, rhs: u64, result: u64, bits: u32) {
+    fn set_lazy_oszapc(&mut self, result: u64, result_xor: u64, result_ofv: u64, bits: u32) {
         self.lazy = LazyFlags {
-            op,
-            lhs,
-            rhs,
-            result,
+            kind: LazyFlagsKind::Oszapc,
+            result_lo: result & Self::mask(bits),
+            result_xor,
+            result_ofv,
             bits,
         };
+    }
+
+    #[inline]
+    fn set_lazy_logic(&mut self, result: u64, bits: u32) {
+        self.lazy = LazyFlags {
+            kind: LazyFlagsKind::SzpClearOac,
+            result_lo: result & Self::mask(bits),
+            result_xor: 0,
+            result_ofv: 0,
+            bits,
+        };
+    }
+
+    #[inline]
+    fn set_lazy_from_flags(&mut self, result: u64, cf: bool, of: bool, af: bool, bits: u32) {
+        let sign_mask = Self::sign_mask(bits);
+        self.set_lazy_oszapc(
+            result,
+            (if cf { sign_mask } else { 0 }) | (if af { 0x8 } else { 0 }),
+            if of { sign_mask } else { 0 },
+            bits,
+        );
     }
 
     #[inline]
@@ -189,23 +210,77 @@ impl Flags {
         ((value1 ^ value2 ^ result) & 0x10) != 0
     }
 
-    #[inline]
-    pub fn materialize_lazy(&mut self) {
-        match self.lazy.op {
-            LazyFlagsOp::None => return,
-            LazyFlagsOp::Add | LazyFlagsOp::Sub => {
-                let mask = Self::mask(self.lazy.bits);
-                self.f_pf = Self::calc_pf_value((self.lazy.result & 0xff) as u8);
-                self.f_af = Self::calc_af_value(
-                    self.lazy.lhs & mask,
-                    self.lazy.rhs & mask,
-                    self.lazy.result & mask,
-                );
-            }
-            LazyFlagsOp::Logic => {
-                self.f_pf = Self::calc_pf_value((self.lazy.result & 0xff) as u8);
+    #[inline(always)]
+    fn sign_mask(bits: u32) -> u64 {
+        1u64 << (bits - 1)
+    }
+
+    #[inline(always)]
+    pub fn cf(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_cf,
+            LazyFlagsKind::Oszapc => (self.lazy.result_xor & Self::sign_mask(self.lazy.bits)) != 0,
+            LazyFlagsKind::SzpClearOac => false,
+        }
+    }
+
+    #[inline(always)]
+    pub fn pf(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_pf,
+            LazyFlagsKind::Oszapc | LazyFlagsKind::SzpClearOac => {
+                Self::calc_pf_value((self.lazy.result_lo & 0xff) as u8)
             }
         }
+    }
+
+    #[inline(always)]
+    pub fn af(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_af,
+            LazyFlagsKind::Oszapc => (self.lazy.result_xor & 0x8) != 0,
+            LazyFlagsKind::SzpClearOac => false,
+        }
+    }
+
+    #[inline(always)]
+    pub fn zf(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_zf,
+            LazyFlagsKind::Oszapc | LazyFlagsKind::SzpClearOac => self.lazy.result_lo == 0,
+        }
+    }
+
+    #[inline(always)]
+    pub fn sf(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_sf,
+            LazyFlagsKind::Oszapc | LazyFlagsKind::SzpClearOac => {
+                (self.lazy.result_lo & Self::sign_mask(self.lazy.bits)) != 0
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn of(&self) -> bool {
+        match self.lazy.kind {
+            LazyFlagsKind::None => self.f_of,
+            LazyFlagsKind::Oszapc => (self.lazy.result_ofv & Self::sign_mask(self.lazy.bits)) != 0,
+            LazyFlagsKind::SzpClearOac => false,
+        }
+    }
+
+    #[inline]
+    pub fn materialize_lazy(&mut self) {
+        if matches!(self.lazy.kind, LazyFlagsKind::None) {
+            return;
+        }
+        self.f_cf = self.cf();
+        self.f_pf = self.pf();
+        self.f_af = self.af();
+        self.f_zf = self.zf();
+        self.f_sf = self.sf();
+        self.f_of = self.of();
         self.clear_lazy();
     }
 
@@ -561,34 +636,17 @@ impl Flags {
 
     pub fn calc_flags(&mut self, final_value: u64, bits: u32) {
         self.clear_lazy();
-        match bits {
-            64 => self.f_sf = (final_value as i64) < 0,
-            32 => self.f_sf = (final_value as i32) < 0,
-            16 => self.f_sf = (final_value as i16) < 0,
-            8 => self.f_sf = (final_value as i8) < 0,
-            _ => unreachable!("weird size"),
-        }
-
-        self.calc_pf(final_value as u8);
-        self.f_zf = final_value == 0;
         self.f_tf = false;
+        self.set_lazy_from_flags(final_value, self.f_cf, self.f_of, self.f_af, bits);
     }
 
     pub fn calc_logic_flags_lazy(&mut self, final_value: u64, bits: u32) {
         self.clear_lazy();
-        match bits {
-            64 => self.f_sf = (final_value as i64) < 0,
-            32 => self.f_sf = (final_value as i32) < 0,
-            16 => self.f_sf = (final_value as i16) < 0,
-            8 => self.f_sf = (final_value as i8) < 0,
-            _ => unreachable!("weird size"),
-        }
-
-        self.f_zf = final_value == 0;
         self.f_tf = false;
         self.f_cf = false;
+        self.f_af = false;
         self.f_of = false;
-        self.set_lazy_flags(LazyFlagsOp::Logic, 0, 0, final_value, bits);
+        self.set_lazy_logic(final_value, bits);
     }
 
     #[inline]
@@ -609,83 +667,85 @@ impl Flags {
         let v1 = value1;
         let v2 = value2;
         let c = if include_carry { cf as u64 } else { 0 };
-
         let result = v1.wrapping_add(v2).wrapping_add(c);
-        let sum = v1 as u128 + v2 as u128 + c as u128;
 
-        self.f_cf = sum > 0xFFFFFFFFFFFFFFFF;
-        self.f_sf = (result as i64) < 0;
-        self.f_zf = result == 0;
-        let sign1 = (v1 >> 63) & 1;
-        let sign2 = (v2 >> 63) & 1;
-        let signr = (result >> 63) & 1;
-        self.f_of = (sign1 == sign2) && (sign1 != signr);
-
-        self.set_lazy_flags(LazyFlagsOp::Add, v1, v2, result, 64);
+        if c == 0 {
+            let xvec = v1 ^ v2;
+            let ovec = (v1 ^ result) & !xvec;
+            self.set_lazy_oszapc(result, xvec ^ ovec ^ result, ovec, 64);
+        } else {
+            let sum = v1 as u128 + v2 as u128 + c as u128;
+            let cf = sum > 0xffff_ffff_ffff_ffff;
+            let v2c = v2.wrapping_add(c);
+            let of = (!((v1 ^ v2c)) & (v2c ^ result) & Self::sign_mask(64)) != 0;
+            self.set_lazy_from_flags(
+                result,
+                cf,
+                of,
+                Self::calc_af_value(v1, v2c, result),
+                64,
+            );
+        }
         result
     }
 
     #[inline(always)]
     pub fn add32(&mut self, value1: u32, value2: u32, cf: bool, include_carry: bool) -> u64 {
-        let result = if include_carry {
-            value1.wrapping_add(value2).wrapping_add(cf as u32)
+        let c = if include_carry { cf as u32 } else { 0 };
+        let result = value1.wrapping_add(value2).wrapping_add(c);
+
+        if c == 0 {
+            let value1 = value1 as u64;
+            let value2 = value2 as u64;
+            let result = result as u64;
+            let xvec = value1 ^ value2;
+            let ovec = (value1 ^ result) & !xvec;
+            self.set_lazy_oszapc(result, xvec ^ ovec ^ result, ovec, 32);
         } else {
-            value1.wrapping_add(value2)
-        };
-
-        let sum = if include_carry {
-            value1 as u64 + value2 as u64 + cf as u64
-        } else {
-            value1 as u64 + value2 as u64
-        };
-
-        self.f_cf = sum > 0xFFFFFFFF;
-        self.f_sf = (result as i32) < 0;
-        self.f_zf = result == 0;
-        let sign1 = (value1 >> 31) & 1;
-        let sign2 = (value2 >> 31) & 1;
-        let signr = (result >> 31) & 1;
-        self.f_of = (sign1 == sign2) && (sign1 != signr);
-
-        self.set_lazy_flags(
-            LazyFlagsOp::Add,
-            value1 as u64,
-            value2 as u64,
-            result as u64,
-            32,
-        );
+            let sum = value1 as u64 + value2 as u64 + c as u64;
+            let cf = sum > 0xffff_ffff;
+            let value2c = value2.wrapping_add(c) as u64;
+            let value1 = value1 as u64;
+            let result64 = result as u64;
+            let of = (!(value1 ^ value2c) & (value2c ^ result64) & Self::sign_mask(32)) != 0;
+            self.set_lazy_from_flags(
+                result as u64,
+                cf,
+                of,
+                Self::calc_af_value(value1, value2c, result64),
+                32,
+            );
+        }
         result as u64
     }
 
     #[inline(always)]
     pub fn add16(&mut self, value1: u16, value2: u16, cf: bool, include_carry: bool) -> u64 {
-        let result = if include_carry {
-            value1.wrapping_add(value2).wrapping_add(cf as u16)
+        let c = if include_carry { cf as u16 } else { 0 };
+        let result = value1.wrapping_add(value2).wrapping_add(c);
+
+        if c == 0 {
+            let value1 = value1 as u64;
+            let value2 = value2 as u64;
+            let result = result as u64;
+            let xvec = value1 ^ value2;
+            let ovec = (value1 ^ result) & !xvec;
+            self.set_lazy_oszapc(result, xvec ^ ovec ^ result, ovec, 16);
         } else {
-            value1.wrapping_add(value2)
-        };
-
-        let sum = if include_carry {
-            value1 as u32 + value2 as u32 + cf as u32
-        } else {
-            value1 as u32 + value2 as u32
-        };
-
-        self.f_cf = sum > 0xFFFF;
-        self.f_sf = (result as i16) < 0;
-        self.f_zf = result == 0;
-        let sign1 = (value1 >> 15) & 1;
-        let sign2 = (value2 >> 15) & 1;
-        let signr = (result >> 15) & 1;
-        self.f_of = (sign1 == sign2) && (sign1 != signr);
-
-        self.set_lazy_flags(
-            LazyFlagsOp::Add,
-            value1 as u64,
-            value2 as u64,
-            result as u64,
-            16,
-        );
+            let sum = value1 as u32 + value2 as u32 + c as u32;
+            let cf = sum > 0xffff;
+            let value2c = value2.wrapping_add(c) as u64;
+            let value1 = value1 as u64;
+            let result64 = result as u64;
+            let of = (!(value1 ^ value2c) & (value2c ^ result64) & Self::sign_mask(16)) != 0;
+            self.set_lazy_from_flags(
+                result as u64,
+                cf,
+                of,
+                Self::calc_af_value(value1, value2c, result64),
+                16,
+            );
+        }
         result as u64
     }
 
@@ -693,23 +753,29 @@ impl Flags {
     pub fn add8(&mut self, value1: u8, value2: u8, cf: bool, include_carry: bool) -> u64 {
         let c = if include_carry { cf as u8 } else { 0 };
         let result = value1.wrapping_add(value2).wrapping_add(c);
-        let sum = value1 as u16 + value2 as u16 + c as u16;
 
-        self.f_cf = sum > 0xFF;
-        self.f_sf = (result as i8) < 0;
-        self.f_zf = result == 0;
-        let sign1 = (value1 >> 7) & 1;
-        let sign2 = (value2 >> 7) & 1;
-        let signr = (result >> 7) & 1;
-        self.f_of = (sign1 == sign2) && (sign1 != signr);
-
-        self.set_lazy_flags(
-            LazyFlagsOp::Add,
-            value1 as u64,
-            value2 as u64,
-            result as u64,
-            8,
-        );
+        if c == 0 {
+            let value1 = value1 as u64;
+            let value2 = value2 as u64;
+            let result = result as u64;
+            let xvec = value1 ^ value2;
+            let ovec = (value1 ^ result) & !xvec;
+            self.set_lazy_oszapc(result, xvec ^ ovec ^ result, ovec, 8);
+        } else {
+            let sum = value1 as u16 + value2 as u16 + c as u16;
+            let cf = sum > 0xff;
+            let value2c = value2.wrapping_add(c) as u64;
+            let value1 = value1 as u64;
+            let result64 = result as u64;
+            let of = (!(value1 ^ value2c) & (value2c ^ result64) & Self::sign_mask(8)) != 0;
+            self.set_lazy_from_flags(
+                result as u64,
+                cf,
+                of,
+                Self::calc_af_value(value1, value2c, result64),
+                8,
+            );
+        }
         result as u64
     }
 
@@ -717,17 +783,13 @@ impl Flags {
     pub fn sub64(&mut self, value1: u64, value2: u64) -> u64 {
         // let r:i64;
 
-        let (r, carry) = (value1).overflowing_sub(value2);
-        let (_, overflow) = (value1 as i64).overflowing_sub(value2 as i64);
-        self.f_cf = carry;
-        self.f_of = overflow;
+        let r = value1.wrapping_sub(value2);
 
         //self.check_carry_sub_qword(value1, value2);
         //r = self.check_overflow_sub_qword(value1, value2);
-        self.f_zf = value1 == value2;
-
-        self.f_sf = (r as i64) < 0;
-        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r, 64);
+        let xvec = value1 ^ value2;
+        let ovec = (value1 ^ r) & xvec;
+        self.set_lazy_oszapc(r, xvec ^ ovec ^ r, ovec, 64);
 
         /*
         let low_nibble_value1 = value1 & 0xf;
@@ -744,65 +806,62 @@ impl Flags {
     pub fn sub32(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i32;
 
-        let (r, carry) = (value1 as u32).overflowing_sub(value2 as u32);
-        let (_, overflow) = (value1 as u32 as i32).overflowing_sub(value2 as u32 as i32);
-        self.f_cf = carry;
-        self.f_of = overflow;
+        let r = (value1 as u32).wrapping_sub(value2 as u32);
 
         //self.check_carry_sub_dword(value1, value2);
         //r = self.check_overflow_sub_dword(value1, value2);
-        self.f_zf = value1 == value2;
-
-        self.f_sf = (r as i32) < 0;
         //self.f_af = (r & 0x10000000) != 0;
-        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 32);
+        let value1 = value1 as u32 as u64;
+        let value2 = value2 as u32 as u64;
+        let r = r as u64;
+        let xvec = value1 ^ value2;
+        let ovec = (value1 ^ r) & xvec;
+        self.set_lazy_oszapc(r, xvec ^ ovec ^ r, ovec, 32);
 
-        r as u64
+        r
     }
 
     #[inline(always)]
     pub fn sub16(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i16;
 
-        let (r, carry) = (value1 as u16).overflowing_sub(value2 as u16);
-        let (_, overflow) = (value1 as u16 as i16).overflowing_sub(value2 as u16 as i16);
-        self.f_cf = carry;
-        self.f_of = overflow;
+        let r = (value1 as u16).wrapping_sub(value2 as u16);
 
         //let val1 = value1 & 0xffff;
         //let val2 = value2 & 0xffff;
 
         //self.check_carry_sub_word(val1, val2);
         //r = self.check_overflow_sub_word(val1, val2);
-        self.f_zf = value1 == value2;
-
-        self.f_sf = (r as i16) < 0;
         //self.f_af = (r & 0x1000) != 0;
-        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 16);
+        let value1 = value1 as u16 as u64;
+        let value2 = value2 as u16 as u64;
+        let r = r as u64;
+        let xvec = value1 ^ value2;
+        let ovec = (value1 ^ r) & xvec;
+        self.set_lazy_oszapc(r, xvec ^ ovec ^ r, ovec, 16);
 
-        r as u64
+        r
     }
 
     #[inline(always)]
     pub fn sub8(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i8;
-        let (r, carry) = (value1 as u8).overflowing_sub(value2 as u8);
-        let (_, overflow) = (value1 as u8 as i8).overflowing_sub(value2 as u8 as i8);
-        self.f_cf = carry;
-        self.f_of = overflow;
+        let r = (value1 as u8).wrapping_sub(value2 as u8);
 
         //let val1:u64 = value1 & 0xff;
         //let val2:u64 = value2 & 0xff;
 
         //self.check_carry_sub_byte(val1, val2);
         //r = self.check_overflow_sub_byte(val1, val2);
-        self.f_zf = value1 == value2;
-
-        self.f_sf = (r as i8) < 0;
         //self.f_af = (r & 16) != 0;
-        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 8);
+        let value1 = value1 as u8 as u64;
+        let value2 = value2 as u8 as u64;
+        let r = r as u64;
+        let xvec = value1 ^ value2;
+        let ovec = (value1 ^ r) & xvec;
+        self.set_lazy_oszapc(r, xvec ^ ovec ^ r, ovec, 8);
 
-        r as u64
+        r
     }
 
     pub fn inc64(&mut self, value: u64) -> u64 {
