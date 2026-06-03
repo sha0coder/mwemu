@@ -9,7 +9,7 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
 
     loop {
         if flink.mod_name.to_lowercase().contains(module) && flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }
@@ -46,7 +46,7 @@ pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) 
     loop {
         if flink.mod_name.to_lowercase().contains(&module_lc) {
             if flink.export_table_rva > 0 {
-                for i in 0..flink.num_of_funcs {
+                for i in 0..flink.num_of_names {
                     if flink.pe_hdr == 0 {
                         continue;
                     }
@@ -75,7 +75,7 @@ pub fn resolve_api_addr_to_name(emu: &mut emu::Emu, addr: u64) -> String {
 
     loop {
         if flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }
@@ -103,7 +103,7 @@ pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
 
     loop {
         if flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }
@@ -131,7 +131,7 @@ pub fn search_api_name(emu: &mut emu::Emu, name: &str) -> (u64, String, String) 
 
     loop {
         if flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }
@@ -163,7 +163,7 @@ pub fn guess_api_name(emu: &mut emu::Emu, addr: u32) -> String {
 
     loop {
         if flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }
