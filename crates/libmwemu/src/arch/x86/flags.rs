@@ -70,6 +70,35 @@ pub const F_VIP: u32 = 20;
 pub const F_ID: u32 = 21;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+enum LazyFlagsOp {
+    None,
+    Add,
+    Sub,
+    Logic,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+struct LazyFlags {
+    op: LazyFlagsOp,
+    lhs: u64,
+    rhs: u64,
+    result: u64,
+    bits: u32,
+}
+
+impl Default for LazyFlags {
+    fn default() -> Self {
+        Self {
+            op: LazyFlagsOp::None,
+            lhs: 0,
+            rhs: 0,
+            result: 0,
+            bits: 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Flags {
     pub f_cf: bool,
     pub f_pf: bool,
@@ -89,6 +118,7 @@ pub struct Flags {
     pub f_vif: bool,
     pub f_vip: bool,
     pub f_id: bool,
+    lazy: LazyFlags,
 }
 
 impl Default for Flags {
@@ -118,10 +148,69 @@ impl Flags {
             f_vif: false,
             f_vip: false,
             f_id: false,
+            lazy: LazyFlags::default(),
         }
     }
 
+    #[inline]
+    pub fn clear_lazy(&mut self) {
+        self.lazy = LazyFlags::default();
+    }
+
+    #[inline]
+    fn set_lazy_flags(&mut self, op: LazyFlagsOp, lhs: u64, rhs: u64, result: u64, bits: u32) {
+        self.lazy = LazyFlags {
+            op,
+            lhs,
+            rhs,
+            result,
+            bits,
+        };
+    }
+
+    #[inline]
+    fn mask(bits: u32) -> u64 {
+        match bits {
+            64 => u64::MAX,
+            32 => 0xffff_ffff,
+            16 => 0xffff,
+            8 => 0xff,
+            _ => unreachable!("weird size"),
+        }
+    }
+
+    #[inline]
+    fn calc_pf_value(final_value: u8) -> bool {
+        PARITY_LOOKUP_TABLE[final_value as usize]
+    }
+
+    #[inline]
+    fn calc_af_value(value1: u64, value2: u64, result: u64) -> bool {
+        ((value1 ^ value2 ^ result) & 0x10) != 0
+    }
+
+    #[inline]
+    pub fn materialize_lazy(&mut self) {
+        match self.lazy.op {
+            LazyFlagsOp::None => return,
+            LazyFlagsOp::Add | LazyFlagsOp::Sub => {
+                let mask = Self::mask(self.lazy.bits);
+                self.f_pf = Self::calc_pf_value((self.lazy.result & 0xff) as u8);
+                self.f_af = Self::calc_af_value(
+                    self.lazy.lhs & mask,
+                    self.lazy.rhs & mask,
+                    self.lazy.result & mask,
+                );
+            }
+            LazyFlagsOp::Logic => {
+                self.f_pf = Self::calc_pf_value((self.lazy.result & 0xff) as u8);
+            }
+        }
+        self.clear_lazy();
+    }
+
     pub fn clear(&mut self) {
+        self.clear_lazy();
         self.f_cf = false;
         self.f_pf = false;
         self.f_af = false;
@@ -143,6 +232,7 @@ impl Flags {
     }
 
     pub fn set(&mut self) {
+        self.clear_lazy();
         self.f_cf = true;
         self.f_pf = true;
         self.f_af = true;
@@ -164,64 +254,72 @@ impl Flags {
     }
 
     pub fn print_trace(&self, pos: u64) {
+        let mut flags = *self;
+        flags.materialize_lazy();
         let mut fs = String::new();
         fs.push_str("[ ");
-        if self.f_cf {
+        if flags.f_cf {
             fs.push_str("CF ");
         }
-        if self.f_pf {
+        if flags.f_pf {
             fs.push_str("PF ");
         }
-        if self.f_af {
+        if flags.f_af {
             fs.push_str("AF ");
         }
-        if self.f_zf {
+        if flags.f_zf {
             fs.push_str("ZF ");
         }
-        if self.f_sf {
+        if flags.f_sf {
             fs.push_str("SF ");
         }
-        if self.f_tf {
+        if flags.f_tf {
             fs.push_str("TF ");
         }
-        if self.f_if {
+        if flags.f_if {
             fs.push_str("IF ");
         }
-        if self.f_df {
+        if flags.f_df {
             fs.push_str("DF ");
         }
-        if self.f_of {
+        if flags.f_of {
             fs.push_str("OF ");
         }
         fs.push_str("]");
-        log::trace!("\t{} flags: 0x{:x} {}", pos, self.dump(), fs);
+        log::trace!("\t{} flags: 0x{:x} {}", pos, flags.dump(), fs);
     }
 
     pub fn print(&self) {
+        let mut flags = *self;
+        flags.materialize_lazy();
         log::trace!("--- flags ---");
-        log::trace!("0x{:x}", self.dump());
-        log::trace!("cf: {}", self.f_cf);
-        log::trace!("pf: {}", self.f_pf);
-        log::trace!("af: {}", self.f_af);
-        log::trace!("zf: {}", self.f_zf);
-        log::trace!("sf: {}", self.f_sf);
-        log::trace!("tf: {}", self.f_tf);
-        log::trace!("if: {}", self.f_if);
-        log::trace!("df: {}", self.f_df);
-        log::trace!("of: {}", self.f_of);
-        log::trace!("iopl1: {}", self.f_iopl1);
-        log::trace!("iopl2: {}", self.f_iopl2);
-        log::trace!("nt: {}", self.f_nt);
-        log::trace!("rf: {}", self.f_rf);
-        log::trace!("vm: {}", self.f_vm);
-        log::trace!("ac: {}", self.f_ac);
-        log::trace!("vif: {}", self.f_vif);
-        log::trace!("vip: {}", self.f_vip);
-        log::trace!("id: {}", self.f_id);
+        log::trace!("0x{:x}", flags.dump());
+        log::trace!("cf: {}", flags.f_cf);
+        log::trace!("pf: {}", flags.f_pf);
+        log::trace!("af: {}", flags.f_af);
+        log::trace!("zf: {}", flags.f_zf);
+        log::trace!("sf: {}", flags.f_sf);
+        log::trace!("tf: {}", flags.f_tf);
+        log::trace!("if: {}", flags.f_if);
+        log::trace!("df: {}", flags.f_df);
+        log::trace!("of: {}", flags.f_of);
+        log::trace!("iopl1: {}", flags.f_iopl1);
+        log::trace!("iopl2: {}", flags.f_iopl2);
+        log::trace!("nt: {}", flags.f_nt);
+        log::trace!("rf: {}", flags.f_rf);
+        log::trace!("vm: {}", flags.f_vm);
+        log::trace!("ac: {}", flags.f_ac);
+        log::trace!("vif: {}", flags.f_vif);
+        log::trace!("vip: {}", flags.f_vip);
+        log::trace!("id: {}", flags.f_id);
         log::trace!("---");
     }
 
     pub fn diff(a: &Flags, b: &Flags) -> String {
+        let mut a = *a;
+        let mut b = *b;
+        a.materialize_lazy();
+        b.materialize_lazy();
         let mut output = String::new();
         // f_cf
         if a.f_cf != b.f_cf {
@@ -298,7 +396,8 @@ impl Flags {
         output
     }
 
-    pub fn dump(&self) -> u32 {
+    pub fn dump(mut self) -> u32 {
+        self.materialize_lazy();
         let mut flags: u32 = 0;
 
         if self.f_cf {
@@ -366,6 +465,7 @@ impl Flags {
     }
 
     pub fn load(&mut self, flags: u32) {
+        self.clear_lazy();
         self.f_cf = get_bit!(flags, 0) == 1;
         self.f_pf = get_bit!(flags, 2) == 1;
         self.f_af = get_bit!(flags, 4) == 1;
@@ -460,6 +560,7 @@ impl Flags {
     }
 
     pub fn calc_flags(&mut self, final_value: u64, bits: u32) {
+        self.clear_lazy();
         match bits {
             64 => self.f_sf = (final_value as i64) < 0,
             32 => self.f_sf = (final_value as i32) < 0,
@@ -473,16 +574,33 @@ impl Flags {
         self.f_tf = false;
     }
 
-    #[inline]
-    pub fn calc_pf(&mut self, final_value: u8) {
-        self.f_pf = PARITY_LOOKUP_TABLE[(final_value & 0xff) as usize];
+    pub fn calc_logic_flags_lazy(&mut self, final_value: u64, bits: u32) {
+        self.clear_lazy();
+        match bits {
+            64 => self.f_sf = (final_value as i64) < 0,
+            32 => self.f_sf = (final_value as i32) < 0,
+            16 => self.f_sf = (final_value as i16) < 0,
+            8 => self.f_sf = (final_value as i8) < 0,
+            _ => unreachable!("weird size"),
+        }
+
+        self.f_zf = final_value == 0;
+        self.f_tf = false;
+        self.f_cf = false;
+        self.f_of = false;
+        self.set_lazy_flags(LazyFlagsOp::Logic, 0, 0, final_value, bits);
     }
 
     #[inline]
-    pub fn calc_af(&mut self, value1: u64, value2: u64, result: u64, bits: u64) {
-        //let mask = bits*8-4;
-        let mask = 1 << 4;
-        self.f_af = ((value1 ^ value2 ^ result) & mask) != 0;
+    pub fn calc_pf(&mut self, final_value: u8) {
+        self.clear_lazy();
+        self.f_pf = Self::calc_pf_value(final_value);
+    }
+
+    #[inline]
+    pub fn calc_af(&mut self, value1: u64, value2: u64, result: u64, _bits: u64) {
+        self.clear_lazy();
+        self.f_af = Self::calc_af_value(value1, value2, result);
         //self.f_af = (value1 & 0x0f) + (value2 & 0x0f) > 0x09;
     }
 
@@ -497,14 +615,12 @@ impl Flags {
         self.f_cf = sum > 0xFFFFFFFFFFFFFFFF;
         self.f_sf = (result as i64) < 0;
         self.f_zf = result == 0;
-        self.calc_pf(result as u8);
-
         let sign1 = (v1 >> 63) & 1;
         let sign2 = (v2 >> 63) & 1;
         let signr = (result >> 63) & 1;
         self.f_of = (sign1 == sign2) && (sign1 != signr);
 
-        self.calc_af(v1, v2, result, 64);
+        self.set_lazy_flags(LazyFlagsOp::Add, v1, v2, result, 64);
         result
     }
 
@@ -524,14 +640,18 @@ impl Flags {
         self.f_cf = sum > 0xFFFFFFFF;
         self.f_sf = (result as i32) < 0;
         self.f_zf = result == 0;
-        self.calc_pf(result as u8);
-
         let sign1 = (value1 >> 31) & 1;
         let sign2 = (value2 >> 31) & 1;
         let signr = (result >> 31) & 1;
         self.f_of = (sign1 == sign2) && (sign1 != signr);
 
-        self.calc_af(value1 as u64, value2 as u64, result as u64, 32);
+        self.set_lazy_flags(
+            LazyFlagsOp::Add,
+            value1 as u64,
+            value2 as u64,
+            result as u64,
+            32,
+        );
         result as u64
     }
 
@@ -551,14 +671,18 @@ impl Flags {
         self.f_cf = sum > 0xFFFF;
         self.f_sf = (result as i16) < 0;
         self.f_zf = result == 0;
-        self.calc_pf(result as u8);
-
         let sign1 = (value1 >> 15) & 1;
         let sign2 = (value2 >> 15) & 1;
         let signr = (result >> 15) & 1;
         self.f_of = (sign1 == sign2) && (sign1 != signr);
 
-        self.calc_af(value1 as u64, value2 as u64, result as u64, 16);
+        self.set_lazy_flags(
+            LazyFlagsOp::Add,
+            value1 as u64,
+            value2 as u64,
+            result as u64,
+            16,
+        );
         result as u64
     }
 
@@ -570,14 +694,18 @@ impl Flags {
         self.f_cf = sum > 0xFF;
         self.f_sf = (result as i8) < 0;
         self.f_zf = result == 0;
-        self.calc_pf(result);
-
         let sign1 = (value1 >> 7) & 1;
         let sign2 = (value2 >> 7) & 1;
         let signr = (result >> 7) & 1;
         self.f_of = (sign1 == sign2) && (sign1 != signr);
 
-        self.calc_af(value1 as u64, value2 as u64, result as u64, 8);
+        self.set_lazy_flags(
+            LazyFlagsOp::Add,
+            value1 as u64,
+            value2 as u64,
+            result as u64,
+            8,
+        );
         result as u64
     }
 
@@ -594,8 +722,7 @@ impl Flags {
         self.f_zf = value1 == value2;
 
         self.f_sf = (r as i64) < 0;
-        self.calc_pf(r as u8);
-        self.calc_af(value1, value2, r, 64);
+        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r, 64);
 
         /*
         let low_nibble_value1 = value1 & 0xf;
@@ -621,9 +748,8 @@ impl Flags {
         self.f_zf = value1 == value2;
 
         self.f_sf = (r as i32) < 0;
-        self.calc_pf(r as u8);
         //self.f_af = (r & 0x10000000) != 0;
-        self.calc_af(value1, value2, r as u64, 32);
+        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 32);
 
         r as u64
     }
@@ -644,9 +770,8 @@ impl Flags {
         self.f_zf = value1 == value2;
 
         self.f_sf = (r as i16) < 0;
-        self.calc_pf(r as u8);
         //self.f_af = (r & 0x1000) != 0;
-        self.calc_af(value1, value2, r as u64, 16);
+        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 16);
 
         r as u64
     }
@@ -666,9 +791,8 @@ impl Flags {
         self.f_zf = value1 == value2;
 
         self.f_sf = (r as i8) < 0;
-        self.calc_pf(r);
         //self.f_af = (r & 16) != 0;
-        self.calc_af(value1, value2, r as u64, 8);
+        self.set_lazy_flags(LazyFlagsOp::Sub, value1, value2, r as u64, 8);
 
         r as u64
     }
@@ -1509,18 +1633,7 @@ impl Flags {
     pub fn test(&mut self, value0: u64, value1: u64, sz: u32) {
         let result: u64 = value0 & value1;
 
-        self.f_zf = result == 0;
-        self.f_cf = false;
-        self.f_of = false;
-        self.calc_pf(result as u8);
-
-        match sz {
-            64 => self.f_sf = (result as i64) < 0,
-            32 => self.f_sf = (result as i32) < 0,
-            16 => self.f_sf = (result as i16) < 0,
-            8 => self.f_sf = (result as i8) < 0,
-            _ => unreachable!("weird size"),
-        }
+        self.calc_logic_flags_lazy(result, sz);
         //undefined behavior: self.calc_af(value0, value1, result as u64, sz as u64);
     }
 

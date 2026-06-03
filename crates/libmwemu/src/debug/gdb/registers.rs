@@ -37,7 +37,7 @@ pub fn write_regs_aarch64(emu: &mut Emu, gdb_regs: &AArch64CoreRegs) {
 /// Read 64-bit registers from mwemu into gdbstub's X86_64CoreRegs format
 pub fn read_regs_64(emu: &Emu) -> gdbstub_arch::x86::reg::X86_64CoreRegs {
     let regs = emu.regs();
-    let flags = emu.flags();
+    let flags = emu.flags_snapshot();
     let fpu = emu.fpu();
 
     let mut gdb_regs = gdbstub_arch::x86::reg::X86_64CoreRegs::default();
@@ -201,7 +201,7 @@ pub fn write_regs_64(emu: &mut Emu, gdb_regs: &gdbstub_arch::x86::reg::X86_64Cor
 /// Read 32-bit registers from mwemu into gdbstub's X86CoreRegs format
 pub fn read_regs_32(emu: &Emu) -> X86CoreRegs {
     let regs = emu.regs();
-    let flags = emu.flags();
+    let flags = emu.flags_snapshot();
     let fpu = emu.fpu();
 
     let mut gdb_regs = X86CoreRegs::default();
