@@ -57,17 +57,64 @@ impl Emu {
         }
     }
 
-    pub fn flags(&self) -> &Flags {
+    pub fn flags(&mut self) -> &Flags {
+        match &mut self.threads[self.current_thread_id].arch {
+            ArchThreadState::X86 { flags, .. } => {
+                flags.materialize_lazy();
+                flags
+            }
+            _ => panic!("flags() called on aarch64 emu"),
+        }
+    }
+
+    pub fn flags_ref(&self) -> &Flags {
         match &self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { flags, .. } => flags,
             _ => panic!("flags() called on aarch64 emu"),
         }
     }
 
+    pub fn flags_snapshot(&self) -> Flags {
+        let mut flags = *self.flags_ref();
+        flags.materialize_lazy();
+        flags
+    }
+
     pub fn flags_mut(&mut self) -> &mut Flags {
         match &mut self.threads[self.current_thread_id].arch {
-            ArchThreadState::X86 { flags, .. } => flags,
+            ArchThreadState::X86 { flags, .. } => {
+                flags.materialize_lazy();
+                flags
+            }
             _ => panic!("flags_mut() called on aarch64 emu"),
         }
+    }
+
+    pub fn flag_cf(&self) -> bool {
+        self.flags_ref().f_cf
+    }
+
+    pub fn flag_zf(&self) -> bool {
+        self.flags_ref().f_zf
+    }
+
+    pub fn flag_sf(&self) -> bool {
+        self.flags_ref().f_sf
+    }
+
+    pub fn flag_of(&self) -> bool {
+        self.flags_ref().f_of
+    }
+
+    pub fn flag_df(&self) -> bool {
+        self.flags_ref().f_df
+    }
+
+    pub fn flag_pf(&mut self) -> bool {
+        self.flags().f_pf
+    }
+
+    pub fn flag_af(&mut self) -> bool {
+        self.flags().f_af
     }
 }

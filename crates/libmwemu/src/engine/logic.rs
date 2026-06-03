@@ -40,7 +40,7 @@ pub fn rcl_bit_based(emu: &Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         rot2 & 0b11111
     };
 
-    if emu.flags().f_cf {
+    if emu.flag_cf() {
         set_bit!(ret, bits, 1);
     } else {
         set_bit!(ret, bits, 0);
@@ -102,7 +102,7 @@ pub fn rcr(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         rot2 & 0b11111
     };
 
-    if emu.flags().f_cf {
+    if emu.flag_cf() {
         set_bit!(ret, bits, 1);
     } else {
         set_bit!(ret, bits, 0);
