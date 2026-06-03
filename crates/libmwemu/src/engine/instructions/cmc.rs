@@ -7,6 +7,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         color!("Blue"),
         &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
     );
-    emu.flags_mut().f_cf = !emu.flags().f_cf;
+    emu.flags_mut().f_cf = !emu.flag_cf();
     true
 }

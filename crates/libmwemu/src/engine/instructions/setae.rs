@@ -8,7 +8,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
     );
 
-    if !emu.flags().f_cf {
+    if !emu.flag_cf() {
         if !emu.set_operand_value(ins, 0, 1) {
             return false;
         }

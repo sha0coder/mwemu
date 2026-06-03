@@ -5,7 +5,7 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     assert!(ins.op_count() == 1);
 
-    if emu.flags().f_pf {
+    if emu.flag_pf() {
         emu.show_instruction_taken(
             color!("Orange"),
             &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),

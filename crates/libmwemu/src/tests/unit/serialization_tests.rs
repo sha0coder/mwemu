@@ -41,7 +41,7 @@ fn test_x86_64_native_serialization_roundtrip() {
             assert_eq!(loaded.regs().rbx, 0xAABB_CCDD_EEFF_0011);
             assert_eq!(loaded.regs().rsp, 0x200800);
             assert_eq!(loaded.regs().rip, 0x401000);
-            assert_eq!(loaded.flags().dump(), 0x246);
+            assert_eq!(loaded.flags_snapshot().dump(), 0x246);
             assert_eq!(loaded.maps.read_byte(0x200010), Some(0x41));
         })
         .unwrap();
@@ -145,7 +145,7 @@ fn test_x64_minidump_roundtrip() {
     assert_eq!(loaded.regs().rbp, 0x200900);
     assert_eq!(loaded.regs().rsp, 0x200800);
     assert_eq!(loaded.regs().rip, 0x401020);
-    assert_eq!(loaded.flags().dump(), 0x246);
+    assert_eq!(loaded.flags_snapshot().dump(), 0x246);
     assert_eq!(loaded.maps.read_byte(0x200010), Some(0x41));
     assert!(loaded.pe64.is_some());
 }
@@ -186,7 +186,7 @@ fn test_x86_minidump_roundtrip() {
     assert_eq!(loaded.regs().get_ebp(), 0x0010_0900);
     assert_eq!(loaded.regs().get_esp(), 0x0010_0800);
     assert_eq!(loaded.regs().get_eip(), 0x0040_1020);
-    assert_eq!(loaded.flags().dump(), 0x202);
+    assert_eq!(loaded.flags_snapshot().dump(), 0x202);
     assert_eq!(loaded.maps.read_byte(0x0010_0010), Some(0x24));
     assert!(loaded.pe32.is_some());
 }
