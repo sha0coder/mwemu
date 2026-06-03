@@ -34,9 +34,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             f_cf,
             true,
         ),
-        8 => emu
-            .flags_mut()
-            .add8((value0 & 0xff) as u8, (value1 & 0xff) as u8, f_cf, true),
+        8 => {
+            emu.flags_overwrite_mut()
+                .add8((value0 & 0xff) as u8, (value1 & 0xff) as u8, f_cf, true)
+        }
         _ => unreachable!("weird size"),
     };
 

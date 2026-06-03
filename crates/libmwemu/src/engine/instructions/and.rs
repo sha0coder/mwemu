@@ -42,10 +42,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     }
 
     let bits = emu.get_operand_sz(ins, 0);
-    emu.flags_overwrite_mut().calc_flags(result1, bits);
-    emu.flags_mut().f_of = false;
-    emu.flags_mut().f_cf = false;
-    emu.flags_mut().calc_pf(result1 as u8);
+    emu.flags_overwrite_mut()
+        .calc_logic_flags_lazy(result1, bits);
 
     if !emu.set_operand_value(ins, 0, result2) {
         return false;

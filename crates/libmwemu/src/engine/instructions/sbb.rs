@@ -7,7 +7,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     assert!(ins.op_count() == 2);
 
-    let cf: u64 = if emu.flag_cf() { 1 } else { 0 };
+    let cf = emu.flag_cf();
 
     let value0 = match emu.get_operand_value(ins, 0, true) {
         Some(v) => v,
@@ -21,16 +21,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     let sz = emu.get_operand_sz(ins, 0);
     let res: u64 = match sz {
-        64 => emu.flags_overwrite_mut().sub64(value0, value1.wrapping_add(cf)),
+        64 => emu.flags_overwrite_mut().sub64_borrow(value0, value1, cf),
         32 => emu
-            .flags_mut()
-            .sub32(value0, (value1 & 0xffffffff).wrapping_add(cf)),
+            .flags_overwrite_mut()
+            .sub32_borrow(value0, value1 & 0xffff_ffff, cf),
         16 => emu
-            .flags_mut()
-            .sub16(value0, (value1 & 0xffff).wrapping_add(cf)),
+            .flags_overwrite_mut()
+            .sub16_borrow(value0, value1 & 0xffff, cf),
         8 => emu
-            .flags_mut()
-            .sub8(value0, (value1 & 0xff).wrapping_add(cf)),
+            .flags_overwrite_mut()
+            .sub8_borrow(value0, value1 & 0xff, cf),
         _ => panic!("weird size"),
     };
 
