@@ -482,7 +482,7 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
             );
         }
         let result = 0; //inline::shrd(value0, value1, pcounter, size);
-        emu.flags_mut().calc_flags(result, size);
+        emu.flags_overwrite_mut().calc_flags(result, size);
         return (result, true);
     }
 
@@ -518,7 +518,7 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }*/
 
-    emu.flags_mut().calc_flags(storage0, size);
+    emu.flags_overwrite_mut().calc_flags(storage0, size);
     (storage0, false)
 }
 
@@ -548,7 +548,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
 
         let result = 0;
         //let result = inline::shld(value0, value1, pcounter, size);
-        emu.flags_mut().calc_flags(result, size);
+        emu.flags_overwrite_mut().calc_flags(result, size);
 
         return (result, true);
         //counter = pcounter - size as u64;
@@ -570,7 +570,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }
 
-    emu.flags_mut().calc_flags(storage0, size);
+    emu.flags_overwrite_mut().calc_flags(storage0, size);
 
     (storage0, false)
 }
