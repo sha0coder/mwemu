@@ -194,7 +194,7 @@ fn set_register(emu: &mut libmwemu::emu::Emu, name: &str, value: u128) {
     }
 }
 
-fn get_register(emu: &libmwemu::emu::Emu, name: &str) -> u128 {
+fn get_register(emu: &mut libmwemu::emu::Emu, name: &str) -> u128 {
     let regs = emu.regs();
     match name {
         "rax" => encode_gpr64(regs.rax),
@@ -287,7 +287,7 @@ fn run_single_test(
 
     // Check output registers
     for (reg, expected) in &test_case.outputs {
-        let actual = get_register(&emu, reg);
+        let actual = get_register(&mut emu, reg);
         if actual != *expected {
             return Err(format!(
                 "Test #{}: {} mismatch for {}: expected 0x{:X}, got 0x{:X}\n  Inputs: {:?}",

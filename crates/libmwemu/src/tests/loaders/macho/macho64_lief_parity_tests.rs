@@ -216,7 +216,10 @@ fn macho64_lief_auto_falls_back_to_legacy_when_lief_fails() {
     let path = tmp.to_string_lossy().to_string();
 
     let lief_result = LiefMacho64::load(&path, Some(Arch::Aarch64)).and_then(|l| l.to_macho64());
-    assert!(lief_result.is_err(), "LIEF should fail on invalid file for Auto fallback to trigger");
+    assert!(
+        lief_result.is_err(),
+        "LIEF should fail on invalid file for Auto fallback to trigger"
+    );
 }
 
 #[test]

@@ -165,6 +165,8 @@ fn elf64_lief_auto_falls_back_to_legacy_when_lief_fails() {
     let path = tmp.to_string_lossy().to_string();
 
     let lief_result = LiefElf64::load(&path).and_then(|l| l.to_legacy_model());
-    assert!(lief_result.is_err(), "LIEF should fail on invalid file for Auto fallback to trigger");
+    assert!(
+        lief_result.is_err(),
+        "LIEF should fail on invalid file for Auto fallback to trigger"
+    );
 }
-

@@ -37,3 +37,5 @@ CACHEDIR.TARGET
 .kilo/
 
 .kilocodemodes
+
+crates/custom_mwemu/
