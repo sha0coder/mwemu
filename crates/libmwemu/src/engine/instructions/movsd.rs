@@ -61,7 +61,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
             emu.maps.write_dword(emu.regs().rdi, val);
 
-            if !emu.flags().f_df {
+            if !emu.flag_df() {
                 emu.regs_mut().rsi += 4;
                 emu.regs_mut().rdi += 4;
             } else {
@@ -80,7 +80,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             };
             emu.maps.write_dword(emu.regs().get_edi(), val);
 
-            if !emu.flags().f_df {
+            if !emu.flag_df() {
                 let esi = emu.regs().get_esi() + 4;
                 let edi = emu.regs().get_edi() + 4;
                 emu.regs_mut().set_esi(esi);

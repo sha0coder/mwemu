@@ -7,7 +7,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     assert!(ins.op_count() == 2);
 
-    let cf: u64 = if emu.flags().f_cf { 1 } else { 0 };
+    let cf: u64 = if emu.flag_cf() { 1 } else { 0 };
 
     let value0 = match emu.get_operand_value(ins, 0, true) {
         Some(v) => v,

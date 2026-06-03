@@ -57,6 +57,7 @@ impl Emu {
         }
     }
 
+    #[inline(always)]
     pub fn flags(&mut self) -> &Flags {
         match &mut self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { flags, .. } => {
@@ -67,6 +68,7 @@ impl Emu {
         }
     }
 
+    #[inline(always)]
     pub fn flags_ref(&self) -> &Flags {
         match &self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { flags, .. } => flags,
@@ -74,12 +76,14 @@ impl Emu {
         }
     }
 
+    #[inline(always)]
     pub fn flags_snapshot(&self) -> Flags {
         let mut flags = *self.flags_ref();
         flags.materialize_lazy();
         flags
     }
 
+    #[inline(always)]
     pub fn flags_mut(&mut self) -> &mut Flags {
         match &mut self.threads[self.current_thread_id].arch {
             ArchThreadState::X86 { flags, .. } => {
@@ -90,30 +94,37 @@ impl Emu {
         }
     }
 
+    #[inline(always)]
     pub fn flag_cf(&self) -> bool {
         self.flags_ref().f_cf
     }
 
+    #[inline(always)]
     pub fn flag_zf(&self) -> bool {
         self.flags_ref().f_zf
     }
 
+    #[inline(always)]
     pub fn flag_sf(&self) -> bool {
         self.flags_ref().f_sf
     }
 
+    #[inline(always)]
     pub fn flag_of(&self) -> bool {
         self.flags_ref().f_of
     }
 
+    #[inline(always)]
     pub fn flag_df(&self) -> bool {
         self.flags_ref().f_df
     }
 
+    #[inline(always)]
     pub fn flag_pf(&mut self) -> bool {
         self.flags().f_pf
     }
 
+    #[inline(always)]
     pub fn flag_af(&mut self) -> bool {
         self.flags().f_af
     }

@@ -23,14 +23,14 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.flags_mut().sub8(al, value0);
 
     if emu.cfg.is_x64() {
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rdi -= 1;
         } else {
             emu.regs_mut().rdi += 1;
         }
     } else {
         // 32bits
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let edi = emu.regs().get_edi() - 1;
             emu.regs_mut().set_edi(edi);
         } else {

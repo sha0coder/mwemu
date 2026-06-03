@@ -13,7 +13,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         emu.regs_mut().rax = val;
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rsi -= 8;
         } else {
             emu.regs_mut().rsi += 8;

@@ -15,7 +15,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     emu.maps.write_qword(emu.regs().rdi, emu.regs().rax);
 
-    if emu.flags().f_df {
+    if emu.flag_df() {
         emu.regs_mut().rdi -= 8;
     } else {
         emu.regs_mut().rdi += 8;

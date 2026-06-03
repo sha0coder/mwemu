@@ -29,7 +29,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
             return false;
         }
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rdi -= 1;
         } else {
             emu.regs_mut().rdi += 1;
@@ -42,7 +42,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         {
             return false;
         }
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let edi = emu.regs().get_edi() - 1;
             emu.regs_mut().set_edi(edi);
         } else {

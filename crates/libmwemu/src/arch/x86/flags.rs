@@ -604,6 +604,7 @@ impl Flags {
         //self.f_af = (value1 & 0x0f) + (value2 & 0x0f) > 0x09;
     }
 
+    #[inline(always)]
     pub fn add64(&mut self, value1: u64, value2: u64, cf: bool, include_carry: bool) -> u64 {
         let v1 = value1;
         let v2 = value2;
@@ -624,6 +625,7 @@ impl Flags {
         result
     }
 
+    #[inline(always)]
     pub fn add32(&mut self, value1: u32, value2: u32, cf: bool, include_carry: bool) -> u64 {
         let result = if include_carry {
             value1.wrapping_add(value2).wrapping_add(cf as u32)
@@ -655,6 +657,7 @@ impl Flags {
         result as u64
     }
 
+    #[inline(always)]
     pub fn add16(&mut self, value1: u16, value2: u16, cf: bool, include_carry: bool) -> u64 {
         let result = if include_carry {
             value1.wrapping_add(value2).wrapping_add(cf as u16)
@@ -686,6 +689,7 @@ impl Flags {
         result as u64
     }
 
+    #[inline(always)]
     pub fn add8(&mut self, value1: u8, value2: u8, cf: bool, include_carry: bool) -> u64 {
         let c = if include_carry { cf as u8 } else { 0 };
         let result = value1.wrapping_add(value2).wrapping_add(c);
@@ -709,6 +713,7 @@ impl Flags {
         result as u64
     }
 
+    #[inline(always)]
     pub fn sub64(&mut self, value1: u64, value2: u64) -> u64 {
         // let r:i64;
 
@@ -735,6 +740,7 @@ impl Flags {
         r
     }
 
+    #[inline(always)]
     pub fn sub32(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i32;
 
@@ -754,6 +760,7 @@ impl Flags {
         r as u64
     }
 
+    #[inline(always)]
     pub fn sub16(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i16;
 
@@ -776,6 +783,7 @@ impl Flags {
         r as u64
     }
 
+    #[inline(always)]
     pub fn sub8(&mut self, value1: u64, value2: u64) -> u64 {
         //let r:i8;
         let (r, carry) = (value1 as u8).overflowing_sub(value2 as u8);

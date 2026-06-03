@@ -17,7 +17,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         None => return false,
     };
 
-    let f_cf = emu.flags().f_cf;
+    let f_cf = emu.flag_cf();
     let res: u64 = match emu.get_operand_sz(ins, 1) {
         64 => emu.flags_mut().add64(value0, value1, f_cf, false),
         32 => emu.flags_mut().add32(

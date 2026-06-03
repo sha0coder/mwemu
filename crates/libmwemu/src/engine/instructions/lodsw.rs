@@ -13,7 +13,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         emu.regs_mut().set_ax(val as u64);
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rsi -= 2;
         } else {
             emu.regs_mut().rsi += 2;
@@ -25,7 +25,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         emu.regs_mut().set_ax(val as u64);
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let esi = emu.regs().get_esi() - 2;
             emu.regs_mut().set_esi(esi);
         } else {

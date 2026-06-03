@@ -9,7 +9,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.maps
             .write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rdi -= 2;
         } else {
             emu.regs_mut().rdi += 2;
@@ -19,7 +19,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         emu.maps
             .write_word(emu.regs().get_edi(), emu.regs().get_ax() as u16);
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let edi = emu.regs().get_edi() - 2;
             emu.regs_mut().set_edi(edi);
         } else {

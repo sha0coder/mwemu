@@ -28,7 +28,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
     };
 
-    if emu.flags().f_df {
+    if emu.flag_df() {
         emu.regs_mut().rsi -= 8;
         emu.regs_mut().rdi -= 8;
     } else {
