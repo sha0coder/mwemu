@@ -19,7 +19,7 @@ use crate::{
     hooks::Hooks,
     loaders::elf::{elf32::Elf32, elf64::Elf64},
     loaders::macho::macho64::Macho64,
-    loaders::pe::{pe32::PE32, runtime_pe64::RuntimePe64},
+    loaders::pe::{runtime_pe32::RuntimePe32, runtime_pe64::RuntimePe64},
     maps::Maps,
     pe::api_set_resolver::ApiSetResolver,
     threading::context::ThreadContext,
@@ -115,7 +115,7 @@ pub struct Emu {
     // --- Platform & loaded binary ---
     pub os: OperatingSystem,       // target OS (set by loader / init)
     pub pe64: Option<RuntimePe64>, // parsed PE64 (legacy or LIEF) for runtime import resolution & resources
-    pub pe32: Option<PE32>,        // parsed PE32 for runtime import resolution & resources
+    pub pe32: Option<RuntimePe32>, // parsed PE32 (legacy or LIEF) for runtime import resolution & resources
     pub elf64: Option<Elf64>,      // parsed ELF64 (Linux x86_64 / AArch64)
     pub elf32: Option<Elf32>,      // parsed ELF32 (Linux x86)
     pub macho64: Option<Macho64>,  // parsed Mach-O 64 (macOS AArch64), includes addr_to_symbol

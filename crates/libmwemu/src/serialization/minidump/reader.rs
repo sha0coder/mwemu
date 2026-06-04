@@ -78,6 +78,9 @@ impl MinidumpReader {
                                 pe32 = Some(SerializablePE32 {
                                     filename: module.name.to_string(),
                                     raw: raw_data,
+                                    backend: Some(
+                                        crate::serialization::pe32::SerializablePe32Backend::Legacy,
+                                    ),
                                 });
                             }
                         }

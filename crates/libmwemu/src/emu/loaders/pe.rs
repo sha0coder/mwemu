@@ -1,7 +1,7 @@
 use crate::config::Pe64Backend;
 use crate::emu::Emu;
-use crate::loaders::pe::pe32::PE32;
 use crate::loaders::pe::pe64::PE64;
+use crate::loaders::pe::runtime_pe32::RuntimePe32;
 use crate::loaders::pe::runtime_pe64::{RuntimePe64, RuntimePeError};
 use crate::maps::mem64::Permission;
 use crate::windows::constants;
@@ -41,7 +41,10 @@ impl Emu {
         let is_maps = filename.contains("windows/x86/");
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
-        let mut pe32 = PE32::load(filename);
+        let mut pe32 = match RuntimePe32::load_with_backend(filename, self.cfg.pe32_backend) {
+            Ok(pe) => pe,
+            Err(e) => panic!("PE32 load failed: {}", e),
+        };
         let base: u32;
 
         log::trace!("loading pe32 {}", filename);
@@ -56,7 +59,7 @@ impl Emu {
 
         // base is forced by libmwemu
         if force_base > 0 {
-            if self.maps.overlaps(force_base as u64, pe32.size() as u64) {
+            if self.maps.overlaps(force_base as u64, pe32.size()) {
                 panic!("the forced base address overlaps");
             } else {
                 base = force_base;
@@ -68,7 +71,7 @@ impl Emu {
             && !self.cfg.emulate_winapi
         {
             base = self.cfg.code_base_addr as u32;
-            if self.maps.overlaps(base as u64, pe32.size() as u64) {
+            if self.maps.overlaps(base as u64, pe32.size()) {
                 panic!("the setted base address overlaps");
             }
 
@@ -76,45 +79,59 @@ impl Emu {
         } else {
             // user's program
             if set_entry {
-                if pe32.opt.image_base >= constants::LIBS32_MIN as u32
+                if pe32.image_base() >= constants::LIBS32_MIN as u32
                     || self
                         .maps
-                        .overlaps(pe32.opt.image_base as u64, pe32.mem_size() as u64)
+                        .overlaps(pe32.image_base() as u64, pe32.mem_size())
                 {
                     base = self
                         .maps
-                        .alloc(pe32.mem_size() as u64 + 0xff)
+                        .alloc(pe32.mem_size() + 0xff)
                         .expect("out of memory") as u32;
                 } else {
-                    base = pe32.opt.image_base;
+                    base = pe32.image_base();
                 }
 
             // system library
             } else {
                 base = self
                     .maps
-                    .lib32_alloc(pe32.mem_size() as u64)
+                    .lib32_alloc(pe32.mem_size())
                     .expect("out of memory") as u32;
             }
         }
 
-        if set_entry || self.cfg.emulate_winapi {
-            // 2. pe binding
-            if !is_maps || self.cfg.emulate_winapi {
-                pe32.iat_binding(self, base);
-                pe32.delay_load_binding(self, base);
-                self.base = base as u64;
-            }
+        // Capture whether binding should run. This mirrors the legacy
+        // "after map creation" semantics so that LIEF PE32 binding can
+        // successfully patch emulated memory (it does not mutate a raw
+        // PE buffer like legacy binding does).
+        let do_binding = set_entry || self.cfg.emulate_winapi;
+        let do_bind_runtime = do_binding && (!is_maps || self.cfg.emulate_winapi);
+        // self.base was originally updated only when binding was about
+        // to run (i.e. under the same `!is_maps || emulate_winapi`
+        // condition). Preserve that exact condition to avoid changing
+        // behavior for callers that map a windows/x86 DLL with
+        // emulate_winapi=false.
+        let do_set_base = do_bind_runtime;
 
+        if do_set_base {
+            // Set self.base here so it matches the previous behavior
+            // (it was set inside the binding block before). Moving
+            // binding itself below does not change the conditions under
+            // which self.base is updated.
+            self.base = base as u64;
+        }
+
+        if do_binding {
             // 3. entry point logic
             if self.cfg.entry_point == constants::CFG_DEFAULT_BASE {
-                self.regs_mut().rip = base as u64 + pe32.opt.address_of_entry_point as u64;
+                self.regs_mut().rip = base as u64 + pe32.entry_point() as u64;
                 log::trace!("entry point at 0x{:x}", self.regs().rip);
             } else {
                 self.regs_mut().rip = self.cfg.entry_point;
                 log::trace!(
                     "entry point at 0x{:x} but forcing it at 0x{:x}",
-                    base as u64 + pe32.opt.address_of_entry_point as u64,
+                    base as u64 + pe32.entry_point() as u64,
                     self.regs().rip
                 );
             }
@@ -122,22 +139,28 @@ impl Emu {
             log::trace!("base: 0x{:x}", base);
         }
 
-        let sec_allign = pe32.opt.section_alignment;
+        let sec_allign = pe32.section_alignment();
         // 4. map pe and then sections
         let pemap = self
             .maps
             .create_map(
                 &format!("{}.pe", filename2),
                 base.into(),
-                align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
+                align_up!(pe32.size_of_headers(), sec_allign) as u64,
                 Permission::READ_WRITE,
             )
             .expect("cannot create pe map");
-        pemap.memcpy(pe32.get_headers(), pe32.opt.size_of_headers as usize);
+        let headers = pe32.get_headers();
+        let header_len = pe32.size_of_headers() as usize;
+        let copy_len = headers.len().min(header_len);
+        pemap.memcpy(&headers[..copy_len], copy_len);
 
         for i in 0..pe32.num_of_sections() {
             let ptr = pe32.get_section_ptr(i);
-            let sect = pe32.get_section(i);
+            let sect = match pe32.get_section(i) {
+                Some(s) => s,
+                None => continue,
+            };
             let charactis = sect.characteristics;
             let is_exec = charactis & 0x20000000 != 0x0;
             let is_read = charactis & 0x40000000 != 0x0;
@@ -146,7 +169,7 @@ impl Emu {
             // calling NtProtectVirtualMemory first — it relies on SEC_IMAGE COW
             // promotion, which the emulator does not model. Force RW so the
             // page-touching helper in ntdll does not fault.
-            if sect.get_name().trim() == ".didat" {
+            if sect.name.trim() == ".didat" {
                 is_write = true;
             }
             let permission = Permission::from_flags(is_read, is_write, is_exec);
@@ -158,12 +181,12 @@ impl Emu {
             };
 
             if sz == 0 {
-                log::trace!("size of section {} is 0", sect.get_name());
+                log::trace!("size of section {} is 0", sect.name);
                 continue;
             }
 
             let mut sect_name = sect
-                .get_name()
+                .name
                 .replace(" ", "")
                 .replace("\t", "")
                 .replace("\x0a", "")
@@ -184,24 +207,24 @@ impl Emu {
                     log::trace!(
                         "weird pe, skipping section {} {} because overlaps",
                         filename2,
-                        sect.get_name()
+                        sect.name
                     );
                     continue;
                 }
             };
 
-            if ptr.len() > sz as usize {
-                panic!(
-                    "overflow {} {} {} {}",
-                    filename2,
-                    sect.get_name(),
-                    ptr.len(),
-                    sz
-                );
+            let copy_len = ptr.len().min(sz as usize);
+            if copy_len > 0 {
+                map.memcpy(&ptr[..copy_len], copy_len);
             }
-            if !ptr.is_empty() {
-                map.memcpy(ptr, ptr.len());
-            }
+        }
+
+        // 4b. pe binding — now that PE header and section maps exist, so
+        // LIEF PE32 binding (which only patches emulated memory) can
+        // successfully resolve map lookups for IAT slots.
+        if do_bind_runtime {
+            pe32.iat_binding(self, base);
+            pe32.delay_load_binding(self, base);
         }
 
         // 5. ldr table entry creation and link
@@ -219,7 +242,7 @@ impl Emu {
         }
 
         // 6. return values
-        let pe_hdr_off = pe32.dos.e_lfanew;
+        let pe_hdr_off = pe32.get_pe_offset();
         self.pe32 = Some(pe32);
         (base, pe_hdr_off)
     }

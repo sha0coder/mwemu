@@ -96,6 +96,79 @@ pub fn resolve_api_addr_to_name(emu: &mut emu::Emu, addr: u64) -> String {
     String::new()
 }
 
+pub fn resolve_api_ordinal_in_module(emu: &mut emu::Emu, module: &str, ordinal: u16) -> u64 {
+    let module_lc = module.to_lowercase();
+    if kernel32_common::is_api_set_contract(&module_lc) {
+        // API-set contracts are virtual DLLs whose exports are typically
+        // provided by kernelbase.dll (and as fallback kernel32.dll).
+        // Try the most likely host modules by ordinal, mirroring the
+        // 64-bit resolver behavior.
+        let addr = resolve_ordinal_in_module_impl(emu, "kernelbase.dll", ordinal);
+        if addr != 0 {
+            return addr;
+        }
+        return resolve_ordinal_in_module_impl(emu, "kernel32.dll", ordinal);
+    }
+
+    resolve_ordinal_in_module_impl(emu, &module_lc, ordinal)
+}
+
+fn resolve_ordinal_in_module_impl(emu: &mut emu::Emu, module_hint: &str, ordinal: u16) -> u64 {
+    // NOTE: The 32-bit resolver does not (yet) implement PE export
+    // forwarder string resolution the way the 64-bit resolver does.
+    // Most PE32 binaries in the test corpus do not exercise forwarded
+    // exports via this path, so this is a known limitation that can
+    // be addressed later. Forwarder API-set / ordinal parity with x64
+    // is intentionally not yet wired in here.
+    let want = module_hint.trim().to_lowercase();
+    let mut flink = peb32::Flink::new(emu);
+    flink.load(emu);
+    let first_ptr = flink.get_ptr();
+
+    loop {
+        if flink.mod_name.to_lowercase().contains(&want) && flink.export_table_rva > 0 {
+            if flink.pe_hdr == 0 {
+                flink.next(emu);
+                if flink.get_ptr() == first_ptr {
+                    break;
+                }
+                continue;
+            }
+
+            // Read export directory fields
+            let ordinal_base = emu.maps.read_dword(flink.export_table + 0x10).unwrap_or(0) as u64;
+            let num_of_funcs = flink.num_of_funcs;
+            let func_addr_tbl_rva =
+                emu.maps.read_dword(flink.export_table + 0x1c).unwrap_or(0) as u64;
+            let func_addr_tbl = func_addr_tbl_rva + flink.mod_base;
+
+            let idx = ordinal as u64;
+            if idx >= ordinal_base && idx < ordinal_base + num_of_funcs {
+                let func_idx = idx - ordinal_base;
+                if func_idx < num_of_funcs {
+                    let func_rva = emu
+                        .maps
+                        .read_dword(func_addr_tbl + 4 * func_idx)
+                        .unwrap_or(0) as u64;
+                    if func_rva != 0 {
+                        let func_va = func_rva + flink.mod_base;
+                        if func_va != flink.mod_base {
+                            return func_va;
+                        }
+                    }
+                }
+            }
+        }
+        flink.next(emu);
+
+        if flink.get_ptr() == first_ptr {
+            break;
+        }
+    }
+
+    0
+}
+
 pub fn resolve_api_name(emu: &mut emu::Emu, name: &str) -> u64 {
     let mut flink = peb32::Flink::new(emu);
     flink.load(emu);

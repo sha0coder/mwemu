@@ -187,6 +187,14 @@ fn main() {
                 .value_name("BACKEND")
                 .possible_values(&["legacy", "lief", "auto"]),
         )
+        .arg(
+            Arg::with_name("pe32_backend")
+                .long("pe32-backend")
+                .help("PE32 parser backend: legacy, lief, or auto")
+                .takes_value(true)
+                .value_name("BACKEND")
+                .possible_values(&["legacy", "lief", "auto"]),
+        )
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -229,6 +237,14 @@ fn main() {
             "lief" => libmwemu::config::BinaryBackend::Lief,
             "auto" => libmwemu::config::BinaryBackend::Auto,
             _ => unreachable!("clap possible_values prevents invalid macho-backend"),
+        };
+    }
+    if let Some(backend_str) = matches.value_of("pe32_backend") {
+        emu.cfg.pe32_backend = match backend_str.to_lowercase().as_str() {
+            "legacy" => libmwemu::config::Pe32Backend::Legacy,
+            "lief" => libmwemu::config::Pe32Backend::Lief,
+            "auto" => libmwemu::config::Pe32Backend::Auto,
+            _ => unreachable!("clap possible_values prevents invalid pe32-backend"),
         };
     }
 

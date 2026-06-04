@@ -154,8 +154,19 @@ impl PE32 {
                 }
                 write_u32_le!(self.raw, off_addr, real_addr as u32);
                 let patch_addr = base_addr as u64 + rva as u64;
-                if emu.maps.is_mapped(patch_addr) {
-                    emu.maps.write_dword(patch_addr, real_addr as u32);
+                // The IAT lives in a section that is typically mapped
+                // read-only (e.g. .rdata). Use force_write_dword so the
+                // loader can still patch the IAT slot regardless of the
+                // section's nominal page permissions — the OS loader
+                // does the same via the SEC_IMAGE COW mechanism which
+                // the emulator does not model. (This was previously a
+                // no-op because binding ran before mapping and the
+                // patched bytes were carried into the map at creation
+                // time via the section copy. Now that binding runs
+                // after mapping we must write through to emulated
+                // memory directly.)
+                if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
+                    mem.force_write_dword(patch_addr, real_addr as u32);
                 }
 
                 off_name += HintNameItem::size();

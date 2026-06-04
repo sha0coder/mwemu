@@ -11,7 +11,6 @@ use iced_x86::{Formatter as _, IntelFormatter};
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
-use crate::loaders::pe::pe64;
 use crate::maps::mem64::Permission;
 use crate::pe::api_set_resolver::ApiSetResolver;
 use crate::windows::peb::{peb32, peb64};

@@ -1644,3 +1644,260 @@ mod reader {
         String::from_utf8_lossy(&data[..end]).to_string()
     }
 }
+
+// ========================================================================
+// 32-bit Binding Methods (for PE32)
+// ========================================================================
+// These mirror the 64-bit binding methods but use winapi32 and patch
+// 32-bit (4-byte) values in emulated memory. PE32 IAT and delay-import
+// entries are 32-bit pointers; using 64-bit writes here would corrupt
+// the target's memory layout.
+
+impl LiefPe {
+    /// Bind Import Address Table (IAT) for a 32-bit (PE32) image.
+    ///
+    /// Uses LIEF's import API to enumerate imports and resolves function
+    /// addresses via `winapi32::kernel32::resolve_api_name`. Records resolved
+    /// addresses in the `import_bindings` map for later lookup.
+    /// Only emulated memory is patched (4-byte dwords).
+    pub fn iat_binding32(&mut self, emu: &mut crate::emu::Emu, base_addr: u32) {
+        log::trace!("IAT (32-bit) binding started...");
+
+        let mut new_bindings: Vec<(u64, String)> = Vec::new();
+        let mut cache: HashMap<String, u64> = HashMap::new();
+
+        {
+            let pe = self.lief_pe();
+            for import in pe.imports() {
+                let dll_name = import.name();
+                if dll_name.is_empty() {
+                    continue;
+                }
+
+                if crate::winapi::winapi32::kernel32::load_library(emu, &dll_name) == 0 {
+                    if emu.cfg.verbose >= 1 {
+                        log::trace!(
+                            "cannot find/import library `{}` (LIEF PE32 IAT binding will skip it)",
+                            dll_name
+                        );
+                    }
+                    continue;
+                }
+
+                for function in import.entries() {
+                    let func_name = function.name();
+                    let is_ordinal = function.is_ordinal();
+
+                    let iat_rva = self.normalize_iat_to_rva(function.iat_address() as u64);
+                    if iat_rva == 0 {
+                        continue;
+                    }
+
+                    let (cache_key, real_addr) = if !func_name.is_empty() {
+                        let key =
+                            format!("{}!{}", dll_name.to_lowercase(), func_name.to_lowercase());
+                        let addr = if let Some(&cached) = cache.get(&key) {
+                            cached
+                        } else {
+                            let resolved =
+                                crate::winapi::winapi32::kernel32::resolve_api_name_in_module(
+                                    emu, &dll_name, &func_name,
+                                );
+                            if resolved != 0 {
+                                cache.insert(key.clone(), resolved);
+                            }
+                            resolved
+                        };
+                        (key, addr)
+                    } else if is_ordinal {
+                        let ordinal = function.ordinal();
+                        let key = format!("{}!#{}", dll_name.to_lowercase(), ordinal);
+                        let addr = if let Some(&cached) = cache.get(&key) {
+                            cached
+                        } else {
+                            let resolved =
+                                crate::winapi::winapi32::kernel32::resolve_api_ordinal_in_module(
+                                    emu, &dll_name, ordinal,
+                                );
+                            if resolved != 0 {
+                                cache.insert(key.clone(), resolved);
+                            }
+                            resolved
+                        };
+                        (key, addr)
+                    } else {
+                        continue;
+                    };
+
+                    if real_addr == 0 {
+                        continue;
+                    }
+
+                    let patch_addr = base_addr as u64 + iat_rva;
+                    let real_addr_u32 = real_addr as u32;
+                    if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
+                        mem.force_write_dword(patch_addr, real_addr_u32);
+                    }
+
+                    let binding_name = if !func_name.is_empty() {
+                        format!("{}!{}", dll_name, func_name)
+                    } else {
+                        format!("{}!#{}", dll_name, function.ordinal())
+                    };
+                    new_bindings.push((real_addr, binding_name));
+                }
+            }
+            let _ = pe;
+        }
+
+        for (addr, name) in new_bindings {
+            self.import_bindings.insert(addr, name);
+        }
+
+        log::trace!("IAT (32-bit) binding completed");
+    }
+
+    /// Bind delay-load imports for a 32-bit (PE32) image.
+    ///
+    /// 32-bit delay-import entries use 4-byte pointers in the IAT and INT
+    /// (Import Name Table). This walks the delay descriptor, reads 4-byte
+    /// hint-name pointers from the INT, and patches the 4-byte slots in
+    /// the IAT. Function names are resolved via `winapi32::kernel32`.
+    ///
+    /// Resolved bindings are recorded in `import_bindings` so that
+    /// `import_addr_to_name32` can resolve names for delay-load slots
+    /// (mirrors the behavior of `iat_binding32`).
+    pub fn delay_load_binding32(&mut self, emu: &mut crate::emu::Emu, base_addr: u32) {
+        log::trace!("Delay-load (32-bit) binding started...");
+
+        let descriptors = self.delay_load_descriptors();
+        if descriptors.is_empty() {
+            log::trace!("No delay imports found (PE32)");
+            return;
+        }
+
+        let file_data = self.mapped_file_data();
+        let mut cache: HashMap<String, u64> = HashMap::new();
+        let mut new_bindings: Vec<(u64, String)> = Vec::new();
+
+        for descriptor in descriptors {
+            if descriptor.dll_name.is_empty() {
+                continue;
+            }
+
+            if crate::winapi::winapi32::kernel32::load_library(emu, &descriptor.dll_name) == 0 {
+                continue;
+            }
+
+            let mode = DelayPointerMode::from_descriptor_attrs(descriptor.attributes);
+            let dll_name = &descriptor.dll_name;
+
+            // Convert delay_int and delay_iat from RVA to file offset
+            let delay_names_off = match self.delay_ptr_to_offset(descriptor.delay_int as u64, &mode)
+            {
+                Some(off) => off as usize,
+                None => continue,
+            };
+
+            let delay_iat_rva = match self.delay_ptr_to_rva(descriptor.delay_iat as u64, &mode) {
+                Some(rva) => rva,
+                None => continue,
+            };
+
+            let mut name_off = delay_names_off;
+            let mut iat_slot_idx: usize = 0;
+
+            loop {
+                // Read 4-byte INT entry
+                let hint_name = match Self::read_u32(file_data, name_off) {
+                    Some(v) => v as u64,
+                    None => break,
+                };
+                if hint_name == 0 {
+                    break;
+                }
+
+                if hint_name & 0x80000000 != 0 {
+                    // Ordinal import: low 16 bits are the ordinal
+                    let ordinal = (hint_name & 0xFFFF) as u16;
+                    let cache_key = format!("{}!#{}", dll_name.to_lowercase(), ordinal);
+                    let real_addr = if let Some(&cached) = cache.get(&cache_key) {
+                        cached
+                    } else {
+                        let addr = crate::winapi::winapi32::kernel32::resolve_api_ordinal_in_module(
+                            emu, dll_name, ordinal,
+                        );
+                        if addr != 0 {
+                            cache.insert(cache_key.clone(), addr);
+                        }
+                        addr
+                    };
+                    if real_addr != 0 {
+                        // Patch 4-byte IAT slot at base_addr + delay_iat_rva + slot_idx*4
+                        let slot_rva = delay_iat_rva + (iat_slot_idx as u64) * 4;
+                        let patch_va = base_addr as u64 + slot_rva;
+                        if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_va) {
+                            mem.force_write_dword(patch_va, real_addr as u32);
+                        }
+                        new_bindings.push((real_addr, format!("{}!#{}", dll_name, ordinal)));
+                    }
+                } else {
+                    // Name import: hint_name is an RVA to a Hint/Name entry
+                    let func_name_off = match self.delay_ptr_to_offset(hint_name, &mode) {
+                        Some(off) => off as usize + 2, // skip 2-byte Hint
+                        None => {
+                            name_off += 4;
+                            iat_slot_idx += 1;
+                            continue;
+                        }
+                    };
+
+                    let func_name = Self::read_string(file_data, func_name_off);
+                    if func_name.is_empty() {
+                        name_off += 4;
+                        iat_slot_idx += 1;
+                        continue;
+                    }
+
+                    let cache_key =
+                        format!("{}!{}", dll_name.to_lowercase(), func_name.to_lowercase());
+                    let real_addr = if let Some(&cached) = cache.get(&cache_key) {
+                        cached
+                    } else {
+                        let addr = crate::winapi::winapi32::kernel32::resolve_api_name_in_module(
+                            emu, dll_name, &func_name,
+                        );
+                        if addr != 0 {
+                            cache.insert(cache_key.clone(), addr);
+                        }
+                        addr
+                    };
+                    if real_addr != 0 {
+                        let slot_rva = delay_iat_rva + (iat_slot_idx as u64) * 4;
+                        let patch_va = base_addr as u64 + slot_rva;
+                        if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_va) {
+                            mem.force_write_dword(patch_va, real_addr as u32);
+                        }
+                        new_bindings.push((real_addr, format!("{}!{}", dll_name, func_name)));
+                    }
+                }
+
+                name_off += 4;
+                iat_slot_idx += 1;
+            }
+        }
+
+        for (addr, name) in new_bindings {
+            self.import_bindings.insert(addr, name);
+        }
+
+        log::trace!("Delay-load (32-bit) binding completed");
+    }
+
+    /// Map a 32-bit import address (RVA) to a function name using LIEF.
+    ///
+    /// `paddr` is a 32-bit RVA in the import address table.
+    pub fn import_addr_to_name32(&self, paddr: u32) -> String {
+        self.import_addr_to_name(paddr as u64)
+    }
+}

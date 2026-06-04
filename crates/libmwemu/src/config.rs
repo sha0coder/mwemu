@@ -15,6 +15,15 @@ pub enum Pe64Backend {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
+pub enum Pe32Backend {
+    #[default]
+    Legacy,
+    Lief,
+    Auto,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum BinaryBackend {
     #[default]
     Legacy,
@@ -126,6 +135,9 @@ pub struct Config {
     pub pe64_backend: Pe64Backend,
 
     #[serde(default)]
+    pub pe32_backend: Pe32Backend,
+
+    #[serde(default)]
     pub elf64_backend: BinaryBackend,
 
     #[serde(default)]
@@ -203,6 +215,7 @@ impl Config {
             allow_empty_code_blocks: false,
             ssdt_use_ldr_initialize_thunk: false,
             pe64_backend: Pe64Backend::default(),
+            pe32_backend: Pe32Backend::default(),
             elf64_backend: BinaryBackend::default(),
             macho64_backend: BinaryBackend::default(),
         }

@@ -345,7 +345,10 @@ fn lazy_arithmetic_randomized_matches_expected_flags() {
                 let expected_result = expected_add(&mut expected, lhs, rhs, carry, bits);
                 let lazy_result = lazy_add(&mut lazy, lhs, rhs, carry, bits);
 
-                assert_eq!(lazy_result, expected_result, "random add result mismatch bits={bits}");
+                assert_eq!(
+                    lazy_result, expected_result,
+                    "random add result mismatch bits={bits}"
+                );
                 assert_eq!(
                     arithmetic_tuple(&lazy),
                     arithmetic_tuple(&expected),
@@ -357,7 +360,10 @@ fn lazy_arithmetic_randomized_matches_expected_flags() {
                 let expected_result = expected_sub(&mut expected, lhs, rhs, carry, bits);
                 let lazy_result = lazy_sub(&mut lazy, lhs, rhs, carry, bits);
 
-                assert_eq!(lazy_result, expected_result, "random sub result mismatch bits={bits}");
+                assert_eq!(
+                    lazy_result, expected_result,
+                    "random sub result mismatch bits={bits}"
+                );
                 assert_eq!(
                     arithmetic_tuple(&lazy),
                     arithmetic_tuple(&expected),
@@ -379,10 +385,22 @@ fn calc_pf_and_calc_af_preserve_pending_lazy_flags() {
     flags.calc_flags(result, 32);
     flags.calc_pf(result as u8);
 
-    assert!(flags.cf(), "CF should survive calc_pf after lazy calc_flags");
-    assert!(flags.sf(), "SF should survive calc_pf after lazy calc_flags");
-    assert!(!flags.zf(), "ZF should survive calc_pf after lazy calc_flags");
-    assert!(!flags.of(), "OF should survive calc_pf after lazy calc_flags");
+    assert!(
+        flags.cf(),
+        "CF should survive calc_pf after lazy calc_flags"
+    );
+    assert!(
+        flags.sf(),
+        "SF should survive calc_pf after lazy calc_flags"
+    );
+    assert!(
+        !flags.zf(),
+        "ZF should survive calc_pf after lazy calc_flags"
+    );
+    assert!(
+        !flags.of(),
+        "OF should survive calc_pf after lazy calc_flags"
+    );
 
     let mut flags = Flags::new();
     flags.f_cf = true;
@@ -390,9 +408,18 @@ fn calc_pf_and_calc_af_preserve_pending_lazy_flags() {
     flags.calc_flags(0, 32);
     flags.calc_af(0xf, 1, 0x10, 32);
 
-    assert!(flags.cf(), "CF should survive calc_af after lazy calc_flags");
-    assert!(flags.zf(), "ZF should survive calc_af after lazy calc_flags");
-    assert!(flags.of(), "OF should survive calc_af after lazy calc_flags");
+    assert!(
+        flags.cf(),
+        "CF should survive calc_af after lazy calc_flags"
+    );
+    assert!(
+        flags.zf(),
+        "ZF should survive calc_af after lazy calc_flags"
+    );
+    assert!(
+        flags.of(),
+        "OF should survive calc_af after lazy calc_flags"
+    );
     assert!(flags.af(), "AF should be overwritten by calc_af");
 }
 

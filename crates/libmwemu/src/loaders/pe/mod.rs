@@ -2,6 +2,7 @@ pub mod lief;
 pub mod pe32;
 pub mod pe64;
 pub(crate) mod readers;
+pub mod runtime_pe32;
 pub mod runtime_pe64;
 mod shared;
 
