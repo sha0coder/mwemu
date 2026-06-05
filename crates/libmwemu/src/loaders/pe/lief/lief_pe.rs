@@ -47,6 +47,43 @@ pub struct CacheStats {
     pub cached_bytes: usize,
 }
 
+/// Cached layout of the `.rsrc` section, populated at load time and
+/// retained across `release_mmap()`. Resource lookup reads the section
+/// bytes out of `persistent_raw` using this metadata, so it continues
+/// to work after the LIEF parsed binary and section cache are dropped.
+///
+/// Keeping just the small POD layout (a few fields) is much cheaper than
+/// keeping the full LIEF `PeBinary` alive, and it does not depend on the
+/// section manager's mmap or section cache state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RsrcSectionMeta {
+    file_offset: u64,
+    raw_size: u32,
+    virtual_address: u32,
+}
+
+impl RsrcSectionMeta {
+    /// Locate the `.rsrc` section in a LIEF `PeBinary` and return its
+    /// layout. Returns `None` if the binary has no `.rsrc` section or
+    /// the section has no on-disk raw data.
+    fn from_lief(pe: &lief::pe::Binary) -> Option<Self> {
+        for section in pe.sections() {
+            if section.name() == ".rsrc" {
+                let raw_size = section.sizeof_raw_data();
+                if raw_size == 0 {
+                    return None;
+                }
+                return Some(Self {
+                    file_offset: section.pointerto_raw_data() as u64,
+                    raw_size,
+                    virtual_address: section.virtual_address() as u32,
+                });
+            }
+        }
+        None
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ResourceTreeLevel {
     Type,
@@ -130,6 +167,21 @@ pub struct LiefPe {
     file_path: String,
     file_size: usize,
     import_bindings: HashMap<u64, String>,
+    /// Persistent IAT slot -> function name map populated during
+    /// `iat_binding*`. Survives `release_mmap()` so callers can still
+    /// resolve import names by IAT slot value (which may be the original
+    /// file value like a Hint/Name RVA) after the mmap is dropped.
+    iat_slot_names: HashMap<u64, String>,
+    /// Persistent copy of the original file bytes captured at load time
+    /// and never released. Used by serialization/minidump export so we
+    /// can rehydrate dumps even after `release_mmap()` drops the mmap.
+    persistent_raw: Vec<u8>,
+    /// Cached `.rsrc` section layout (file offset, raw size, virtual
+    /// address) populated at load time. Retained past `release_mmap()`
+    /// so `get_resource()` can still locate the resource directory in
+    /// `persistent_raw` after the section manager and LIEF binary are
+    /// dropped. `None` for binaries with no `.rsrc` section.
+    rsrc_meta: Option<RsrcSectionMeta>,
 }
 
 impl LiefPe {
@@ -143,15 +195,30 @@ impl LiefPe {
             .map_err(|e| LiefError::MmapFailed(format!("Failed to get metadata: {}", e)))?
             .len() as usize;
 
+        // Capture a persistent copy of the file bytes for serialization.
+        let mut persistent_raw = vec![0u8; file_size];
+        use std::io::Read;
+        let mut f = std::fs::File::open(path).map_err(|e| {
+            LiefError::MmapFailed(format!("Failed to reopen for persistent raw: {}", e))
+        })?;
+        f.read_exact(&mut persistent_raw).map_err(|e| {
+            LiefError::MmapFailed(format!("Failed to read persistent raw for {}: {}", path, e))
+        })?;
+
         let mapped: Arc<Mmap> = Arc::new(
             unsafe { Mmap::map(&file) }
                 .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?,
         );
 
-        let header = LiefHeaderParser::from_path(path)?;
+        // Share the single mmap with the header parser to avoid a second mmap
+        // of the same file (the header parser still copies the bytes into
+        // an Arc<[u8]>; see LiefHeaderParser::from_mmap_path).
+        let header = LiefHeaderParser::from_mmap_path(path, Arc::clone(&mapped))?;
 
         let section_manager =
             LiefSectionManager::new(PathBuf::from(path), mapped, header.pe_arc().clone());
+
+        let rsrc_meta = RsrcSectionMeta::from_lief(header.lief_pe());
 
         Ok(Self {
             header,
@@ -159,6 +226,9 @@ impl LiefPe {
             file_path: path.to_string(),
             file_size,
             import_bindings: HashMap::new(),
+            iat_slot_names: HashMap::new(),
+            persistent_raw,
+            rsrc_meta,
         })
     }
 
@@ -175,12 +245,17 @@ impl LiefPe {
             header.pe_arc().clone(),
         );
 
+        let rsrc_meta = RsrcSectionMeta::from_lief(header.lief_pe());
+
         Ok(Self {
             header,
             section_manager,
             file_path: filename.to_string(),
             file_size,
             import_bindings: HashMap::new(),
+            iat_slot_names: HashMap::new(),
+            persistent_raw: raw.to_vec(),
+            rsrc_meta,
         })
     }
 
@@ -194,12 +269,25 @@ impl LiefPe {
             .map_err(|e| LiefError::MmapFailed(format!("Failed to get metadata: {}", e)))?
             .len() as usize;
 
+        // Capture a persistent copy of the file bytes for serialization.
+        let mut persistent_raw = vec![0u8; file_size];
+        use std::io::Read;
+        let mut f = std::fs::File::open(path).map_err(|e| {
+            LiefError::MmapFailed(format!("Failed to reopen for persistent raw: {}", e))
+        })?;
+        f.read_exact(&mut persistent_raw).map_err(|e| {
+            LiefError::MmapFailed(format!("Failed to read persistent raw for {}: {}", path, e))
+        })?;
+
         let mapped: Arc<Mmap> = Arc::new(
             unsafe { Mmap::map(&file) }
                 .map_err(|e| LiefError::MmapFailed(format!("Failed to memory map: {}", e)))?,
         );
 
-        let header = LiefHeaderParser::from_path(path)?;
+        // Share the single mmap with the header parser to avoid a second mmap
+        // of the same file (the header parser still copies the bytes into
+        // an Arc<[u8]>; see LiefHeaderParser::from_mmap_path).
+        let header = LiefHeaderParser::from_mmap_path(path, Arc::clone(&mapped))?;
 
         let section_manager = LiefSectionManager::with_policy(
             PathBuf::from(path),
@@ -208,12 +296,17 @@ impl LiefPe {
             header.pe_arc().clone(),
         );
 
+        let rsrc_meta = RsrcSectionMeta::from_lief(header.lief_pe());
+
         Ok(Self {
             header,
             section_manager,
             file_path: path.to_string(),
             file_size,
             import_bindings: HashMap::new(),
+            iat_slot_names: HashMap::new(),
+            persistent_raw,
+            rsrc_meta,
         })
     }
 }
@@ -400,6 +493,14 @@ impl LiefPe {
             return String::new();
         }
 
+        // First, check the persistent slot-name map populated during
+        // iat_binding* and delay_load_binding*. This survives release_mmap
+        // and resolves both resolved slots and slots that retain the
+        // original Hint/Name RVA.
+        if let Some(name) = self.iat_slot_names.get(&paddr) {
+            return name.clone();
+        }
+
         if let Some(name) = self.import_bindings.get(&paddr) {
             if let Some(pos) = name.find('!') {
                 return name[pos + 1..].to_string();
@@ -408,23 +509,70 @@ impl LiefPe {
         }
 
         let pe = self.lief_pe();
+        let raw = self.mapped_file_data();
+        let is_pe64 = self.is_pe64();
         for import in pe.imports() {
             for function in import.entries() {
                 let iat_rva = self.normalize_iat_to_rva(function.iat_address() as u64);
-                if iat_rva == paddr {
-                    let name = function.name();
-                    if name.is_empty() {
-                        if function.is_ordinal() {
-                            return format!("#{}", function.ordinal());
+                if iat_rva == 0 {
+                    continue;
+                }
+                // Match against the live IAT slot value (the file content
+                // at the IAT slot RVA), not the slot RVA itself. The slot
+                // holds either the resolved API address (after binding) or
+                // the Hint/Name RVA (unresolved). Both legacy PE32/PE64
+                // resolvers compared against the slot value.
+                if let Some(off) = self.rva_to_offset(iat_rva) {
+                    if is_pe64 {
+                        if off + 8 <= raw.len() as u64 {
+                            let slot = u64::from_le_bytes([
+                                raw[off as usize],
+                                raw[off as usize + 1],
+                                raw[off as usize + 2],
+                                raw[off as usize + 3],
+                                raw[off as usize + 4],
+                                raw[off as usize + 5],
+                                raw[off as usize + 6],
+                                raw[off as usize + 7],
+                            ]);
+                            if slot == paddr {
+                                return self.entry_name(&function);
+                            }
                         }
-                        return "<ordinal>".to_string();
+                    } else {
+                        if off + 4 <= raw.len() as u64 {
+                            let slot = u32::from_le_bytes([
+                                raw[off as usize],
+                                raw[off as usize + 1],
+                                raw[off as usize + 2],
+                                raw[off as usize + 3],
+                            ]) as u64;
+                            if slot == paddr {
+                                return self.entry_name(&function);
+                            }
+                        }
                     }
-                    return name;
+                }
+                // Also accept the IAT slot RVA itself, which is what LIEF
+                // hands back via `function.iat_address()` for some binaries.
+                if iat_rva == paddr {
+                    return self.entry_name(&function);
                 }
             }
         }
 
         String::new()
+    }
+
+    fn entry_name(&self, function: &lief::pe::import::ImportEntry) -> String {
+        let name = function.name();
+        if name.is_empty() {
+            if function.is_ordinal() {
+                return format!("#{}", function.ordinal());
+            }
+            return "<ordinal>".to_string();
+        }
+        name
     }
 
     /// Get cache statistics
@@ -433,6 +581,66 @@ impl LiefPe {
             cached_sections: self.section_manager.cached_sections(),
             cached_bytes: self.section_manager.cached_bytes(),
         }
+    }
+
+    /// Collect `(IAT-slot-value, function-name)` pairs for every import
+    /// entry by reading the current slot value from the raw file. This
+    /// mirrors the legacy PE32/PE64 import_addr_to_name lookup table.
+    /// Survives `release_mmap()` (called once during binding).
+    pub fn collect_iat_slot_names_pe64(&self) -> Vec<(u64, String)> {
+        let mut out = Vec::new();
+        let raw = self.mapped_file_data();
+        if raw.is_empty() {
+            return out;
+        }
+        let pe = self.lief_pe();
+        let is_pe64 = self.is_pe64();
+        for import in pe.imports() {
+            for function in import.entries() {
+                let iat_rva = self.normalize_iat_to_rva(function.iat_address() as u64);
+                if iat_rva == 0 {
+                    continue;
+                }
+                let name = self.entry_name(&function);
+                if let Some(off) = self.rva_to_offset(iat_rva) {
+                    if is_pe64 {
+                        if off + 8 <= raw.len() as u64 {
+                            let slot = u64::from_le_bytes([
+                                raw[off as usize],
+                                raw[off as usize + 1],
+                                raw[off as usize + 2],
+                                raw[off as usize + 3],
+                                raw[off as usize + 4],
+                                raw[off as usize + 5],
+                                raw[off as usize + 6],
+                                raw[off as usize + 7],
+                            ]);
+                            if slot != 0 {
+                                out.push((slot, name.clone()));
+                            }
+                        }
+                    } else {
+                        if off + 4 <= raw.len() as u64 {
+                            let slot = u32::from_le_bytes([
+                                raw[off as usize],
+                                raw[off as usize + 1],
+                                raw[off as usize + 2],
+                                raw[off as usize + 3],
+                            ]) as u64;
+                            if slot != 0 {
+                                out.push((slot, name.clone()));
+                            }
+                        }
+                    }
+                }
+                // Also store the IAT slot RVA itself (some lookups query
+                // by RVA, e.g. when LIEF reports VA-style IAT addresses).
+                if iat_rva != 0 {
+                    out.push((iat_rva, name));
+                }
+            }
+        }
+        out
     }
 
     /// Clear the section cache
@@ -511,6 +719,12 @@ impl LiefPe {
     /// Get mapped file data
     pub(crate) fn mapped_file_data(&self) -> &[u8] {
         self.header.mapped_file().as_ref()
+    }
+
+    /// Get the persistent copy of the original file bytes captured at
+    /// load time. Survives `release_mmap()` and is used by serialization.
+    pub fn persistent_raw(&self) -> &[u8] {
+        &self.persistent_raw
     }
 }
 
@@ -716,17 +930,30 @@ impl LiefPeReader for LiefPe {
         type_name: Option<&str>,
         resource_name: Option<&str>,
     ) -> Option<(u64, usize)> {
-        // Find the .rsrc section index
-        let section_idx = (0..self.num_sections() as usize)
-            .find(|&i| self.get_section_name(i).as_deref() == Some(".rsrc"))?;
-
-        let rsrc = self.get_section_ptr(section_idx);
-        if rsrc.is_empty() {
+        // Use the cached `.rsrc` layout + `persistent_raw` so resource
+        // lookup works even after `release_mmap()` has dropped the
+        // section manager's mmap and LIEF binary. This deliberately
+        // does not depend on the section cache or the original file
+        // handle — both may have been released by the loader.
+        let meta = self.rsrc_meta?;
+        let raw = self.persistent_raw.as_slice();
+        let off = meta.file_offset as usize;
+        if off >= raw.len() {
             return None;
         }
+        // LIEF's `sizeof_raw_data` can include zero-init padding past
+        // the file (virtual_size > raw_size for BSS-like resource
+        // sections). Clamp to what is actually available on disk; the
+        // resource directory itself always lives in the on-disk bytes.
+        let avail = raw.len() - off;
+        let size = (meta.raw_size as usize).min(avail);
+        if size == 0 {
+            return None;
+        }
+        let rsrc = &raw[off..off + size];
 
-        let (offset_to_data, size) = self.locate_resource_data_entry(
-            &rsrc,
+        let (offset_to_data, data_size) = self.locate_resource_data_entry(
+            rsrc,
             0,
             0,
             type_id,
@@ -735,7 +962,7 @@ impl LiefPeReader for LiefPe {
             resource_name,
         )?;
 
-        Some((offset_to_data as u64, size as usize))
+        Some((offset_to_data as u64, data_size as usize))
     }
 
     // ========================================================================
@@ -1083,21 +1310,49 @@ impl LiefPe {
 // Only emulated memory is patched - internal buffers are not modified.
 
 impl LiefPe {
-    /// Get the list of imported DLL names (dependencies)
+    /// Get the list of imported DLL names (dependencies), normalized:
+    ///
+    /// - lowercased
+    /// - `.dll` suffix stripped
+    /// - deduplicated (preserving first-seen order)
+    /// - `api-ms-win-*` and `ext-ms-*` mapped to `kernelbase` to match
+    ///   the legacy `PE64::get_dependencies` contract that loader code
+    ///   depends on.
+    /// - if a resolver is provided, other API-set contracts are resolved
+    ///   to their host DLLs (still lowercased, suffix-stripped, deduped).
     pub fn get_dependencies(
         &self,
-        resolver: Option<&crate::pe::api_set_resolver::ApiSetResolver>,
+        resolver: Option<&crate::windows::api_set_resolver::ApiSetResolver>,
     ) -> Vec<String> {
-        self.lief_pe()
-            .imports()
-            .map(|import| {
-                let name = import.name().to_string();
-                match resolver {
-                    Some(r) => r.resolve(&name).unwrap_or(name),
-                    None => name,
-                }
-            })
-            .collect()
+        let mut out: Vec<String> = Vec::new();
+        for import in self.lief_pe().imports() {
+            let raw = import.name().to_string();
+            let lower = raw.to_lowercase();
+            let stripped = lower
+                .strip_suffix(".dll")
+                .map(|s| s.to_string())
+                .unwrap_or(lower);
+
+            // Match legacy behavior: api-ms-win-* / ext-ms-* always map to kernelbase.
+            let normalized = if stripped.starts_with("api-ms-") || stripped.starts_with("ext-ms-") {
+                "kernelbase".to_string()
+            } else if let Some(r) = resolver {
+                // For other api-set-style names, defer to the schema resolver.
+                r.resolve(&raw)
+                    .map(|s| {
+                        let l = s.to_lowercase();
+                        l.strip_suffix(".dll").map(|s| s.to_string()).unwrap_or(l)
+                    })
+                    .unwrap_or(stripped)
+            } else {
+                stripped
+            };
+
+            if !out.contains(&normalized) {
+                out.push(normalized);
+            }
+        }
+        out
     }
 
     /// Apply relocations when PE is loaded at a different base address
@@ -1407,13 +1662,24 @@ impl LiefPe {
         }
 
         for (addr, name) in new_bindings {
-            self.import_bindings.insert(addr, name);
+            self.import_bindings.insert(addr, name.clone());
+            // iat_slot_names records the relationship (addr -> name) for
+            // both the resolved address and the original Hint/Name RVA so
+            // that import_addr_to_name() can resolve either form later
+            // (even after release_mmap() drops the file buffer).
+            self.iat_slot_names.insert(addr, name);
+        }
+
+        // Also record names for every IAT entry by the file value
+        // (Hint/Name RVA for unresolved entries; resolved address for
+        // resolved ones). This is the legacy PE32/PE64 import_addr_to_name
+        // semantic that consumers (instruction_pointer.rs) depend on.
+        for (slot_value, name) in self.collect_iat_slot_names_pe64() {
+            self.iat_slot_names.entry(slot_value).or_insert(name);
         }
 
         log::trace!("IAT binding completed");
     }
-
-    /// Parse the delay-load directory and return normalized descriptors (for parity testing).
     /// Uses the data directory (index 13) RVA and size to locate descriptors on disk.
     pub fn delay_load_descriptors(&self) -> Vec<DelayLoadDescriptor> {
         let delay_dir = match self.get_data_directory(IMAGE_DIRECTORY_ENTRY_DELAY_LOAD) {
@@ -1751,7 +2017,15 @@ impl LiefPe {
         }
 
         for (addr, name) in new_bindings {
-            self.import_bindings.insert(addr, name);
+            self.import_bindings.insert(addr, name.clone());
+            self.iat_slot_names.insert(addr, name);
+        }
+
+        // Also record names for the file's IAT slot values (Hint/Name
+        // RVAs for unresolved entries) so import_addr_to_name can resolve
+        // them after release_mmap() drops the file buffer.
+        for (slot_value, name) in self.collect_iat_slot_names_pe64() {
+            self.iat_slot_names.entry(slot_value).or_insert(name);
         }
 
         log::trace!("IAT (32-bit) binding completed");
@@ -1888,7 +2162,15 @@ impl LiefPe {
         }
 
         for (addr, name) in new_bindings {
-            self.import_bindings.insert(addr, name);
+            self.import_bindings.insert(addr, name.clone());
+            self.iat_slot_names.insert(addr, name);
+        }
+
+        // Also record names for the file's IAT slot values (Hint/Name
+        // RVAs for unresolved entries) so import_addr_to_name can resolve
+        // them after release_mmap() drops the file buffer.
+        for (slot_value, name) in self.collect_iat_slot_names_pe64() {
+            self.iat_slot_names.entry(slot_value).or_insert(name);
         }
 
         log::trace!("Delay-load (32-bit) binding completed");

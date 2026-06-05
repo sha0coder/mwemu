@@ -11,9 +11,17 @@ mod fpu;
 mod instant;
 mod maps;
 mod minidump;
-mod pe32;
+pub(crate) mod pe32;
 pub(crate) mod pe64;
 mod thread_context;
+
+// Expose the `emu` module to the test crate so unit tests can drive the
+// `SerializableEmu` -> `Emu` conversion directly. Production code paths
+// reach the same functionality through the public `Serialization` API.
+#[cfg(test)]
+pub(crate) mod test_emu_api {
+    pub(crate) use super::emu::{restore_pe32, restore_pe64};
+}
 
 pub struct Serialization;
 

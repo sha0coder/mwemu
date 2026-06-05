@@ -91,9 +91,14 @@ fn parity_serialization_roundtrip() {
         None => return,
     };
 
-    let pe = RuntimePe64::load_auto(&path);
+    let pe = match RuntimePe64::load(&path) {
+        Ok(pe) => pe,
+        Err(_) => return, // LIEF unavailable for this fixture; skip.
+    };
     let serialized: SerializablePE64 = (&pe).into();
-    let deserialized: RuntimePe64 = serialized.into();
+    let deserialized: RuntimePe64 = serialized
+        .try_into()
+        .expect("LIEF must re-parse serialized bytes");
 
     assert_eq!(
         pe.image_base(),
@@ -119,13 +124,14 @@ fn parity_serialization_lief_raw_bytes() {
         None => return,
     };
 
-    let pe = match RuntimePe64::load_lief(&path) {
-        Ok(RuntimePe64::Lief(l)) => l,
-        _ => {
+    let pe = match RuntimePe64::load(&path) {
+        Ok(pe) => pe,
+        Err(_) => {
             eprintln!("skipping: LIEF backend not available for fixture");
             return;
         }
     };
+    let pe = pe.into_inner();
 
     let raw = pe.mapped_file_data().to_vec();
     let filename = pe.file_path().to_string();
@@ -173,11 +179,13 @@ fn parity_serialization_backward_compat_lowercase() {
 }
 
 #[test]
-fn parity_serialization_missing_backend_defaults_legacy() {
+fn parity_serialization_missing_backend_defaults_lief() {
     use crate::serialization::pe64::SerializablePe64Backend;
 
+    // New default: LIEF is the only runtime backend; missing-backend
+    // serialization records default to Lief.
     let default = SerializablePe64Backend::default();
-    assert_eq!(default, SerializablePe64Backend::Legacy);
+    assert_eq!(default, SerializablePe64Backend::Lief);
 }
 
 fn compare_headers(legacy: &PE64, lief: &LiefPe) -> Vec<String> {

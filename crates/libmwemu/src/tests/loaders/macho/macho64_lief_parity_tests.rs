@@ -59,7 +59,7 @@ fn macho64_lief_parses_x86_64() {
     helpers::setup();
 
     let path = write_temp(
-        "mwemu_test_lief_macho64_x86_64_hello.bin",
+        "mwemu_test_lief_macho64_x86_64_hello_raw.bin",
         MACHO64_X86_64_HELLO_RAW,
     );
 

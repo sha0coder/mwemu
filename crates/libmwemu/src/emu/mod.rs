@@ -21,10 +21,10 @@ use crate::{
     loaders::macho::macho64::Macho64,
     loaders::pe::{runtime_pe32::RuntimePe32, runtime_pe64::RuntimePe64},
     maps::Maps,
-    pe::api_set_resolver::ApiSetResolver,
     threading::context::ThreadContext,
     threading::global_locks::GlobalLocks,
     utils::colors::Colors,
+    windows::api_set_resolver::ApiSetResolver,
     windows::structures::MemoryOperation,
 };
 

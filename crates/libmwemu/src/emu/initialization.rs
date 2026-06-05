@@ -12,7 +12,7 @@ use iced_x86::{Formatter as _, IntelFormatter};
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
 use crate::maps::mem64::Permission;
-use crate::pe::api_set_resolver::ApiSetResolver;
+use crate::windows::api_set_resolver::ApiSetResolver;
 use crate::windows::peb::{peb32, peb64};
 use crate::{
     api::banzai::Banzai, config::Config, debug::breakpoint::Breakpoints, hooks::Hooks, maps::Maps,
@@ -50,7 +50,7 @@ impl Default for Emu {
 }
 
 pub struct Lib {
-    pe64: crate::loaders::pe::pe64::PE64,
+    pe64: crate::loaders::pe::runtime_pe64::RuntimePe64,
     base: u64,
     name: String,
 }
@@ -1219,7 +1219,7 @@ impl Emu {
         // Stage 3: dynamic linking base + deps
         for dll in &metadata {
             log::debug!("dynamic linking {}", &dll.name);
-            peb64::dynamic_link_module(dll.base, dll.pe64.dos.e_lfanew, &dll.name, self);
+            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_offset(), &dll.name, self);
         }
 
         // Stage 3: IAT Binding  base + deps

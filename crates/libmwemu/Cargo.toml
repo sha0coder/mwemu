@@ -68,3 +68,8 @@ default = []
 rax_x86_tests = []
 log_mem_read = []
 log_mem_write = []
+# Builds the legacy PE32/PE64 hand-rolled parser modules and the
+# legacy-vs-LIEF parity tests. Off by default — the runtime and
+# serialization paths only use LIEF, and exposing the legacy modules
+# by default would re-introduce the dual-backend surface area.
+legacy-pe-parity = []

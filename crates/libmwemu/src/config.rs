@@ -4,20 +4,30 @@ use crate::arch::Arch;
 use crate::{debug::definitions::Definition, windows::constants};
 use serde::{Deserialize, Serialize};
 
+/// Backend selector for the PE64 runtime.
+///
+/// `Lief` is the only runtime backend; `Legacy` and `Auto` are retained
+/// for backwards-compatible deserialization of old config / dump files
+/// but resolve to the LIEF implementation at runtime. There is no
+/// longer a code path that instantiates the legacy `PE64` parser — the
+/// legacy parser modules live behind the `legacy-pe-parity` cargo
+/// feature for diagnostic purposes only.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Pe64Backend {
-    #[default]
     Legacy,
+    #[default]
     Lief,
     Auto,
 }
 
+/// Backend selector for the PE32 runtime. See [`Pe64Backend`] for the
+/// same LIEF-only contract that applies to 32-bit images.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Pe32Backend {
-    #[default]
     Legacy,
+    #[default]
     Lief,
     Auto,
 }

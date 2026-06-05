@@ -73,6 +73,32 @@ impl LiefHeaderParser {
         })
     }
 
+    /// Create a parser from a shared memory map (avoid double mmap).
+    ///
+    /// The mmap is shared between `LiefPe` and `LiefHeaderParser` so the
+    /// OS does not produce a second mmap of the same file. Note: this
+    /// avoids a second `mmap` syscall, but the implementation does copy
+    /// the mmap bytes into an `Arc<[u8]>` (via `Arc::from(&mapped[..])`)
+    /// to obtain a thin-Arc-friendly storage type. Sharing the original
+    /// `Mmap` directly would also work but currently does not — the
+    /// byte copy is intentional and bounded by `pe.sizeof_headers()` for
+    /// the header cache.
+    pub fn from_mmap_path(path: &str, mapped: Arc<Mmap>) -> Result<Self, LiefError> {
+        let mapped_file: Arc<[u8]> = Arc::from(&mapped[..]);
+
+        let pe = PeBinary::parse(path)
+            .ok_or_else(|| LiefError::ParseFailed("Failed to parse PE".to_string()))?;
+
+        let header_size = std::cmp::min(pe.sizeof_headers() as usize, mapped_file.len());
+        let header_cache = mapped_file.as_ref()[..header_size].to_vec();
+
+        Ok(Self {
+            mapped_file,
+            pe: Arc::new(pe),
+            header_cache,
+        })
+    }
+
     /// Create a parser from an already-parsed PE binary (wrapped in Arc)
     ///
     /// This allows sharing the parsed binary between multiple components

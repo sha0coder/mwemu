@@ -27,7 +27,6 @@ pub mod syscall;
 pub mod config;
 pub mod err;
 pub mod hooks;
-pub mod pe;
 
 // Backwards-compatible re-exports (arch)
 pub use arch::aarch64::regs as regs_aarch64;

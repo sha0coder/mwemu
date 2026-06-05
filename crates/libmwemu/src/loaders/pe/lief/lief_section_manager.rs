@@ -52,7 +52,7 @@ impl LiefSectionManager {
             mapped_file: mapped,
             section_cache: RwLock::new(HashMap::new()),
             cache_policy: CachePolicy::LRU {
-                max_bytes: 100 * 1024 * 1024,
+                max_bytes: 16 * 1024 * 1024, // 16 MB
             },
             access_order: RwLock::new(Vec::new()),
             pe_binary: Some(pe_binary),
@@ -65,7 +65,7 @@ impl LiefSectionManager {
             mapped_file: raw_bytes,
             section_cache: RwLock::new(HashMap::new()),
             cache_policy: CachePolicy::LRU {
-                max_bytes: 100 * 1024 * 1024,
+                max_bytes: 16 * 1024 * 1024, // 16 MB
             },
             access_order: RwLock::new(Vec::new()),
             pe_binary: Some(pe_binary),

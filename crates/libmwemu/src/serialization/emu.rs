@@ -15,6 +15,8 @@ use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
 use crate::hooks::Hooks;
+use crate::loaders::pe::runtime_pe32::RuntimePe32;
+use crate::loaders::pe::runtime_pe64::RuntimePe64;
 use crate::regs_aarch64::RegsAarch64;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
@@ -357,10 +359,16 @@ impl From<SerializableEmu> for Emu {
             force_reload,
             run_until_ret,
             rng: RefCell::new(rand::rng()),
-            // Platform & loaded binary
+            // Platform & loaded binary.
+            // PE runtime rehydration requires LIEF to successfully parse the
+            // embedded raw bytes. If the bytes are not a valid full PE
+            // (truncated minidump module, synthetic fixture, etc.) the
+            // RuntimePe is left as None rather than fabricated from
+            // unparsed bytes. Errors are logged so old dump/minidump
+            // failures are diagnosable.
             os,
-            pe64: pe64.map(|x| x.into()),
-            pe32: pe32.map(|x| x.into()),
+            pe64: restore_pe64(pe64),
+            pe32: restore_pe32(pe32),
             elf64: None,   // TODO: not yet serialized
             elf32: None,   // TODO: not yet serialized
             macho64: None, // TODO: not yet serialized
@@ -595,4 +603,46 @@ impl SerializableEmu {
         emu.init_cpu();
         SerializableEmu::from(&emu)
     }
+}
+
+/// Rehydrate a `SerializablePE64` into a `RuntimePe64`, logging a warning
+/// when LIEF rejects the embedded raw bytes. The function returns `None`
+/// in that case so the surrounding `Emu` keeps `pe64 = None` rather than
+/// fabricating a runtime from unparsed bytes.
+pub(crate) fn restore_pe64(pe64: Option<SerializablePE64>) -> Option<RuntimePe64> {
+    pe64.and_then(|serialized| {
+        let filename = serialized.filename.clone();
+        match RuntimePe64::try_from(serialized) {
+            Ok(pe) => Some(pe),
+            Err(e) => {
+                log::warn!(
+                    "Skipping PE64 runtime restore for {} because LIEF rejected embedded bytes: {}",
+                    filename,
+                    e
+                );
+                None
+            }
+        }
+    })
+}
+
+/// Rehydrate a `SerializablePE32` into a `RuntimePe32`, logging a warning
+/// when LIEF rejects the embedded raw bytes. The function returns `None`
+/// in that case so the surrounding `Emu` keeps `pe32 = None` rather than
+/// fabricating a runtime from unparsed bytes.
+pub(crate) fn restore_pe32(pe32: Option<SerializablePE32>) -> Option<RuntimePe32> {
+    pe32.and_then(|serialized| {
+        let filename = serialized.filename.clone();
+        match RuntimePe32::try_from(serialized) {
+            Ok(pe) => Some(pe),
+            Err(e) => {
+                log::warn!(
+                    "Skipping PE32 runtime restore for {} because LIEF rejected embedded bytes: {}",
+                    filename,
+                    e
+                );
+                None
+            }
+        }
+    })
 }

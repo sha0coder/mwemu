@@ -1,4 +1,3 @@
-use crate::config::Pe64Backend;
 use crate::loaders::pe::lief::LiefPe;
 use crate::loaders::pe::lief::traits::LiefPeReader;
 use crate::loaders::pe::runtime_pe64::RuntimePe64;
@@ -155,56 +154,32 @@ fn test_cache_operations() {
 }
 
 #[test]
-fn test_forced_legacy_backend() {
+fn test_runtime_pe64_reports_lief_backend() {
+    // The runtime PE64 path is LIEF-only; legacy parser modules are
+    // gated behind the `legacy-pe-parity` cargo feature and are not
+    // instantiated by the loader. `RuntimePe64::load` therefore
+    // always reports `backend_name() == "lief"` and `is_lief()`.
     let path = match fixture_path() {
         Some(p) => p,
         None => return,
     };
 
-    let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Legacy)
-        .expect("legacy backend should not fail");
-    assert_eq!(
-        pe.backend_name(),
-        "legacy",
-        "forced legacy should use legacy backend"
-    );
-    assert!(
-        !pe.is_lief(),
-        "is_lief() should be false for legacy backend"
-    );
+    let pe = RuntimePe64::load(path).expect("LIEF load should succeed for valid fixture");
+    assert_eq!(pe.backend_name(), "lief", "runtime is always LIEF");
+    assert!(pe.is_lief(), "is_lief() should always be true");
 }
 
 #[test]
-fn test_forced_lief_backend() {
+fn test_runtime_pe64_lief_backend_loads_valid_fixture() {
     let path = match fixture_path() {
         Some(p) => p,
         None => return,
     };
 
-    let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Lief)
-        .expect("LIEF backend should succeed for valid fixture");
-    assert_eq!(
-        pe.backend_name(),
-        "lief",
-        "forced LIEF should use lief backend"
-    );
+    let pe = RuntimePe64::load(path).expect("LIEF backend should succeed for valid fixture");
+    assert_eq!(pe.backend_name(), "lief");
     assert!(pe.is_lief(), "is_lief() should be true for LIEF backend");
-}
-
-#[test]
-fn test_auto_backend_prefers_lief() {
-    let path = match fixture_path() {
-        Some(p) => p,
-        None => return,
-    };
-
-    let pe = RuntimePe64::load_with_backend(path, Pe64Backend::Auto)
-        .expect("auto backend should succeed");
-    assert_eq!(
-        pe.backend_name(),
-        "lief",
-        "auto should prefer LIEF when available"
-    );
+    assert!(pe.num_of_sections() > 0, "loaded PE should have sections");
 }
 
 #[test]
@@ -214,7 +189,7 @@ fn test_runtime_pe64_section_access() {
         None => return,
     };
 
-    let pe = RuntimePe64::load_auto(path);
+    let pe = RuntimePe64::load(path).expect("LIEF load should succeed");
     for i in 0..pe.num_of_sections() {
         let section = pe.get_section(i);
         assert!(section.is_some(), "Section {} should be accessible", i);
@@ -256,12 +231,8 @@ fn test_serialization_roundtrip() {
         None => return,
     };
 
-    let pe = RuntimePe64::load_auto(path);
-    let expected_backend = if pe.is_lief() {
-        SerializablePe64Backend::Lief
-    } else {
-        SerializablePe64Backend::Legacy
-    };
+    let pe = RuntimePe64::load(path).expect("LIEF load should succeed");
+    let expected_backend = SerializablePe64Backend::Lief;
 
     let serialized: SerializablePE64 = (&pe).into();
 
@@ -279,7 +250,9 @@ fn test_serialization_roundtrip() {
         "Backend discriminator should match actual backend"
     );
 
-    let deserialized: RuntimePe64 = serialized.into();
+    let deserialized: RuntimePe64 = serialized
+        .try_into()
+        .expect("LIEF must re-parse serialized bytes");
     assert!(
         deserialized.image_base() > 0,
         "Deserialized image base should be non-zero"
