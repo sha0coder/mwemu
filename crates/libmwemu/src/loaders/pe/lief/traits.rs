@@ -42,12 +42,12 @@ pub trait LiefPeReader {
     }
 
     /// Get a section by index
-    fn get_section(&self, index: usize) -> Option<lief::pe::Section> {
+    fn get_section(&self, index: usize) -> Option<lief::pe::Section<'_>> {
         self.lief_pe().sections().nth(index)
     }
 
     /// Get a section by name
-    fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section> {
+    fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section<'_>> {
         self.lief_pe().sections().find(|s| s.name() == name)
     }
 
@@ -80,7 +80,7 @@ pub trait LiefPeReader {
     }
 
     /// Get a data directory by index
-    fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory> {
+    fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory<'_>> {
         self.lief_pe().data_directories().nth(index)
     }
 

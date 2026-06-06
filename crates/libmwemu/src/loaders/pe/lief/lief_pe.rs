@@ -404,7 +404,7 @@ impl LiefPe {
     }
 
     /// Get section by name (from header)
-    pub fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section> {
+    pub fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section<'_>> {
         self.header.get_section_by_name(name)
     }
 
@@ -672,21 +672,21 @@ impl LiefPe {
     }
 
     /// Get all sections
-    pub fn sections(&self) -> Vec<lief::pe::Section> {
+    pub fn sections(&self) -> Vec<lief::pe::Section<'_>> {
         self.header.sections()
     }
 
     /// Get data directories
-    pub fn data_directories(&self) -> Vec<lief::pe::DataDirectory> {
+    pub fn data_directories(&self) -> Vec<lief::pe::DataDirectory<'_>> {
         self.header.data_directories()
     }
 
     /// Get data directory by index
-    pub fn get_section(&self, index: usize) -> Option<lief::pe::Section> {
+    pub fn get_section(&self, index: usize) -> Option<lief::pe::Section<'_>> {
         self.header.get_section(index)
     }
 
-    pub fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory> {
+    pub fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory<'_>> {
         self.header.get_data_directory(index)
     }
 
@@ -745,11 +745,11 @@ impl LiefPeReader for LiefPe {
         self.num_sections()
     }
 
-    fn get_section(&self, index: usize) -> Option<lief::pe::Section> {
+    fn get_section(&self, index: usize) -> Option<lief::pe::Section<'_>> {
         self.header.get_section(index)
     }
 
-    fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section> {
+    fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section<'_>> {
         self.get_section_by_name(name)
     }
 
@@ -773,7 +773,7 @@ impl LiefPeReader for LiefPe {
         self.size_of_headers()
     }
 
-    fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory> {
+    fn get_data_directory(&self, index: usize) -> Option<lief::pe::DataDirectory<'_>> {
         self.get_data_directory(index)
     }
 

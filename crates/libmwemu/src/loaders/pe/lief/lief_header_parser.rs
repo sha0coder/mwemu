@@ -234,22 +234,22 @@ impl LiefHeaderParser {
     }
 
     /// Get sections
-    pub fn sections(&self) -> Vec<lief::pe::Section> {
+    pub fn sections(&self) -> Vec<lief::pe::Section<'_>> {
         self.pe.sections().collect()
     }
 
     /// Get data directories
-    pub fn data_directories(&self) -> Vec<lief::pe::DataDirectory> {
+    pub fn data_directories(&self) -> Vec<lief::pe::DataDirectory<'_>> {
         self.pe.data_directories().collect()
     }
 
     /// Get section by index
-    pub fn get_section(&self, index: usize) -> Option<lief::pe::Section> {
+    pub fn get_section(&self, index: usize) -> Option<lief::pe::Section<'_>> {
         self.pe.sections().nth(index)
     }
 
     /// Get section by name
-    pub fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section> {
+    pub fn get_section_by_name(&self, name: &str) -> Option<lief::pe::Section<'_>> {
         self.pe.sections().find(|s| s.name() == name)
     }
 
