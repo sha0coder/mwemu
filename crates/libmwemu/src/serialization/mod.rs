@@ -28,8 +28,19 @@ impl Serialization {
         deserialized.into()
     }
 
+    /// Directory where the per-map `.bin` dumps are written: the parent
+    /// directory of `filename`, falling back to "." when it has none.
+    fn dump_dir(filename: &str) -> String {
+        std::path::Path::new(filename)
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| ".".to_string())
+    }
+
     pub fn dump_to_file(emu: &Emu, filename: &str) {
-        std::fs::create_dir_all("./dumps/").unwrap();
+        let dump_dir = Self::dump_dir(filename);
+        std::fs::create_dir_all(&dump_dir).unwrap();
 
         let serialized = SerializableEmu::from(emu);
         let data = bitcode::serialize(&serialized).unwrap();
@@ -39,7 +50,7 @@ impl Serialization {
         drop(file);
 
         // for binary analysis
-        emu.maps.save_all("./dumps".to_string());
+        emu.maps.save_all(dump_dir);
     }
 
     pub fn load_from_file(filename: &str) -> Emu {
@@ -48,11 +59,12 @@ impl Serialization {
     }
 
     pub fn dump_to_minidump(emu: &Emu, filename: &str) -> std::io::Result<()> {
-        std::fs::create_dir_all("./dumps/")?;
+        let dump_dir = Self::dump_dir(filename);
+        std::fs::create_dir_all(&dump_dir)?;
         minidump::dump_to_minidump(emu, filename)?;
 
         // for binary analysis
-        emu.maps.save_all("./dumps".to_string());
+        emu.maps.save_all(dump_dir);
         Ok(())
     }
 

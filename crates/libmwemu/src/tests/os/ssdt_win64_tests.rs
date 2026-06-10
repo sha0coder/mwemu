@@ -104,6 +104,96 @@ fn exe64win_msgbox_ssdt_hits_first_windows_syscall() {
     );
 }
 
+/// `--ssdt` smoke for the Enigma-packed PE: confirms syscall-mode can load the
+/// sample, drive `ntdll!LdrInitializeThunk` to completion (~7M instructions
+/// inside `load_code`), and step the Enigma unpacker forward. This is strictly
+/// deeper than the API-stub path, which aborts on unimplemented
+/// `ntdll!RtlAcquirePebLock`; running the real ntdll bytes makes it work.
+#[test]
+fn exe64win_enigma_ssdt_reaches_unpacker() {
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    emu.cfg.emulate_winapi = true; // same behavior as command line --ssdt
+
+    let sample = helpers::test_data_path("exe64win_enigma.bin");
+    assert!(
+        std::path::Path::new(&sample).is_file(),
+        "missing test sample: {}",
+        sample
+    );
+
+    // load_code drives LdrInitializeThunk via call64 when emulate_winapi is set,
+    // then leaves RIP at the EXE entry point.
+    emu.load_code(&sample);
+
+    assert!(
+        emu.ldr_init_done,
+        "ntdll!LdrInitializeThunk did not complete under --ssdt (pos={} rip=0x{:x})",
+        emu.pos,
+        emu.regs().rip
+    );
+
+    // Step the Enigma payload a little past the entry point to prove the
+    // protected code runs against the real DLL/syscall surface.
+    let target = emu.pos + 500_000;
+    let _ = emu.run_to(target);
+    assert!(
+        emu.pos >= target,
+        "ssdt enigma stalled at {} (target {}); rip=0x{:x}",
+        emu.pos,
+        target,
+        emu.regs().rip
+    );
+}
+
+/// Deep `--ssdt` run of the Enigma unpacker: equivalent to
+/// `cargo run --release -- -f test/exe64win_enigma.bin -6 --ssdt`.
+///
+/// Drives the protected payload to 50M instructions — tens of millions of
+/// instructions of Enigma's own VM/unpacker executing against the real
+/// ntdll/kernel32/kernelbase bytes, with only kernel `syscall`s intercepted.
+///
+/// Stops at 50M on purpose: the unpacker currently diverges from real Windows
+/// around pos ~109M (an in-image RVA dispatch table at imagebase+0x5960b4 is
+/// never converted to VAs, so `call qword ptr [rbp+0x5960b4]` jumps to a bare
+/// RVA). 50M is comfortably below that wall.
+///
+/// Run with:
+/// ```text
+/// cargo test -p libmwemu exe64win_enigma_ssdt_runs_deep \
+///     --release -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "slow: ~3s in release; run with --release -- --ignored"]
+fn exe64win_enigma_ssdt_runs_deep() {
+    helpers::setup();
+
+    let mut emu = emu64();
+    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    emu.cfg.emulate_winapi = true; // --ssdt / --syscall-mode
+
+    let sample = helpers::test_data_path("exe64win_enigma.bin");
+    assert!(
+        std::path::Path::new(&sample).is_file(),
+        "missing test sample: {}",
+        sample
+    );
+
+    emu.load_code(&sample);
+
+    let target = 50_000_000u64;
+    let _ = emu.run_to(target);
+    assert!(
+        emu.pos >= target,
+        "ssdt enigma only reached {} instructions (need >= {}); rip=0x{:x}",
+        emu.pos,
+        target,
+        emu.regs().rip
+    );
+}
+
 #[test]
 fn exe64win_mingw_ssdt_reaches_early_execution_window() {
     helpers::setup();

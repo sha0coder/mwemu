@@ -1,8 +1,8 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::windows::peb::peb64::ldr::create_ldr_entry;
-use crate::windows::structures::PebLdrData64;
 use crate::windows::structures::PEB64;
+use crate::windows::structures::PebLdrData64;
 use crate::windows::structures::RtlUserProcessParameters64;
 use crate::windows::structures::TEB64;
 
@@ -68,7 +68,7 @@ fn ensure_teb_activation_context_stack(emu: &mut emu::Emu) {
 /// virtual-DLL → host-DLL redirect schema for hundreds of `api-ms-*` and
 /// `ext-ms-*` names. Embedding this avoids shipping the ~115 individual
 /// stub DLLs that would otherwise be needed to satisfy ntdll's loader.
-const APISET_W11_ZLIB: &[u8] = include_bytes!("../../../../data/apiset_w11.zlib");
+const APISET_W11_ZLIB: &[u8] = include_bytes!("../../../../data/apiset_w11.zlib"); // TODO: rebuild
 
 /// `PEB+0x68` = `ApiSetMap` on x64 Windows 10+ ntdll. The loader reads it
 /// during `LdrpInitializeProcess` to redirect virtual API-set names
@@ -147,8 +147,8 @@ pub fn ensure_peb_nls_tables(emu: &mut emu::Emu) {
     const FALLBACK_SZ: u64 = 0x1000;
     // (PEB slot, map name, NLS filename)
     let slots: &[(&str, u64, &str)] = &[
-        ("peb_nls_ansi",    peb_base + 0xA0, "C_1252.NLS"),
-        ("peb_nls_oem",     peb_base + 0xA8, "C_437.NLS"),
+        ("peb_nls_ansi", peb_base + 0xA0, "C_1252.NLS"),
+        ("peb_nls_oem", peb_base + 0xA8, "C_437.NLS"),
         ("peb_nls_unicode", peb_base + 0xB0, "locale.nls"),
     ];
     for (name, slot_addr, nls_filename) in slots {
@@ -171,14 +171,17 @@ pub fn ensure_peb_nls_tables(emu: &mut emu::Emu) {
                     }
                     log::trace!(
                         "ensure_peb_nls_tables: loaded {} ({} bytes) at 0x{:x}",
-                        nls_filename, bytes.len(), b
+                        nls_filename,
+                        bytes.len(),
+                        b
                     );
                     b
                 }
                 Err(_) => {
                     log::warn!(
                         "ensure_peb_nls_tables: missing {} — leaving {} zeroed",
-                        path, name
+                        path,
+                        name
                     );
                     let b = emu.maps.map(name, FALLBACK_SZ, Permission::READ_WRITE);
                     emu.maps.memset(b, 0, FALLBACK_SZ as usize);
@@ -289,10 +292,10 @@ pub fn init_arguments(emu: &mut emu::Emu) -> u64 {
 
     // UNICODE_STRING.Length is bytes WITHOUT trailing NUL; MaximumLength
     // is the buffer capacity INCLUDING space for the NUL terminator.
-    let image_bytes  = image_path.len() as u64 * 2;
+    let image_bytes = image_path.len() as u64 * 2;
     let image_maxlen = image_bytes + 2;
-    let cmd_bytes    = cmdline_str.len() as u64 * 2;
-    let cmd_maxlen   = cmd_bytes + 2;
+    let cmd_bytes = cmdline_str.len() as u64 * 2;
+    let cmd_maxlen = cmd_bytes + 2;
 
     let filename = emu
         .maps

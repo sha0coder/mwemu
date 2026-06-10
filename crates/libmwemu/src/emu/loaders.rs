@@ -315,6 +315,13 @@ impl Emu {
                         }
                     }
 
+                    // Some ntdll versions allocate the EXE module's name buffer
+                    // during LdrInitializeThunk but never copy the path into it
+                    // under emulation, leaving FullDllName/BaseDllName pointing at
+                    // uninitialized (later freed) heap. Patch it with a stable
+                    // mwemu-owned buffer so PEB-walking code reads the real name.
+                    crate::windows::peb::peb64::fix_exe_module_name(self);
+
                     // DEBUG: dump InMemoryOrder chain so we can verify a PEB-walking
                     // shellcode finds the expected DllBase at the expected index.
                     {

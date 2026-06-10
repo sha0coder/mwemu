@@ -88,9 +88,6 @@ impl Flink {
 
     pub fn get_mod_base(&mut self, emu: &mut emu::Emu) {
         self.mod_base = emu.maps.read_qword(self.flink_addr + 0x30).unwrap_or(0);
-        if self.mod_base == 0 && emu.cfg.verbose >= 2 {
-            log::trace!("peb64: LDR entry has modbase=0 at 0x{:x}", self.flink_addr);
-        }
     }
 
     pub fn set_mod_base(&mut self, base: u64, emu: &mut emu::Emu) {
@@ -422,6 +419,74 @@ pub fn create_ldr_entry(
     ldr.save(space_addr, &mut emu.maps);
 
     space_addr
+}
+
+/// Patch the main image's `FullDllName`/`BaseDllName` in its LDR entry.
+///
+/// Some ntdll versions allocate the EXE module's name buffer during
+/// `LdrInitializeThunk` (`LdrpInitializeProcess` → `RtlGetFullPathName_UEx`)
+/// but, under emulation, never actually copy the path into it: the
+/// UNICODE_STRING ends up pointing at uninitialized heap (the `0xFEEEFEEE`
+/// fill), and that heap block is later freed and reused. PEB-walking code that
+/// reads the EXE module name then sees garbage. We can't rely on the guest's
+/// path-resolution running, so we overwrite the EXE entry's names with a
+/// stable, mwemu-owned buffer that the guest heap never recycles.
+pub fn fix_exe_module_name(emu: &mut emu::Emu) {
+    let exe_base = emu.base;
+    if exe_base == 0 {
+        return;
+    }
+    let Some(peb_base) = emu.maps.get_map_by_name("peb").map(|m| m.get_base()) else {
+        return;
+    };
+    let ldr_addr = emu.maps.read_qword(peb_base + 0x18).unwrap_or(0);
+    if ldr_addr == 0 {
+        return;
+    }
+
+    // Locate the EXE entry by DllBase, walking InLoadOrderModuleList
+    // (sentinel at PEB_LDR_DATA+0x10; cur == &entry.InLoadOrderLinks == entry+0).
+    let sentinel = ldr_addr + 0x10;
+    let mut cur = emu.maps.read_qword(sentinel).unwrap_or(0);
+    let mut entry = 0u64;
+    let mut guard = 0;
+    while cur != 0 && cur != sentinel && guard < 64 {
+        if emu.maps.read_qword(cur + 0x30).unwrap_or(0) == exe_base {
+            entry = cur;
+            break;
+        }
+        cur = emu.maps.read_qword(cur).unwrap_or(0);
+        guard += 1;
+    }
+    if entry == 0 {
+        return;
+    }
+
+    let base_name = emu.cfg.exe_name.clone();
+    let full_name = format!("C:\\{}", base_name);
+
+    // One stable buffer holding both wide strings back-to-back; never freed by
+    // the guest heap. NUL-terminate each (write_wide_string does not append).
+    let full_term = full_name.clone() + "\x00";
+    let base_term = base_name.clone() + "\x00";
+    let base_off = full_term.len() as u64 * 2;
+    let total = base_off + base_term.len() as u64 * 2;
+    let buf = if emu.maps.exists_mapname("exe_ldr_name") {
+        emu.maps.get_map_by_name("exe_ldr_name").unwrap().get_base()
+    } else {
+        emu.maps.map("exe_ldr_name", total, Permission::READ_WRITE)
+    };
+    emu.maps.write_wide_string(buf, &full_term);
+    emu.maps.write_wide_string(buf + base_off, &base_term);
+
+    // FullDllName UNICODE_STRING @ entry+0x48 (Length, MaxLength, _pad, Buffer@+8).
+    emu.maps.write_word(entry + 0x48, (full_name.len() * 2) as u16);
+    emu.maps.write_word(entry + 0x4a, (full_name.len() * 2 + 2) as u16);
+    emu.maps.write_qword(entry + 0x50, buf);
+    // BaseDllName UNICODE_STRING @ entry+0x58.
+    emu.maps.write_word(entry + 0x58, (base_name.len() * 2) as u16);
+    emu.maps.write_word(entry + 0x5a, (base_name.len() * 2 + 2) as u16);
+    emu.maps.write_qword(entry + 0x60, buf + base_off);
 }
 
 fn ldr_hash_bucket_index(libname: &str) -> u64 {

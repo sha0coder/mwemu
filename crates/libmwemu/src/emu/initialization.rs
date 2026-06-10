@@ -823,8 +823,8 @@ impl Emu {
             // maps exist when we re-populate the linked list afterwards
             // (LdrInit on Win10+ relies on syscalls we don't fully model,
             // and bails before bringing these in via the KnownDll path).
-            winapi64::kernel32::load_library(self, "kernel32.dll");
-            winapi64::kernel32::load_library(self, "kernelbase.dll");
+            //winapi64::kernel32::load_library(self, "kernel32.dll");
+            //winapi64::kernel32::load_library(self, "kernelbase.dll");
 
             // ntdll patches its own globals during LdrInitializeThunk (LdrpHashTable,
             // LdrpModuleBaseAddressIndex, etc.).  These often fall in the .rdata section

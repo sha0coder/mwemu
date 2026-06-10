@@ -42,77 +42,98 @@ pub fn build_syscall_translation_table(emu: &mut Emu) {
     // syscalls our `gateway()` dispatches and the syscalls we observe
     // in LdrInit). Add entries here whenever you introduce a new handler.
     let canonical: &[(&str, u64)] = &[
-        ("NtAccessCheck",                    WIN64_NTACCESSCHECK),
-        ("NtAllocateVirtualMemory",          WIN64_NTALLOCATEVIRTUALMEMORY),
-        ("NtAllocateVirtualMemoryEx",        WIN64_NTALLOCATEVIRTUALMEMORYEX),
-        ("NtFreeVirtualMemory",              WIN64_NTFREEVIRTUALMEMORY),
-        ("NtProtectVirtualMemory",           WIN64_NTPROTECTVIRTUALMEMORY),
-        ("NtQueryVirtualMemory",             WIN64_NTQUERYVIRTUALMEMORY),
-        ("NtReadVirtualMemory",              WIN64_NTREADVIRTUALMEMORY),
-        ("NtWriteVirtualMemory",             WIN64_NTWRITEVIRTUALMEMORY),
-        ("NtCreateSection",                  WIN64_NTCREATESECTION),
-        ("NtOpenSection",                    WIN64_NTOPENSECTION),
-        ("NtMapViewOfSection",               WIN64_NTMAPVIEWOFSECTION),
-        ("NtUnmapViewOfSection",             WIN64_NTUNMAPVIEWOFSECTION),
-        ("NtQuerySystemInformation",         WIN64_NTQUERYSYSTEMINFORMATION),
-        ("NtQueryInformationProcess",        WIN64_NTQUERYINFORMATIONPROCESS),
-        ("NtQueryInformationThread",         WIN64_NTQUERYINFORMATIONTHREAD),
-        ("NtSetInformationProcess",          WIN64_NTSETINFORMATIONPROCESS),
-        ("NtSetInformationThread",           WIN64_NTSETINFORMATIONTHREAD),
-        ("NtOpenProcess",                    WIN64_NTOPENPROCESS),
-        ("NtDuplicateObject",                WIN64_NTDUPLICATEOBJECT),
-        ("NtTerminateProcess",               WIN64_NTTERMINATEPROCESS),
-        ("NtQueryPerformanceCounter",        WIN64_NTQUERYPERFORMANCECOUNTER),
-        ("NtCreateEvent",                    WIN64_NTCREATEEVENT),
-        ("NtSetEvent",                       WIN64_NTSETEVENT),
-        ("NtClose",                          WIN64_NTCLOSE),
-        ("NtOpenKey",                        WIN64_NTOPENKEY),
-        ("NtQueryValueKey",                  WIN64_NTQUERYVALUEKEY),
-        ("NtRaiseException",                 WIN64_NTRAISEEXCEPTION),
-        ("NtContinue",                       WIN64_NTCONTINUE),
-        ("NtQueryAttributesFile",            WIN64_NTQUERYATTRIBUTESFILE),
-        ("NtOpenFile",                       WIN64_NTOPENFILE),
-        ("NtOpenDirectoryObject",            WIN64_NTOPENDIRECTORYOBJECT),
-        ("NtOpenSymbolicLinkObject",         WIN64_NTOPENSYMBOLICLINKOBJECT),
-        ("NtQuerySymbolicLinkObject",        WIN64_NTQUERYSYMBOLICLINKOBJECT),
-        ("NtAlpcConnectPort",                WIN64_NTALPCCONNECTPORT),
-        ("NtAlpcSendWaitReceivePort",        WIN64_NTALPCSENDWAITRECEIVEPORT),
-        ("NtTraceEvent",                     WIN64_NTTRACEEVENT),
-        ("NtOpenEvent",                      WIN64_NTOPENEVENT),
-        ("NtWaitForSingleObject",            WIN64_NTWAITFORSINGLEOBJECT),
-        ("NtApphelpCacheControl",            WIN64_NTAPPHELPCACHECONTROL),
-        ("NtAreMappedFilesTheSame",          WIN64_NTAREMAPPEDFILESTHESAME),
-        ("NtQueryQuotaInformationFile",      WIN64_NTQUERYQUOTAINFORMATIONFILE),
-        ("NtQuerySystemEnvironmentValueEx",  WIN64_NTQUERYSYSTEMENVIRONMENTVALUEEX),
-        ("NtRaiseHardError",                 WIN64_NTRAISEHARDERROR),
-        ("NtRaiseException",                 WIN64_NTRAISEEXCEPTION),
+        ("NtAccessCheck", WIN64_NTACCESSCHECK),
+        ("NtAllocateVirtualMemory", WIN64_NTALLOCATEVIRTUALMEMORY),
+        ("NtAllocateVirtualMemoryEx", WIN64_NTALLOCATEVIRTUALMEMORYEX),
+        ("NtFreeVirtualMemory", WIN64_NTFREEVIRTUALMEMORY),
+        ("NtProtectVirtualMemory", WIN64_NTPROTECTVIRTUALMEMORY),
+        ("NtQueryVirtualMemory", WIN64_NTQUERYVIRTUALMEMORY),
+        ("NtReadVirtualMemory", WIN64_NTREADVIRTUALMEMORY),
+        ("NtWriteVirtualMemory", WIN64_NTWRITEVIRTUALMEMORY),
+        ("NtCreateSection", WIN64_NTCREATESECTION),
+        ("NtOpenSection", WIN64_NTOPENSECTION),
+        ("NtMapViewOfSection", WIN64_NTMAPVIEWOFSECTION),
+        ("NtUnmapViewOfSection", WIN64_NTUNMAPVIEWOFSECTION),
+        ("NtQuerySystemInformation", WIN64_NTQUERYSYSTEMINFORMATION),
+        ("NtQueryInformationProcess", WIN64_NTQUERYINFORMATIONPROCESS),
+        ("NtQueryInformationThread", WIN64_NTQUERYINFORMATIONTHREAD),
+        ("NtSetInformationProcess", WIN64_NTSETINFORMATIONPROCESS),
+        ("NtSetInformationThread", WIN64_NTSETINFORMATIONTHREAD),
+        ("NtOpenProcess", WIN64_NTOPENPROCESS),
+        ("NtDuplicateObject", WIN64_NTDUPLICATEOBJECT),
+        ("NtTerminateProcess", WIN64_NTTERMINATEPROCESS),
+        ("NtQueryPerformanceCounter", WIN64_NTQUERYPERFORMANCECOUNTER),
+        ("NtCreateEvent", WIN64_NTCREATEEVENT),
+        ("NtSetEvent", WIN64_NTSETEVENT),
+        ("NtClose", WIN64_NTCLOSE),
+        ("NtOpenKey", WIN64_NTOPENKEY),
+        ("NtQueryValueKey", WIN64_NTQUERYVALUEKEY),
+        ("NtRaiseException", WIN64_NTRAISEEXCEPTION),
+        ("NtContinue", WIN64_NTCONTINUE),
+        ("NtQueryAttributesFile", WIN64_NTQUERYATTRIBUTESFILE),
+        ("NtOpenFile", WIN64_NTOPENFILE),
+        ("NtOpenDirectoryObject", WIN64_NTOPENDIRECTORYOBJECT),
+        ("NtOpenSymbolicLinkObject", WIN64_NTOPENSYMBOLICLINKOBJECT),
+        ("NtQuerySymbolicLinkObject", WIN64_NTQUERYSYMBOLICLINKOBJECT),
+        ("NtAlpcConnectPort", WIN64_NTALPCCONNECTPORT),
+        ("NtAlpcSendWaitReceivePort", WIN64_NTALPCSENDWAITRECEIVEPORT),
+        ("NtTraceEvent", WIN64_NTTRACEEVENT),
+        ("NtOpenEvent", WIN64_NTOPENEVENT),
+        ("NtWaitForSingleObject", WIN64_NTWAITFORSINGLEOBJECT),
+        ("NtApphelpCacheControl", WIN64_NTAPPHELPCACHECONTROL),
+        ("NtAreMappedFilesTheSame", WIN64_NTAREMAPPEDFILESTHESAME),
+        (
+            "NtQueryQuotaInformationFile",
+            WIN64_NTQUERYQUOTAINFORMATIONFILE,
+        ),
+        (
+            "NtQuerySystemEnvironmentValueEx",
+            WIN64_NTQUERYSYSTEMENVIRONMENTVALUEEX,
+        ),
+        ("NtRaiseHardError", WIN64_NTRAISEHARDERROR),
+        ("NtRaiseException", WIN64_NTRAISEEXCEPTION),
     ];
-    let by_name: std::collections::HashMap<&'static str, u64> =
-        canonical.iter().copied().collect();
+    let by_name: std::collections::HashMap<&'static str, u64> = canonical.iter().copied().collect();
 
     let mut map = std::collections::HashMap::new();
     let mut name_map = std::collections::HashMap::new();
     for i in 0..nname {
         let nrva = emu.maps.read_dword(aon + i * 4).unwrap_or(0) as u64;
-        if nrva == 0 { continue; }
+        if nrva == 0 {
+            continue;
+        }
         let mut name = String::new();
         let mut k = 0u64;
         while k < 128 {
             let b = emu.maps.read_byte(base + nrva + k).unwrap_or(0);
-            if b == 0 { break; }
+            if b == 0 {
+                break;
+            }
             name.push(b as char);
             k += 1;
         }
-        if !name.starts_with("Nt") { continue; }
+        if !name.starts_with("Nt") {
+            continue;
+        }
         let ord = emu.maps.read_word(aono + i * 2).unwrap_or(0) as u64;
         let aof_rva = emu.maps.read_dword(exp + 0x1c).unwrap_or(0) as u64;
         let fn_rva = emu.maps.read_dword(base + aof_rva + ord * 4).unwrap_or(0) as u64;
-        if fn_rva == 0 { continue; }
+        if fn_rva == 0 {
+            continue;
+        }
         // Stub prologue: 4c 8b d1 b8 <imm32>
-        if emu.maps.read_byte(base + fn_rva).unwrap_or(0) != 0x4c { continue; }
-        if emu.maps.read_byte(base + fn_rva + 1).unwrap_or(0) != 0x8b { continue; }
-        if emu.maps.read_byte(base + fn_rva + 2).unwrap_or(0) != 0xd1 { continue; }
-        if emu.maps.read_byte(base + fn_rva + 3).unwrap_or(0) != 0xb8 { continue; }
+        if emu.maps.read_byte(base + fn_rva).unwrap_or(0) != 0x4c {
+            continue;
+        }
+        if emu.maps.read_byte(base + fn_rva + 1).unwrap_or(0) != 0x8b {
+            continue;
+        }
+        if emu.maps.read_byte(base + fn_rva + 2).unwrap_or(0) != 0xd1 {
+            continue;
+        }
+        if emu.maps.read_byte(base + fn_rva + 3).unwrap_or(0) != 0xb8 {
+            continue;
+        }
         let real_nr = emu.maps.read_dword(base + fn_rva + 4).unwrap_or(0) as u64;
         name_map.insert(real_nr, name.clone());
         if let Some(&canonical_nr) = by_name.get(name.as_str()) {
@@ -123,7 +144,8 @@ pub fn build_syscall_translation_table(emu: &mut Emu) {
     }
     log::trace!(
         "syscall translation table built: {} entries (real_nr → canonical), {} names indexed (from loaded ntdll)",
-        map.len(), name_map.len(),
+        map.len(),
+        name_map.len(),
     );
     emu.syscall_number_map = map;
     emu.syscall_name_by_real = name_map;
@@ -148,7 +170,9 @@ pub fn gateway(emu: &mut Emu) {
             log_orange!(
                 emu,
                 "syscall 0x{:x}: {} (unimplemented; static table would have misrouted as {})",
-                real_nr, real_name, canonical_name,
+                real_nr,
+                real_name,
+                canonical_name,
             );
             emu.regs_mut().rax = STATUS_NOT_IMPLEMENTED;
             return;
@@ -199,7 +223,9 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTWAITFORALERTBYTHREADID => sync::nt_wait_for_alert_by_thread_id(emu),
         WIN64_NTQUERYSECURITYATTRIBUTESTOKEN => process::nt_query_security_attributes_token(emu),
         WIN64_NTALLOCATEUSERPHYSICALPAGESEX => memory::nt_allocate_user_physical_pages_ex(emu),
-        WIN64_NTQUERYINFORMATIONTRANSACTIONMANAGER => system::nt_query_information_transaction_manager(emu),
+        WIN64_NTQUERYINFORMATIONTRANSACTIONMANAGER => {
+            system::nt_query_information_transaction_manager(emu)
+        }
         WIN64_NTCREATETHREADEX => process::nt_create_thread_ex(emu),
         WIN64_NTCONTINUE => process::nt_continue(emu),
         WIN64_NTCREATETIMER2 => sync::nt_create_timer2(emu),
@@ -220,7 +246,9 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTALPCDELETESECTIONVIEW => alpc::nt_alpc_delete_section_view(emu),
         WIN64_NTALPCDELETESECURITYCONTEXT => alpc::nt_alpc_delete_security_context(emu),
         WIN64_NTALPCDISCONNECTPORT => alpc::nt_alpc_disconnect_port(emu),
-        WIN64_NTALPCIMPERSONATECLIENTCONTAINEROFPORT => alpc::nt_alpc_impersonate_client_container_of_port(emu),
+        WIN64_NTALPCIMPERSONATECLIENTCONTAINEROFPORT => {
+            alpc::nt_alpc_impersonate_client_container_of_port(emu)
+        }
         WIN64_NTALPCIMPERSONATECLIENTOFPORT => alpc::nt_alpc_impersonate_client_of_port(emu),
         WIN64_NTALPCOPENSENDERPROCESS => alpc::nt_alpc_open_sender_process(emu),
         WIN64_NTALPCOPENSENDERTHREAD => alpc::nt_alpc_open_sender_thread(emu),
@@ -232,8 +260,7 @@ pub fn gateway(emu: &mut Emu) {
         // `NtInitializeNlsFiles` (0x108): map `locale.nls` so ntdll's
         // `RtlInitNlsTables` gets the real Unicode upcase/casing tables.
         // Without this, every byte→wide conversion in the loader yields zeros
-        // and dependency lookups fail with `STATUS_DLL_NOT_FOUND`. Mirrors
-        // sogen's `handle_NtInitializeNlsFiles`.
+        // and dependency lookups fail with `STATUS_DLL_NOT_FOUND`.
         0x108 => nls::nt_initialize_nls_files(emu),
         // `NtGetNlsSectionPtr` (0x102): map `C_<n>.NLS` for the requested
         // codepage (1252 ANSI, 437 OEM, etc.). Same purpose as above —
@@ -251,7 +278,9 @@ pub fn gateway(emu: &mut Emu) {
         WIN64_NTQUERYATTRIBUTESFILE => {
             let obj_attr = emu.regs().rcx;
             let file_info_ptr = emu.regs().rdx;
-            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(emu, obj_attr);
+            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(
+                emu, obj_attr,
+            );
             // Extract the filename (last path segment) from the NT path.
             let basename = nt_name
                 .rsplit(|c| c == '\\' || c == '/')
@@ -277,7 +306,9 @@ pub fn gateway(emu: &mut Emu) {
                     let _ = emu.maps.write_qword(file_info_ptr + 0x08, FAKE_FILETIME);
                     let _ = emu.maps.write_qword(file_info_ptr + 0x10, FAKE_FILETIME);
                     let _ = emu.maps.write_qword(file_info_ptr + 0x18, FAKE_FILETIME);
-                    let _ = emu.maps.write_dword(file_info_ptr + 0x20, FILE_ATTRIBUTE_NORMAL);
+                    let _ = emu
+                        .maps
+                        .write_dword(file_info_ptr + 0x20, FILE_ATTRIBUTE_NORMAL);
                 }
                 log_orange!(
                     emu,
@@ -320,7 +351,11 @@ pub fn gateway(emu: &mut Emu) {
             if value_len_ptr != 0 && emu.maps.is_mapped(value_len_ptr) {
                 let _ = emu.maps.write_dword(value_len_ptr, 0);
             }
-            log_orange!(emu, "syscall 0x{:x}: NtQuerySystemEnvironmentValueEx (stub → SUCCESS, len=0)", nr);
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtQuerySystemEnvironmentValueEx (stub → SUCCESS, len=0)",
+                nr
+            );
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
         // `NtOpenProcessToken` (0x133): return SUCCESS with a fake handle to
@@ -333,7 +368,11 @@ pub fn gateway(emu: &mut Emu) {
                 let h = crate::syscall::windows::syscall64::sync::next_handle();
                 let _ = emu.maps.write_qword(token_handle_out, h);
             }
-            log_orange!(emu, "syscall 0x{:x}: NtOpenProcessToken (stub → SUCCESS, fake handle)", nr);
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtOpenProcessToken (stub → SUCCESS, fake handle)",
+                nr
+            );
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
         // `NtQuerySystemInformationEx` (0x16e): newer ntdll uses this during
@@ -352,7 +391,8 @@ pub fn gateway(emu: &mut Emu) {
             log_orange!(
                 emu,
                 "syscall 0x{:x}: NtQuerySystemInformationEx class=0x{:x} (stub → SUCCESS, len=0)",
-                nr, info_class,
+                nr,
+                info_class,
             );
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
@@ -380,7 +420,9 @@ pub fn gateway(emu: &mut Emu) {
             let file_handle_out = emu.regs().rcx;
             let obj_attr = emu.regs().r8;
             let io_status_block = emu.regs().r9;
-            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(emu, obj_attr);
+            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(
+                emu, obj_attr,
+            );
             let basename = nt_name
                 .rsplit(|c| c == '\\' || c == '/')
                 .next()
@@ -430,7 +472,7 @@ pub fn gateway(emu: &mut Emu) {
         // app-compat shim cache during process start (`BasepCheckBadapp`,
         // `BasepCheckAppCompat`, etc.). STATUS_NOT_SUPPORTED tells callers
         // "no shim infrastructure available" so they skip compat-fixup work
-        // and continue with the normal load — mirrors sogen's
+        // and continue with the normal load
         // `handle_NtApphelpCacheControl`.
         WIN64_NTAPPHELPCACHECONTROL => {
             log_orange!(
@@ -459,7 +501,11 @@ pub fn gateway(emu: &mut Emu) {
             log_orange!(
                 emu,
                 "syscall 0x{:x}: NtOpenThreadToken thread: 0x{:x} access: 0x{:x} self: {} out: 0x{:x} (stub → NO_TOKEN)",
-                real_nr, thread_handle, access, open_as_self, handle_out,
+                real_nr,
+                thread_handle,
+                access,
+                open_as_self,
+                handle_out,
             );
             // Zero the out-handle so callers don't accidentally re-use a
             // stale pointer value.
@@ -477,19 +523,13 @@ pub fn gateway(emu: &mut Emu) {
                 .get(&real_nr)
                 .cloned()
                 .unwrap_or_else(|| what_syscall(real_nr));
-            log_orange!(
-                emu,
-                "syscall 0x{:x}: {} (unimplemented)",
-                real_nr,
-                name,
-            );
+            log_orange!(emu, "syscall 0x{:x}: {} (unimplemented)", real_nr, name,);
             // Return STATUS_NOT_IMPLEMENTED so callers using `test eax,eax; js` take
             // the error path instead of processing an uninitialized output buffer.
             emu.regs_mut().rax = STATUS_NOT_IMPLEMENTED;
         }
     }
 }
-
 
 /// Maps x64 NT syscall number to the `Nt…` export name (PascalCase).
 pub fn what_syscall(sys: u64) -> String {

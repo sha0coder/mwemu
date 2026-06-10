@@ -267,6 +267,7 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
         .expect("cannot create KuserSharedData map");
 
     // The KUSER_SHARED_DATA is getting from: https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
+    // TODO: rebuild with no usafe block.
     let mut kusd: KuserSharedData = unsafe { MaybeUninit::zeroed().assume_init() };
     kusd.TickCountMultiplier = 0x0fa00000;
     kusd.InterruptTime.LowPart = 0x17bd9547;
@@ -342,12 +343,10 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
         );
     }
 
-    emu.maps
-        .write_bytes(USER_KUSER_SHARED_ADDR, &memory);
+    emu.maps.write_bytes(USER_KUSER_SHARED_ADDR, &memory);
 
     // RtlAllocateHeap checks [0x7ffe0380]. If 0, it falls back to STATUS_NO_MEMORY (error).
-    emu.maps
-        .write_byte(USER_KUSER_SHARED_ADDR + 0x380, 1);
+    emu.maps.write_byte(USER_KUSER_SHARED_ADDR + 0x380, 1);
 
     USER_KUSER_SHARED_ADDR
 }

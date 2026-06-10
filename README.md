@@ -45,10 +45,12 @@ The project was renamed from scemu to mwemu.
 
 - 📦 rust safety, good for emulating malware. 
 	- All dependencies are in rust.
-- ⚡ very fast emulation (much faster than unicorn) 
+- ⚡ very fast emulation
     - [benchmarks](BENCHMARK.md)
     - 25,767,432 instructions/second
     - 680,000 instructions/second printing every instruction -vv.
+    - test yourself: time mwemu -f test/exe64win_enigma.bin -6 -v -c 20000000 --cmd q
+    
 - powered by iced-x86 rust dissasembler awesome library.
 - commandline tool, rust library, and python library.
 - iteration detector.
