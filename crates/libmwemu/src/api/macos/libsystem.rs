@@ -83,7 +83,10 @@ fn api_printf(emu: &mut Emu) {
     let fmt = emu.maps.read_string(fmt_addr);
     log::info!(
         "{}** {} macOS API printf(\"{}\") {}",
-        emu.colors.light_red, emu.pos, fmt, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        fmt,
+        emu.colors.nc
     );
     set_ret(emu, fmt.len() as u64);
 }
@@ -94,7 +97,10 @@ fn api_fprintf(emu: &mut Emu) {
     let fmt = emu.maps.read_string(fmt_addr);
     log::info!(
         "{}** {} macOS API fprintf(\"{}\") {}",
-        emu.colors.light_red, emu.pos, fmt, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        fmt,
+        emu.colors.nc
     );
     set_ret(emu, fmt.len() as u64);
 }
@@ -105,7 +111,11 @@ fn api_sprintf(emu: &mut Emu) {
     let fmt = emu.maps.read_string(fmt_addr);
     log::info!(
         "{}** {} macOS API sprintf(0x{:x}, \"{}\") {}",
-        emu.colors.light_red, emu.pos, dst_addr, fmt, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst_addr,
+        fmt,
+        emu.colors.nc
     );
     // Write the format string as-is (no vararg substitution)
     let bytes = fmt.as_bytes();
@@ -121,7 +131,12 @@ fn api_snprintf(emu: &mut Emu) {
     let fmt = emu.maps.read_string(fmt_addr);
     log::info!(
         "{}** {} macOS API snprintf(0x{:x}, {}, \"{}\") {}",
-        emu.colors.light_red, emu.pos, dst_addr, size, fmt, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst_addr,
+        size,
+        fmt,
+        emu.colors.nc
     );
     // Write the format string truncated to size-1 (no vararg substitution)
     let bytes = fmt.as_bytes();
@@ -138,7 +153,10 @@ fn api_puts(emu: &mut Emu) {
     let s = emu.maps.read_string(s_addr);
     log::info!(
         "{}** {} macOS API puts(\"{}\") {}",
-        emu.colors.light_red, emu.pos, s, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        emu.colors.nc
     );
     set_ret(emu, 0);
 }
@@ -147,7 +165,10 @@ fn api_putchar(emu: &mut Emu) {
     let c = arg(emu, 0) as u8 as char;
     log::info!(
         "{}** {} macOS API putchar('{}') {}",
-        emu.colors.light_red, emu.pos, c, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        c,
+        emu.colors.nc
     );
     set_ret(emu, c as u64);
 }
@@ -156,7 +177,10 @@ fn api_exit(emu: &mut Emu) {
     let status = arg(emu, 0);
     log::info!(
         "{}** {} macOS API exit({}) {}",
-        emu.colors.light_red, emu.pos, status, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        status,
+        emu.colors.nc
     );
     emu.stop();
 }
@@ -164,7 +188,9 @@ fn api_exit(emu: &mut Emu) {
 fn api_abort(emu: &mut Emu) {
     log::info!(
         "{}** {} macOS API abort() {}",
-        emu.colors.light_red, emu.pos, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
     );
     emu.stop();
 }
@@ -173,13 +199,13 @@ fn api_malloc(emu: &mut Emu) {
     let size = arg(emu, 0);
     log::info!(
         "{}** {} macOS API malloc({}) {}",
-        emu.colors.light_red, emu.pos, size, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        size,
+        emu.colors.nc
     );
     if size > 0 {
-        let base = emu
-            .maps
-            .alloc(size)
-            .expect("macOS malloc: out of memory");
+        let base = emu.maps.alloc(size).expect("macOS malloc: out of memory");
         emu.maps
             .create_map(
                 &format!("alloc_{:x}", base),
@@ -201,13 +227,14 @@ fn api_calloc(emu: &mut Emu) {
     let total = count.saturating_mul(size);
     log::info!(
         "{}** {} macOS API calloc({}, {}) {}",
-        emu.colors.light_red, emu.pos, count, size, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        count,
+        size,
+        emu.colors.nc
     );
     if total > 0 {
-        let base = emu
-            .maps
-            .alloc(total)
-            .expect("macOS calloc: out of memory");
+        let base = emu.maps.alloc(total).expect("macOS calloc: out of memory");
         emu.maps
             .create_map(
                 &format!("alloc_{:x}", base),
@@ -232,7 +259,11 @@ fn api_realloc(emu: &mut Emu) {
     let size = arg(emu, 1);
     log::info!(
         "{}** {} macOS API realloc(0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, ptr, size, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        ptr,
+        size,
+        emu.colors.nc
     );
     if size == 0 {
         // realloc(ptr, 0) acts like free
@@ -240,10 +271,7 @@ fn api_realloc(emu: &mut Emu) {
         return;
     }
     // Allocate new block
-    let base = emu
-        .maps
-        .alloc(size)
-        .expect("macOS realloc: out of memory");
+    let base = emu.maps.alloc(size).expect("macOS realloc: out of memory");
     emu.maps
         .create_map(
             &format!("alloc_{:x}", base),
@@ -271,7 +299,10 @@ fn api_free(emu: &mut Emu) {
     let ptr = arg(emu, 0);
     log::info!(
         "{}** {} macOS API free(0x{:x}) {}",
-        emu.colors.light_red, emu.pos, ptr, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        ptr,
+        emu.colors.nc
     );
     // no-op: we don't reclaim memory in the emulator
 }
@@ -279,7 +310,9 @@ fn api_free(emu: &mut Emu) {
 fn api_atexit(emu: &mut Emu) {
     log::info!(
         "{}** {} macOS API atexit() {}",
-        emu.colors.light_red, emu.pos, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        emu.colors.nc
     );
     set_ret(emu, 0);
 }
@@ -291,7 +324,12 @@ fn api_write(emu: &mut Emu) {
     let s = emu.maps.read_string(buf);
     log::info!(
         "{}** {} macOS API write(fd={}, \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, fd, s, count, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        fd,
+        s,
+        count,
+        emu.colors.nc
     );
     set_ret(emu, count);
 }
@@ -302,7 +340,12 @@ fn api_read(emu: &mut Emu) {
     let count = arg(emu, 2);
     log::info!(
         "{}** {} macOS API read(fd={}, buf=0x{:x}, count={}) {}",
-        emu.colors.light_red, emu.pos, fd, buf, count, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        fd,
+        buf,
+        count,
+        emu.colors.nc
     );
     // Stub: return 0 bytes read (EOF)
     set_ret(emu, 0);
@@ -314,7 +357,11 @@ fn api_open(emu: &mut Emu) {
     let path = emu.maps.read_string(path_addr);
     log::info!(
         "{}** {} macOS API open(\"{}\", 0x{:x}) {}",
-        emu.colors.light_red, emu.pos, path, flags, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        path,
+        flags,
+        emu.colors.nc
     );
     // Stub: return fd 3 (fake file descriptor)
     set_ret(emu, 3);
@@ -324,7 +371,10 @@ fn api_close(emu: &mut Emu) {
     let fd = arg(emu, 0);
     log::info!(
         "{}** {} macOS API close(fd={}) {}",
-        emu.colors.light_red, emu.pos, fd, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        fd,
+        emu.colors.nc
     );
     set_ret(emu, 0);
 }
@@ -335,7 +385,12 @@ fn api_memcpy(emu: &mut Emu) {
     let n = arg(emu, 2);
     log::info!(
         "{}** {} macOS API memcpy(0x{:x}, 0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, dst, src, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        src,
+        n,
+        emu.colors.nc
     );
     for i in 0..n {
         let b = emu.maps.read_byte(src + i).unwrap_or(0);
@@ -350,7 +405,12 @@ fn api_memmove(emu: &mut Emu) {
     let n = arg(emu, 2);
     log::info!(
         "{}** {} macOS API memmove(0x{:x}, 0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, dst, src, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        src,
+        n,
+        emu.colors.nc
     );
     // Read all bytes first to handle overlapping regions
     let mut tmp = vec![0u8; n as usize];
@@ -369,7 +429,12 @@ fn api_memset(emu: &mut Emu) {
     let n = arg(emu, 2);
     log::info!(
         "{}** {} macOS API memset(0x{:x}, 0x{:02x}, {}) {}",
-        emu.colors.light_red, emu.pos, dst, c, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        c,
+        n,
+        emu.colors.nc
     );
     for i in 0..n {
         emu.maps.write_byte(dst + i, c);
@@ -383,7 +448,12 @@ fn api_memcmp(emu: &mut Emu) {
     let n = arg(emu, 2);
     log::info!(
         "{}** {} macOS API memcmp(0x{:x}, 0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, s1, s2, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s1,
+        s2,
+        n,
+        emu.colors.nc
     );
     let mut result: i32 = 0;
     for i in 0..n {
@@ -403,7 +473,12 @@ fn api_memchr(emu: &mut Emu) {
     let n = arg(emu, 2);
     log::info!(
         "{}** {} macOS API memchr(0x{:x}, 0x{:02x}, {}) {}",
-        emu.colors.light_red, emu.pos, s, c, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        c,
+        n,
+        emu.colors.nc
     );
     let mut found: u64 = 0; // NULL = not found
     for i in 0..n {
@@ -421,7 +496,11 @@ fn api_strlen(emu: &mut Emu) {
     let s = emu.maps.read_string(s_addr);
     log::info!(
         "{}** {} macOS API strlen(0x{:x}) = {} {}",
-        emu.colors.light_red, emu.pos, s_addr, s.len(), emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s_addr,
+        s.len(),
+        emu.colors.nc
     );
     set_ret(emu, s.len() as u64);
 }
@@ -433,7 +512,11 @@ fn api_strcmp(emu: &mut Emu) {
     let s2 = emu.maps.read_string(s2_addr);
     log::info!(
         "{}** {} macOS API strcmp(\"{}\", \"{}\") {}",
-        emu.colors.light_red, emu.pos, s1, s2, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s1,
+        s2,
+        emu.colors.nc
     );
     let result = match s1.cmp(&s2) {
         std::cmp::Ordering::Less => -1i64 as u64,
@@ -451,7 +534,12 @@ fn api_strncmp(emu: &mut Emu) {
     let s2 = emu.maps.read_string(s2_addr);
     log::info!(
         "{}** {} macOS API strncmp(\"{}\", \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, s1, s2, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s1,
+        s2,
+        n,
+        emu.colors.nc
     );
     let s1_trunc: String = s1.chars().take(n).collect();
     let s2_trunc: String = s2.chars().take(n).collect();
@@ -469,7 +557,11 @@ fn api_strcpy(emu: &mut Emu) {
     let s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strcpy(0x{:x}, \"{}\") {}",
-        emu.colors.light_red, emu.pos, dst, s, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        s,
+        emu.colors.nc
     );
     let bytes = s.as_bytes();
     emu.maps.write_bytes(dst, bytes);
@@ -484,7 +576,12 @@ fn api_strncpy(emu: &mut Emu) {
     let s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strncpy(0x{:x}, \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, dst, s, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        s,
+        n,
+        emu.colors.nc
     );
     let bytes = s.as_bytes();
     let copy_len = std::cmp::min(bytes.len(), n as usize);
@@ -503,7 +600,11 @@ fn api_strcat(emu: &mut Emu) {
     let src_s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strcat(0x{:x}, \"{}\") {}",
-        emu.colors.light_red, emu.pos, dst_addr, src_s, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst_addr,
+        src_s,
+        emu.colors.nc
     );
     let dst_len = dst_s.len() as u64;
     let src_bytes = src_s.as_bytes();
@@ -521,15 +622,19 @@ fn api_strncat(emu: &mut Emu) {
     let src_s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strncat(0x{:x}, \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, dst_addr, src_s, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst_addr,
+        src_s,
+        n,
+        emu.colors.nc
     );
     let dst_len = dst_s.len() as u64;
     let src_bytes = src_s.as_bytes();
     let copy_len = std::cmp::min(src_bytes.len(), n);
     emu.maps
         .write_bytes(dst_addr + dst_len, &src_bytes[..copy_len]);
-    emu.maps
-        .write_byte(dst_addr + dst_len + copy_len as u64, 0);
+    emu.maps.write_byte(dst_addr + dst_len + copy_len as u64, 0);
     set_ret(emu, dst_addr);
 }
 
@@ -540,7 +645,12 @@ fn api_strlcpy(emu: &mut Emu) {
     let s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strlcpy(0x{:x}, \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, dst, s, size, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        s,
+        size,
+        emu.colors.nc
     );
     let bytes = s.as_bytes();
     if size > 0 {
@@ -560,7 +670,12 @@ fn api_strlcat(emu: &mut Emu) {
     let src_s = emu.maps.read_string(src_addr);
     log::info!(
         "{}** {} macOS API strlcat(0x{:x}, \"{}\", {}) {}",
-        emu.colors.light_red, emu.pos, dst_addr, src_s, size, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst_addr,
+        src_s,
+        size,
+        emu.colors.nc
     );
     let dst_len = dst_s.len();
     let src_bytes = src_s.as_bytes();
@@ -583,7 +698,11 @@ fn api_strchr(emu: &mut Emu) {
     let s = emu.maps.read_string(s_addr);
     log::info!(
         "{}** {} macOS API strchr(\"{}\", '{}') {}",
-        emu.colors.light_red, emu.pos, s, c as char, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        c as char,
+        emu.colors.nc
     );
     let result = if c == 0 {
         // strchr for NUL returns pointer to terminator
@@ -603,7 +722,11 @@ fn api_strrchr(emu: &mut Emu) {
     let s = emu.maps.read_string(s_addr);
     log::info!(
         "{}** {} macOS API strrchr(\"{}\", '{}') {}",
-        emu.colors.light_red, emu.pos, s, c as char, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        c as char,
+        emu.colors.nc
     );
     let result = if c == 0 {
         s_addr + s.len() as u64
@@ -623,7 +746,11 @@ fn api_strstr(emu: &mut Emu) {
     let needle = emu.maps.read_string(needle_addr);
     log::info!(
         "{}** {} macOS API strstr(\"{}\", \"{}\") {}",
-        emu.colors.light_red, emu.pos, haystack, needle, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        haystack,
+        needle,
+        emu.colors.nc
     );
     let result = if needle.is_empty() {
         haystack_addr
@@ -641,13 +768,13 @@ fn api_strdup(emu: &mut Emu) {
     let s = emu.maps.read_string(s_addr);
     log::info!(
         "{}** {} macOS API strdup(\"{}\") {}",
-        emu.colors.light_red, emu.pos, s, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        s,
+        emu.colors.nc
     );
     let len = s.len() as u64 + 1; // include NUL
-    let base = emu
-        .maps
-        .alloc(len)
-        .expect("macOS strdup: out of memory");
+    let base = emu.maps.alloc(len).expect("macOS strdup: out of memory");
     emu.maps
         .create_map(
             &format!("alloc_{:x}", base),
@@ -667,7 +794,11 @@ fn api_bzero(emu: &mut Emu) {
     let n = arg(emu, 1);
     log::info!(
         "{}** {} macOS API bzero(0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, dst, n, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        dst,
+        n,
+        emu.colors.nc
     );
     for i in 0..n {
         emu.maps.write_byte(dst + i, 0);
@@ -684,7 +815,15 @@ fn api_mmap(emu: &mut Emu) {
     let offset = arg(emu, 5);
     log::info!(
         "{}** {} macOS API mmap(0x{:x}, 0x{:x}, 0x{:x}, 0x{:x}, {}, 0x{:x}) {}",
-        emu.colors.light_red, emu.pos, addr, len, prot, flags, fd as i64, offset, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        addr,
+        len,
+        prot,
+        flags,
+        fd as i64,
+        offset,
+        emu.colors.nc
     );
     if len == 0 {
         // MAP_FAILED
@@ -709,7 +848,11 @@ fn api_munmap(emu: &mut Emu) {
     let len = arg(emu, 1);
     log::info!(
         "{}** {} macOS API munmap(0x{:x}, 0x{:x}) {}",
-        emu.colors.light_red, emu.pos, addr, len, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        addr,
+        len,
+        emu.colors.nc
     );
     // Stub: return success. We don't reclaim memory.
     set_ret(emu, 0);
@@ -721,7 +864,12 @@ fn api_mprotect(emu: &mut Emu) {
     let prot = arg(emu, 2);
     log::info!(
         "{}** {} macOS API mprotect(0x{:x}, 0x{:x}, 0x{:x}) {}",
-        emu.colors.light_red, emu.pos, addr, len, prot, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        addr,
+        len,
+        prot,
+        emu.colors.nc
     );
     // Stub: return success
     set_ret(emu, 0);
@@ -733,7 +881,12 @@ fn api_madvise(emu: &mut Emu) {
     let advice = arg(emu, 2);
     log::info!(
         "{}** {} macOS API madvise(0x{:x}, 0x{:x}, {}) {}",
-        emu.colors.light_red, emu.pos, addr, len, advice, emu.colors.nc
+        emu.colors.light_red,
+        emu.pos,
+        addr,
+        len,
+        advice,
+        emu.colors.nc
     );
     set_ret(emu, 0);
 }

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetFirmwareEnvironmentVariableA(emu: &mut emu::Emu) {
     let lpName = emu
@@ -21,11 +21,7 @@ pub fn GetFirmwareEnvironmentVariableA(emu: &mut emu::Emu) {
 
     let lpName = emu.maps.read_string(lpName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!GetFirmwareEnvironmentVariableA {}",
-        lpName
-    );
+    log_red!(emu, "kernel32!GetFirmwareEnvironmentVariableA {}", lpName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

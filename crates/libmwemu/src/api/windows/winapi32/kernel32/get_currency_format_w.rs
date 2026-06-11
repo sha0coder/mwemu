@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetCurrencyFormatW(emu: &mut emu::Emu) {
     let _Locale = emu
@@ -29,11 +29,7 @@ pub fn GetCurrencyFormatW(emu: &mut emu::Emu) {
 
     let lpCurrencyStr = emu.maps.read_wide_string(lpCurrencyStr as u64);
 
-    log_red!(
-        emu,
-        "kernel32!GetCurrencyFormatW {}",
-        lpCurrencyStr
-    );
+    log_red!(emu, "kernel32!GetCurrencyFormatW {}", lpCurrencyStr);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

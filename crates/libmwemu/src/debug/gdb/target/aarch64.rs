@@ -10,14 +10,14 @@ use gdbstub::target::ext::base::singlethread::{
 use gdbstub::target::ext::exec_file::{ExecFile, ExecFileOps};
 use gdbstub::target::ext::libraries::{Libraries, LibrariesOps};
 use gdbstub::target::{Target, TargetError, TargetResult};
-use gdbstub_arch::aarch64::reg::id::AArch64RegId;
 use gdbstub_arch::aarch64::reg::AArch64CoreRegs;
+use gdbstub_arch::aarch64::reg::id::AArch64RegId;
 
 use crate::debug::gdb::registers::{read_regs_aarch64, write_regs_aarch64};
 use crate::emu::Emu;
 
-use super::shared::{copy_range, generate_library_list_xml};
 use super::MwemuGdbError;
+use super::shared::{copy_range, generate_library_list_xml};
 
 /// GDB target wrapper for AArch64 emulation
 pub struct MwemuTargetAarch64<'a> {
@@ -44,7 +44,9 @@ impl Target for MwemuTargetAarch64<'_> {
     }
 
     #[inline(always)]
-    fn support_breakpoints(&mut self) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
+    fn support_breakpoints(
+        &mut self,
+    ) -> Option<gdbstub::target::ext::breakpoints::BreakpointsOps<'_, Self>> {
         Some(self)
     }
 
@@ -70,11 +72,7 @@ impl SingleThreadBase for MwemuTargetAarch64<'_> {
         Ok(())
     }
 
-    fn read_addrs(
-        &mut self,
-        start_addr: u64,
-        data: &mut [u8],
-    ) -> TargetResult<usize, Self> {
+    fn read_addrs(&mut self, start_addr: u64, data: &mut [u8]) -> TargetResult<usize, Self> {
         let mut bytes_read = 0;
         for (i, byte) in data.iter_mut().enumerate() {
             match self.emu.maps.read_byte(start_addr + i as u64) {
@@ -182,24 +180,29 @@ impl SingleRegisterAccess<()> for MwemuTargetAarch64<'_> {
                 if (n as usize) >= 31 {
                     return Err(TargetError::NonFatal);
                 }
-                let value = u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
+                let value =
+                    u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
                 regs.x[n as usize] = value;
             }
             AArch64RegId::Sp => {
-                regs.sp = u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
+                regs.sp =
+                    u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
             }
             AArch64RegId::Pc => {
-                regs.pc = u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
+                regs.pc =
+                    u64::from_le_bytes(val[..8].try_into().map_err(|_| TargetError::NonFatal)?);
             }
             AArch64RegId::Pstate => {
-                let value = u32::from_le_bytes(val[..4].try_into().map_err(|_| TargetError::NonFatal)?);
+                let value =
+                    u32::from_le_bytes(val[..4].try_into().map_err(|_| TargetError::NonFatal)?);
                 regs.nzcv.from_u64(value as u64);
             }
             AArch64RegId::V(n) => {
                 if (n as usize) >= 32 {
                     return Err(TargetError::NonFatal);
                 }
-                regs.v[n as usize] = u128::from_le_bytes(val[..16].try_into().map_err(|_| TargetError::NonFatal)?);
+                regs.v[n as usize] =
+                    u128::from_le_bytes(val[..16].try_into().map_err(|_| TargetError::NonFatal)?);
             }
             _ => return Err(TargetError::NonFatal),
         }
@@ -227,7 +230,11 @@ impl ExecFile for MwemuTargetAarch64<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
-        Ok(copy_range(self.emu.filename.as_bytes(), offset, length, buf))
+        Ok(copy_range(
+            self.emu.filename.as_bytes(),
+            offset,
+            length,
+            buf,
+        ))
     }
 }
-

@@ -1,5 +1,5 @@
-use crate::windows::constants::*;
 use crate::emu::Emu;
+use crate::windows::constants::*;
 
 use super::sync;
 
@@ -11,13 +11,13 @@ use super::sync;
 /// Writes 0 to *BufferLength so the caller's post-processing loop sees zero bytes
 /// in the output buffer and skips the loop body entirely.  Returns STATUS_SUCCESS.
 pub fn nt_query_multiple_value_key(emu: &mut Emu) {
-    let key_handle       = emu.regs().rcx;
-    let value_entries    = emu.regs().rdx;
-    let entry_count      = emu.regs().r8;
-    let value_buffer     = emu.regs().r9;
-    let rsp              = emu.regs().rsp;
-    let buf_len_ptr      = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
-    let req_buf_len_ptr  = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
+    let key_handle = emu.regs().rcx;
+    let value_entries = emu.regs().rdx;
+    let entry_count = emu.regs().r8;
+    let value_buffer = emu.regs().r9;
+    let rsp = emu.regs().rsp;
+    let buf_len_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+    let req_buf_len_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
 
     log_orange!(
         emu,
@@ -47,8 +47,8 @@ pub fn nt_query_multiple_value_key(emu: &mut Emu) {
 /// RCX = DirectoryHandle (out), RDX = DesiredAccess, R8 = ObjectAttributes.
 /// Returns a fake handle; same pattern as NtOpenDirectoryObject.
 pub fn nt_create_directory_object(emu: &mut Emu) {
-    let handle_out        = emu.regs().rcx;
-    let desired_access    = emu.regs().rdx;
+    let handle_out = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
     let object_attributes = emu.regs().r8;
 
     let dir_name = read_object_attributes_name(emu, object_attributes);
@@ -77,8 +77,8 @@ pub fn nt_create_directory_object(emu: &mut Emu) {
 /// RCX = DirectoryHandle (out), RDX = DesiredAccess, R8 = ObjectAttributes.
 /// Returns a fake handle; callers treat it as an opaque token.
 pub fn nt_open_directory_object(emu: &mut Emu) {
-    let handle_out        = emu.regs().rcx;
-    let desired_access    = emu.regs().rdx;
+    let handle_out = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
     let object_attributes = emu.regs().r8;
 
     let dir_name = read_object_attributes_name(emu, object_attributes);
@@ -104,7 +104,11 @@ pub fn nt_open_directory_object(emu: &mut Emu) {
     // recognise relative DLL opens (RootDirectory = this handle, ObjectName = "kernel32.dll").
     let lower = dir_name.to_lowercase();
     if lower == "\\knowndlls" || lower == "\\knowndlls32" {
-        log::trace!("NtOpenDirectoryObject: tracking KnownDlls dir handle 0x{:x} ({})", h, dir_name);
+        log::trace!(
+            "NtOpenDirectoryObject: tracking KnownDlls dir handle 0x{:x} ({})",
+            h,
+            dir_name
+        );
         emu.known_dll_dir_handles.insert(h);
     }
 
@@ -314,14 +318,13 @@ pub fn nt_query_open_subkeys_ex(emu: &mut Emu) {
 /// receives STATUS_NOT_IMPLEMENTED, raises a hard error, and terminates the
 /// process with 0xC0000002 mid-LdrInit.
 pub fn nt_open_symbolic_link_object(emu: &mut Emu) {
-    let handle_out        = emu.regs().rcx;
-    let desired_access    = emu.regs().rdx;
+    let handle_out = emu.regs().rcx;
+    let desired_access = emu.regs().rdx;
     let object_attributes = emu.regs().r8;
 
     let link_name = read_object_attributes_name(emu, object_attributes);
-    let root_dir  = read_object_attributes_root_directory(emu, object_attributes);
-    let is_relative_to_known_dlls =
-        root_dir != 0 && emu.known_dll_dir_handles.contains(&root_dir);
+    let root_dir = read_object_attributes_root_directory(emu, object_attributes);
+    let is_relative_to_known_dlls = root_dir != 0 && emu.known_dll_dir_handles.contains(&root_dir);
     let full_name = if is_relative_to_known_dlls && !link_name.starts_with('\\') {
         format!("\\KnownDlls\\{}", link_name)
     } else {
@@ -343,8 +346,7 @@ pub fn nt_open_symbolic_link_object(emu: &mut Emu) {
     }
 
     let lower = full_name.to_lowercase();
-    let target: Option<String> = if lower == "\\knowndlls\\knowndllpath"
-        || lower == "knowndllpath"
+    let target: Option<String> = if lower == "\\knowndlls\\knowndllpath" || lower == "knowndllpath"
     {
         Some("C:\\Windows\\System32".to_string())
     } else if lower == "\\knowndlls32\\knowndllpath" {
@@ -371,8 +373,8 @@ pub fn nt_open_symbolic_link_object(emu: &mut Emu) {
 /// (in bytes); we honour that limit and report the required length via the
 /// `Length` field and the `ReturnedLength` out-pointer.
 pub fn nt_query_symbolic_link_object(emu: &mut Emu) {
-    let link_handle      = emu.regs().rcx;
-    let link_target_us   = emu.regs().rdx;
+    let link_handle = emu.regs().rcx;
+    let link_target_us = emu.regs().rdx;
     let returned_len_ptr = emu.regs().r8;
 
     let target = emu
@@ -401,7 +403,11 @@ pub fn nt_query_symbolic_link_object(emu: &mut Emu) {
     let wide: Vec<u16> = target.encode_utf16().collect();
     let needed_bytes = (wide.len() as u64) * 2;
     // Include trailing NUL when it fits — many callers expect a NUL-terminated buffer.
-    let nul_bytes = if needed_bytes + 2 <= max_len { 2u64 } else { 0u64 };
+    let nul_bytes = if needed_bytes + 2 <= max_len {
+        2u64
+    } else {
+        0u64
+    };
 
     if needed_bytes > max_len || buf_ptr == 0 || !emu.maps.is_mapped(buf_ptr) {
         if returned_len_ptr != 0 && emu.maps.is_mapped(returned_len_ptr) {

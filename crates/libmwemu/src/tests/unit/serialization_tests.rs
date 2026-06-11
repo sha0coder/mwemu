@@ -1,4 +1,6 @@
 use crate::arch::Arch;
+use crate::loaders::pe::runtime_pe32::RuntimePe32;
+use crate::loaders::pe::runtime_pe64::RuntimePe64;
 use crate::maps::mem64::Permission;
 use crate::serialization::Serialization;
 use crate::tests::helpers;
@@ -41,7 +43,7 @@ fn test_x86_64_native_serialization_roundtrip() {
             assert_eq!(loaded.regs().rbx, 0xAABB_CCDD_EEFF_0011);
             assert_eq!(loaded.regs().rsp, 0x200800);
             assert_eq!(loaded.regs().rip, 0x401000);
-            assert_eq!(loaded.flags().dump(), 0x246);
+            assert_eq!(loaded.flags_snapshot().dump(), 0x246);
             assert_eq!(loaded.maps.read_byte(0x200010), Some(0x41));
         })
         .unwrap();
@@ -145,9 +147,15 @@ fn test_x64_minidump_roundtrip() {
     assert_eq!(loaded.regs().rbp, 0x200900);
     assert_eq!(loaded.regs().rsp, 0x200800);
     assert_eq!(loaded.regs().rip, 0x401020);
-    assert_eq!(loaded.flags().dump(), 0x246);
+    assert_eq!(loaded.flags_snapshot().dump(), 0x246);
     assert_eq!(loaded.maps.read_byte(0x200010), Some(0x41));
-    assert!(loaded.pe64.is_some());
+    // The test fixture is a 0x200-byte stub header, not a full valid PE,
+    // so the LIEF-only restore path must leave pe64 as None rather than
+    // fabricating a RuntimePe from unparsed bytes.
+    assert!(
+        loaded.pe64.is_none(),
+        "LIEF must reject the partial PE bytes from the minidump module"
+    );
 }
 
 #[test]
@@ -186,9 +194,15 @@ fn test_x86_minidump_roundtrip() {
     assert_eq!(loaded.regs().get_ebp(), 0x0010_0900);
     assert_eq!(loaded.regs().get_esp(), 0x0010_0800);
     assert_eq!(loaded.regs().get_eip(), 0x0040_1020);
-    assert_eq!(loaded.flags().dump(), 0x202);
+    assert_eq!(loaded.flags_snapshot().dump(), 0x202);
     assert_eq!(loaded.maps.read_byte(0x0010_0010), Some(0x24));
-    assert!(loaded.pe32.is_some());
+    // The test fixture is a 0x200-byte stub header, not a full valid PE,
+    // so the LIEF-only restore path must leave pe32 as None rather than
+    // fabricating a RuntimePe from unparsed bytes.
+    assert!(
+        loaded.pe32.is_none(),
+        "LIEF must reject the partial PE bytes from the minidump module"
+    );
 }
 
 #[test]
@@ -222,9 +236,7 @@ fn test_aarch64_minidump_roundtrip() {
 
     // Validate dump is parseable by the minidump crate
     let dump = Minidump::read_path(&dump_path).unwrap();
-    let sys_info = dump
-        .get_stream::<minidump::MinidumpSystemInfo>()
-        .unwrap();
+    let sys_info = dump.get_stream::<minidump::MinidumpSystemInfo>().unwrap();
     assert!(matches!(sys_info.cpu, minidump::system_info::Cpu::Arm64));
 
     // Import back and verify register state
@@ -254,8 +266,10 @@ fn test_aarch64_native_serialization_fixture_roundtrip() {
         .spawn(|| {
             helpers::setup();
 
-            let path =
-                write_tmp("mwemu_test_serialize_elf64_aarch64_add.bin", ELF64_AARCH64_ADD);
+            let path = write_tmp(
+                "mwemu_test_serialize_elf64_aarch64_add.bin",
+                ELF64_AARCH64_ADD,
+            );
 
             let mut emu = crate::emu_aarch64();
             emu.load_code(path.to_str().unwrap());
@@ -283,8 +297,10 @@ fn test_aarch64_minidump_fixture_roundtrip() {
         .spawn(|| {
             helpers::setup();
 
-            let sample_path =
-                write_tmp("mwemu_test_minidump_elf64_aarch64_add.bin", ELF64_AARCH64_ADD);
+            let sample_path = write_tmp(
+                "mwemu_test_minidump_elf64_aarch64_add.bin",
+                ELF64_AARCH64_ADD,
+            );
             let temp_dir = TempDir::new("mwemu_minidump_aarch64_future").unwrap();
             let dump_path = temp_dir.path().join("elf64_aarch64_add.dmp");
 
@@ -305,4 +321,193 @@ fn test_aarch64_minidump_fixture_roundtrip() {
         })
         .unwrap();
     handle.join().unwrap();
+}
+
+#[test]
+fn test_pe64_backend_backward_compat_serde_yaml() {
+    use crate::config::Pe64Backend;
+    use crate::serialization::pe64::{SerializablePE64, SerializablePe64Backend};
+
+    let expected_raw = vec![0x46u8, 0x41u8, 0x4Bu8, 0x39u8];
+
+    let yaml_without_backend = r#"filename: test.exe
+raw: [70, 65, 75, 57]"#;
+    let pe: SerializablePE64 = serde_yaml::from_str(yaml_without_backend)
+        .expect("should deserialize SerializablePE64 without backend field");
+    assert_eq!(
+        pe.backend, None,
+        "missing backend field in serialized PE should be None"
+    );
+    assert_eq!(pe.raw, expected_raw);
+
+    let yaml_with_backend = "filename: test.exe\nraw: [70, 65, 75, 57]\nbackend: legacy";
+    let pe2: SerializablePE64 = serde_yaml::from_str(yaml_with_backend)
+        .expect("should deserialize SerializablePE64 with backend: legacy");
+    assert_eq!(pe2.backend, Some(SerializablePe64Backend::Legacy));
+
+    let yaml_lief_backend = "filename: test.exe\nraw: [70, 65, 75, 57]\nbackend: lief";
+    let pe3: SerializablePE64 = serde_yaml::from_str(yaml_lief_backend)
+        .expect("should deserialize SerializablePE64 with backend: lief");
+    assert_eq!(pe3.backend, Some(SerializablePe64Backend::Lief));
+
+    assert_eq!(Pe64Backend::default(), Pe64Backend::Lief);
+}
+
+/// An invalid/partial PE module must not produce a `RuntimePe` after
+/// deserialization. LIEF rejects truncated or synthetic bytes, so the
+/// deserializer must surface that as `Err` so the restore layer can
+/// leave `Emu.pe64`/`Emu.pe32` as `None` rather than fabricating a
+/// runtime from unparsed bytes.
+#[test]
+fn test_pe64_deserialization_rejects_invalid_pe_bytes() {
+    use crate::serialization::pe64::SerializablePE64;
+    use std::convert::TryFrom;
+
+    let serialized = SerializablePE64 {
+        filename: "fake.dll".to_string(),
+        // MZ magic but otherwise not a valid PE: e_lfanew points past the
+        // file, no PE signature, no section table. LIEF must reject this.
+        raw: vec![b'M', b'Z', 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+        backend: Some(crate::serialization::pe64::SerializablePe64Backend::Lief),
+    };
+
+    let result = RuntimePe64::try_from(serialized);
+    assert!(
+        result.is_err(),
+        "LIEF must reject the partial PE bytes; a fabricated RuntimePe is not allowed"
+    );
+}
+
+#[test]
+fn test_pe32_deserialization_rejects_invalid_pe_bytes() {
+    use crate::serialization::pe32::SerializablePE32;
+    use std::convert::TryFrom;
+
+    let serialized = SerializablePE32 {
+        filename: "fake32.dll".to_string(),
+        raw: vec![b'M', b'Z', 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+        backend: Some(crate::serialization::pe32::SerializablePe32Backend::Lief),
+    };
+
+    let result = RuntimePe32::try_from(serialized);
+    assert!(
+        result.is_err(),
+        "LIEF must reject the partial PE bytes; a fabricated RuntimePe is not allowed"
+    );
+}
+
+/// Cross-architecture deserialization must be rejected. A valid PE64
+/// payload mislabeled as `SerializablePE32` must not produce a
+/// `RuntimePe32` (and vice versa) — the architecture guard inside
+/// `TryFrom<SerializablePE32/64>` returns `Err` so the restore layer
+/// leaves the corresponding `Emu` field as `None`.
+///
+/// These tests are core regression coverage for the PE deserializer
+/// architecture guard, so missing fixtures must fail loudly rather
+/// than silently skip — otherwise a removed/broken fixture would
+/// silently remove protection against future bugs that accept
+/// mislabeled cross-architecture bytes.
+#[test]
+fn test_pe64_bytes_rejected_by_pe32_deserializer() {
+    use crate::serialization::pe32::SerializablePE32;
+    use crate::serialization::pe64::SerializablePE64;
+
+    let path = helpers::test_data_path("exe64win_msgbox.bin");
+    let raw = std::fs::read(&path).unwrap_or_else(|e| {
+        panic!(
+            "required PE64 fixture missing or unreadable ({}): {}",
+            path, e
+        )
+    });
+
+    // First confirm the bytes are accepted by the PE64 path.
+    let ok_runtime: RuntimePe64 = SerializablePE64 {
+        filename: path.clone(),
+        raw: raw.clone(),
+        backend: Some(crate::serialization::pe64::SerializablePe64Backend::Lief),
+    }
+    .try_into()
+    .expect("PE64 fixture must deserialize through the PE64 path");
+    assert!(ok_runtime.as_lief().is_pe64());
+
+    // Same raw bytes against the PE32 deserializer must fail.
+    let result: Result<RuntimePe32, _> = SerializablePE32 {
+        filename: path.clone(),
+        raw,
+        backend: Some(crate::serialization::pe32::SerializablePe32Backend::Lief),
+    }
+    .try_into();
+    assert!(
+        result.is_err(),
+        "PE64 bytes must not deserialize into RuntimePe32"
+    );
+}
+
+#[test]
+fn test_pe32_bytes_rejected_by_pe64_deserializer() {
+    use crate::serialization::pe32::SerializablePE32;
+    use crate::serialization::pe64::SerializablePE64;
+
+    let path = helpers::test_data_path("exe32win_minecraft.bin");
+    let raw = std::fs::read(&path).unwrap_or_else(|e| {
+        panic!(
+            "required PE32 fixture missing or unreadable ({}): {}",
+            path, e
+        )
+    });
+
+    // First confirm the bytes are accepted by the PE32 path.
+    let ok_runtime: RuntimePe32 = SerializablePE32 {
+        filename: path.clone(),
+        raw: raw.clone(),
+        backend: Some(crate::serialization::pe32::SerializablePe32Backend::Lief),
+    }
+    .try_into()
+    .expect("PE32 fixture must deserialize through the PE32 path");
+    assert!(ok_runtime.as_lief().is_pe32());
+
+    // Same raw bytes against the PE64 deserializer must fail.
+    let result: Result<RuntimePe64, _> = SerializablePE64 {
+        filename: path.clone(),
+        raw,
+        backend: Some(crate::serialization::pe64::SerializablePe64Backend::Lief),
+    }
+    .try_into();
+    assert!(
+        result.is_err(),
+        "PE32 bytes must not deserialize into RuntimePe64"
+    );
+}
+
+/// End-to-end check that the restore helpers drop invalid serialized PE
+/// bytes and leave the corresponding `Emu` field as `None` rather than
+/// fabricating a `RuntimePe`.
+#[test]
+fn test_restore_helpers_drop_invalid_serialized_pe_bytes() {
+    use crate::serialization::pe32::SerializablePE32;
+    use crate::serialization::pe64::SerializablePE64;
+    use crate::serialization::test_emu_api::{restore_pe32, restore_pe64};
+
+    // Synthesize a payload that LIEF will reject (truncated MZ + bogus
+    // e_lfanew). This guards against future refactors that try to
+    // silently substitute a fabricated runtime on parse failure.
+    let bogus = Some(SerializablePE64 {
+        filename: "bogus.dll".to_string(),
+        raw: vec![b'M', b'Z', 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+        backend: Some(crate::serialization::pe64::SerializablePe64Backend::Lief),
+    });
+    assert!(
+        restore_pe64(bogus).is_none(),
+        "restore_pe64 must yield None when LIEF rejects the bytes"
+    );
+
+    let bogus32 = Some(SerializablePE32 {
+        filename: "bogus32.dll".to_string(),
+        raw: vec![b'M', b'Z', 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+        backend: Some(crate::serialization::pe32::SerializablePe32Backend::Lief),
+    });
+    assert!(
+        restore_pe32(bogus32).is_none(),
+        "restore_pe32 must yield None when LIEF rejects the bytes"
+    );
 }

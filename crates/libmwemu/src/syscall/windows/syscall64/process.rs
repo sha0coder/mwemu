@@ -1,8 +1,7 @@
-
 use std::sync::atomic::Ordering;
 
-use crate::windows::constants::*;
 use crate::emu::Emu;
+use crate::windows::constants::*;
 use crate::windows::structures::ProcessBasicInformation64;
 
 fn is_current_process_handle(h: u64) -> bool {
@@ -43,7 +42,9 @@ pub fn nt_access_check(emu: &mut Emu) {
         return;
     }
     let _ = emu.maps.write_dword(granted_access_ptr, desired_access);
-    let _ = emu.maps.write_dword(access_status_ptr, STATUS_SUCCESS as u32);
+    let _ = emu
+        .maps
+        .write_dword(access_status_ptr, STATUS_SUCCESS as u32);
     if privilege_set_length_ptr != 0 && emu.maps.is_mapped(privilege_set_length_ptr) {
         let len = emu.maps.read_dword(privilege_set_length_ptr).unwrap_or(0) as usize;
         if len > 0 && privilege_set != 0 && emu.maps.is_mapped(privilege_set) {
@@ -65,7 +66,16 @@ pub fn nt_query_information_process(emu: &mut Emu) {
     let rsp = emu.regs().rsp;
     let return_length_ptr = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
 
-    log_orange!(emu, "syscall 0x{:x}: NtQueryInformationProcess process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}", WIN64_NTQUERYINFORMATIONPROCESS, process_handle, process_information_class, process_information, process_information_length, return_length_ptr);
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtQueryInformationProcess process_handle: 0x{:x}, process_information_class: 0x{:x}, process_information: 0x{:x}, process_information_length: 0x{:x}, return_length_ptr: 0x{:x}",
+        WIN64_NTQUERYINFORMATIONPROCESS,
+        process_handle,
+        process_information_class,
+        process_information,
+        process_information_length,
+        return_length_ptr
+    );
 
     if process_information_class == PROCESS_INFORMATION_CLASS_PROCESS_BASIC_INFORMATION {
         if process_information == 0 {
@@ -160,7 +170,10 @@ pub fn nt_query_information_process(emu: &mut Emu) {
 
     // ProcessWow64Information (0x25): returns ULONG_PTR = 0 for native 64-bit processes.
     if process_information_class == 0x25 {
-        if process_information_length < 8 || process_information == 0 || !emu.maps.is_mapped(process_information) {
+        if process_information_length < 8
+            || process_information == 0
+            || !emu.maps.is_mapped(process_information)
+        {
             emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
             return;
         }
@@ -208,7 +221,13 @@ pub fn nt_query_performance_counter(emu: &mut Emu) {
     let counter_ptr = emu.regs().rcx;
     let freq_ptr = emu.regs().rdx;
 
-    log_orange!(emu, "syscall 0x{:x}: NtQueryPerformanceCounter counter: 0x{:x} freq: 0x{:x}", WIN64_NTQUERYPERFORMANCECOUNTER, counter_ptr, freq_ptr);
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtQueryPerformanceCounter counter: 0x{:x} freq: 0x{:x}",
+        WIN64_NTQUERYPERFORMANCECOUNTER,
+        counter_ptr,
+        freq_ptr
+    );
 
     if counter_ptr == 0 {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
@@ -354,7 +373,12 @@ pub fn nt_open_process(emu: &mut Emu) {
     let _obj_attr = emu.regs().r8;
     let _client_id = emu.regs().r9;
 
-    log_orange!(emu, "syscall 0x{:x}: NtOpenProcess out: 0x{:x}", WIN64_NTOPENPROCESS, handle_out);
+    log_orange!(
+        emu,
+        "syscall 0x{:x}: NtOpenProcess out: 0x{:x}",
+        WIN64_NTOPENPROCESS,
+        handle_out
+    );
 
     if handle_out == 0 {
         emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
@@ -411,34 +435,35 @@ pub fn nt_raise_hard_error(emu: &mut Emu) {
             if (unicode_mask >> i) & 1 == 1 {
                 // PUNICODE_STRING — read Buffer + Length and dump the wide string.
                 if pv != 0 && emu.maps.is_mapped(pv) {
-                    let len   = emu.maps.read_word(pv).unwrap_or(0) as u64;
-                    let bufp  = emu.maps.read_qword(pv + 8).unwrap_or(0);
+                    let len = emu.maps.read_word(pv).unwrap_or(0) as u64;
+                    let bufp = emu.maps.read_qword(pv + 8).unwrap_or(0);
                     let mut s = String::new();
                     let mut j = 0u64;
                     while j < len.min(256) && bufp != 0 {
                         let w = emu.maps.read_word(bufp + j).unwrap_or(0);
-                        if w == 0 { break; }
+                        if w == 0 {
+                            break;
+                        }
                         s.push(char::from_u32(w as u32).unwrap_or('?'));
                         j += 2;
                     }
                     log_orange!(
                         emu,
                         "    NtRaiseHardError param[{}] = UNICODE_STRING@0x{:x} (\"{}\")",
-                        i, pv, s,
+                        i,
+                        pv,
+                        s,
                     );
                 } else {
                     log_orange!(
                         emu,
                         "    NtRaiseHardError param[{}] = UNICODE_STRING@0x{:x} (unmapped)",
-                        i, pv,
+                        i,
+                        pv,
                     );
                 }
             } else {
-                log_orange!(
-                    emu,
-                    "    NtRaiseHardError param[{}] = 0x{:x}",
-                    i, pv,
-                );
+                log_orange!(emu, "    NtRaiseHardError param[{}] = 0x{:x}", i, pv,);
             }
         }
     }
@@ -493,10 +518,7 @@ pub fn nt_raise_exception(emu: &mut Emu) {
     let context_ptr = emu.regs().rdx;
     let first_chance = emu.regs().r8;
 
-    let exception_code = emu
-        .maps
-        .read_dword(exception_record)
-        .unwrap_or(0);
+    let exception_code = emu.maps.read_dword(exception_record).unwrap_or(0);
 
     log_orange!(
         emu,
@@ -521,8 +543,8 @@ pub fn nt_raise_exception(emu: &mut Emu) {
         let ctx_rdx = emu.maps.read_qword(context_ptr + 0x88).unwrap_or(0);
         let ctx_rsi = emu.maps.read_qword(context_ptr + 0xA8).unwrap_or(0);
         let ctx_rdi = emu.maps.read_qword(context_ptr + 0xB0).unwrap_or(0);
-        let ctx_r8  = emu.maps.read_qword(context_ptr + 0xB8).unwrap_or(0);
-        let ctx_r9  = emu.maps.read_qword(context_ptr + 0xC0).unwrap_or(0);
+        let ctx_r8 = emu.maps.read_qword(context_ptr + 0xB8).unwrap_or(0);
+        let ctx_r9 = emu.maps.read_qword(context_ptr + 0xC0).unwrap_or(0);
         let ctx_r10 = emu.maps.read_qword(context_ptr + 0xC8).unwrap_or(0);
         let ctx_r11 = emu.maps.read_qword(context_ptr + 0xD0).unwrap_or(0);
         let ctx_r12 = emu.maps.read_qword(context_ptr + 0xD8).unwrap_or(0);
@@ -532,7 +554,8 @@ pub fn nt_raise_exception(emu: &mut Emu) {
 
         log::trace!(
             "NtRaiseException: restoring context, RIP=0x{:x}, RSP=0x{:x}",
-            ctx_rip, ctx_rsp
+            ctx_rip,
+            ctx_rsp
         );
 
         let r = emu.regs_mut();
@@ -611,10 +634,10 @@ pub fn nt_query_security_attributes_token(emu: &mut Emu) {
     }
 
     // Version = 1, Reserved = 0, AttributeCount = 0, pAttributeV1 = NULL
-    let _ = emu.maps.write_word(buffer, 1);          // Version
-    let _ = emu.maps.write_word(buffer + 2, 0);      // Reserved
-    let _ = emu.maps.write_dword(buffer + 4, 0);     // AttributeCount
-    let _ = emu.maps.write_qword(buffer + 8, 0);     // pAttributeV1
+    let _ = emu.maps.write_word(buffer, 1); // Version
+    let _ = emu.maps.write_word(buffer + 2, 0); // Reserved
+    let _ = emu.maps.write_dword(buffer + 4, 0); // AttributeCount
+    let _ = emu.maps.write_qword(buffer + 8, 0); // pAttributeV1
 
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
@@ -696,8 +719,8 @@ pub fn nt_continue(emu: &mut Emu) {
     let ctx_rbp = emu.maps.read_qword(context_ptr + 0xA0).unwrap_or(0);
     let ctx_rsi = emu.maps.read_qword(context_ptr + 0xA8).unwrap_or(0);
     let ctx_rdi = emu.maps.read_qword(context_ptr + 0xB0).unwrap_or(0);
-    let ctx_r8  = emu.maps.read_qword(context_ptr + 0xB8).unwrap_or(0);
-    let ctx_r9  = emu.maps.read_qword(context_ptr + 0xC0).unwrap_or(0);
+    let ctx_r8 = emu.maps.read_qword(context_ptr + 0xB8).unwrap_or(0);
+    let ctx_r9 = emu.maps.read_qword(context_ptr + 0xC0).unwrap_or(0);
     let ctx_r10 = emu.maps.read_qword(context_ptr + 0xC8).unwrap_or(0);
     let ctx_r11 = emu.maps.read_qword(context_ptr + 0xD0).unwrap_or(0);
     let ctx_r12 = emu.maps.read_qword(context_ptr + 0xD8).unwrap_or(0);
@@ -716,8 +739,8 @@ pub fn nt_continue(emu: &mut Emu) {
     emu.regs_mut().rbp = ctx_rbp;
     emu.regs_mut().rsi = ctx_rsi;
     emu.regs_mut().rdi = ctx_rdi;
-    emu.regs_mut().r8  = ctx_r8;
-    emu.regs_mut().r9  = ctx_r9;
+    emu.regs_mut().r8 = ctx_r8;
+    emu.regs_mut().r9 = ctx_r9;
     emu.regs_mut().r10 = ctx_r10;
     emu.regs_mut().r11 = ctx_r11;
     emu.regs_mut().r12 = ctx_r12;

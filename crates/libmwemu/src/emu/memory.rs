@@ -1,4 +1,4 @@
-use crate::{windows::constants, emu::Emu, windows::structures::MemoryOperation};
+use crate::{emu::Emu, windows::constants, windows::structures::MemoryOperation};
 
 impl Emu {
     /// This is not used on the emulation.
@@ -198,7 +198,15 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 64, addr, v, name);
+                        log::trace!(
+                            "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                            self.pos,
+                            self.pc(),
+                            64,
+                            addr,
+                            v,
+                            name
+                        );
                     }
                     Some(v)
                 }
@@ -222,7 +230,15 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 32, addr, v, name);
+                        log::trace!(
+                            "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                            self.pos,
+                            self.pc(),
+                            32,
+                            addr,
+                            v,
+                            name
+                        );
                     }
                     Some(v.into())
                 }
@@ -246,7 +262,15 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 16, addr, v, name);
+                        log::trace!(
+                            "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                            self.pos,
+                            self.pc(),
+                            16,
+                            addr,
+                            v,
+                            name
+                        );
                     }
                     Some(v.into())
                 }
@@ -270,7 +294,15 @@ impl Emu {
                             name: name.to_string(),
                         };
                         self.memory_operations.push(memory_operation);
-                        log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 8, addr, v, name);
+                        log::trace!(
+                            "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                            self.pos,
+                            self.pc(),
+                            8,
+                            addr,
+                            v,
+                            name
+                        );
                     }
                     Some(v.into())
                 }
@@ -327,7 +359,15 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.pc(), 32, addr, value, name);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos,
+                self.pc(),
+                32,
+                addr,
+                value,
+                name
+            );
         }
 
         match bits {
@@ -395,7 +435,7 @@ impl Emu {
         // are willing to do per fault — but we cap how far below RSP we grow,
         // since wild pointers are not stack overflows.
         const MAX_DIST_BELOW_RSP: u64 = 0x100000; // 1 MiB
-        const GROW_PAGE_SIZE: u64 = 0x1000;       // 4 KiB
+        const GROW_PAGE_SIZE: u64 = 0x1000; // 4 KiB
 
         if !self.cfg.is_x64() {
             return false;
@@ -436,7 +476,10 @@ impl Emu {
             Ok(_) => {
                 log::trace!(
                     "stack auto-grow: mapped {} at 0x{:x} (rsp=0x{:x}, fault=0x{:x})",
-                    name, page_base, rsp, fault_addr
+                    name,
+                    page_base,
+                    rsp,
+                    fault_addr
                 );
                 true
             }

@@ -3,7 +3,10 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Cyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("Cyan"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
     //TODO: crash if arrive to zero or max value
 
     if emu.cfg.is_x64() {
@@ -13,7 +16,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         emu.regs_mut().rax = val;
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rsi -= 8;
         } else {
             emu.regs_mut().rsi += 8;

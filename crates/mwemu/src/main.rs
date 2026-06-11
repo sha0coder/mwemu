@@ -3,16 +3,16 @@
 extern crate clap;
 
 use clap::{App, Arg};
+use libmwemu::emu_aarch64;
 use libmwemu::emu32;
 use libmwemu::emu64;
-use libmwemu::emu_aarch64;
 use libmwemu::serialization;
-use std::{panic, process};
 use std::path::PathBuf;
+use std::{panic, process};
 //use libmwemu::definitions;
+use fast_log::Config;
 use fast_log::appender::{Command, FastLogRecord, RecordFormat};
 use fast_log::filter::Filter;
-use fast_log::Config;
 use libmwemu::disable_color;
 use libmwemu::emu::object_handle::file_handle::init_file_system;
 
@@ -171,6 +171,30 @@ fn main() {
         .arg(clap_arg!("gdb", "g", "gdb", "enable GDB remote debugging server"))
         .arg(clap_arg!("gdb_port", "P", "gdb-port", "set GDB server port (default: 9001)", "PORT"))
         .arg(clap_arg!("gdb_wait", "W", "gdb-wait", "wait for GDB connection before starting"))
+        .arg(
+            Arg::with_name("elf_backend")
+                .long("elf-backend")
+                .help("ELF64 parser backend: legacy, lief, or auto")
+                .takes_value(true)
+                .value_name("BACKEND")
+                .possible_values(&["legacy", "lief", "auto"]),
+        )
+        .arg(
+            Arg::with_name("macho_backend")
+                .long("macho-backend")
+                .help("Mach-O parser backend: legacy, lief, or auto")
+                .takes_value(true)
+                .value_name("BACKEND")
+                .possible_values(&["legacy", "lief", "auto"]),
+        )
+        .arg(
+            Arg::with_name("pe32_backend")
+                .long("pe32-backend")
+                .help("PE32 parser backend: legacy, lief, or auto")
+                .takes_value(true)
+                .value_name("BACKEND")
+                .possible_values(&["legacy", "lief", "auto"]),
+        )
         .get_matches();
 
     if !matches.is_present("filename") {
@@ -197,6 +221,32 @@ fn main() {
         .expect("the filename is mandatory, try -f <FILENAME> or --help.")
         .to_string();
     emu.cfg.filename = filename.clone();
+
+    // Backend selection
+    if let Some(backend_str) = matches.value_of("elf_backend") {
+        emu.cfg.elf64_backend = match backend_str.to_lowercase().as_str() {
+            "legacy" => libmwemu::config::BinaryBackend::Legacy,
+            "lief" => libmwemu::config::BinaryBackend::Lief,
+            "auto" => libmwemu::config::BinaryBackend::Auto,
+            _ => unreachable!("clap possible_values prevents invalid elf-backend"),
+        };
+    }
+    if let Some(backend_str) = matches.value_of("macho_backend") {
+        emu.cfg.macho64_backend = match backend_str.to_lowercase().as_str() {
+            "legacy" => libmwemu::config::BinaryBackend::Legacy,
+            "lief" => libmwemu::config::BinaryBackend::Lief,
+            "auto" => libmwemu::config::BinaryBackend::Auto,
+            _ => unreachable!("clap possible_values prevents invalid macho-backend"),
+        };
+    }
+    if let Some(backend_str) = matches.value_of("pe32_backend") {
+        emu.cfg.pe32_backend = match backend_str.to_lowercase().as_str() {
+            "legacy" => libmwemu::config::Pe32Backend::Legacy,
+            "lief" => libmwemu::config::Pe32Backend::Lief,
+            "auto" => libmwemu::config::Pe32Backend::Auto,
+            _ => unreachable!("clap possible_values prevents invalid pe32-backend"),
+        };
+    }
 
     // verbose
     emu.cfg.verbose = matches.occurrences_of("verbose") as u32;
@@ -340,7 +390,9 @@ fn main() {
         )
         .expect("invalid address");
         if !matches.is_present("entry_point") {
-            log::error!("if the code base is selected, you have to select the entry point ie -b 0x600000 -a 0x600000");
+            log::error!(
+                "if the code base is selected, you have to select the entry point ie -b 0x600000 -a 0x600000"
+            );
             std::process::exit(1);
         }
     }
@@ -540,10 +592,7 @@ fn main() {
 
             // dump on exit
             if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump(
-                    &emu,
-                    emu.cfg.dump_filename.as_ref().unwrap(),
-                );
+                serialization::Serialization::dump(&emu, emu.cfg.dump_filename.as_ref().unwrap());
             }
         });
 

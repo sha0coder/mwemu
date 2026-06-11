@@ -7,15 +7,21 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+            emu.show_instruction(
+                color!("LightCyan"),
+                &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+            );
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+        emu.show_instruction(
+            color!("LightCyan"),
+            &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+        );
     }
 
     emu.maps.write_qword(emu.regs().rdi, emu.regs().rax);
 
-    if emu.flags().f_df {
+    if emu.flag_df() {
         emu.regs_mut().rdi -= 8;
     } else {
         emu.regs_mut().rdi += 8;

@@ -3,14 +3,17 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, _instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("LightCyan"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
     if ins.op_count() != 0 {
         return false;
     }
 
     let al = emu.regs().get_al();
     let ah = emu.regs().get_ah();
-    let af = emu.flags().f_af;
+    let af = emu.flag_af();
 
     if (al & 0x0f) > 9 || af {
         let new_al = (al + 6) & 0x0f;

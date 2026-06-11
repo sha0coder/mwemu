@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn FindFirstVolumeMountPointA(emu: &mut emu::Emu) {
     let lpszRootPathName = emu

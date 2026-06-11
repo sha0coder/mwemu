@@ -2,8 +2,8 @@ use std::convert::TryInto;
 
 use crate::maps::Maps;
 
-use super::base_types::{ClientId, UnicodeString};
 use super::ListEntry64;
+use super::base_types::{ClientId, UnicodeString};
 
 #[derive(Debug)]
 pub struct NtTib {
@@ -369,7 +369,11 @@ impl RtlUserProcessParameters {
 
     pub fn save(&self, addr: u64, maps: &mut Maps) {
         maps.write_bytes(addr, &self.reserved1);
-        let reserved2_bytes: Vec<u8> = self.reserved2.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let reserved2_bytes: Vec<u8> = self
+            .reserved2
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
         maps.write_bytes(addr + 16, &reserved2_bytes);
         self.image_path_name.save(addr + 56, maps);
         self.command_line.save(addr + 64, maps);

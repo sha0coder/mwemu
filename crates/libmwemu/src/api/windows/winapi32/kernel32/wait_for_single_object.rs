@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn WaitForSingleObject(emu: &mut emu::Emu) {
     let handle = emu
@@ -16,7 +16,11 @@ pub fn WaitForSingleObject(emu: &mut emu::Emu) {
         "kernel32!WaitForSingleObject  hndl: {} millis: {}{}",
         handle,
         millis,
-        if emu.cfg.short_circuit_sleep { " [short-circuited]" } else { "" }
+        if emu.cfg.short_circuit_sleep {
+            " [short-circuited]"
+        } else {
+            ""
+        }
     );
 
     if !emu.cfg.short_circuit_sleep && millis > 0 && millis != 0xFFFFFFFF {

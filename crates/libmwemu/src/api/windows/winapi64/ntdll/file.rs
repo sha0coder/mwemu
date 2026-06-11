@@ -71,10 +71,12 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
                     .expect("Failed to create nt_path_string map");
 
                 emu.maps.write_wide_string(string_buffer_addr, &nt_path);
-                emu.maps.write_word(nt_path_name_ptr, string_length_bytes as u16);
+                emu.maps
+                    .write_word(nt_path_name_ptr, string_length_bytes as u16);
                 emu.maps
                     .write_word(nt_path_name_ptr + 2, (string_length_bytes + 2) as u16);
-                emu.maps.write_qword(nt_path_name_ptr + 8, string_buffer_addr);
+                emu.maps
+                    .write_qword(nt_path_name_ptr + 8, string_buffer_addr);
 
                 log_red!(
                     emu,
@@ -150,7 +152,9 @@ fn NtCreateFile(emu: &mut emu::Emu) {
         .read_dword(emu.regs().rsp + 0x50)
         .expect("ntdll!NtCreateFile error reading ea_len param");
 
-    log_red!(emu, "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
+    log_red!(
+        emu,
+        "** {} ntdll!NtCreateFile | Handle=0x{:x} Access=0x{:x} ObjAttr=0x{:x} IoStat=0x{:x} AllocSz=0x{:x} FileAttr=0x{:x} ShareAccess=0x{:x} CreateDisp=0x{:x} CreateOpt=0x{:x} EaBuff=0x{:x} EaLen=0x{:x}",
         emu.pos,
         out_hndl_ptr,
         access_mask,

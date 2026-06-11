@@ -22,6 +22,19 @@ pub fn test_data_path(rel: &str) -> String {
         .into_owned()
 }
 
+/// Like `test_data_path`, but returns `None` and prints a skip message if the fixture
+/// does not exist on disk. Use this to replace permanent `#[ignore]` attributes on
+/// fixture-dependent tests.
+pub fn optional_test_data_path(name: &str) -> Option<String> {
+    let path = test_data_path(name);
+    if std::path::Path::new(&path).is_file() {
+        Some(path)
+    } else {
+        eprintln!("skipping fixture-dependent test: missing {}", path);
+        None
+    }
+}
+
 /// Maps folder for 32-bit Windows samples (`maps/windows/x86/`).
 pub fn win32_maps_folder() -> String {
     let mut s = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

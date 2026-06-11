@@ -44,8 +44,8 @@ fn read_st0_as_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fld_m32fp_positive_one() {
     let mut emu = emu64(); // FLD dword ptr [0x2000]
-                           // FSTP qword ptr [0x3000]  ; Store to verify
-                           // HLT
+    // FSTP qword ptr [0x3000]  ; Store to verify
+    // HLT
     let code = [
         0xD9, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD dword ptr [0x2000]
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword ptr [0x3000]
@@ -242,8 +242,8 @@ fn test_fld_m32fp_pi() {
 #[test]
 fn test_fld_m64fp_positive_one() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]
-                           // FSTP qword ptr [0x3000]
-                           // HLT
+    // FSTP qword ptr [0x3000]
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, // FSTP qword ptr [0x3000]
@@ -456,10 +456,10 @@ fn test_fld_m64fp_e() {
 #[test]
 fn test_fld_st0_duplicate_top() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0 into ST(0)
-                           // FLD ST(0)               ; Duplicate ST(0)
-                           // FSTP qword ptr [0x3000] ; Store top (should be 1.0)
-                           // FSTP qword ptr [0x4000] ; Store next (should also be 1.0)
-                           // HLT
+    // FLD ST(0)               ; Duplicate ST(0)
+    // FSTP qword ptr [0x3000] ; Store top (should be 1.0)
+    // FSTP qword ptr [0x4000] ; Store next (should also be 1.0)
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xD9, 0xC0, // FLD ST(0)
@@ -480,10 +480,10 @@ fn test_fld_st0_duplicate_top() {
 #[test]
 fn test_fld_st1() {
     let mut emu = emu64(); // FLD qword ptr [0x2000]  ; Load 1.0 into ST(0)
-                           // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 is now ST(1)
-                           // FLD ST(1)               ; Push ST(1) (1.0) onto stack
-                           // FSTP qword ptr [0x3000] ; Store top (should be 1.0)
-                           // HLT
+    // FLD qword ptr [0x2008]  ; Load 2.0 into ST(0), 1.0 is now ST(1)
+    // FLD ST(1)               ; Push ST(1) (1.0) onto stack
+    // FSTP qword ptr [0x3000] ; Store top (should be 1.0)
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword ptr [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword ptr [0x2008]
@@ -551,10 +551,10 @@ fn test_fld_stack_push_behavior() {
 #[test]
 fn test_fld_multiple_formats() {
     let mut emu = emu64(); // FLD dword ptr [0x2000]  ; Load f32
-                           // FLD qword ptr [0x2008]  ; Load f64
-                           // FSTP qword ptr [0x3000] ; Store f64 value
-                           // FSTP qword ptr [0x3008] ; Store f32 value (converted to f64)
-                           // HLT
+    // FLD qword ptr [0x2008]  ; Load f64
+    // FSTP qword ptr [0x3000] ; Store f64 value
+    // FSTP qword ptr [0x3008] ; Store f32 value (converted to f64)
+    // HLT
     let code = [
         0xD9, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD dword ptr [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword ptr [0x2008]

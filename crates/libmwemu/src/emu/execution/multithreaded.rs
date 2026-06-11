@@ -174,10 +174,7 @@ impl Emu {
             log::trace!("exit position reached");
 
             if self.cfg.dump_on_exit && self.cfg.dump_filename.is_some() {
-                serialization::Serialization::dump(
-                    self,
-                    self.cfg.dump_filename.as_ref().unwrap(),
-                );
+                serialization::Serialization::dump(self, self.cfg.dump_filename.as_ref().unwrap());
             }
 
             if self.cfg.trace_regs && self.cfg.trace_filename.is_some() {

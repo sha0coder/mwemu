@@ -3,7 +3,10 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("Green"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
 
     assert!(ins.op_count() == 2);
 
@@ -31,9 +34,12 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         // or other 16-byte struct passed through xmm registers — surfaced
         // during ntdll's `LdrpInitializeProcess` BaseDllName setup.)
         emu.maps.write_dword(addr, (xmm & 0xffffffff) as u32);
-        emu.maps.write_dword(addr + 4, ((xmm >> 32) & 0xffffffff) as u32);
-        emu.maps.write_dword(addr + 8, ((xmm >> 64) & 0xffffffff) as u32);
-        emu.maps.write_dword(addr + 12, ((xmm >> 96) & 0xffffffff) as u32);
+        emu.maps
+            .write_dword(addr + 4, ((xmm >> 32) & 0xffffffff) as u32);
+        emu.maps
+            .write_dword(addr + 8, ((xmm >> 64) & 0xffffffff) as u32);
+        emu.maps
+            .write_dword(addr + 12, ((xmm >> 96) & 0xffffffff) as u32);
     } else if sz0 == 128 && sz1 == 32 {
         let addr = match emu.get_operand_value(ins, 1, false) {
             Some(v) => v,

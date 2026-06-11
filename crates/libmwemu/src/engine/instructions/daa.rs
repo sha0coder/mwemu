@@ -3,13 +3,16 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Green"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("Green"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
 
     let old_al = emu.regs().get_al();
-    let old_cf = emu.flags().f_cf;
+    let old_cf = emu.flag_cf();
     emu.flags_mut().f_cf = false;
 
-    if (emu.regs().get_al() & 0x0f > 9) || emu.flags().f_af {
+    if (emu.regs().get_al() & 0x0f > 9) || emu.flag_af() {
         let sum = emu.regs().get_al() + 6;
         emu.regs_mut().set_al(sum & 0xff);
         if sum > 0xff {

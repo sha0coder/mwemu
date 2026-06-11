@@ -1,6 +1,6 @@
 use crate::emu;
-use crate::windows::peb;
 use crate::winapi::helper;
+use crate::windows::peb;
 
 pub fn GetModuleHandleW(emu: &mut emu::Emu) {
     let mod_name_ptr = emu

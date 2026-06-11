@@ -25,8 +25,15 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
-                self.pos, self.regs().rip, 32, self.regs().get_esp(), value, name);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos,
+                self.regs().rip,
+                32,
+                self.regs().get_esp(),
+                value,
+                name
+            );
         }
 
         let esp = self.regs().get_esp() - 4;
@@ -83,10 +90,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             let pc = self.pc();
-            let name = self
-                .maps
-                .get_addr_name(sp)
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(sp).unwrap_or_else(|| "not mapped");
             let memory_operation = MemoryOperation {
                 pos: self.pos,
                 rip: pc,
@@ -98,7 +102,15 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(memory_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, pc, 64, sp, value, name);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos,
+                pc,
+                64,
+                sp,
+                value,
+                name
+            );
         }
 
         let new_sp = sp - 8;
@@ -191,8 +203,15 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", 
-                self.pos, self.regs().rip, 32, self.regs().get_esp(), value, name);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos,
+                self.regs().rip,
+                32,
+                self.regs().get_esp(),
+                value,
+                name
+            );
 
             // Record the write to register
             let write_operation = MemoryOperation {
@@ -206,8 +225,14 @@ impl Emu {
                 name: "register".to_string(),
             };
             self.memory_operations.push(write_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'", 
-                self.pos, self.regs().rip, 32, self.regs().get_esp(), value);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'",
+                self.pos,
+                self.regs().rip,
+                32,
+                self.regs().get_esp(),
+                value
+            );
         }
 
         let esp = self.regs().get_esp() + 4;
@@ -237,10 +262,7 @@ impl Emu {
 
         if self.cfg.trace_mem {
             let pc = self.pc();
-            let name = self
-                .maps
-                .get_addr_name(sp)
-                .unwrap_or_else(|| "not mapped");
+            let name = self.maps.get_addr_name(sp).unwrap_or_else(|| "not mapped");
             let read_operation = MemoryOperation {
                 pos: self.pos,
                 rip: pc,
@@ -252,8 +274,15 @@ impl Emu {
                 name: name.to_string(),
             };
             self.memory_operations.push(read_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
-                self.pos, pc, 64, sp, value, name);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                self.pos,
+                pc,
+                64,
+                sp,
+                value,
+                name
+            );
 
             let write_operation = MemoryOperation {
                 pos: self.pos,
@@ -266,8 +295,14 @@ impl Emu {
                 name: "register".to_string(),
             };
             self.memory_operations.push(write_operation);
-            log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'",
-                self.pos, pc, 64, sp, value);
+            log::trace!(
+                "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = 'register'",
+                self.pos,
+                pc,
+                64,
+                sp,
+                value
+            );
         }
 
         self.set_sp(sp + 8);

@@ -1,4 +1,6 @@
-use crate::{emu::Emu, regs64::Regs64, regs_aarch64::RegsAarch64, threading::context::ArchThreadState};
+use crate::{
+    emu::Emu, regs_aarch64::RegsAarch64, regs64::Regs64, threading::context::ArchThreadState,
+};
 
 impl Emu {
     // Forwarding methods for thread-specific fields

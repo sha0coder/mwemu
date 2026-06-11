@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn SetDllDirectoryW(emu: &mut emu::Emu) {
     let lpPathName = emu

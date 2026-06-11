@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn FindVolumeMountPointClose(emu: &mut emu::Emu) {
     let _hFindVolumeMountPoint = emu

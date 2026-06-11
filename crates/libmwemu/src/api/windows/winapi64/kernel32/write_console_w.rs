@@ -23,9 +23,17 @@ pub fn WriteConsoleW(emu: &mut emu::Emu) {
     // Convert UTF-16 to String for logging
     let s1 = String::from_utf16_lossy(&wide_chars);
 
-    log_red!(emu, "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}",
-        emu.pos, h_console_output, lp_buffer, n_number_of_chars_to_write,
-        lp_number_of_chars_written, lp_reserved, s1);
+    log_red!(
+        emu,
+        "** {} kernel32!WriteConsoleW h_console_output = {:x} lp_buffer = {:x} n_number_of_chars_to_write = {:x} lp_number_of_chars_written = {:x} lp_reserved = {:x} s1 = {}",
+        emu.pos,
+        h_console_output,
+        lp_buffer,
+        n_number_of_chars_to_write,
+        lp_number_of_chars_written,
+        lp_reserved,
+        s1
+    );
 
     // Write back the number of characters written
     emu.maps.write_dword(

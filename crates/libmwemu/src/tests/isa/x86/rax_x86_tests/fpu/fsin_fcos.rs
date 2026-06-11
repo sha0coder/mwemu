@@ -47,9 +47,9 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fsin_zero() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; DD 04 25 00 20 00 00
-                           // FSIN                ; D9 FE
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSIN                ; D9 FE
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xFE, // FSIN
@@ -250,9 +250,9 @@ fn test_fsin_negative_pi() {
 #[test]
 fn test_fcos_zero() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; DD 04 25 00 20 00 00
-                           // FCOS                ; D9 FF
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FCOS                ; D9 FF
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xFF, // FCOS

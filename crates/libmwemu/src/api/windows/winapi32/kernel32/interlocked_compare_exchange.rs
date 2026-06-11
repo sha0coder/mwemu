@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn InterlockedCompareExchange(emu: &mut emu::Emu) {
     let _Destination = emu

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn SetVolumeMountPointA(emu: &mut emu::Emu) {
     let _lpszVolumeMountPoint = emu
@@ -13,11 +13,7 @@ pub fn SetVolumeMountPointA(emu: &mut emu::Emu) {
 
     let lpszVolumeName = emu.maps.read_string(lpszVolumeName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!SetVolumeMountPointA {}",
-        lpszVolumeName
-    );
+    log_red!(emu, "kernel32!SetVolumeMountPointA {}", lpszVolumeName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

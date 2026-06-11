@@ -1,10 +1,10 @@
 use crate::emu::Emu;
-use crate::windows::peb::peb32;
-use crate::windows::peb::peb64;
 use crate::serialization;
-use crate::windows::structures;
 use crate::winapi::winapi32;
 use crate::winapi::winapi64;
+use crate::windows::peb::peb32;
+use crate::windows::peb::peb64;
+use crate::windows::structures;
 use std::io::Write;
 use std::num::ParseIntError;
 use std::sync::atomic;
@@ -499,9 +499,10 @@ impl Console {
                         emu.maps.dump_qwords(emu.regs().rbp - 0x100, 100);
                     } else {
                         emu.maps.dump_dwords(emu.regs().get_ebp() - 0x100, 100);
-                        emu.maps
-                            .get_mem("stack")
-                            .print_dwords_from_to(emu.regs().get_ebp(), emu.regs().get_ebp() + 0x100);
+                        emu.maps.get_mem("stack").print_dwords_from_to(
+                            emu.regs().get_ebp(),
+                            emu.regs().get_ebp() + 0x100,
+                        );
                     }
                 }
                 "sv" => {
@@ -561,7 +562,7 @@ impl Console {
                         let nzcv = &mut emu.regs_aarch64_mut().nzcv;
                         nzcv.z = !nzcv.z;
                     } else {
-                        emu.flags_mut().f_zf = !emu.flags().f_zf;
+                        emu.flags_mut().f_zf = !emu.flag_zf();
                     }
                 }
                 "fs" => {
@@ -569,7 +570,7 @@ impl Console {
                         let nzcv = &mut emu.regs_aarch64_mut().nzcv;
                         nzcv.n = !nzcv.n;
                     } else {
-                        emu.flags_mut().f_sf = !emu.flags().f_sf;
+                        emu.flags_mut().f_sf = !emu.flag_sf();
                     }
                 }
                 "mc" => {

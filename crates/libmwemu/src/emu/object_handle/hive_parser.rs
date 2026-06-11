@@ -1,11 +1,11 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use thiserror::Error;
-use std::fmt;
 
 #[derive(Error, Debug)]
 pub enum HiveError {
@@ -70,18 +70,18 @@ pub enum RegistryValue {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u32)]
 pub enum RegType {
-    None = 0,                  // REG_NONE
-    Sz = 1,                    // REG_SZ - Unicode null-terminated string
-    ExpandSz = 2,              // REG_EXPAND_SZ - String with env vars (%PATH%)
-    Binary = 3,                // REG_BINARY - Binary data
-    DWord = 4,                 // REG_DWORD / REG_DWORD_LITTLE_ENDIAN - 32-bit LE integer
-    DWordBigEndian = 5,        // REG_DWORD_BIG_ENDIAN - 32-bit BE integer
-    Link = 6,                  // REG_LINK - Symbolic link (Unicode string)
-    MultiSz = 7,               // REG_MULTI_SZ - Multiple Unicode strings (double-null terminated)
-    ResourceList = 8,          // REG_RESOURCE_LIST - Plug and Play resource list
-    FullResourceDescriptor = 9,// REG_FULL_RESOURCE_DESCRIPTOR - Full resource descriptor
+    None = 0,                      // REG_NONE
+    Sz = 1,                        // REG_SZ - Unicode null-terminated string
+    ExpandSz = 2,                  // REG_EXPAND_SZ - String with env vars (%PATH%)
+    Binary = 3,                    // REG_BINARY - Binary data
+    DWord = 4,                     // REG_DWORD / REG_DWORD_LITTLE_ENDIAN - 32-bit LE integer
+    DWordBigEndian = 5,            // REG_DWORD_BIG_ENDIAN - 32-bit BE integer
+    Link = 6,                      // REG_LINK - Symbolic link (Unicode string)
+    MultiSz = 7,      // REG_MULTI_SZ - Multiple Unicode strings (double-null terminated)
+    ResourceList = 8, // REG_RESOURCE_LIST - Plug and Play resource list
+    FullResourceDescriptor = 9, // REG_FULL_RESOURCE_DESCRIPTOR - Full resource descriptor
     ResourceRequirementsList = 10, // REG_RESOURCE_REQUIREMENTS_LIST
-    QWord = 11,                // REG_QWORD / REG_QWORD_LITTLE_ENDIAN - 64-bit LE integer
+    QWord = 11,       // REG_QWORD / REG_QWORD_LITTLE_ENDIAN - 64-bit LE integer
 }
 
 impl TryFrom<u32> for RegType {
@@ -142,7 +142,7 @@ pub struct HiveParser<R: Read + Seek> {
 impl Offsets {
     pub(crate) fn read_from_file<R: Read + Seek>(
         reader: &mut R,
-        offset: u64
+        offset: u64,
     ) -> Result<Self, HiveError> {
         reader.seek(SeekFrom::Start(offset))?;
 
@@ -163,7 +163,10 @@ impl Offsets {
 }
 
 impl KeyBlock {
-    pub(crate) fn read_from_reader<R: Read + Seek>(reader: &mut R, offset: u64) -> Result<Self, HiveError> {
+    pub(crate) fn read_from_reader<R: Read + Seek>(
+        reader: &mut R,
+        offset: u64,
+    ) -> Result<Self, HiveError> {
         reader.seek(SeekFrom::Start(offset))?;
 
         let block_size = reader.read_i32::<LittleEndian>()?;
@@ -231,7 +234,9 @@ impl ValueBlock {
         let name_len = reader.read_i16::<LittleEndian>()?;
         let size = reader.read_i32::<LittleEndian>()?;
         let data_offset = reader.read_i32::<LittleEndian>()?;
-        let value_type = (reader.read_i32::<LittleEndian>()? as u32).try_into().unwrap();
+        let value_type = (reader.read_i32::<LittleEndian>()? as u32)
+            .try_into()
+            .unwrap();
 
         // Skip flags and dummy (4 bytes)
         let mut dummy = [0u8; 4];
@@ -503,7 +508,6 @@ impl HiveParser<File> {
     }
 }
 
-
 impl<R: Read + Seek> HiveParser<R> {
     fn build_cache(&mut self, current_path: &str, key_offset: u64) -> Result<(), HiveError> {
         let key = KeyBlock::read_from_reader(&mut self.reader, key_offset)?;
@@ -571,11 +575,16 @@ impl<R: Read + Seek> HiveParser<R> {
         Ok(())
     }
 
-    pub fn get_subkey(&mut self, key_name: &str, path: &str) -> Result<Option<HiveKey<'_, R>>, HiveError> {
+    pub fn get_subkey(
+        &mut self,
+        key_name: &str,
+        path: &str,
+    ) -> Result<Option<HiveKey<'_, R>>, HiveError> {
         if let Some(cache) = self.subkey_cache.get(key_name) {
             for subpath in &cache.subpaths {
                 if subpath.path == path {
-                    let key_block = KeyBlock::read_from_reader(&mut self.reader, subpath.key_offset)?;
+                    let key_block =
+                        KeyBlock::read_from_reader(&mut self.reader, subpath.key_offset)?;
                     return Ok(Some(HiveKey::new(
                         key_block,
                         self.base_offset,
@@ -639,8 +648,8 @@ impl TryFrom<RegistryValue> for Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryInto;
     use super::*;
+    use std::convert::TryInto;
     use std::io::Cursor;
     #[test]
     fn test_key_block_get_name() {
@@ -682,7 +691,10 @@ mod tests {
 
         let result = key_block.get_name();
         assert!(result.is_err());
-        assert!(matches!(result.err().unwrap(), HiveError::NameBufferOverflow));
+        assert!(matches!(
+            result.err().unwrap(),
+            HiveError::NameBufferOverflow
+        ));
     }
 
     #[test]
@@ -747,11 +759,20 @@ mod tests {
             "Invalid hive signature"
         );
         assert_eq!(HiveError::FileTooSmall.to_string(), "File too small");
-        assert_eq!(HiveError::InvalidBlockType.to_string(), "Invalid block type");
+        assert_eq!(
+            HiveError::InvalidBlockType.to_string(),
+            "Invalid block type"
+        );
         assert_eq!(HiveError::KeyNotFound.to_string(), "Key not found");
         assert_eq!(HiveError::ValueNotFound.to_string(), "Value not found");
-        assert_eq!(HiveError::InvalidValueType.to_string(), "Invalid value type");
-        assert_eq!(HiveError::NameBufferOverflow.to_string(), "Name buffer overflow");
+        assert_eq!(
+            HiveError::InvalidValueType.to_string(),
+            "Invalid value type"
+        );
+        assert_eq!(
+            HiveError::NameBufferOverflow.to_string(),
+            "Name buffer overflow"
+        );
     }
 
     // Test with minimal valid hive structure

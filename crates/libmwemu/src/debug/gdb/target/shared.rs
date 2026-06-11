@@ -14,8 +14,10 @@ pub(crate) fn copy_range(source: &[u8], offset: u64, length: usize, buf: &mut [u
 }
 
 pub(crate) fn generate_library_list_xml(maps: &Maps) -> String {
-    let mut xml = String::from(r#"<library-list>
-"#);
+    let mut xml = String::from(
+        r#"<library-list>
+"#,
+    );
 
     for (_, mem) in maps.mem_slab.iter() {
         let name = mem.get_name();

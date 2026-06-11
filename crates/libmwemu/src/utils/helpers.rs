@@ -163,11 +163,7 @@ macro_rules! color {
         }
     };
     ("ClearScreen") => {
-        if $crate::color_enabled() {
-            "\x1bc"
-        } else {
-            ""
-        }
+        if $crate::color_enabled() { "\x1bc" } else { "" }
     };
     ($unknown:tt) => {
         compile_error!(concat!(

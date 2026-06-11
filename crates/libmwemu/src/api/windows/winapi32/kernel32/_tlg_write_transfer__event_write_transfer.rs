@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn _tlgWriteTransfer_EventWriteTransfer(emu: &mut emu::Emu) {
     let _hProvider = emu

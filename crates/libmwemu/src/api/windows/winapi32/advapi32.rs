@@ -1,8 +1,8 @@
-use crate::windows::constants::*;
 use crate::emu;
 use crate::serialization;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
+use crate::windows::constants::*;
 use md5;
 
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
@@ -44,7 +44,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                 api,
                 emu.regs().rip
             );
-            return api.to_ascii_lowercase()
+            return api.to_ascii_lowercase();
         }
     }
 

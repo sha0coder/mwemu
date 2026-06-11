@@ -1,4 +1,4 @@
-use std::sync::{atomic, Arc};
+use std::sync::{Arc, atomic};
 
 use crate::err::MwemuError;
 

@@ -11,8 +11,16 @@ pub fn ReadFile(emu: &mut emu::Emu) {
         .read_qword(emu.regs().rsp + 0x20)
         .expect("kernel32!ReadFile cannot read the overlapped");
 
-    log_red!(emu, "** {} kernel32!ReadFile hFile: 0x{:x} lpBuffer: 0x{:x} nNumberOfBytesToRead: {} lpNumberOfBytesRead: 0x{:x} lpOverlapped: 0x{:x}",
-             emu.pos, h_file, lp_buffer, n_number_of_bytes_to_read, lp_number_of_bytes_read, lp_overlapped);
+    log_red!(
+        emu,
+        "** {} kernel32!ReadFile hFile: 0x{:x} lpBuffer: 0x{:x} nNumberOfBytesToRead: {} lpNumberOfBytesRead: 0x{:x} lpOverlapped: 0x{:x}",
+        emu.pos,
+        h_file,
+        lp_buffer,
+        n_number_of_bytes_to_read,
+        lp_number_of_bytes_read,
+        lp_overlapped
+    );
 
     // Check if handle is valid (not INVALID_HANDLE_VALUE)
     if h_file == INVALID_HANDLE_VALUE {

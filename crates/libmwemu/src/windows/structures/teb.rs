@@ -1,6 +1,6 @@
-use crate::maps::mem64::Mem64;
-use crate::maps::Maps;
 use super::nt_tib32::NtTib32;
+use crate::maps::Maps;
+use crate::maps::mem64::Mem64;
 
 #[derive(Debug)]
 pub struct TEB {

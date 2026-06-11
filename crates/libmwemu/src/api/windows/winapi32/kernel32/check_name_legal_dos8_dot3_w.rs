@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn CheckNameLegalDOS8Dot3W(emu: &mut emu::Emu) {
     let lpName = emu
@@ -29,7 +29,15 @@ pub fn CheckNameLegalDOS8Dot3W(emu: &mut emu::Emu) {
     let pbNameContainsSpaces = emu.maps.read_wide_string(pbNameContainsSpaces as u64);
     let pbNameLegal = emu.maps.read_wide_string(pbNameLegal as u64);
 
-    log_red!(emu, "kernel32!CheckNameLegalDOS8Dot3W {} {} {} {} {}", lpName, lpOemName, OemNameSize, pbNameContainsSpaces, pbNameLegal);
+    log_red!(
+        emu,
+        "kernel32!CheckNameLegalDOS8Dot3W {} {} {} {} {}",
+        lpName,
+        lpOemName,
+        OemNameSize,
+        pbNameContainsSpaces,
+        pbNameLegal
+    );
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

@@ -46,7 +46,7 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fild_m16int_zero() {
     let mut emu = emu64(); // FILD word ptr [0x2000]
-                           // FSTP qword ptr [0x3000]
+    // FSTP qword ptr [0x3000]
     let code = [
         0xDF, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, 0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, 0xf4,
     ];
@@ -194,7 +194,7 @@ fn test_fild_m16int_arithmetic() {
 #[test]
 fn test_fild_m32int_zero() {
     let mut emu = emu64(); // FILD dword ptr [0x2000]
-                           // FSTP qword ptr [0x3000]
+    // FSTP qword ptr [0x3000]
     let code = [
         0xDB, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, 0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, 0xf4,
     ];
@@ -370,7 +370,7 @@ fn test_fild_m32int_arithmetic() {
 #[test]
 fn test_fild_m64int_zero() {
     let mut emu = emu64(); // FILD qword ptr [0x2000]
-                           // FSTP qword ptr [0x3000]
+    // FSTP qword ptr [0x3000]
     let code = [
         0xDF, 0x2C, 0x25, 0x00, 0x20, 0x00, 0x00, 0xDD, 0x1C, 0x25, 0x00, 0x30, 0x00, 0x00, 0xf4,
     ];

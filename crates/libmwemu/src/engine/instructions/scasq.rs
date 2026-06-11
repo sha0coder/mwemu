@@ -5,10 +5,16 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+            emu.show_instruction(
+                color!("LightCyan"),
+                &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+            );
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+        emu.show_instruction(
+            color!("LightCyan"),
+            &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+        );
     }
 
     let value0 = match emu.get_operand_value(ins, 0, true) {
@@ -17,9 +23,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let rax = emu.regs().rax;
-    emu.flags_mut().sub64(rax, value0);
+    emu.flags_overwrite_mut().sub64(rax, value0);
 
-    if emu.flags().f_df {
+    if emu.flag_df() {
         emu.regs_mut().rdi -= 8;
     } else {
         emu.regs_mut().rdi += 8;

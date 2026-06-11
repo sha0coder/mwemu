@@ -1,7 +1,7 @@
 // Auto-generated module declarations for instructions
 
-pub mod aad;
 pub mod aaa;
+pub mod aad;
 pub mod aam;
 pub mod aas;
 pub mod adc;

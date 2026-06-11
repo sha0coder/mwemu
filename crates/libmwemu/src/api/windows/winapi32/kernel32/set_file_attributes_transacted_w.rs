@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn SetFileAttributesTransactedW(emu: &mut emu::Emu) {
     let lpFileName = emu
@@ -17,11 +17,7 @@ pub fn SetFileAttributesTransactedW(emu: &mut emu::Emu) {
 
     let lpFileName = emu.maps.read_wide_string(lpFileName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!SetFileAttributesTransactedW {}",
-        lpFileName
-    );
+    log_red!(emu, "kernel32!SetFileAttributesTransactedW {}", lpFileName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

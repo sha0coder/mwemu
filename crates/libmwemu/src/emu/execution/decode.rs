@@ -65,7 +65,9 @@ impl Emu {
                 if self.cfg.verbose > 0 {
                     log::trace!(
                         "{} empty code block at 0x{:x} ({} zero bytes to map end)",
-                        self.pos, pc, block.len(),
+                        self.pos,
+                        pc,
+                        block.len(),
                     );
                 }
                 return Err(MwemuError::new("empty code block"));

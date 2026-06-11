@@ -35,7 +35,8 @@ impl RootRegistryManager {
             KeyBlock::read_from_reader(&mut parser.reader, main_key_offset)?
         };
 
-        let mut root_hive_key = HiveKey::new(root_key_block, parser.base_offset, &mut parser.reader);
+        let mut root_hive_key =
+            HiveKey::new(root_key_block, parser.base_offset, &mut parser.reader);
 
         // Build the registry tree starting from root
         let root_manager = Self::build_register_manager_from_hive_key(&mut root_hive_key)?;

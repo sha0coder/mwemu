@@ -1,17 +1,16 @@
+use crate::emu::object_handle::windows_path::WindowsPath;
 use ahash::{AHashMap, HashMap, HashSet, HashSetExt};
-use std::{env, fs};
+use dunce::canonicalize;
+use soft_canonicalize::soft_canonicalize;
 use std::fs::File;
 use std::io;
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use dunce::canonicalize;
-use soft_canonicalize::soft_canonicalize;
-use crate::emu::object_handle::windows_path::WindowsPath;
+use std::{env, fs};
 
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::Storage::FileSystem::GetLogicalDrives;
-
 
 /*
 * Example of used:
@@ -119,8 +118,7 @@ pub fn init_file_system<P: AsRef<Path>>(file_root: Option<P>) -> io::Result<()> 
     }
 
     // Build filesystem without hardcoded mappings (add them dynamically if needed)
-    let builder = FileSystemBuilder::new()
-        .with_root(&root);
+    let builder = FileSystemBuilder::new().with_root(&root);
     // If you need the System32 mapping, make it relative to root:
     // .with_mapping(
     //     WindowsPath::from_string("C:\\Windows\\System32"),
@@ -128,12 +126,11 @@ pub fn init_file_system<P: AsRef<Path>>(file_root: Option<P>) -> io::Result<()> 
     // );
 
     let fs = builder.build()?;
-    
+
     FILE_SYSTEM
         .set(fs)
         .map_err(|_| io::Error::new(ErrorKind::Other, "FileSystem already initialized"))
 }
-
 
 // Represents the state and metadata associated with a Windows file handle
 pub struct FileHandle {
@@ -142,7 +139,7 @@ pub struct FileHandle {
     path: PathBuf, // Resolved path
     is_dir: bool,  // Whether this handle represents a directory
     // --- Rust File/ReadDir Objects ---
-    file: Option<File>,   // Actual Rust file handle (for files)
+    file: Option<File>, // Actual Rust file handle (for files)
     // --- WinAPI Handle State ---
     access_mode: u32,          // Access flags (e.g., GENERIC_READ, GENERIC_WRITE)
     creation_disposition: u32, // How the file was opened (CREATE_ALWAYS, OPEN_EXISTING, etc.)
@@ -154,8 +151,8 @@ pub struct FileHandle {
     // --- Additional State ---
     is_valid: bool, // Whether the handle is considered valid (e.g., not closed)
     is_eof: bool,   // End-of-file flag
-                    // --- Example: Potential for caching or other emulation-specific data ---
-                    // cache: Option<SomeCacheType>,
+    // --- Example: Potential for caching or other emulation-specific data ---
+    // cache: Option<SomeCacheType>,
     pub file_size: u64,
 }
 
@@ -174,7 +171,10 @@ impl FileHandle {
         // Return Result for better error handling
 
         let windows_path = WindowsPath::from_path(&name)?;
-        let resolved_path = FILE_SYSTEM.get().and_then(|file_system| file_system.translate(&windows_path).ok()).unwrap()  ;
+        let resolved_path = FILE_SYSTEM
+            .get()
+            .and_then(|file_system| file_system.translate(&windows_path).ok())
+            .unwrap();
 
         let metadata = fs::metadata(&resolved_path)?;
 
@@ -183,17 +183,32 @@ impl FileHandle {
 
         let file = if is_dir {
             // we haven't support opening a directory yet
-            return Err(Box::new(io::Error::new(ErrorKind::InvalidInput, "Calling handle other than File isn't support yet")));
+            return Err(Box::new(io::Error::new(
+                ErrorKind::InvalidInput,
+                "Calling handle other than File isn't support yet",
+            )));
         } else {
             // It's a file, attempt to open/create based on creation_disposition and access_mode
             let file_result = match creation_disposition {
                 1 => File::create_new(&resolved_path), // CREATE_NEW
-                2 => File::create(&resolved_path), // CREATE_ALWAYS
-                3 => File::open(&resolved_path),   // OPEN_EXISTING
-                5 => File::options().read(true).write(true).truncate(true).open(&resolved_path), // TRUNCATE_EXISTING
-                4 => File::options().read(true).write(true).create(true).open(&resolved_path),             // OPEN_ALWAYS
-                _ =>
-                    return Err(Box::new(io::Error::new(ErrorKind::InvalidInput, "Unknown or unsupported access mode"))),
+                2 => File::create(&resolved_path),     // CREATE_ALWAYS
+                3 => File::open(&resolved_path),       // OPEN_EXISTING
+                5 => File::options()
+                    .read(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&resolved_path), // TRUNCATE_EXISTING
+                4 => File::options()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(&resolved_path), // OPEN_ALWAYS
+                _ => {
+                    return Err(Box::new(io::Error::new(
+                        ErrorKind::InvalidInput,
+                        "Unknown or unsupported access mode",
+                    )));
+                }
             };
             Some(file_result?)
         };
@@ -335,15 +350,19 @@ impl FileSystem {
     /// Checks if a path is an escaping relative path (starts with ".." or is empty)
     pub fn is_escaping_relative_path<P: AsRef<Path>>(path: P) -> bool {
         let path = path.as_ref();
-        path.as_os_str().is_empty() ||
-            path.components()
+        path.as_os_str().is_empty()
+            || path
+                .components()
                 .next()
                 .map(|c| c == std::path::Component::ParentDir)
                 .unwrap_or(false)
     }
 
     /// Checks if target is a subpath of root
-    pub fn is_subpath<P1: AsRef<Path>, P2: AsRef<Path>>(normal_root: P1, normal_target: P2) -> bool {
+    pub fn is_subpath<P1: AsRef<Path>, P2: AsRef<Path>>(
+        normal_root: P1,
+        normal_target: P2,
+    ) -> bool {
         let normal_root = normal_root.as_ref();
         let normal_target = normal_target.as_ref();
 
@@ -444,43 +463,48 @@ impl FileSystem {
     /// - local_path: `/tmp/vfs/c/Windows/System32`
     ///
     /// Returns: `c:\Windows\System32`
-    pub fn local_to_windows_path<P: AsRef<Path>>(&self, local_path: P) -> Result<WindowsPath, Box<dyn std::error::Error>> {
+    pub fn local_to_windows_path<P: AsRef<Path>>(
+        &self,
+        local_path: P,
+    ) -> Result<WindowsPath, Box<dyn std::error::Error>> {
         let local_path = local_path.as_ref();
-        
+
         // Handle empty path
         if local_path.as_os_str().is_empty() {
             return Err("Path is empty".into());
         }
-        
+
         // On Windows with empty root, convert directly
         #[cfg(target_os = "windows")]
         if self.root.as_os_str().is_empty() {
             return Ok(WindowsPath::from_path(local_path)?);
         }
-        
+
         // Get the absolute path (use soft_canonicalize to resolve symlinks consistently)
         // This is important on macOS where /var is a symlink to /private/var
         let abs_local_path = soft_canonicalize(local_path)?;
         let abs_root = soft_canonicalize(&self.root)?;
-        
+
         // Strip the root prefix to get the relative path
-        let relative = abs_local_path.strip_prefix(&abs_root)
+        let relative = abs_local_path
+            .strip_prefix(&abs_root)
             .map_err(|_| format!("Path {:?} is not under root {:?}", abs_local_path, abs_root))?;
-        
+
         // Get the components of the relative path
         let mut components = relative.components();
-        
+
         // The first component should be the drive letter
-        let drive = components.next()
+        let drive = components
+            .next()
             .and_then(|c| c.as_os_str().to_str())
             .and_then(|s| s.chars().next())
             .ok_or("Path does not contain a drive letter component")?;
-        
+
         // Validate that the drive is a single alphabetic character
         if !drive.is_ascii_alphabetic() {
             return Err(format!("Invalid drive letter: {}", drive).into());
         }
-        
+
         // Build the Windows path string from remaining components
         let mut path_str = format!("{}:", drive.to_ascii_lowercase());
         for component in components {
@@ -489,12 +513,12 @@ impl FileSystem {
                 path_str.push_str(s);
             }
         }
-        
+
         // If there are no additional components, add the root slash
         if !path_str.contains('\\') {
             path_str.push('\\');
         }
-        
+
         Ok(WindowsPath::from_string(&path_str))
     }
 
@@ -515,7 +539,7 @@ impl FileSystem {
         if path.as_os_str().is_empty() {
             Ok(PathBuf::new())
         } else {
-           canonicalize(path)
+            canonicalize(path)
         }
     }
 
@@ -538,8 +562,10 @@ impl FileSystem {
 
         // Strip prefix if path starts with base
         if abs_path.starts_with(&abs_base) {
-            let remainder = abs_path.strip_prefix(&abs_base)
-                .map_err(|_| io::Error::new(ErrorKind::Other, "Failed to strip prefix")).unwrap();
+            let remainder = abs_path
+                .strip_prefix(&abs_base)
+                .map_err(|_| io::Error::new(ErrorKind::Other, "Failed to strip prefix"))
+                .unwrap();
             Some(PathBuf::from(remainder))
         } else {
             // Return the path as-is if it's not under the base
@@ -572,15 +598,18 @@ impl FileSystemBuilder {
     }
 
     pub fn build(self) -> io::Result<FileSystem> {
-        let root = self.root.ok_or_else(||
-            io::Error::new(ErrorKind::InvalidInput, "Root path not set")
-        )?;
+        let root = self
+            .root
+            .ok_or_else(|| io::Error::new(ErrorKind::InvalidInput, "Root path not set"))?;
 
         let result = FileSystem::new(&root);
         if result.is_err() {
             let err = result.err().unwrap();
             println!("Failed to initialize filesystem with err: {}", err);
-            println!("Please check the file location: {}", &root.to_str().unwrap());
+            println!(
+                "Please check the file location: {}",
+                &root.to_str().unwrap()
+            );
             return Err(err);
         }
         let mut fs = result?;
@@ -592,7 +621,6 @@ impl FileSystemBuilder {
         Ok(fs)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -679,10 +707,14 @@ mod tests {
         let fs = FILE_SYSTEM.get().expect("FS should be set");
         assert_eq!(fs.root(), &canonicalize(&root_path).unwrap());
 
-
         // Second initialization should fail (OnceLock already set)
         let result = init_file_system(Some(&root_path));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("already initialized"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("already initialized")
+        );
     }
 }

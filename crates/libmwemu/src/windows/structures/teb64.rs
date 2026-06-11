@@ -1,6 +1,6 @@
+use super::nt_tib64::NtTib64;
 use crate::maps::Maps;
 use crate::maps::mem64::Mem64;
-use super::nt_tib64::NtTib64;
 
 #[derive(Debug)]
 pub struct TEB64 {
@@ -42,7 +42,7 @@ impl TEB64 {
             user32_reserved: [0; 26],
             user_reserved: [0; 6],
             wow32_reserved: 0,
-            current_locale: 0x409,  // en-US
+            current_locale: 0x409, // en-US
             fp_software_status_register: 0,
             system_reserved1: [0; 54],
             exception_code: 0,
@@ -52,7 +52,12 @@ impl TEB64 {
 
     /// Patch TEB fields that depend on the TEB's own address or the stack layout.
     /// Call this after the TEB has been saved to memory.
-    pub fn patch_addresses(teb_addr: u64, stack_base: u64, stack_size: u64, maps: &mut crate::maps::Maps) {
+    pub fn patch_addresses(
+        teb_addr: u64,
+        stack_base: u64,
+        stack_size: u64,
+        maps: &mut crate::maps::Maps,
+    ) {
         // NtTib.Self (offset 0x30): pointer to TEB itself — used by gs:[0x30]
         maps.write_qword(teb_addr + 0x30, teb_addr);
         // NtTib.StackBase (offset 0x08): high address (top) of the thread stack
@@ -62,7 +67,7 @@ impl TEB64 {
     }
 
     pub fn size() -> usize {
-        0x1878  // full Windows x64 TEB size
+        0x1878 // full Windows x64 TEB size
     }
 
     pub fn load(addr: u64, maps: &Maps) -> TEB64 {

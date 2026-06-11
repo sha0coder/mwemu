@@ -5,7 +5,10 @@ use crate::windows::constants::{LIBS64_MAX, LIBS64_MIN};
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Yellow"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("Yellow"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
 
     if ins.op_count() != 1 {
         unimplemented!("weird variant of call");
@@ -45,9 +48,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
         //emu.stack_lvl[emu.stack_lvl_idx] -= 1;
     } /*else {
-          emu.stack_lvl.push(0);
-          emu.stack_lvl_idx += 1;
-      }*/
+    emu.stack_lvl.push(0);
+    emu.stack_lvl_idx += 1;
+    }*/
 
     let rip = emu.regs().rip;
     emu.call_stack_mut().push((rip, addr));

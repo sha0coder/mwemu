@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn DnsHostnameToComputerNameW(emu: &mut emu::Emu) {
     let Hostname = emu

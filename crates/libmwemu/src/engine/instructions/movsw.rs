@@ -5,10 +5,16 @@ use iced_x86::Instruction;
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+            emu.show_instruction(
+                color!("LightCyan"),
+                &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+            );
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+        emu.show_instruction(
+            color!("LightCyan"),
+            &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+        );
     }
 
     if emu.cfg.is_x64() {
@@ -18,7 +24,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             .expect("cannot read memory");
         emu.maps.write_word(emu.regs().rdi, val);
 
-        if !emu.flags().f_df {
+        if !emu.flag_df() {
             emu.regs_mut().rsi += 2;
             emu.regs_mut().rdi += 2;
         } else {
@@ -33,7 +39,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             .expect("cannot read memory");
         emu.maps.write_word(emu.regs().get_edi(), val);
 
-        if !emu.flags().f_df {
+        if !emu.flag_df() {
             let esi = emu.regs().get_esi() + 2;
             let edi = emu.regs().get_edi() + 2;
             emu.regs_mut().set_esi(esi);

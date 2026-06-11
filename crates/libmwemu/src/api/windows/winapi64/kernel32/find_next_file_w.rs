@@ -1,4 +1,4 @@
-use crate::{windows::constants, emu};
+use crate::{emu, windows::constants};
 
 pub fn FindNextFileW(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;

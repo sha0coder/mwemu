@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::{arch::Arch, eflags::Eflags, flags::Flags, fpu::FPU, regs64::Regs64, regs_aarch64::RegsAarch64};
+use crate::{
+    arch::Arch, eflags::Eflags, flags::Flags, fpu::FPU, regs_aarch64::RegsAarch64, regs64::Regs64,
+};
 
 /// Architecture-specific per-thread register and exception state.
 #[derive(Clone)]
@@ -87,7 +89,13 @@ impl ThreadContext {
     #[inline]
     pub fn x86(&self) -> (&Regs64, &Flags, &Eflags, &FPU) {
         match &self.arch {
-            ArchThreadState::X86 { regs, flags, eflags, fpu, .. } => (regs, flags, eflags, fpu),
+            ArchThreadState::X86 {
+                regs,
+                flags,
+                eflags,
+                fpu,
+                ..
+            } => (regs, flags, eflags, fpu),
             _ => panic!("x86() called on aarch64 thread"),
         }
     }

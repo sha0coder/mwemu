@@ -18,7 +18,9 @@ impl Emu {
             );
             if let Err(e) = self.download_and_extract_maps(folder) {
                 log::error!("Failed to download maps folder '{}': {}", folder, e);
-                panic!("Cannot proceed without maps folder. Please download manually or check your internet connection.");
+                panic!(
+                    "Cannot proceed without maps folder. Please download manually or check your internet connection."
+                );
             }
         }
     }

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetProfileIntA(emu: &mut emu::Emu) {
     let lpAppName = emu
@@ -18,12 +18,7 @@ pub fn GetProfileIntA(emu: &mut emu::Emu) {
     let lpAppName = emu.maps.read_string(lpAppName as u64);
     let lpKeyName = emu.maps.read_string(lpKeyName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!GetProfileIntA {} {}",
-        lpAppName,
-        lpKeyName
-    );
+    log_red!(emu, "kernel32!GetProfileIntA {} {}", lpAppName, lpKeyName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

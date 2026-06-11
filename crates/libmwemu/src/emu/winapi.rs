@@ -1,8 +1,8 @@
 use crate::{
     emu::Emu,
     exception::types::ExceptionType,
-    windows::peb::{peb32, peb64},
     winapi::{winapi32, winapi64},
+    windows::peb::{peb32, peb64},
 };
 
 impl Emu {

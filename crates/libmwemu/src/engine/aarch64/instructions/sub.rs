@@ -13,7 +13,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, set_flags: bool) -> bool {
         if is64 {
             emu.regs_aarch64_mut().nzcv.update_sub64(a, b, result);
         } else {
-            emu.regs_aarch64_mut().nzcv.update_sub32(a as u32, b as u32, result as u32);
+            emu.regs_aarch64_mut()
+                .nzcv
+                .update_sub32(a as u32, b as u32, result as u32);
         }
     }
 

@@ -1,8 +1,8 @@
 use crate::maps::Maps;
 
+use super::ListEntry64;
 use super::base_types::{DeviceIoControl, UnicodeString};
 use super::kernel_objects::KEVent;
-use super::ListEntry64;
 
 #[derive(Debug)]
 pub struct DriverObject {

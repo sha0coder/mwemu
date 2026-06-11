@@ -1,16 +1,22 @@
 use crate::emu;
-use crate::windows::constants;
 use crate::winapi::helper;
+use crate::windows::constants;
 
-use super::{pop_stack32, read_ansi_string_if_present, read_stack_dword, read_wide_string_if_present};
+use super::{
+    pop_stack32, read_ansi_string_if_present, read_stack_dword, read_wide_string_if_present,
+};
 
 pub(super) fn http_open_request_a(emu: &mut emu::Emu) {
     let conn_hndl = read_stack_dword(emu, 0, "wininet!HttpOpenRequestA cannot read hndl") as u64;
-    let method_ptr = read_stack_dword(emu, 4, "wininet!HttpOpenRequestA cannot read method_ptr") as u64;
+    let method_ptr =
+        read_stack_dword(emu, 4, "wininet!HttpOpenRequestA cannot read method_ptr") as u64;
     let path_ptr = read_stack_dword(emu, 8, "wininet!HttpOpenRequestA cannot read path_ptr") as u64;
-    let version_ptr = read_stack_dword(emu, 12, "wininet!HttpOpenRequestA cannot read version_ptr") as u64;
-    let referrer_ptr = read_stack_dword(emu, 16, "wininet!HttpOpenRequestA cannot read referrer_ptr") as u64;
-    let access_ptr = read_stack_dword(emu, 20, "wininet!HttpOpenRequestA cannot read access_ptr") as u64;
+    let version_ptr =
+        read_stack_dword(emu, 12, "wininet!HttpOpenRequestA cannot read version_ptr") as u64;
+    let referrer_ptr =
+        read_stack_dword(emu, 16, "wininet!HttpOpenRequestA cannot read referrer_ptr") as u64;
+    let access_ptr =
+        read_stack_dword(emu, 20, "wininet!HttpOpenRequestA cannot read access_ptr") as u64;
     let flags = read_stack_dword(emu, 24, "wininet!HttpOpenRequestA cannot read flags") as u64;
     let _ctx = read_stack_dword(emu, 28, "wininet!HttpOpenRequestA cannot read ctx");
 
@@ -46,11 +52,15 @@ pub(super) fn http_open_request_a(emu: &mut emu::Emu) {
 
 pub(super) fn http_open_request_w(emu: &mut emu::Emu) {
     let conn_hndl = read_stack_dword(emu, 0, "wininet!HttpOpenRequestW cannot read hndl") as u64;
-    let method_ptr = read_stack_dword(emu, 4, "wininet!HttpOpenRequestW cannot read method_ptr") as u64;
+    let method_ptr =
+        read_stack_dword(emu, 4, "wininet!HttpOpenRequestW cannot read method_ptr") as u64;
     let path_ptr = read_stack_dword(emu, 8, "wininet!HttpOpenRequestW cannot read path_ptr") as u64;
-    let version_ptr = read_stack_dword(emu, 12, "wininet!HttpOpenRequestW cannot read version_ptr") as u64;
-    let referrer_ptr = read_stack_dword(emu, 16, "wininet!HttpOpenRequestW cannot read referrer_ptr") as u64;
-    let access_ptr = read_stack_dword(emu, 20, "wininet!HttpOpenRequestW cannot read access_ptr") as u64;
+    let version_ptr =
+        read_stack_dword(emu, 12, "wininet!HttpOpenRequestW cannot read version_ptr") as u64;
+    let referrer_ptr =
+        read_stack_dword(emu, 16, "wininet!HttpOpenRequestW cannot read referrer_ptr") as u64;
+    let access_ptr =
+        read_stack_dword(emu, 20, "wininet!HttpOpenRequestW cannot read access_ptr") as u64;
     let flags = read_stack_dword(emu, 24, "wininet!HttpOpenRequestW cannot read flags") as u64;
     let _ctx = read_stack_dword(emu, 28, "wininet!HttpOpenRequestW cannot read ctx");
 
@@ -85,7 +95,8 @@ pub(super) fn http_open_request_w(emu: &mut emu::Emu) {
 }
 
 pub(super) fn internet_set_option_a(emu: &mut emu::Emu) {
-    let inet_hndl = read_stack_dword(emu, 0, "wininet!InternetSetOptionA cannot read inet_hndl") as u64;
+    let inet_hndl =
+        read_stack_dword(emu, 0, "wininet!InternetSetOptionA cannot read inet_hndl") as u64;
     let option = read_stack_dword(emu, 4, "wininet!InternetSetOptionA cannot read option");
     let buffer = read_stack_dword(emu, 8, "wininet!InternetSetOptionA cannot read buffer") as u64;
     let len = read_stack_dword(emu, 12, "wininet!InternetSetOptionA cannot read len");
@@ -114,7 +125,8 @@ pub(super) fn internet_set_option_a(emu: &mut emu::Emu) {
 }
 
 pub(super) fn internet_set_option_w(emu: &mut emu::Emu) {
-    let inet_hndl = read_stack_dword(emu, 0, "wininet!InternetSetOptionW cannot read inet_hndl") as u64;
+    let inet_hndl =
+        read_stack_dword(emu, 0, "wininet!InternetSetOptionW cannot read inet_hndl") as u64;
     let option = read_stack_dword(emu, 4, "wininet!InternetSetOptionW cannot read option");
     let buffer = read_stack_dword(emu, 8, "wininet!InternetSetOptionW cannot read buffer") as u64;
     let len = read_stack_dword(emu, 12, "wininet!InternetSetOptionW cannot read len");
@@ -188,7 +200,8 @@ pub(super) fn http_query_info_a(emu: &mut emu::Emu) {
     let _hrequest = read_stack_dword(emu, 0, "wininet!HttpQueryInfoA cannot read hrequest") as u64;
     let _infolvl = read_stack_dword(emu, 4, "wininet!HttpQueryInfoA cannot read infolvl") as u64;
     let buff = read_stack_dword(emu, 8, "wininet!HttpQueryInfoA cannot read buffer") as u64;
-    let buff_len = read_stack_dword(emu, 12, "wininet!HttpQueryInfoA cannot read buffer len") as u64;
+    let buff_len =
+        read_stack_dword(emu, 12, "wininet!HttpQueryInfoA cannot read buffer len") as u64;
     let _index = read_stack_dword(emu, 16, "wininet!HttpQueryInfoA cannot read index") as u64;
 
     log_red!(
@@ -202,4 +215,3 @@ pub(super) fn http_query_info_a(emu: &mut emu::Emu) {
 
     emu.regs_mut().rax = 1;
 }
-

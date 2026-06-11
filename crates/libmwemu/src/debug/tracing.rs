@@ -69,7 +69,7 @@ impl TraceRecord {
             Self {
                 instruction_count,
                 rip: emu.regs().rip,
-                rflags: emu.flags().dump() as u64,
+                rflags: emu.flags_snapshot().dump() as u64,
                 rax: emu.regs().rax,
                 rbx: emu.regs().rbx,
                 rcx: emu.regs().rcx,

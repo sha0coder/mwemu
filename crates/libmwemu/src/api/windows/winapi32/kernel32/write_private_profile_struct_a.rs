@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn WritePrivateProfileStructA(emu: &mut emu::Emu) {
     let _lpszSection = emu

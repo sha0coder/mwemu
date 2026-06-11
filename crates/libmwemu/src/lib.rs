@@ -8,20 +8,20 @@
 pub mod utils;
 
 // Grouped modules
+pub mod api;
 pub mod arch;
+pub mod debug;
+pub mod exception;
 pub mod loaders;
 pub mod threading;
-pub mod exception;
 pub mod windows;
-pub mod debug;
-pub mod api;
 
 // Core modules
 pub mod emu;
 pub mod engine;
 pub mod maps;
-pub mod syscall;
 pub mod serialization;
+pub mod syscall;
 
 // Standalone modules
 pub mod config;

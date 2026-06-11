@@ -128,10 +128,10 @@ __kernel_entry NTSTATUS NtCreateFile(
 );
 */
 fn NtCreateFile(emu: &mut emu::Emu) {
-    let out_handle_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ntdll!NtCreateFile error reading out_handle_ptr param") as u64;
+    let out_handle_ptr =
+        emu.maps
+            .read_dword(emu.regs().get_esp())
+            .expect("ntdll!NtCreateFile error reading out_handle_ptr param") as u64;
     let access_mask = emu
         .maps
         .read_dword(emu.regs().get_esp() + 4)

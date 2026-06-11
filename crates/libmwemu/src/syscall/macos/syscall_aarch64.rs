@@ -115,7 +115,15 @@ pub fn gateway(emu: &mut emu::Emu) {
             let off = emu.regs_aarch64().x[5];
             log::info!(
                 "{}** {} macos syscall mmap(addr=0x{:x}, len=0x{:x}, prot=0x{:x}, flags=0x{:x}, fd={}, off=0x{:x}) {}",
-                emu.colors.light_red, emu.pos, addr, len, prot, flags, fd as i64, off, emu.colors.nc
+                emu.colors.light_red,
+                emu.pos,
+                addr,
+                len,
+                prot,
+                flags,
+                fd as i64,
+                off,
+                emu.colors.nc
             );
             todo!("macos mmap syscall");
         }

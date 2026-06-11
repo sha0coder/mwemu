@@ -2,21 +2,21 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::sync::atomic;
 use std::sync::Arc;
+use std::sync::atomic;
 
 use iced_x86::Instruction;
 use serde::{Deserialize, Serialize};
 
 use crate::api::banzai::Banzai;
-use crate::debug::breakpoint::Breakpoints;
-use crate::utils::colors::Colors;
 use crate::config::Config;
+use crate::debug::breakpoint::Breakpoints;
 use crate::eflags::Eflags;
 use crate::emu::Emu;
 use crate::flags::Flags;
-use crate::threading::global_locks::GlobalLocks;
 use crate::hooks::Hooks;
+use crate::loaders::pe::runtime_pe32::RuntimePe32;
+use crate::loaders::pe::runtime_pe64::RuntimePe64;
 use crate::regs_aarch64::RegsAarch64;
 use crate::regs64::Regs64;
 use crate::serialization::fpu::SerializableFPU;
@@ -25,12 +25,14 @@ use crate::serialization::maps::SerializableMaps;
 use crate::serialization::pe32::SerializablePE32;
 use crate::serialization::pe64::SerializablePE64;
 use crate::serialization::thread_context::SerializableThreadContext;
+use crate::threading::global_locks::GlobalLocks;
+use crate::utils::colors::Colors;
 use crate::windows::structures::MemoryOperation;
 
-use crate::emu::disassemble::InstructionCache;
-use crate::emu::object_handle::HandleManagement;
 use crate::arch::Arch;
 use crate::emu::ArchState;
+use crate::emu::disassemble::InstructionCache;
+use crate::emu::object_handle::HandleManagement;
 use crate::threading::context::ArchThreadState;
 
 #[derive(Serialize, Deserialize)]
@@ -357,13 +359,19 @@ impl From<SerializableEmu> for Emu {
             force_reload,
             run_until_ret,
             rng: RefCell::new(rand::rng()),
-            // Platform & loaded binary
+            // Platform & loaded binary.
+            // PE runtime rehydration requires LIEF to successfully parse the
+            // embedded raw bytes. If the bytes are not a valid full PE
+            // (truncated minidump module, synthetic fixture, etc.) the
+            // RuntimePe is left as None rather than fabricated from
+            // unparsed bytes. Errors are logged so old dump/minidump
+            // failures are diagnosable.
             os,
-            pe64: pe64.map(|x| x.into()),
-            pe32: pe32.map(|x| x.into()),
-            elf64: None,    // TODO: not yet serialized
-            elf32: None,    // TODO: not yet serialized
-            macho64: None,  // TODO: not yet serialized
+            pe64: restore_pe64(pe64),
+            pe32: restore_pe32(pe32),
+            elf64: None,   // TODO: not yet serialized
+            elf32: None,   // TODO: not yet serialized
+            macho64: None, // TODO: not yet serialized
             tls_callbacks,
             library_loaded: false,
             // Thread management
@@ -396,7 +404,7 @@ impl From<SerializableEmu> for Emu {
             entropy,
             last_error,
             // Win32 resource management
-            handle_management: HandleManagement::new(), // TODO: not yet serialized
+            handle_management: HandleManagement::new(),
             section_handles: HashMap::new(),
             file_handles: HashMap::new(),
             syscall_number_map: HashMap::new(),
@@ -404,6 +412,8 @@ impl From<SerializableEmu> for Emu {
             known_dll_dir_handles: HashSet::new(),
             symbolic_link_targets: HashMap::new(),
             ssdt_pad_stack: Vec::new(),
+            // API Set resolver
+            api_set_resolver: None,
         };
 
         if let Some(thread) = emu.threads.get_mut(current_thread_id) {
@@ -593,4 +603,46 @@ impl SerializableEmu {
         emu.init_cpu();
         SerializableEmu::from(&emu)
     }
+}
+
+/// Rehydrate a `SerializablePE64` into a `RuntimePe64`, logging a warning
+/// when LIEF rejects the embedded raw bytes. The function returns `None`
+/// in that case so the surrounding `Emu` keeps `pe64 = None` rather than
+/// fabricating a runtime from unparsed bytes.
+pub(crate) fn restore_pe64(pe64: Option<SerializablePE64>) -> Option<RuntimePe64> {
+    pe64.and_then(|serialized| {
+        let filename = serialized.filename.clone();
+        match RuntimePe64::try_from(serialized) {
+            Ok(pe) => Some(pe),
+            Err(e) => {
+                log::warn!(
+                    "Skipping PE64 runtime restore for {} because LIEF rejected embedded bytes: {}",
+                    filename,
+                    e
+                );
+                None
+            }
+        }
+    })
+}
+
+/// Rehydrate a `SerializablePE32` into a `RuntimePe32`, logging a warning
+/// when LIEF rejects the embedded raw bytes. The function returns `None`
+/// in that case so the surrounding `Emu` keeps `pe32 = None` rather than
+/// fabricating a runtime from unparsed bytes.
+pub(crate) fn restore_pe32(pe32: Option<SerializablePE32>) -> Option<RuntimePe32> {
+    pe32.and_then(|serialized| {
+        let filename = serialized.filename.clone();
+        match RuntimePe32::try_from(serialized) {
+            Ok(pe) => Some(pe),
+            Err(e) => {
+                log::warn!(
+                    "Skipping PE32 runtime restore for {} because LIEF rejected embedded bytes: {}",
+                    filename,
+                    e
+                );
+                None
+            }
+        }
+    })
 }

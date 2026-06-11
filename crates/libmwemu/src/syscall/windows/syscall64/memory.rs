@@ -1,6 +1,6 @@
-use crate::windows::constants::*;
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
+use crate::windows::constants::*;
 use crate::windows::structures::MemoryBasicInformation64;
 use iced_x86::{Instruction, Mnemonic, OpKind, Register};
 
@@ -123,8 +123,7 @@ pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
     if !emu.maps.is_mapped(rsi) || !emu.maps.is_mapped(rsi + 8) {
         return;
     }
-    if emu.maps.read_qword(rsi).unwrap_or(1) != 0
-        || emu.maps.read_qword(rsi + 8).unwrap_or(1) != 0
+    if emu.maps.read_qword(rsi).unwrap_or(1) != 0 || emu.maps.read_qword(rsi + 8).unwrap_or(1) != 0
     {
         return;
     }
@@ -139,7 +138,7 @@ pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
     let b1 = emu.maps.read_byte(next.wrapping_add(1)).unwrap_or(0);
     let next_is_null_check = (b0 == 0x48 && b1 == 0x85)  // test r64,r64
         || b0 == 0x85                                      // test r32,r32
-        || (b0 == 0x48 && b1 == 0x83);                    // cmp r64,imm8
+        || (b0 == 0x48 && b1 == 0x83); // cmp r64,imm8
     if next_is_null_check {
         return;
     }
@@ -194,7 +193,8 @@ pub fn nt_query_virtual_memory(emu: &mut Emu) {
                 emu.maps.write_qword(memory_information + 8, size_of_image);
                 emu.maps.write_dword(memory_information + 16, 0);
                 if return_length_ptr != 0 {
-                    emu.maps.write_qword(return_length_ptr, MEMORY_IMAGE_INFO_SIZE);
+                    emu.maps
+                        .write_qword(return_length_ptr, MEMORY_IMAGE_INFO_SIZE);
                 }
                 emu.regs_mut().rax = STATUS_SUCCESS;
             }
@@ -410,8 +410,6 @@ pub fn nt_allocate_virtual_memory(emu: &mut Emu) {
     emu.regs_mut().rax = STATUS_SUCCESS;
 }
 
-
-
 /// Allocate a free address range of at least `size` bytes whose base is 64K
 /// aligned (matches Windows `dwAllocationGranularity`). Probes our generic
 /// 4K-aligned allocator with growing offsets until we land on a free 64K
@@ -568,20 +566,14 @@ pub fn nt_free_virtual_memory(emu: &mut Emu) {
     let base_disp: String = if base_ptr == 0 {
         "—".to_string()
     } else if emu.maps.is_mapped(base_ptr) {
-        format!(
-            "0x{:x}",
-            emu.maps.read_qword(base_ptr).unwrap_or(0)
-        )
+        format!("0x{:x}", emu.maps.read_qword(base_ptr).unwrap_or(0))
     } else {
         "? (unmapped rdx)".to_string()
     };
     let region_size_disp: String = if region_sz_ptr == 0 {
         "— (r8=0)".to_string()
     } else if emu.maps.is_mapped(region_sz_ptr) {
-        format!(
-            "0x{:x}",
-            emu.maps.read_qword(region_sz_ptr).unwrap_or(0)
-        )
+        format!("0x{:x}", emu.maps.read_qword(region_sz_ptr).unwrap_or(0))
     } else {
         "? (unmapped r8)".to_string()
     };
@@ -643,9 +635,13 @@ pub fn nt_free_virtual_memory(emu: &mut Emu) {
             0
         };
         let map_for_base = if base_mapped {
-            emu.maps.get_mem_by_addr(base).map(|m| (m.get_base(), m.size() as u64))
+            emu.maps
+                .get_mem_by_addr(base)
+                .map(|m| (m.get_base(), m.size() as u64))
         } else if let Some(ab) = alloc_base {
-            emu.maps.get_mem_by_addr(ab).map(|m| (m.get_base(), m.size() as u64))
+            emu.maps
+                .get_mem_by_addr(ab)
+                .map(|m| (m.get_base(), m.size() as u64))
         } else {
             None
         };
@@ -672,10 +668,7 @@ pub fn nt_free_virtual_memory(emu: &mut Emu) {
             // ntdll may call MEM_RELEASE on a range already torn down by a prior successful free or
             // on an address our single-map model treats as unmapped; real kernel often accepts the
             // no-op.
-            if emu.cfg.emulate_winapi
-                && base >= ALLOC64_MIN
-                && base < ALLOC64_MAX
-            {
+            if emu.cfg.emulate_winapi && base >= ALLOC64_MIN && base < ALLOC64_MAX {
                 // Windows writes back the page-aligned freed base (not zero) so callers can
                 // inspect what was released. Do not zero *BaseAddress.
                 emu.regs_mut().rax = STATUS_SUCCESS;
@@ -951,7 +944,11 @@ pub fn nt_map_view_of_section(emu: &mut Emu) {
     } else {
         0x1000
     };
-    let size = if view_size == 0 { 0x1000 } else { (view_size + 0xfff) & !0xfff };
+    let size = if view_size == 0 {
+        0x1000
+    } else {
+        (view_size + 0xfff) & !0xfff
+    };
 
     log_orange!(
         emu,
@@ -975,7 +972,8 @@ pub fn nt_map_view_of_section(emu: &mut Emu) {
         if dll_base != 0 {
             log::trace!(
                 "NtMapViewOfSection: KnownDll {} loaded at 0x{:x}",
-                dll_name, dll_base
+                dll_name,
+                dll_base
             );
             // Write the real PE base back to *BaseAddress.
             if base_addr_ptr != 0 && emu.maps.is_mapped(base_addr_ptr) {
@@ -985,7 +983,9 @@ pub fn nt_map_view_of_section(emu: &mut Emu) {
             let size_of_image: u64 = {
                 let pe_off = emu.maps.read_dword(dll_base + 0x3c).unwrap_or(0) as u64;
                 if pe_off > 0 {
-                    emu.maps.read_dword(dll_base + pe_off + 0x50).unwrap_or(0x1000) as u64
+                    emu.maps
+                        .read_dword(dll_base + pe_off + 0x50)
+                        .unwrap_or(0x1000) as u64
                 } else {
                     0x1000
                 }
@@ -1142,7 +1142,13 @@ pub fn nt_open_section(emu: &mut Emu) {
     // (TLS callbacks, DllMain) in a tight loop and exhaust the stack.
     if is_known_dll_dir && dll_name.is_none() {
         const FALLBACK_BUDGET: usize = 0;
-        if emu.section_handles.values().filter(|n| *n == "kernelbase.dll").count() < FALLBACK_BUDGET {
+        if emu
+            .section_handles
+            .values()
+            .filter(|n| *n == "kernelbase.dll")
+            .count()
+            < FALLBACK_BUDGET
+        {
             let h = crate::syscall::windows::syscall64::sync::next_handle();
             let _ = emu.maps.write_qword(handle_out, h);
             log::trace!(
@@ -1165,7 +1171,10 @@ pub fn nt_open_section(emu: &mut Emu) {
     if let Some(ref name) = dll_name {
         let path = format!("{}{}", emu.cfg.maps_folder, name);
         if !std::path::Path::new(&path).exists() {
-            log::trace!("NtOpenSection: KnownDll {} not in maps_folder → OBJECT_NAME_NOT_FOUND", name);
+            log::trace!(
+                "NtOpenSection: KnownDll {} not in maps_folder → OBJECT_NAME_NOT_FOUND",
+                name
+            );
             emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
             return;
         }
@@ -1175,7 +1184,11 @@ pub fn nt_open_section(emu: &mut Emu) {
     let _ = emu.maps.write_qword(handle_out, h);
 
     if let Some(dll_name) = dll_name {
-        log::trace!("NtOpenSection: tracking KnownDll handle 0x{:x} -> {}", h, dll_name);
+        log::trace!(
+            "NtOpenSection: tracking KnownDll handle 0x{:x} -> {}",
+            h,
+            dll_name
+        );
         emu.section_handles.insert(h, dll_name);
     }
 

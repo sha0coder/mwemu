@@ -1,8 +1,8 @@
-use crate::windows::constants;
 use crate::emu;
 use crate::serialization;
 use crate::winapi::helper;
 use crate::winapi::winapi64;
+use crate::windows::constants;
 
 pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
     let api = winapi64::kernel32::guess_api_name(emu, addr);

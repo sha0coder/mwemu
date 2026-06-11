@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn CommConfigDialogA(emu: &mut emu::Emu) {
     let lpszName = emu

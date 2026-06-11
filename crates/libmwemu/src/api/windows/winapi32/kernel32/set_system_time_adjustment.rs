@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn SetSystemTimeAdjustment(emu: &mut emu::Emu) {
     let _dwTimeAdjustment = emu

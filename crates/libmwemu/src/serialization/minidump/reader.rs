@@ -3,16 +3,17 @@ use minidump::format::MemoryProtection;
 use minidump::*;
 use slab::Slab;
 use std::cell::RefCell;
+
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::ops::Deref;
 
-use crate::arch::{Arch, OperatingSystem};
 use crate::arch::aarch64::regs::RegsAarch64;
+use crate::arch::{Arch, OperatingSystem};
 use crate::flags::Flags;
+use crate::maps::Maps;
 use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::tlb::TLB;
-use crate::maps::Maps;
 use crate::regs64::Regs64;
 use crate::serialization::emu::SerializableEmu;
 use crate::serialization::maps::SerializableMaps;
@@ -62,19 +63,29 @@ impl MinidumpReader {
                 if let Some(mem_region) = memory.memory_at_address(module.base_address()) {
                     let raw_data = mem_region.bytes().to_vec();
 
-                    // Basic PE detection - check for MZ header
+                    // Basic PE detection - check for MZ header. Only retain
+                    // modules that look like a full PE (MZ + sane e_lfanew).
+                    // LIEF will re-validate the bytes during deserialization;
+                    // modules whose raw data is too truncated to be a valid PE
+                    // are intentionally dropped so the deserializer cannot
+                    // silently synthesize a fabricated RuntimePe.
                     if raw_data.len() > 0x40 && &raw_data[0..2] == b"MZ" {
-                        // Read PE header to determine 32 vs 64 bit
                         if let Some(pe_offset) = Self::get_pe_offset(&raw_data) {
                             if Self::is_pe64(&raw_data, pe_offset) {
                                 pe64 = Some(SerializablePE64 {
                                     filename: module.name.to_string(),
                                     raw: raw_data,
+                                    backend: Some(
+                                        crate::serialization::pe64::SerializablePe64Backend::Lief,
+                                    ),
                                 });
                             } else {
                                 pe32 = Some(SerializablePE32 {
                                     filename: module.name.to_string(),
                                     raw: raw_data,
+                                    backend: Some(
+                                        crate::serialization::pe32::SerializablePe32Backend::Lief,
+                                    ),
                                 });
                             }
                         }

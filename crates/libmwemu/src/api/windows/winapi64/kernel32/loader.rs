@@ -38,7 +38,11 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
         if mz == 0x5A4D {
             Some(base) // valid PE: keep it
         } else {
-            log::trace!("load_library: {} found in LDR at 0x{:x} but has no valid PE, reloading", dll, base);
+            log::trace!(
+                "load_library: {} found in LDR at 0x{:x} but has no valid PE, reloading",
+                dll,
+                base
+            );
             None // invalid PE: force reload from file
         }
     });
@@ -57,7 +61,10 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
             let pe_map_name = format!("{}.pe", dll.trim_end_matches(".dll"));
             if let Some(existing) = emu.maps.get_map_by_name(&pe_map_name) {
                 let base = existing.get_base();
-                log::trace!("dll {} already mapped (load in progress), skipping reload", dll);
+                log::trace!(
+                    "dll {} already mapped (load in progress), skipping reload",
+                    dll
+                );
                 return base;
             }
 

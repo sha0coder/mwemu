@@ -58,11 +58,11 @@ const C3_BIT: u16 = 0x4000; // bit 14
 #[test]
 fn test_fcom_equal() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; Load 5.0 into ST(0)
-                           // FLD qword [0x2008]  ; Load 5.0 into ST(0), previous ST(0) becomes ST(1)
-                           // FCOM ST(1)          ; D8 D1 - Compare ST(0) with ST(1)
-                           // FSTP qword [0x3000] ; Store result flag test helper
-                           // FSTP qword [0x3008] ; Clean stack
-                           // HLT
+    // FLD qword [0x2008]  ; Load 5.0 into ST(0), previous ST(0) becomes ST(1)
+    // FCOM ST(1)          ; D8 D1 - Compare ST(0) with ST(1)
+    // FSTP qword [0x3000] ; Store result flag test helper
+    // FSTP qword [0x3008] ; Clean stack
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword [0x2008]

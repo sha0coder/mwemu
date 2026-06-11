@@ -1,5 +1,5 @@
-use crate::maps::mem64::Permission;
 use crate::emu;
+use crate::maps::mem64::Permission;
 
 pub fn GetCommandLineA(emu: &mut emu::Emu) {
     log_red!(emu, "kernel32!GetCommandLineA");

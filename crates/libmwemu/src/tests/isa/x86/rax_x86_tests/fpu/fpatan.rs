@@ -46,10 +46,10 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fpatan_first_quadrant_45deg() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; Load X (ST(0))
-                           // FLD qword [0x2008]  ; Load Y (ST(0), X becomes ST(1))
-                           // FPATAN              ; ST(1) = arctan(ST(1)/ST(0)), pop
-                           // FSTP qword [0x3000] ; Store result
-                           // HLT
+    // FLD qword [0x2008]  ; Load Y (ST(0), X becomes ST(1))
+    // FPATAN              ; ST(1) = arctan(ST(1)/ST(0)), pop
+    // FSTP qword [0x3000] ; Store result
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword [0x2008]
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]

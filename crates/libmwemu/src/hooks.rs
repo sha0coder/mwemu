@@ -4,17 +4,13 @@ use crate::exception::types;
 
 // Hook types using Box<dyn FnMut> for state capture instead of bare fn pointers.
 // return: false will ignore interrupt handling like 0x80 -> linux
-pub type TypeHookOnInterrupt =
-    Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
+pub type TypeHookOnInterrupt = Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 // return: allow handle exception?
-pub type TypeHookOnException =
-    Box<dyn FnMut(&mut emu::Emu, u64, types::ExceptionType) -> bool>;
+pub type TypeHookOnException = Box<dyn FnMut(&mut emu::Emu, u64, types::ExceptionType) -> bool>;
 // memory read is pre-read you can modify the value that is going to be read.
-pub type TypeHookOnMemoryRead =
-    Box<dyn FnMut(&mut emu::Emu, u64, u64, u32)>;
+pub type TypeHookOnMemoryRead = Box<dyn FnMut(&mut emu::Emu, u64, u64, u32)>;
 // the memory write is pre but you can change the value is going to be written.
-pub type TypeHookOnMemoryWrite =
-    Box<dyn FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128>;
+pub type TypeHookOnMemoryWrite = Box<dyn FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128>;
 
 // [BREAKING API CHANGE] returning false will skip the handling of the instruction
 // Changed from &iced_x86::Instruction to &DecodedInstruction for arch parity.
@@ -24,8 +20,7 @@ pub type TypeHookOnPreInstruction =
 
 pub type TypeHookOnPostInstruction =
     Box<dyn FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize, bool)>;
-pub type TypeHookOnWinApiCall =
-    Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
+pub type TypeHookOnWinApiCall = Box<dyn FnMut(&mut emu::Emu, u64, u64) -> bool>;
 
 pub struct Hooks {
     pub hook_on_interrupt: Option<TypeHookOnInterrupt>,
@@ -75,10 +70,7 @@ impl Hooks {
         self.hook_on_exception = None;
     }
 
-    pub fn on_memory_read(
-        &mut self,
-        hook: impl FnMut(&mut emu::Emu, u64, u64, u32) + 'static,
-    ) {
+    pub fn on_memory_read(&mut self, hook: impl FnMut(&mut emu::Emu, u64, u64, u32) + 'static) {
         self.hook_on_memory_read = Some(Box::new(hook));
     }
 
@@ -119,10 +111,7 @@ impl Hooks {
         self.hook_on_post_instruction = None;
     }
 
-    pub fn on_winapi_call(
-        &mut self,
-        hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static,
-    ) {
+    pub fn on_winapi_call(&mut self, hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static) {
         self.hook_on_winapi_call = Some(Box::new(hook));
     }
 

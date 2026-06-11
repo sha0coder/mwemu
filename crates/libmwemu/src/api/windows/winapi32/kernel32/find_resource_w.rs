@@ -2,9 +2,9 @@ use crate::emu;
 use crate::winapi::helper;
 
 pub fn FindResourceW(emu: &mut emu::Emu) {
-    let handle = emu.regs().rcx as usize;
-    let lpName = emu.regs().rdx as usize;
-    let lpType = emu.regs().r8 as usize;
+    let hModule = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as usize;
+    let lpName = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as usize;
+    let lpType = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as usize;
 
     let x: Option<(u64, usize)>;
 
@@ -15,7 +15,7 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             emu,
             "** {} kernel32!FindResourceW {:x} `{}` `{}`",
             emu.pos,
-            handle,
+            hModule,
             name,
             ntype
         );
@@ -24,14 +24,14 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             .pe32
             .as_ref()
             .unwrap()
-            .get_resource(None, None, Some(&name), Some(&ntype));
+            .get_resource(None, None, Some(&ntype), Some(&name));
     } else if lpName > 0xff && lpType <= 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
         log_red!(
             emu,
             "** {} kernel32!FindResourceW {:x} `{}` {}",
             emu.pos,
-            handle,
+            hModule,
             name,
             lpType
         );
@@ -40,14 +40,14 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             .pe32
             .as_ref()
             .unwrap()
-            .get_resource(Some(lpType as u32), None, Some(&name), None);
+            .get_resource(Some(lpType as u32), None, None, Some(&name));
     } else if lpName <= 0xff && lpType > 0xff {
         let ntype = emu.maps.read_wide_string(lpType as u64);
         log_red!(
             emu,
             "** {} kernel32!FindResourceW {:x} `{}` {}",
             emu.pos,
-            handle,
+            hModule,
             lpName,
             ntype
         );
@@ -56,13 +56,13 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             .pe32
             .as_ref()
             .unwrap()
-            .get_resource(None, Some(lpName as u32), None, Some(&ntype));
+            .get_resource(None, Some(lpName as u32), Some(&ntype), None);
     } else if lpName <= 0xff && lpType <= 0xff {
         log_red!(
             emu,
             "** {} kernel32!FindResourceW {:x} `{}` {}",
             emu.pos,
-            handle,
+            hModule,
             lpName,
             lpType
         );
@@ -87,10 +87,8 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
         return;
     }
 
-    let (addr, size) = x.unwrap();
-
-    log::trace!("resource addr: 0x{:x} sz: {}", addr, size);
-    let hndl = helper::handler_create(&format!("rsrc://{:x}_{}", addr, size));
-
+    let (rva, size) = x.unwrap();
+    log::trace!("resource rva: 0x{:x} sz: {}", rva, size);
+    let hndl = helper::handler_create(&format!("rsrc_{:x}_{}", rva, size));
     emu.regs_mut().rax = hndl;
 }

@@ -8,10 +8,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.rep.is_some() {
         if emu.rep.unwrap() == 0 || emu.cfg.verbose >= 3 {
-            emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+            emu.show_instruction(
+                color!("LightCyan"),
+                &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+            );
         }
     } else {
-        emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+        emu.show_instruction(
+            color!("LightCyan"),
+            &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+        );
     }
 
     if emu.cfg.is_x64() {
@@ -30,7 +36,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rsi -= 1;
             emu.regs_mut().rdi -= 1;
         } else {
@@ -54,7 +60,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let esi = emu.regs().get_esi() - 1;
             let edi = emu.regs().get_edi() - 1;
             emu.regs_mut().set_esi(esi);
@@ -67,7 +73,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
     } // end 32bits
 
-    emu.flags_mut().sub8(value0 as u64, value1 as u64);
+    emu.flags_overwrite_mut().sub8(value0 as u64, value1 as u64);
 
     if emu.cfg.verbose >= 2 {
         if value0 > value1 {

@@ -43,9 +43,9 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fsqrt_perfect_square_4() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; DD 04 25 00 20 00 00
-                           // FSQRT               ; D9 FA
-                           // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
-                           // HLT                 ; F4
+    // FSQRT               ; D9 FA
+    // FSTP qword [0x3000] ; DD 1C 25 00 30 00 00
+    // HLT                 ; F4
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xFA, // FSQRT

@@ -4,7 +4,10 @@ use crate::engine::logic;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("Cyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("Cyan"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
 
     assert!(ins.op_count() == 1 || ins.op_count() == 2 || ins.op_count() == 3);
 
@@ -42,10 +45,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         let sz = emu.get_operand_sz(ins, 0);
         let result = match sz {
-            64 => emu.flags_mut().imul64p2(value0, value1),
-            32 => emu.flags_mut().imul32p2(value0, value1),
-            16 => emu.flags_mut().imul16p2(value0, value1),
-            8 => emu.flags_mut().imul8p2(value0, value1),
+            64 => emu.flags_overwrite_mut().imul64p2(value0, value1),
+            32 => emu.flags_overwrite_mut().imul32p2(value0, value1),
+            16 => emu.flags_overwrite_mut().imul16p2(value0, value1),
+            8 => emu.flags_overwrite_mut().imul8p2(value0, value1),
             _ => unimplemented!("wrong size"),
         };
 
@@ -67,10 +70,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         let sz = emu.get_operand_sz(ins, 0);
         let result = match sz {
-            64 => emu.flags_mut().imul64p2(value1, value2),
-            32 => emu.flags_mut().imul32p2(value1, value2),
-            16 => emu.flags_mut().imul16p2(value1, value2),
-            8 => emu.flags_mut().imul8p2(value1, value2),
+            64 => emu.flags_overwrite_mut().imul64p2(value1, value2),
+            32 => emu.flags_overwrite_mut().imul32p2(value1, value2),
+            16 => emu.flags_overwrite_mut().imul16p2(value1, value2),
+            8 => emu.flags_overwrite_mut().imul8p2(value1, value2),
             _ => unimplemented!("wrong size"),
         };
 

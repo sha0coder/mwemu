@@ -78,10 +78,7 @@ fn _configure_narrow_argv(emu: &mut emu::Emu) {
 
 fn __p__commode(emu: &mut emu::Emu) {
     // int * __p__commode(void)
-    let p = emu
-        .maps
-        .alloc(4)
-        .expect("wincrt!__p__commode alloc failed");
+    let p = emu.maps.alloc(4).expect("wincrt!__p__commode alloc failed");
     emu.maps
         .create_map(&format!("alloc_{:x}", p), p, 4, Permission::READ_WRITE)
         .expect("wincrt!__p__commode cannot create map");
@@ -91,10 +88,7 @@ fn __p__commode(emu: &mut emu::Emu) {
 
 fn __p__fmode(emu: &mut emu::Emu) {
     // int * __p__fmode(void)
-    let p = emu
-        .maps
-        .alloc(4)
-        .expect("wincrt!__p__fmode alloc failed");
+    let p = emu.maps.alloc(4).expect("wincrt!__p__fmode alloc failed");
     emu.maps
         .create_map(&format!("alloc_{:x}", p), p, 4, Permission::READ_WRITE)
         .expect("wincrt!__p__fmode cannot create map");
@@ -105,12 +99,14 @@ fn __p__fmode(emu: &mut emu::Emu) {
 fn __p__environ(emu: &mut emu::Emu) {
     // char *** __p__environ(void)
     // Return a pointer to a NULL-terminated environment pointer list (empty env).
-    let envp = emu
-        .maps
-        .alloc(8)
-        .expect("wincrt!__p__environ alloc failed");
+    let envp = emu.maps.alloc(8).expect("wincrt!__p__environ alloc failed");
     emu.maps
-        .create_map(&format!("alloc_{:x}", envp), envp, 8, Permission::READ_WRITE)
+        .create_map(
+            &format!("alloc_{:x}", envp),
+            envp,
+            8,
+            Permission::READ_WRITE,
+        )
         .expect("wincrt!__p__environ cannot create map");
     let _ = emu.maps.write_qword(envp, 0);
     emu.regs_mut().rax = envp;
@@ -136,7 +132,13 @@ fn calloc(emu: &mut emu::Emu) {
     for i in 0..total {
         let _ = emu.maps.write_byte(base + i, 0);
     }
-    log_red!(emu, "wincrt!calloc nmemb:{} size:{} =0x{:x}", nmemb, size, base);
+    log_red!(
+        emu,
+        "wincrt!calloc nmemb:{} size:{} =0x{:x}",
+        nmemb,
+        size,
+        base
+    );
     emu.regs_mut().rax = base;
 }
 
@@ -206,7 +208,8 @@ fn memcpy(emu: &mut emu::Emu) {
 
 fn abort(emu: &mut emu::Emu) {
     log_red!(emu, "wincrt!abort");
-    emu.is_running.store(0, std::sync::atomic::Ordering::Relaxed);
+    emu.is_running
+        .store(0, std::sync::atomic::Ordering::Relaxed);
     emu.regs_mut().rax = 0;
 }
 

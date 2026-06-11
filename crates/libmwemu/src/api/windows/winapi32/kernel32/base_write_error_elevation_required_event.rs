@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn BaseWriteErrorElevationRequiredEvent(emu: &mut emu::Emu) {
     log_red!(emu, "kernel32!BaseWriteErrorElevationRequiredEvent");

@@ -14,7 +14,7 @@ pub const TEMP_PATH: &str = "C:\\Temp\\"; // randomize this
 pub const CWD_PATH: &str = "C:\\cwd"; // randomize this
 pub const WINDOWS_DIRECTORY: &str = "C:\\Windows"; // randomize this
 pub const SYSTEM_DIRECTORY: &str = "C:\\Windows\\System32"; // randomize this
-                                                            //
+//
 pub const CURRENT_PROCESS_HANDLE: u64 = 1975;
 
 pub const CFG_DEFAULT_BASE: u64 = 0x3c0000;
@@ -377,9 +377,7 @@ pub fn get_crypto_key_len(value: u32) -> usize {
     }
 }
 
-//// WINDOWS KERNEL //// 
-
-
+//// WINDOWS KERNEL ////
 
 /// `_MEMORY_INFORMATION_CLASS` for `NtQueryVirtualMemory` (see Windows SDK).
 pub const MEMORY_INFORMATION_CLASS_MEMORY_BASIC_INFORMATION: u64 = 0;
@@ -396,7 +394,6 @@ pub const PROCESS_INFORMATION_CLASS_PROCESS_DEBUG_PORT: u64 = 7;
 /// `THREADINFOCLASS` (`ThreadBasicInformation` = 0).
 pub const THREAD_INFORMATION_CLASS_THREAD_BASIC_INFORMATION: u64 = 0;
 pub const THREAD_INFORMATION_CLASS_THREAD_QUERY_SET_WIN32_START_ADDRESS: u64 = 9;
-
 
 // Windows NT syscalls x64 — numbers from j00ru/windows-syscalls nt.csv
 // (Windows 11 and Server 11 25H2): https://github.com/j00ru/windows-syscalls/blob/master/x64/csv/nt.csv

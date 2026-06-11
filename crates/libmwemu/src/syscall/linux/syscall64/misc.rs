@@ -1,8 +1,8 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
+use crate::winapi::helper; // TODO: why not winapi64 helper?
 use crate::windows::constants;
 use crate::windows::structures;
-use crate::winapi::helper; // TODO: why not winapi64 helper?
 use std::fs as stdfs;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -707,10 +707,7 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
             trace_syscall64_args(
                 emu,
                 "stat",
-                &[
-                    ("path", filename),
-                    ("stat", format!("0x{stat_ptr:x}")),
-                ],
+                &[("path", filename), ("stat", format!("0x{stat_ptr:x}"))],
             );
 
             emu.regs_mut().rax = 0;

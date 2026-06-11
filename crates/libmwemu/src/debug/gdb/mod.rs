@@ -269,7 +269,9 @@ impl<'a> BlockingEventLoop for MwemuEventLoop64<'a> {
                 Ok(Some(0x03)) => {
                     // Consume the byte
                     let _ = conn.read();
-                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(Signal::SIGINT)));
+                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(
+                        Signal::SIGINT,
+                    )));
                 }
                 Ok(Some(byte)) => {
                     return Ok(Event::IncomingData(byte));
@@ -361,7 +363,9 @@ impl<'a> BlockingEventLoop for MwemuEventLoopAarch64<'a> {
             match conn.peek() {
                 Ok(Some(0x03)) => {
                     let _ = conn.read();
-                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(Signal::SIGINT)));
+                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(
+                        Signal::SIGINT,
+                    )));
                 }
                 Ok(Some(byte)) => {
                     return Ok(Event::IncomingData(byte));
@@ -453,7 +457,9 @@ impl<'a> BlockingEventLoop for MwemuEventLoop32<'a> {
                 Ok(Some(0x03)) => {
                     // Consume the byte
                     let _ = conn.read();
-                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(Signal::SIGINT)));
+                    return Ok(Event::TargetStopped(SingleThreadStopReason::Signal(
+                        Signal::SIGINT,
+                    )));
                 }
                 Ok(Some(byte)) => {
                     return Ok(Event::IncomingData(byte));

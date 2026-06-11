@@ -1,5 +1,5 @@
-use crate::emu::decoded_instruction::DecodedInstruction;
 use crate::emu::Emu;
+use crate::emu::decoded_instruction::DecodedInstruction;
 
 impl Emu {
     /// display 32bits main registers
@@ -41,7 +41,13 @@ impl Emu {
         let regs = self.regs_aarch64();
         for i in (0..31).step_by(2) {
             if i + 1 < 31 {
-                log::trace!("\tx{:<2}: 0x{:016x}  x{:<2}: 0x{:016x}", i, regs.x[i], i + 1, regs.x[i + 1]);
+                log::trace!(
+                    "\tx{:<2}: 0x{:016x}  x{:<2}: 0x{:016x}",
+                    i,
+                    regs.x[i],
+                    i + 1,
+                    regs.x[i + 1]
+                );
             } else {
                 log::trace!("\tx{:<2}: 0x{:016x}", i, regs.x[i]);
             }
@@ -50,16 +56,31 @@ impl Emu {
         log::trace!("\tpc:  0x{:016x}", regs.pc);
         log::trace!("\tlr:  0x{:016x} (x30)", regs.x[30]);
         log::trace!("\tfp:  0x{:016x} (x29)", regs.x[29]);
-        log::trace!("\tNZCV: N={} Z={} C={} V={}", regs.nzcv.n, regs.nzcv.z, regs.nzcv.c, regs.nzcv.v);
+        log::trace!(
+            "\tNZCV: N={} Z={} C={} V={}",
+            regs.nzcv.n,
+            regs.nzcv.z,
+            regs.nzcv.c,
+            regs.nzcv.v
+        );
     }
 
     #[inline]
-    pub fn show_instruction_comment(&mut self, color: &str, ins: &DecodedInstruction, comment: &str) {
+    pub fn show_instruction_comment(
+        &mut self,
+        color: &str,
+        ins: &DecodedInstruction,
+        comment: &str,
+    ) {
         if self.cfg.verbose < 2 {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} ; {}", self.pos, addr, out, comment);
@@ -84,7 +105,11 @@ impl Emu {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {}", self.pos, addr, out);
@@ -108,7 +133,11 @@ impl Emu {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!(
@@ -141,7 +170,11 @@ impl Emu {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} ;0x{:x}", self.pos, addr, out, value);
@@ -166,7 +199,11 @@ impl Emu {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} taken", self.pos, addr, out);
@@ -189,7 +226,11 @@ impl Emu {
             return;
         }
         let out = self.format_instruction(ins);
-        let addr = if ins.is_x86() { ins.address() } else { self.pc() };
+        let addr = if ins.is_x86() {
+            ins.address()
+        } else {
+            self.pc()
+        };
         if self.cfg.verbose >= 2 {
             if self.cfg.nocolors {
                 log::trace!("{} 0x{:x}: {} not taken", self.pos, addr, out);

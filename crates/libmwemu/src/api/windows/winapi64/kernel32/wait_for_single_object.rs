@@ -1,4 +1,4 @@
-use crate::{windows::constants, emu};
+use crate::{emu, windows::constants};
 
 pub fn WaitForSingleObject(emu: &mut emu::Emu) {
     let hndl = emu.regs().rcx;
@@ -9,7 +9,11 @@ pub fn WaitForSingleObject(emu: &mut emu::Emu) {
         "kernel32!WaitForSingleObject  hndl: {} millis: {}{}",
         hndl,
         millis,
-        if emu.cfg.short_circuit_sleep { " [short-circuited]" } else { "" }
+        if emu.cfg.short_circuit_sleep {
+            " [short-circuited]"
+        } else {
+            ""
+        }
     );
 
     if !emu.cfg.short_circuit_sleep && millis > 0 && millis != 0xFFFFFFFF {

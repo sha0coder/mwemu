@@ -48,10 +48,10 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fscale_multiply_by_2() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; Load value to scale (ST(0))
-                           // FLD qword [0x2008]  ; Load scale factor (ST(0), value becomes ST(1))
-                           // FSCALE              ; ST(0) = ST(1) * 2^trunc(ST(0))
-                           // FSTP qword [0x3000] ; Store result
-                           // HLT
+    // FLD qword [0x2008]  ; Load scale factor (ST(0), value becomes ST(1))
+    // FSCALE              ; ST(0) = ST(1) * 2^trunc(ST(0))
+    // FSTP qword [0x3000] ; Store result
+    // HLT
     let code = [
         0xDD, 0x04, 0x25, 0x08, 0x20, 0x00, 0x00, // FLD qword [0x2008]
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]

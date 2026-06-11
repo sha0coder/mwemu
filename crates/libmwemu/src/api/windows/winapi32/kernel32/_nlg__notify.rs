@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn _NLG_Notify(emu: &mut emu::Emu) {
     let __DWORD = emu

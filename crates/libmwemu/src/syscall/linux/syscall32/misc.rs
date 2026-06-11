@@ -1,6 +1,6 @@
 use crate::emu;
-use crate::windows::constants;
 use crate::winapi::helper;
+use crate::windows::constants;
 
 macro_rules! syscall_name {
     ($name:literal) => {
@@ -475,11 +475,7 @@ fn dispatch_legacy_syscall32(emu: &mut emu::Emu) {
                         .maps
                         .read_dword(emu.regs().get_esp())
                         .expect("getsockname() cannot read sock");
-                    trace_socketcall32_args(
-                        emu,
-                        "getsockname",
-                        &[("sock", sock.to_string())],
-                    );
+                    trace_socketcall32_args(emu, "getsockname", &[("sock", sock.to_string())]);
                     todo!("implement this");
                 }
 

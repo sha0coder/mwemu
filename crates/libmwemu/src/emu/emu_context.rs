@@ -72,14 +72,26 @@ pub fn log_emu_state(emu: &mut Emu) {
         let regs = emu.regs_aarch64();
         for i in 0..31 {
             if i % 2 == 0 && i + 1 < 31 {
-                log::error!("  X{:<2}: 0x{:016x}  X{:<2}: 0x{:016x}", i, regs.x[i], i + 1, regs.x[i + 1]);
+                log::error!(
+                    "  X{:<2}: 0x{:016x}  X{:<2}: 0x{:016x}",
+                    i,
+                    regs.x[i],
+                    i + 1,
+                    regs.x[i + 1]
+                );
             } else if i % 2 == 0 {
                 log::error!("  X{:<2}: 0x{:016x}", i, regs.x[i]);
             }
         }
         log::error!("  SP:  0x{:016x}", regs.sp);
         log::error!("  PC:  0x{:016x}", regs.pc);
-        log::error!("  NZCV: N={} Z={} C={} V={}", regs.nzcv.n, regs.nzcv.z, regs.nzcv.c, regs.nzcv.v);
+        log::error!(
+            "  NZCV: N={} Z={} C={} V={}",
+            regs.nzcv.n,
+            regs.nzcv.z,
+            regs.nzcv.c,
+            regs.nzcv.v
+        );
     } else {
         log::error!(
             "  RAX: 0x{:016x}  RBX: 0x{:016x}",

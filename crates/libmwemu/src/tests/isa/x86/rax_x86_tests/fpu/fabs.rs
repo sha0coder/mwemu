@@ -37,9 +37,9 @@ fn read_f64(mem: u64, addr: u64) -> f64 {
 #[test]
 fn test_fabs_positive_small() {
     let mut emu = emu64(); // FLD qword [0x2000]  ; D9 05 00 20 00 00 (load from address 0x2000)
-                           // FABS                ; D9 E1
-                           // FSTP qword [0x3000] ; DD 1D 00 30 00 00 (store to address 0x3000)
-                           // HLT                 ; F4
+    // FABS                ; D9 E1
+    // FSTP qword [0x3000] ; DD 1D 00 30 00 00 (store to address 0x3000)
+    // HLT                 ; F4
     let code = [
         0xDD, 0x04, 0x25, 0x00, 0x20, 0x00, 0x00, // FLD qword [0x2000]
         0xD9, 0xE1, // FABS

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn DeactivateActCtxWorker(emu: &mut emu::Emu) {
     let _int = emu

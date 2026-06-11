@@ -9,14 +9,26 @@ pub fn execute(emu: &mut Emu, ins: &Instruction) -> bool {
     let (addr, wb) = resolve_mem_addr(emu, &ins.operands[2]);
 
     let v1 = if is64 {
-        match emu.maps.read_qword(addr) { Some(v) => v, None => return false }
+        match emu.maps.read_qword(addr) {
+            Some(v) => v,
+            None => return false,
+        }
     } else {
-        match emu.maps.read_dword(addr) { Some(v) => v as u64, None => return false }
+        match emu.maps.read_dword(addr) {
+            Some(v) => v as u64,
+            None => return false,
+        }
     };
     let v2 = if is64 {
-        match emu.maps.read_qword(addr + sz) { Some(v) => v, None => return false }
+        match emu.maps.read_qword(addr + sz) {
+            Some(v) => v,
+            None => return false,
+        }
     } else {
-        match emu.maps.read_dword(addr + sz) { Some(v) => v as u64, None => return false }
+        match emu.maps.read_dword(addr + sz) {
+            Some(v) => v as u64,
+            None => return false,
+        }
     };
 
     write_reg(emu, &ins.operands[0], v1);

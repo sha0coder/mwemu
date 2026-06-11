@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetFullPathNameTransactedW(emu: &mut emu::Emu) {
     let lpFileName = emu
@@ -25,11 +25,7 @@ pub fn GetFullPathNameTransactedW(emu: &mut emu::Emu) {
 
     let lpFileName = emu.maps.read_wide_string(lpFileName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!GetFullPathNameTransactedW {}",
-        lpFileName
-    );
+    log_red!(emu, "kernel32!GetFullPathNameTransactedW {}", lpFileName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

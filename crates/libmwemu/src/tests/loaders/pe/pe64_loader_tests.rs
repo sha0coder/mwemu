@@ -45,9 +45,14 @@ fn pe64_loader_adds_core_ldr_modules() {
 fn pe64_loader_normalizes_api_set_dependencies() {
     helpers::setup();
 
+    let sample = match helpers::optional_test_data_path("exe64win_mingw.bin") {
+        Some(p) => p,
+        None => return,
+    };
+
     let mut emu = emu64();
     emu.cfg.maps_folder = helpers::win64_maps_folder();
-    emu.load_code(&helpers::test_data_path("exe64win_mingw.bin"));
+    emu.load_code(&sample);
 
     let mut pe = emu.pe64.take().expect("PE64 metadata should be present");
     let deps = pe.get_dependencies(&mut emu);

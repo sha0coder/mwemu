@@ -1,5 +1,5 @@
-use crate::emu;
 use super::vs_fixedfileinfo::VS_FIXEDFILEINFO;
+use crate::emu;
 
 #[repr(C)]
 #[derive(Debug, Clone)]

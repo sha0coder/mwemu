@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn DeleteFileTransactedW(emu: &mut emu::Emu) {
     let lpFileName = emu
@@ -13,11 +13,7 @@ pub fn DeleteFileTransactedW(emu: &mut emu::Emu) {
 
     let lpFileName = emu.maps.read_wide_string(lpFileName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!DeleteFileTransactedW {}",
-        lpFileName
-    );
+    log_red!(emu, "kernel32!DeleteFileTransactedW {}", lpFileName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

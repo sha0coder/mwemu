@@ -1,7 +1,7 @@
-use crate::windows::constants;
 use crate::err::MwemuError;
-use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
+use crate::maps::mem64::{Mem64, Permission};
+use crate::windows::constants;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;

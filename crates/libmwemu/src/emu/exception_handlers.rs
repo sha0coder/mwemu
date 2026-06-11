@@ -75,7 +75,8 @@ impl Emu {
         let next: u64;
 
         // hook
-        let handle_exception: bool = if let Some(mut hook_fn) = self.hooks.hook_on_exception.take() {
+        let handle_exception: bool = if let Some(mut hook_fn) = self.hooks.hook_on_exception.take()
+        {
             let pc = self.pc();
             let result = hook_fn(self, pc, ex_type);
             self.hooks.hook_on_exception = Some(hook_fn);
@@ -162,7 +163,9 @@ impl Emu {
                         log::error!(
                             "SEH record at 0x{:x} unreadable (Next field). \
                              pos = {} rip = 0x{:x} — stopping emulation",
-                            self.seh(), self.pos, self.pc(),
+                            self.seh(),
+                            self.pos,
+                            self.pc(),
                         );
                         self.process_terminated = true;
                         self.is_running.store(0, Ordering::Relaxed);
@@ -176,7 +179,9 @@ impl Emu {
                         log::error!(
                             "SEH record at 0x{:x} unreadable (Handler field). \
                              pos = {} rip = 0x{:x} — stopping emulation",
-                            self.seh(), self.pos, self.pc(),
+                            self.seh(),
+                            self.pos,
+                            self.pc(),
                         );
                         self.process_terminated = true;
                         self.is_running.store(0, Ordering::Relaxed);

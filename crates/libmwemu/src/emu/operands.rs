@@ -3,10 +3,10 @@ use iced_x86::{Instruction, MemorySize, OpKind, Register};
 use crate::maps::mem64::Permission;
 use crate::{
     console::Console,
-    windows::constants,
     emu::Emu,
     exception::types::ExceptionType,
     regs64,
+    windows::constants,
     windows::structures::{self, MemoryOperation},
 };
 
@@ -126,7 +126,7 @@ impl Emu {
                         log::trace!("reading FS[0x{:x}] -> 0", mem_addr);
                     }
                     Some(0) //0x7ffff7fff000);
-                }
+                };
             }
 
             let value1: u64 = match mem_addr {
@@ -134,11 +134,7 @@ impl Emu {
                     if self.cfg.verbose >= 1 {
                         log::trace!("{} Reading ISWOW64 is 32bits on a 64bits system?", self.pos);
                     }
-                    if self.cfg.is_x64() {
-                        0
-                    } else {
-                        1
-                    }
+                    if self.cfg.is_x64() { 0 } else { 1 }
                 }
                 0x14 => {
                     let teb = self.maps.get_mem("teb");
@@ -314,7 +310,11 @@ impl Emu {
                     let v = match sz {
                         8 => self.maps.read_byte(teb_addr).map(|x| x as u64).unwrap_or(0),
                         16 => self.maps.read_word(teb_addr).map(|x| x as u64).unwrap_or(0),
-                        32 => self.maps.read_dword(teb_addr).map(|x| x as u64).unwrap_or(0),
+                        32 => self
+                            .maps
+                            .read_dword(teb_addr)
+                            .map(|x| x as u64)
+                            .unwrap_or(0),
                         _ => self.maps.read_qword(teb_addr).unwrap_or(0),
                     };
                     if self.cfg.verbose >= 1 {
@@ -411,7 +411,15 @@ impl Emu {
                     name: name.to_string(),
                 };
                 self.memory_operations.push(memory_operation);
-                log::trace!("\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value, name);
+                log::trace!(
+                    "\tmem_trace: pos = {} rip = {:x} op = read bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                    self.pos,
+                    self.regs().rip,
+                    sz,
+                    mem_addr,
+                    value,
+                    name
+                );
             }
 
             if self.bp.is_bp_mem_read(mem_addr) {
@@ -455,19 +463,17 @@ impl Emu {
             OpKind::Immediate8to32 => ins.immediate8to32() as u32 as u64,
             OpKind::Immediate8to16 => ins.immediate8to16() as u16 as u64,
             OpKind::Register => self.regs().get_reg(ins.op_register(noperand)),
-            OpKind::Memory => {
-                match self.handle_memory_get_operand(ins, noperand, do_derref) {
-                    Some(v) => v,
-                    None => {
-                        log::trace!(
-                            "get_operand_value: unmapped memory access in {:?} op {}",
-                            ins.mnemonic(),
-                            noperand
-                        );
-                        return None;
-                    }
+            OpKind::Memory => match self.handle_memory_get_operand(ins, noperand, do_derref) {
+                Some(v) => v,
+                None => {
+                    log::trace!(
+                        "get_operand_value: unmapped memory access in {:?} op {}",
+                        ins.mnemonic(),
+                        noperand
+                    );
+                    return None;
                 }
-            }
+            },
             _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
         };
         Some(value)
@@ -526,14 +532,29 @@ impl Emu {
                     let teb_base = self.maps.get_mem("teb").get_base();
                     let teb_addr = teb_base.wrapping_add(temp_displace);
                     if self.cfg.verbose >= 1 {
-                        log::trace!("gs:[0x{:x}] = 0x{:x}  (teb+0x{:x})", temp_displace, value, temp_displace);
+                        log::trace!(
+                            "gs:[0x{:x}] = 0x{:x}  (teb+0x{:x})",
+                            temp_displace,
+                            value,
+                            temp_displace
+                        );
                     }
                     match gs_sz {
-                        8 => { let _ = self.maps.write_byte(teb_addr, value as u8); }
-                        16 => { let _ = self.maps.write_word(teb_addr, value as u16); }
-                        32 => { let _ = self.maps.write_dword(teb_addr, value as u32); }
-                        64 => { let _ = self.maps.write_qword(teb_addr, value); }
-                        _ => { let _ = self.maps.write_qword(teb_addr, value); }
+                        8 => {
+                            let _ = self.maps.write_byte(teb_addr, value as u8);
+                        }
+                        16 => {
+                            let _ = self.maps.write_word(teb_addr, value as u16);
+                        }
+                        32 => {
+                            let _ = self.maps.write_dword(teb_addr, value as u32);
+                        }
+                        64 => {
+                            let _ = self.maps.write_qword(teb_addr, value);
+                        }
+                        _ => {
+                            let _ = self.maps.write_qword(teb_addr, value);
+                        }
                     }
                     return true;
                 }
@@ -632,7 +653,9 @@ impl Emu {
                 };
 
                 // now we flush the cacheline if it is written to executable memory and the cacheline exist
-                let should_flush = self.maps.get_mem_by_addr(mem_addr)
+                let should_flush = self
+                    .maps
+                    .get_mem_by_addr(mem_addr)
                     .map_or(false, |mem1| mem1.can_execute());
                 if should_flush {
                     let idx = self.x86_instruction_cache_ref().get_index_of(mem_addr, 0);
@@ -641,7 +664,9 @@ impl Emu {
                 match sz {
                     64 => {
                         if !self.maps.write_qword(mem_addr, value2) {
-                            if self.try_grow_stack(mem_addr) && self.maps.write_qword(mem_addr, value2) {
+                            if self.try_grow_stack(mem_addr)
+                                && self.maps.write_qword(mem_addr, value2)
+                            {
                                 // grew + retry succeeded
                             } else {
                                 return if self.cfg.skip_unimplemented {
@@ -670,7 +695,9 @@ impl Emu {
                     }
                     32 => {
                         if !self.maps.write_dword(mem_addr, to32!(value2)) {
-                            if self.try_grow_stack(mem_addr) && self.maps.write_dword(mem_addr, to32!(value2)) {
+                            if self.try_grow_stack(mem_addr)
+                                && self.maps.write_dword(mem_addr, to32!(value2))
+                            {
                                 // grew + retry succeeded
                             } else {
                                 return if self.cfg.skip_unimplemented {
@@ -699,7 +726,9 @@ impl Emu {
                     }
                     16 => {
                         if !self.maps.write_word(mem_addr, value2 as u16) {
-                            if self.try_grow_stack(mem_addr) && self.maps.write_word(mem_addr, value2 as u16) {
+                            if self.try_grow_stack(mem_addr)
+                                && self.maps.write_word(mem_addr, value2 as u16)
+                            {
                                 // grew + retry succeeded
                             } else {
                                 return if self.cfg.skip_unimplemented {
@@ -728,18 +757,25 @@ impl Emu {
                     }
                     8 => {
                         if !self.maps.write_byte(mem_addr, value2 as u8) {
-                            if self.try_grow_stack(mem_addr) && self.maps.write_byte(mem_addr, value2 as u8) {
+                            if self.try_grow_stack(mem_addr)
+                                && self.maps.write_byte(mem_addr, value2 as u8)
+                            {
                                 // grew + retry succeeded
                             } else {
                                 static FIRST_BYTE_OOB: std::sync::atomic::AtomicBool =
                                     std::sync::atomic::AtomicBool::new(false);
                                 if (0x412000..=0x420000).contains(&mem_addr)
-                                    && !FIRST_BYTE_OOB.swap(true, std::sync::atomic::Ordering::Relaxed)
+                                    && !FIRST_BYTE_OOB
+                                        .swap(true, std::sync::atomic::Ordering::Relaxed)
                                 {
                                     log::trace!(
                                         "DEBUG first OOB byte write at 0x{:x} from rip=0x{:x} pos={} rcx=0x{:x} rdi=0x{:x} rsi=0x{:x}",
-                                        mem_addr, self.regs().rip, self.pos,
-                                        self.regs().rcx, self.regs().rdi, self.regs().rsi,
+                                        mem_addr,
+                                        self.regs().rip,
+                                        self.pos,
+                                        self.regs().rcx,
+                                        self.regs().rdi,
+                                        self.regs().rsi,
                                     );
                                 }
                                 return if self.cfg.skip_unimplemented {
@@ -785,7 +821,15 @@ impl Emu {
                         name: name.to_string(),
                     };
                     self.memory_operations.push(memory_operation);
-                    log::trace!("\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'", self.pos, self.regs().rip, sz, mem_addr, value2, name);
+                    log::trace!(
+                        "\tmem_trace: pos = {} rip = {:x} op = write bits = {} address = 0x{:x} value = 0x{:x} name = '{}'",
+                        self.pos,
+                        self.regs().rip,
+                        sz,
+                        mem_addr,
+                        value2,
+                        name
+                    );
                 }
 
                 /*

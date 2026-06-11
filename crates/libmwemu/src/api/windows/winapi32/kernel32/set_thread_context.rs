@@ -1,5 +1,5 @@
-use crate::debug::console;
 use crate::context::context32;
+use crate::debug::console;
 use crate::emu;
 
 pub fn SetThreadContext(emu: &mut emu::Emu) {

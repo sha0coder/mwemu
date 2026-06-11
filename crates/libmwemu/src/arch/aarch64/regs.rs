@@ -83,32 +83,40 @@ impl FlagsNZCV {
     /// Evaluate an ARM condition code against current flags.
     pub fn eval_condition(&self, cond: u8) -> bool {
         match cond & 0xf {
-            0b0000 => self.z,                           // EQ
-            0b0001 => !self.z,                          // NE
-            0b0010 => self.c,                           // CS/HS
-            0b0011 => !self.c,                          // CC/LO
-            0b0100 => self.n,                           // MI
-            0b0101 => !self.n,                          // PL
-            0b0110 => self.v,                           // VS
-            0b0111 => !self.v,                          // VC
-            0b1000 => self.c && !self.z,                // HI
-            0b1001 => !self.c || self.z,                // LS
-            0b1010 => self.n == self.v,                 // GE
-            0b1011 => self.n != self.v,                 // LT
-            0b1100 => !self.z && (self.n == self.v),    // GT
-            0b1101 => self.z || (self.n != self.v),     // LE
-            0b1110 => true,                             // AL
-            0b1111 => true,                             // AL (NV treated as AL)
+            0b0000 => self.z,                        // EQ
+            0b0001 => !self.z,                       // NE
+            0b0010 => self.c,                        // CS/HS
+            0b0011 => !self.c,                       // CC/LO
+            0b0100 => self.n,                        // MI
+            0b0101 => !self.n,                       // PL
+            0b0110 => self.v,                        // VS
+            0b0111 => !self.v,                       // VC
+            0b1000 => self.c && !self.z,             // HI
+            0b1001 => !self.c || self.z,             // LS
+            0b1010 => self.n == self.v,              // GE
+            0b1011 => self.n != self.v,              // LT
+            0b1100 => !self.z && (self.n == self.v), // GT
+            0b1101 => self.z || (self.n != self.v),  // LE
+            0b1110 => true,                          // AL
+            0b1111 => true,                          // AL (NV treated as AL)
             _ => unreachable!(),
         }
     }
 
     pub fn diff(a: &FlagsNZCV, b: &FlagsNZCV) -> String {
         let mut s = String::new();
-        if a.n != b.n { s.push_str(&format!("N: {} -> {}  ", a.n, b.n)); }
-        if a.z != b.z { s.push_str(&format!("Z: {} -> {}  ", a.z, b.z)); }
-        if a.c != b.c { s.push_str(&format!("C: {} -> {}  ", a.c, b.c)); }
-        if a.v != b.v { s.push_str(&format!("V: {} -> {}  ", a.v, b.v)); }
+        if a.n != b.n {
+            s.push_str(&format!("N: {} -> {}  ", a.n, b.n));
+        }
+        if a.z != b.z {
+            s.push_str(&format!("Z: {} -> {}  ", a.z, b.z));
+        }
+        if a.c != b.c {
+            s.push_str(&format!("C: {} -> {}  ", a.c, b.c));
+        }
+        if a.v != b.v {
+            s.push_str(&format!("V: {} -> {}  ", a.v, b.v));
+        }
         s
     }
 }

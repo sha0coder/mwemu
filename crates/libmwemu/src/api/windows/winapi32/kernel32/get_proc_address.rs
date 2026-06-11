@@ -25,7 +25,7 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
 
     loop {
         if flink.export_table_rva > 0 {
-            for i in 0..flink.num_of_funcs {
+            for i in 0..flink.num_of_names {
                 if flink.pe_hdr == 0 {
                     continue;
                 }

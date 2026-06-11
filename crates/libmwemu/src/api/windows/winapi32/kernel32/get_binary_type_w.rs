@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn GetBinaryTypeW(emu: &mut emu::Emu) {
     let lpApplicationName = emu
@@ -13,11 +13,7 @@ pub fn GetBinaryTypeW(emu: &mut emu::Emu) {
 
     let lpApplicationName = emu.maps.read_wide_string(lpApplicationName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!GetBinaryTypeW {}",
-        lpApplicationName
-    );
+    log_red!(emu, "kernel32!GetBinaryTypeW {}", lpApplicationName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

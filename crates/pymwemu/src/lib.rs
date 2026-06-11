@@ -7,15 +7,14 @@ use pyo3::prelude::*;
 
 use pyo3_stub_gen::define_stub_info_gatherer;
 use pyo3_stub_gen::derive::gen_stub_pyclass;
-use pyo3_stub_gen::derive::gen_stub_pymethods;
 use pyo3_stub_gen::derive::gen_stub_pyfunction;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use libmwemu::console::Console;
 use libmwemu::emu32;
 use libmwemu::emu64;
 use libmwemu::maps::mem64::Permission;
 use pyo3::class::basic::CompareOp;
-
 
 #[gen_stub_pyclass]
 #[pyclass(name = "Permission", module = "pymwemu._pymwemu")]
@@ -33,7 +32,7 @@ impl PyPermission {
 
     #[classattr]
     const WRITE: PyPermission = PyPermission(Permission::WRITE);
-    
+
     #[classattr]
     const EXECUTE: PyPermission = PyPermission(Permission::EXECUTE);
 
@@ -112,12 +111,11 @@ impl PyPermission {
             self.0.can_write(),
             self.0.can_execute()
         )
-    }   
-
+    }
 }
 
 #[gen_stub_pyclass]
-#[pyclass(unsendable, module="pymwemu._pymwemu")]
+#[pyclass(unsendable, module = "pymwemu._pymwemu")]
 pub struct Emu {
     emu: libmwemu::emu::Emu,
 }
@@ -417,7 +415,11 @@ impl Emu {
     /// allocate a buffer on the emulated process address space. (permission defaults to RWX)
     #[pyo3(signature = (name, size, permission=None))]
     fn alloc(&mut self, name: &str, size: u64, permission: Option<PyPermission>) -> PyResult<u64> {
-        Ok(self.emu.alloc(name, size, permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0)))
+        Ok(self.emu.alloc(
+            name,
+            size,
+            permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0),
+        ))
     }
 
     /// allocate at specific address (permission defaults to RWX)
@@ -425,7 +427,12 @@ impl Emu {
     fn alloc_at(&mut self, name: &str, addr: u64, size: u64, permission: Option<PyPermission>) {
         self.emu
             .maps
-            .create_map(name, addr, size, permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0))
+            .create_map(
+                name,
+                addr,
+                size,
+                permission.map_or(Permission::READ_WRITE_EXECUTE, |p| p.0),
+            )
             .expect("pymwemu alloc_at out of memory");
     }
 
@@ -1027,7 +1034,6 @@ impl Emu {
         }
     }
 
-
     // --- Serialization ---
     /// serialize the whole emulator state to a bytes object, which can be saved to disk for example
     pub fn serialize(&self) -> PyResult<Vec<u8>> {
@@ -1111,8 +1117,7 @@ impl Emu {
     }
 
     // tracing
-    pub fn open_trace_file(&mut self)
-    {
+    pub fn open_trace_file(&mut self) {
         self.emu.open_trace_file();
     }
 
@@ -1282,7 +1287,6 @@ impl Emu {
         self.emu.call_stack().clone()
     }
 
-
     // enable-threading
     pub fn enable_threading(&mut self, enable: bool) {
         self.emu.enable_threading(enable);
@@ -1313,7 +1317,7 @@ where
     })
 }
 
-#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
 #[pyfunction]
 /// deserialize the emulator state from a bytes object, which can be loaded from disk for example
 pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
@@ -1321,7 +1325,7 @@ pub fn deserialize(data: Vec<u8>) -> PyResult<Emu> {
         emu: libmwemu::serialization::Serialization::deserialize(&data),
     })
 }
-#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
 #[pyfunction]
 /// deserialize the emulator state from a minidump file, which can be dumped with dump_to_minidump
 pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
@@ -1330,7 +1334,7 @@ pub fn load_from_minidump(filename: &str) -> PyResult<Emu> {
     })
 }
 
-#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
 #[pyfunction]
 /// deserialize the emulator state from a file, which can be dumped with dump_to_file
 pub fn load_from_file(filename: &str) -> PyResult<Emu> {
@@ -1339,7 +1343,7 @@ pub fn load_from_file(filename: &str) -> PyResult<Emu> {
     })
 }
 
-#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
 #[pyfunction]
 /// deserialize the emulator state from a file, which can be dumped with dump
 pub fn load(filename: &str) -> PyResult<Emu> {
@@ -1348,9 +1352,7 @@ pub fn load(filename: &str) -> PyResult<Emu> {
     })
 }
 
-
-
-#[gen_stub_pyfunction(module="pymwemu._pymwemu")]
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
 #[pyfunction]
 fn init32() -> PyResult<Emu> {
     let mut emu = Emu { emu: emu32() };
@@ -1386,7 +1388,6 @@ fn _pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Emu>()?;
     m.add_function(wrap_pyfunction!(init32, m)?)?;
     m.add_function(wrap_pyfunction!(init64, m)?)?;
-
 
     // Serialization functions
     m.add_function(wrap_pyfunction!(deserialize, m)?)?;

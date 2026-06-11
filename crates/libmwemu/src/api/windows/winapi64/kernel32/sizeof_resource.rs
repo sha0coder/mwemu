@@ -1,13 +1,20 @@
 use crate::emu;
 use crate::winapi::helper;
 
+fn parse_resource_size(uri: &str) -> Option<usize> {
+    let mut parts = uri.splitn(3, '_');
+    parts.next()?;
+    parts.next()?;
+    parts.next()?.parse::<usize>().ok()
+}
+
 pub fn SizeofResource(emu: &mut emu::Emu) {
     let hModule = emu.regs().rcx;
     let hResInfo = emu.regs().rdx as u64;
 
     if helper::handler_exist(hResInfo) {
         let uri = helper::handler_get_uri(hResInfo);
-        let size = uri.split("_").last().unwrap().parse::<usize>().unwrap();
+        let size = parse_resource_size(&uri).unwrap_or(0);
         log::trace!(
             "** {} kernel32!SizeofResource {:x} {:x} size: {}",
             emu.pos,

@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn CallNamedPipeA(emu: &mut emu::Emu) {
     let lpNamedPipeName = emu
@@ -33,11 +33,7 @@ pub fn CallNamedPipeA(emu: &mut emu::Emu) {
 
     let lpNamedPipeName = emu.maps.read_string(lpNamedPipeName as u64);
 
-    log_red!(
-        emu,
-        "kernel32!CallNamedPipeA {}",
-        lpNamedPipeName
-    );
+    log_red!(emu, "kernel32!CallNamedPipeA {}", lpNamedPipeName);
 
     emu.regs_mut().rax = constants::ERROR_SUCCESS;
 

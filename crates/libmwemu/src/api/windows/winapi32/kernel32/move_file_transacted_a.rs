@@ -1,5 +1,5 @@
-use crate::windows::constants;
 use crate::emu;
+use crate::windows::constants;
 
 pub fn MoveFileTransactedA(emu: &mut emu::Emu) {
     let lpExistingFileName = emu

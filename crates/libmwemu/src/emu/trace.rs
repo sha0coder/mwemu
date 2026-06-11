@@ -1,6 +1,12 @@
 use std::io::Write as _;
 
-use crate::{windows::constants, emu::Emu, flags::Flags, regs64::Regs64, regs_aarch64::{RegsAarch64, FlagsNZCV}};
+use crate::{
+    emu::Emu,
+    flags::Flags,
+    regs_aarch64::{FlagsNZCV, RegsAarch64},
+    regs64::Regs64,
+    windows::constants,
+};
 
 impl Emu {
     pub fn open_trace_file(&mut self) {
@@ -21,12 +27,15 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             let regs = *self.regs_aarch64();
             match &mut self.threads[self.current_thread_id].arch {
-                crate::threading::context::ArchThreadState::AArch64 { pre_op_regs, .. } => *pre_op_regs = regs,
+                crate::threading::context::ArchThreadState::AArch64 { pre_op_regs, .. } => {
+                    *pre_op_regs = regs
+                }
                 _ => {}
             }
         } else {
             self.set_pre_op_regs(*self.regs());
-            self.set_pre_op_flags(*self.flags());
+            let flags = *self.flags();
+            self.set_pre_op_flags(flags);
         }
     }
 
@@ -35,12 +44,15 @@ impl Emu {
         if self.cfg.arch.is_aarch64() {
             let regs = *self.regs_aarch64();
             match &mut self.threads[self.current_thread_id].arch {
-                crate::threading::context::ArchThreadState::AArch64 { post_op_regs, .. } => *post_op_regs = regs,
+                crate::threading::context::ArchThreadState::AArch64 { post_op_regs, .. } => {
+                    *post_op_regs = regs
+                }
                 _ => {}
             }
         } else {
             self.set_post_op_regs(*self.regs());
-            self.set_post_op_flags(*self.flags());
+            let flags = *self.flags();
+            self.set_post_op_flags(flags);
         }
     }
 
@@ -49,7 +61,8 @@ impl Emu {
         let index = self.pos - 1;
         let pc = self.pc();
 
-        let (instruction_size, instruction_bytes, output) = if let Some(decoded) = self.last_decoded {
+        let (instruction_size, instruction_bytes, output) = if let Some(decoded) = self.last_decoded
+        {
             let sz = decoded.size();
             let bytes = self.maps.read_bytes(pc, sz).to_vec();
             let out = self.format_instruction(&decoded);

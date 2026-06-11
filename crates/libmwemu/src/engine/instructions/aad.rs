@@ -3,7 +3,10 @@ use crate::emu::Emu;
 use iced_x86::Instruction;
 
 pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_step: bool) -> bool {
-    emu.show_instruction(color!("LightCyan"), &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins));
+    emu.show_instruction(
+        color!("LightCyan"),
+        &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
+    );
     assert!(ins.op_count() <= 1);
 
     let mut low: u64 = emu.regs().get_al();
@@ -22,6 +25,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.regs_mut().set_al(low);
     emu.regs_mut().set_ah(0);
 
-    emu.flags_mut().calc_flags(low, 8);
+    emu.flags_overwrite_mut().calc_flags(low, 8);
     true
 }
