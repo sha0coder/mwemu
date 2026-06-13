@@ -14,37 +14,26 @@ impl Emu {
             return;
         }
 
-        // The default 64-bit Windows maps are no longer shipped as a GitHub
-        // release zip; fetch genuine system DLLs from Microsoft's symbol server
-        // instead (the `--winver` mechanism). The winver cache path contains
-        // "winver" (not "windows"), so the recursive set_maps_folder it does at
-        // the end lands in the valid branch above — no infinite loop.
-        if folder.contains("windows") && folder.contains("x86_64") {
-            log::trace!(
-                "Maps folder '{}' missing; fetching from the symbol server (--winver win11)",
-                folder
-            );
-            match self.set_maps_from_winver("win11") {
-                Ok(()) => return,
-                Err(e) => {
-                    log::error!("symbol-server maps fetch failed: {}", e);
-                    panic!(
-                        "Cannot obtain Windows maps. Fetch them with `--winver win11`, \
-                         supply your own with `--maps <dir>`, or extract from an ISO with `--iso`."
-                    );
-                }
+        // 32-bit maps still need the legacy release zip (no symbol-server support
+        // for them yet). Everything else (x64 Windows) is fine empty: the loader
+        // auto-fetches each missing DLL from the symbol server on demand
+        // (`ensure_maps_dll`), so just make sure the directory exists.
+        let is_32bit = folder.contains("windows/x86") && !folder.contains("x86_64");
+        if is_32bit {
+            log::trace!("Maps folder '{}' incomplete, attempting legacy download...", folder);
+            if let Err(e) = self.download_and_extract_maps(folder) {
+                log::error!("Failed to download 32-bit maps '{}': {}", folder, e);
+                panic!("Cannot obtain 32-bit Windows maps. Supply your own with `--maps <dir>`.");
             }
+            return;
         }
 
-        // 32-bit maps (and any other folder) still use the legacy downloader.
+        // x64 (or custom) folder: create it and let on-demand fetching fill it.
         log::trace!(
-            "Maps folder '{}' not found or incomplete, attempting to download...",
+            "Maps folder '{}' empty; DLLs will be auto-fetched from the symbol server on demand",
             folder
         );
-        if let Err(e) = self.download_and_extract_maps(folder) {
-            log::error!("Failed to download maps folder '{}': {}", folder, e);
-            panic!("Cannot proceed without maps folder. Please download manually or check your internet connection.");
-        }
+        let _ = std::fs::create_dir_all(folder);
     }
 
     /// Check if maps folder exists and contains essential files

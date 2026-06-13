@@ -1,6 +1,3 @@
-use crate::tests::helpers;
-use crate::*;
-
 /// Full end-to-end emulation of the host's real `/bin/ls` in `--libc` mode
 /// (execute the genuine ld.so + libc, intercepting only at `syscall`).
 ///
@@ -14,6 +11,8 @@ use crate::*;
             success hinges on the exact glibc/coreutils build. Reliable on a tuned host (Arch), \
             but the CI runners' glibc diverges. Run on demand with --ignored."]
 fn elf64lin_real_ls_full_emulation() {
+    use crate::tests::helpers;
+    use crate::*;
     helpers::setup();
 
     let ls = "/bin/ls";

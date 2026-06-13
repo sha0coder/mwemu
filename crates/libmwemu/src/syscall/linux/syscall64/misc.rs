@@ -7,6 +7,61 @@ use std::fs as stdfs;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
+
+/// Unix file-metadata fields a Linux guest's `stat`/`statx` expects. We extract
+/// them cross-platform so the Linux-syscall code also *compiles* on non-Unix
+/// hosts (e.g. a Windows CI runner). On a non-Unix host the inode identity isn't
+/// available, so those fields are zeroed — acceptable, since emulating Linux
+/// binaries that rely on real host inodes from Windows is out of scope.
+struct UnixMeta {
+    dev: u64,
+    ino: u64,
+    nlink: u64,
+    mode: u32,
+    size: u64,
+    blksize: u64,
+    blocks: u64,
+    atime: i64,
+    ctime: i64,
+    mtime: i64,
+    rdev: u64,
+}
+
+#[cfg(unix)]
+fn unix_meta(m: &stdfs::Metadata) -> UnixMeta {
+    use std::os::unix::fs::MetadataExt;
+    UnixMeta {
+        dev: m.dev(),
+        ino: m.ino(),
+        nlink: m.nlink(),
+        mode: m.mode(),
+        size: m.size(),
+        blksize: m.blksize(),
+        blocks: m.blocks(),
+        atime: m.atime(),
+        ctime: m.ctime(),
+        mtime: m.mtime(),
+        rdev: m.rdev(),
+    }
+}
+
+#[cfg(not(unix))]
+fn unix_meta(m: &stdfs::Metadata) -> UnixMeta {
+    UnixMeta {
+        dev: 0,
+        ino: 0,
+        nlink: 1,
+        mode: 0o100644,
+        size: m.len(),
+        blksize: 4096,
+        blocks: m.len().div_ceil(512),
+        atime: 0,
+        ctime: 0,
+        mtime: 0,
+        rdev: 0,
+    }
+}
+
 macro_rules! syscall_name {
     ($name:literal) => {
         $name
@@ -714,7 +769,6 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
             let mut stat = structures::Stat::fake();
 
             if helper::handler_exist(fd) {
-                use std::os::unix::fs::MetadataExt;
                 let filepath = helper::handler_get_uri(fd);
                 let path = Path::new(&filepath);
                 let metadata = stdfs::metadata(path)
@@ -722,13 +776,14 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
                 // Real dev/ino are essential: ld.so identifies already-loaded
                 // shared objects by (st_dev, st_ino); reusing constants would
                 // make it treat every library as the same object.
-                stat.dev = metadata.dev();
-                stat.ino = metadata.ino();
-                stat.nlink = metadata.nlink();
-                stat.mode = metadata.mode();
-                stat.size = metadata.len() as i64;
-                stat.blksize = metadata.blksize() as i64;
-                stat.blocks = metadata.blocks() as i64;
+                let um = unix_meta(&metadata);
+                stat.dev = um.dev;
+                stat.ino = um.ino;
+                stat.nlink = um.nlink;
+                stat.mode = um.mode;
+                stat.size = um.size as i64;
+                stat.blksize = um.blksize as i64;
+                stat.blocks = um.blocks as i64;
             }
 
             if stat_ptr > 0 && emu.maps.is_mapped(stat_ptr) {
@@ -773,7 +828,6 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
         }
 
         constants::NR64_STATX => {
-            use std::os::unix::fs::MetadataExt;
             let dirfd = emu.regs().rdi;
             let path_ptr = emu.regs().rsi;
             let _flags = emu.regs().r10;
@@ -799,28 +853,29 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
             if buf > 0 && emu.maps.is_mapped(buf) {
                 match stdfs::symlink_metadata(Path::new(&fullpath)) {
                     Ok(m) => {
+                        let um = unix_meta(&m);
                         emu.maps.write_dword(buf, 0x000007ff); // stx_mask: all basic fields
-                        emu.maps.write_dword(buf + 0x04, m.blksize() as u32);
+                        emu.maps.write_dword(buf + 0x04, um.blksize as u32);
                         emu.maps.write_qword(buf + 0x08, 0); // stx_attributes
-                        emu.maps.write_dword(buf + 0x10, m.nlink() as u32);
+                        emu.maps.write_dword(buf + 0x10, um.nlink as u32);
                         // Report the emulated user (uid/gid 1000); resolved to a
                         // name via /etc/passwd "files" (the systemd userdb path is
                         // blocked at openat).
                         emu.maps.write_dword(buf + 0x14, 1000);
                         emu.maps.write_dword(buf + 0x18, 1000);
-                        emu.maps.write_word(buf + 0x1c, m.mode() as u16);
-                        emu.maps.write_qword(buf + 0x20, m.ino());
-                        emu.maps.write_qword(buf + 0x28, m.size());
-                        emu.maps.write_qword(buf + 0x30, m.blocks());
+                        emu.maps.write_word(buf + 0x1c, um.mode as u16);
+                        emu.maps.write_qword(buf + 0x20, um.ino);
+                        emu.maps.write_qword(buf + 0x28, um.size);
+                        emu.maps.write_qword(buf + 0x30, um.blocks);
                         emu.maps.write_qword(buf + 0x38, 0); // stx_attributes_mask
                         // atime / btime / ctime / mtime (tv_sec @ +0, tv_nsec @ +8)
-                        emu.maps.write_qword(buf + 0x40, m.atime() as u64);
-                        emu.maps.write_qword(buf + 0x60, m.ctime() as u64);
-                        emu.maps.write_qword(buf + 0x70, m.mtime() as u64);
-                        let rdev = m.rdev();
+                        emu.maps.write_qword(buf + 0x40, um.atime as u64);
+                        emu.maps.write_qword(buf + 0x60, um.ctime as u64);
+                        emu.maps.write_qword(buf + 0x70, um.mtime as u64);
+                        let rdev = um.rdev;
                         emu.maps.write_dword(buf + 0x80, ((rdev >> 8) & 0xfff) as u32);
                         emu.maps.write_dword(buf + 0x84, (rdev & 0xff) as u32);
-                        let dev = m.dev();
+                        let dev = um.dev;
                         emu.maps.write_dword(buf + 0x88, ((dev >> 8) & 0xfff) as u32);
                         emu.maps.write_dword(buf + 0x8c, (dev & 0xff) as u32);
                     }

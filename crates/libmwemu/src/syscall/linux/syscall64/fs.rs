@@ -72,9 +72,8 @@ pub(super) fn handle_syscall64_getdents64(emu: &mut emu::Emu) {
     let mut out: Vec<u8> = Vec::new();
     let mut idx = start;
     while idx < entries.len() {
-        use std::os::unix::ffi::OsStrExt;
         let name = entries[idx].file_name();
-        let name_bytes = name.as_bytes();
+        let name_bytes = name.as_encoded_bytes();
         // d_ino(8) + d_off(8) + d_reclen(2) + d_type(1) + name + NUL, 8-aligned.
         let reclen = (8 + 8 + 2 + 1 + name_bytes.len() + 1 + 7) & !7;
         if out.len() + reclen > count as usize {

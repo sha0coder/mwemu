@@ -19,11 +19,20 @@ use libmwemu::emu::object_handle::file_handle::init_file_system;
 /// Drop log records emitted by `goblin::*` (Mach-O / ELF / PE parser). It uses
 /// `debug!()` to dump every load command, header, and Ctx — under `-vv` (which
 /// raises our level to TRACE) those drown out our own emulator trace lines.
-struct DropGoblinFilter;
+struct DropNoisyDepsFilter;
 
-impl Filter for DropGoblinFilter {
+impl Filter for DropNoisyDepsFilter {
     fn do_log(&self, record: &log::Record) -> bool {
-        !record.module_path().unwrap_or("").starts_with("goblin")
+        let m = record.module_path().unwrap_or("");
+        // Drop chatty third-party crates so they don't bury mwemu's own output:
+        // goblin (PE parsing) and the HTTPS/TLS stack behind `--winver` fetches
+        // (ureq/rustls/ring/webpki spam OCSP responses and HTTP headers at debug).
+        const NOISY: &[&str] = &[
+            "goblin", "ureq", "rustls", "webpki", "ring", "native_tls", "openssl",
+            "hyper", "h2", "mio", "want", "tungstenite", "sct", "http", "httparse",
+            "tokio",
+        ];
+        !NOISY.iter().any(|p| m.starts_with(p))
     }
 }
 
@@ -366,17 +375,11 @@ fn main() {
     } else if matches.is_present("maps") {
         emu.set_maps_folder(matches.value_of("maps").expect("specify the maps folder"));
     } else {
-        // No --iso/--winver/--maps: default to fetching genuine system DLLs from
-        // Microsoft's symbol server (--winver win11) for 64-bit. 32-bit has no
-        // symbol-server support yet, so it keeps using the bundled maps folder.
+        // No --iso/--winver/--maps: use the standard maps folder. For x64 it can
+        // be empty — the loader auto-fetches each missing DLL from the symbol
+        // server (default win11) on demand. 32-bit uses the legacy bundled maps.
         if emu.cfg.is_x64() {
-            match emu.set_maps_from_winver("win11") {
-                Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
-                Err(e) => {
-                    eprintln!("[mwemu] default --winver win11 failed: {}", e);
-                    std::process::exit(1);
-                }
-            }
+            emu.set_maps_folder("maps/windows/x86_64/");
         } else {
             emu.set_maps_folder("maps/windows/x86/");
         }
@@ -566,7 +569,7 @@ fn main() {
                 .format(CustomLogFormat::new())
                 .file(filename)
                 .chan_len(Some(100000))
-                .add_filter(DropGoblinFilter),
+                .add_filter(DropNoisyDepsFilter),
         )
         .unwrap();
     } else {
@@ -575,7 +578,7 @@ fn main() {
                 .format(CustomLogFormat::new())
                 .console()
                 .chan_len(Some(100000))
-                .add_filter(DropGoblinFilter),
+                .add_filter(DropNoisyDepsFilter),
         )
         .unwrap();
     }

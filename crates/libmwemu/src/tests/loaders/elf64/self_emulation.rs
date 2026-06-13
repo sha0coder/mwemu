@@ -1,6 +1,3 @@
-use crate::tests::helpers;
-use crate::*;
-
 /// mwemu emulating itself. Loads the built mwemu CLI binary, runs it over the
 /// real libc/ld path, and asserts it self-emulates at least 1M instructions
 /// before hitting an unimplemented instruction/syscall.
@@ -16,6 +13,8 @@ use crate::*;
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[ignore = "environment-dependent self-emulation ratchet; build mwemu first, then run with --ignored"]
 fn self_emulation_reaches_1m_instructions() {
+    use crate::tests::helpers;
+    use crate::*;
     helpers::setup();
 
     // Locate the built mwemu CLI binary (release preferred, debug fallback).

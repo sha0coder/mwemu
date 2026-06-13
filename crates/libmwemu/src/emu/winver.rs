@@ -27,6 +27,10 @@ use std::sync::Mutex;
 /// on the shared maps cache or burst-hammer the server.
 static FETCH_LOCK: Mutex<()> = Mutex::new(());
 
+/// PE `Machine` values used to pick the right architecture from winbindex.
+pub const MACHINE_I386: u64 = 0x14C; // 32-bit x86
+pub const MACHINE_AMD64: u64 = 0x8664; // 64-bit x64
+
 /// Friendly alias → Windows build (as it appears inside winbindex's `version`
 /// string, e.g. "10.0.26100.7920"). A bare build number passed to `--winver`
 /// is accepted verbatim, so power users can pin an exact build for repro.
@@ -72,6 +76,7 @@ pub fn ensure_dll(
     cache: &Path,
     build: &str,
     basename: &str,
+    machine_type: u64,
 ) -> Result<PathBuf, Box<dyn Error>> {
     let dest = cache.join(basename);
     // Fast path: already cached, no lock needed.
@@ -88,7 +93,7 @@ pub fn ensure_dll(
     }
     fs::create_dir_all(cache)?;
 
-    let key = winbindex_key(basename, build)?;
+    let key = winbindex_key(basename, build, machine_type)?;
     let url = format!(
         "https://msdl.microsoft.com/download/symbols/{name}/{key}/{name}",
         name = basename,
@@ -119,17 +124,16 @@ pub fn ensure_dll(
 /// Look up the symbol-server key (`{timestamp:08X}{virtual_size:X}`) for
 /// `basename` at `build` via winbindex. The per-file index is cached under
 /// `maps/winver/.index/<basename>.json` so repeated lookups don't re-download.
-fn winbindex_key(basename: &str, build: &str) -> Result<String, Box<dyn Error>> {
+fn winbindex_key(basename: &str, build: &str, machine_type: u64) -> Result<String, Box<dyn Error>> {
     let index = load_winbindex_index(basename)?;
     // Top-level object: { "<sha256>": { "fileInfo": { "timestamp", "virtualSize",
     // "version" }, ... }, ... }. Find the entry whose version contains the build.
     let obj = index
         .as_object()
         .ok_or("winbindex: unexpected JSON (not an object)")?;
-    // winbindex indexes every architecture of a given filename; we only want
-    // the x64 image (IMAGE_FILE_MACHINE_AMD64 = 0x8664 = 34404), otherwise the
-    // substring match can pick the 32-bit ntdll of the same build.
-    const MACHINE_AMD64: u64 = 0x8664;
+    // winbindex indexes every architecture of a given filename; filter to the one
+    // we want (`machine_type`: AMD64 0x8664 or I386 0x14C) so the substring match
+    // can't pick e.g. the 32-bit ntdll when we asked for the 64-bit one.
     // Apisets (api-ms-win-*) and a few forwarders carry a much lower UBR than the
     // main system DLLs (e.g. 26100.1 vs 26100.7920) because they almost never
     // change. So match the exact build first, then fall back to the same major
@@ -143,7 +147,7 @@ fn winbindex_key(basename: &str, build: &str) -> Result<String, Box<dyn Error>> 
             Some(v) => v,
             None => continue,
         };
-        if fi.get("machineType").and_then(|v| v.as_u64()) != Some(MACHINE_AMD64) {
+        if fi.get("machineType").and_then(|v| v.as_u64()) != Some(machine_type) {
             continue;
         }
         let version = fi.get("version").and_then(|v| v.as_str()).unwrap_or("");
@@ -221,12 +225,9 @@ impl crate::emu::Emu {
     /// hitting "required DLL not found". Best-effort — on failure it logs and
     /// returns so the caller's own missing-DLL handling still runs.
     ///
-    /// x64 only for now (winver is AMD64-only); 32-bit no-ops until symbol-server
-    /// support for `machineType 332` lands.
+    /// Works for both 32-bit (`machineType` I386) and 64-bit (AMD64) guests,
+    /// picking the architecture from `cfg.arch`.
     pub(crate) fn ensure_maps_dll(&self, dll: &str) {
-        if !self.cfg.arch.is_x64() {
-            return;
-        }
         let filepath = self.cfg.get_maps_folder(dll);
         if std::path::Path::new(&filepath).exists() {
             return;
@@ -238,8 +239,13 @@ impl crate::emu::Emu {
             .winver
             .clone()
             .unwrap_or_else(|| resolve_build("win11"));
+        let machine = if self.cfg.arch.is_x64() {
+            MACHINE_AMD64
+        } else {
+            MACHINE_I386
+        };
         let folder = self.cfg.maps_folder.clone();
-        if let Err(e) = ensure_dll(std::path::Path::new(&folder), &build, &dll.to_lowercase()) {
+        if let Err(e) = ensure_dll(std::path::Path::new(&folder), &build, &dll.to_lowercase(), machine) {
             log::warn!("winver: could not fetch {} (build {}): {}", dll, build, e);
         }
     }
@@ -260,7 +266,9 @@ impl crate::emu::Emu {
         seed_data_files(&cache);
 
         for dll in SEED_DLLS {
-            match ensure_dll(&cache, &build, dll) {
+            // set_maps_from_winver caches under x86_64/ — it's the explicit x64
+            // `--winver` path; 32-bit guests auto-fetch via ensure_maps_dll.
+            match ensure_dll(&cache, &build, dll, MACHINE_AMD64) {
                 Ok(_) => {}
                 Err(e) => {
                     return Err(format!("--winver: failed to fetch {}: {}", dll, e).into());
@@ -297,13 +305,25 @@ fn seed_data_files(cache: &Path) {
 /// Minimal blocking HTTP GET returning the body bytes. Follows redirects (msdl
 /// 302s to its blob store).
 fn http_get(url: &str) -> Result<Vec<u8>, Box<dyn Error>> {
-    let resp = ureq::get(url)
-        .timeout(std::time::Duration::from_secs(60))
-        .call()?;
-    if resp.status() != 200 {
-        return Err(format!("HTTP {} for {}", resp.status(), url).into());
-    }
-    let mut bytes = Vec::new();
-    resp.into_reader().read_to_end(&mut bytes)?;
-    Ok(bytes)
+    // The TLS/HTTP stack (ureq/rustls/ring) dumps OCSP responses and HTTP headers
+    // at debug level, which floods mwemu's output when running under -v. Drop the
+    // global log level to Warn for the duration of the request and restore it
+    // after, so the noise is suppressed regardless of how the consumer (CLI,
+    // pymwemu, …) configured logging. (Fetches are serialized by FETCH_LOCK, so
+    // this brief global change doesn't race with other winver downloads.)
+    let prev_level = log::max_level();
+    log::set_max_level(log::LevelFilter::Warn);
+    let result = (|| -> Result<Vec<u8>, Box<dyn Error>> {
+        let resp = ureq::get(url)
+            .timeout(std::time::Duration::from_secs(60))
+            .call()?;
+        if resp.status() != 200 {
+            return Err(format!("HTTP {} for {}", resp.status(), url).into());
+        }
+        let mut bytes = Vec::new();
+        resp.into_reader().read_to_end(&mut bytes)?;
+        Ok(bytes)
+    })();
+    log::set_max_level(prev_level);
+    result
 }

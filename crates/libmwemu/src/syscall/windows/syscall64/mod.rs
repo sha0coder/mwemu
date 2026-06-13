@@ -25,7 +25,8 @@ pub(crate) fn resolve_maps_dll(emu: &Emu, basename: &str) -> Option<std::path::P
     if let Some(build) = emu.cfg.winver.clone() {
         if basename.ends_with(".dll") {
             let cache = std::path::Path::new(&emu.cfg.maps_folder);
-            match crate::emu::winver::ensure_dll(cache, &build, basename) {
+            // syscall64 is the x64 Windows path.
+            match crate::emu::winver::ensure_dll(cache, &build, basename, crate::emu::winver::MACHINE_AMD64) {
                 Ok(path) => return Some(path),
                 Err(e) => log::trace!("--winver: {} not fetched: {}", basename, e),
             }
