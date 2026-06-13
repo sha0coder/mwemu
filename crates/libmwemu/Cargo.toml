@@ -1,6 +1,6 @@
 [package]
 name = "libmwemu"
-version = "0.24.5"
+version = "0.25.0"
 edition.workspace = true
 authors = ["sha0coder"]
 license.workspace = true
@@ -34,6 +34,7 @@ bitfield.workspace = true
 ureq.workspace = true
 zip.workspace = true
 serde_arrays.workspace = true
+serde_json.workspace = true
 slab.workspace = true
 bytemuck.workspace = true
 minidump.workspace = true

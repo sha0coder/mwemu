@@ -62,8 +62,11 @@ lazy_static! {
 pub fn handler_create(uri: &str) -> u64 {
     let mut handles = HANDLERS.lock().unwrap();
 
+    // Start at 3 so allocated file descriptors never collide with the standard
+    // streams (0=stdin, 1=stdout, 2=stderr) on the Linux syscall path; harmless
+    // for Windows handles, which carry no special meaning at 1/2.
     let new_id: u64 = if handles.len() == 0 {
-        1
+        3
     } else {
         let last_id = handles[handles.len() - 1].id;
         last_id + 1

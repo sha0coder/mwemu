@@ -10,16 +10,40 @@ impl Emu {
         //f.push('/');
         self.cfg.maps_folder = folder.to_string();
 
-        // Check if maps folder exists and contains essential files
-        if !self.maps_folder_is_valid(folder) {
+        if self.maps_folder_is_valid(folder) {
+            return;
+        }
+
+        // The default 64-bit Windows maps are no longer shipped as a GitHub
+        // release zip; fetch genuine system DLLs from Microsoft's symbol server
+        // instead (the `--winver` mechanism). The winver cache path contains
+        // "winver" (not "windows"), so the recursive set_maps_folder it does at
+        // the end lands in the valid branch above — no infinite loop.
+        if folder.contains("windows") && folder.contains("x86_64") {
             log::trace!(
-                "Maps folder '{}' not found or incomplete, attempting to download...",
+                "Maps folder '{}' missing; fetching from the symbol server (--winver win11)",
                 folder
             );
-            if let Err(e) = self.download_and_extract_maps(folder) {
-                log::error!("Failed to download maps folder '{}': {}", folder, e);
-                panic!("Cannot proceed without maps folder. Please download manually or check your internet connection.");
+            match self.set_maps_from_winver("win11") {
+                Ok(()) => return,
+                Err(e) => {
+                    log::error!("symbol-server maps fetch failed: {}", e);
+                    panic!(
+                        "Cannot obtain Windows maps. Fetch them with `--winver win11`, \
+                         supply your own with `--maps <dir>`, or extract from an ISO with `--iso`."
+                    );
+                }
             }
+        }
+
+        // 32-bit maps (and any other folder) still use the legacy downloader.
+        log::trace!(
+            "Maps folder '{}' not found or incomplete, attempting to download...",
+            folder
+        );
+        if let Err(e) = self.download_and_extract_maps(folder) {
+            log::error!("Failed to download maps folder '{}': {}", folder, e);
+            panic!("Cannot proceed without maps folder. Please download manually or check your internet connection.");
         }
     }
 
@@ -60,12 +84,12 @@ impl Emu {
 
     /// Download and extract maps folder from specific URL
     fn download_and_extract_maps(&self, folder: &str) -> Result<(), Box<dyn std::error::Error>> {
+        // x86_64 maps are fetched from the symbol server in set_maps_folder
+        // (--winver) and never reach here. 32-bit maps don't have symbol-server
+        // support yet, so they still use the legacy release zip.
         let url = match folder {
             f if f.contains("windows/x86") && !f.contains("x86_64") => {
                 "https://github.com/sha0coder/mwemu/releases/download/maps/maps32.zip"
-            }
-            f if f.contains("windows/x86_64") => {
-                "https://github.com/sha0coder/mwemu/releases/download/maps/maps64.zip"
             }
             _ => return Err(format!("Unknown maps folder: {}", folder).into()),
         };

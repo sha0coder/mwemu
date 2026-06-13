@@ -320,7 +320,12 @@ pub(super) fn handle_syscall64_openat(emu: &mut emu::Emu) {
 pub(super) fn handle_syscall64_close(emu: &mut emu::Emu) {
     let fd = emu.regs().rdi;
 
-    if helper::handler_exist(fd) {
+    if fd <= 2 {
+        // Standard streams (stdin/stdout/stderr) are always open; glibc's
+        // close_stdout atexit hook calls close(1) during cleanup and reports a
+        // bogus "write error" if it sees a failure. Return success.
+        emu.regs_mut().rax = 0;
+    } else if helper::handler_exist(fd) {
         helper::handler_close(fd);
         // fd ids get recycled — drop per-fd cursors so a future open() of the
         // same id starts fresh (a stale offset corrupts e.g. the next ELF read).

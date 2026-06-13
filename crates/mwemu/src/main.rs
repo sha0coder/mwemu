@@ -108,6 +108,7 @@ fn main() {
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
         .arg(clap_arg!("iso", "", "iso", "extract the genuine system32 DLLs from a Windows installation ISO (download it yourself) and use them as the maps folder, e.g. --iso ~/Downloads/win11.iso", "ISO"))
+        .arg(clap_arg!("winver", "", "winver", "fetch genuine system DLLs from Microsoft's symbol server on demand instead of an ISO; accepts a friendly name (win11, win10, win2022) or an exact build (26100.7920). e.g. --winver win11", "VERSION"))
         .arg(clap_arg!("trace_registers", "r", "trace_registers", "print the register values in every step."))
         .arg(clap_arg!("register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
         .arg(clap_arg!("console", "c", "console", "select in which moment will spawn the console to inspect.", "NUMBER"))
@@ -350,6 +351,15 @@ fn main() {
             Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
             Err(e) => {
                 eprintln!("[mwemu] --iso failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+    } else if matches.is_present("winver") {
+        let winver = matches.value_of("winver").expect("specify the Windows version");
+        match emu.set_maps_from_winver(winver) {
+            Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
+            Err(e) => {
+                eprintln!("[mwemu] --winver failed: {}", e);
                 std::process::exit(1);
             }
         }

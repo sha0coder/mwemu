@@ -60,6 +60,7 @@ mod fs;
 mod initialization;
 mod instruction_pointer;
 mod iso;
+pub mod winver;
 mod loaders;
 mod maps;
 mod memory;

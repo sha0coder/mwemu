@@ -17,6 +17,7 @@ pub struct Config {
     pub stack_addr: u64,
     pub entry_point: u64,
     pub maps_folder: String,
+    pub winver: Option<String>, // --winver: resolved Windows build; system DLLs are fetched on demand from the symbol server
 
     // --- Heap behavior ---
     pub max_alloc_size: u64,      // allocation cap (default 16MB), larger are truncated
@@ -135,6 +136,7 @@ impl Config {
             inspect_seq: "".to_string(),
             endpoint: false,
             maps_folder: "".to_string(),
+            winver: None,
             console2: false,
             console_addr: 0,
             entry_point: constants::CFG_DEFAULT_BASE,

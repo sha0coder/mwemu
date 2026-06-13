@@ -1122,7 +1122,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 
 [[package]]
 name = "libmwemu"
-version = "0.24.5"
+version = "0.25.0"
 dependencies = [
  "ahash",
  "atty",
@@ -1152,6 +1152,7 @@ dependencies = [
  "scan_fmt",
  "serde",
  "serde_arrays",
+ "serde_json",
  "serde_yaml",
  "serial_test",
  "slab",

@@ -54,7 +54,9 @@ fn exe64win_msgbox_ssdt_hits_first_windows_syscall() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    if !helpers::set_winver_maps(&mut emu, "win11") {
+        return;
+    }
     emu.cfg.emulate_winapi = true;
 
     let sample = helpers::test_data_path("exe64win_msgbox.bin");
@@ -171,7 +173,9 @@ fn exe64win_enigma_ssdt_runs_deep() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    if !helpers::set_winver_maps(&mut emu, "win11") {
+        return;
+    }
     emu.cfg.emulate_winapi = true; // --ssdt / --syscall-mode
 
     let sample = helpers::test_data_path("exe64win_enigma.bin");
@@ -237,7 +241,9 @@ fn ssdt_ldr_initialize_thunk() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    if !helpers::set_winver_maps(&mut emu, "win11") {
+        return;
+    }
     emu.cfg.emulate_winapi = true; // --ssdt
     emu.cfg.skip_unimplemented = true; // --banzai: skip unimplemented, keep going
     emu.maps.set_banzai(true);
@@ -283,7 +289,9 @@ fn ssdt_ldr_initialize_thunk() {
 ///     --release -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "slow: ~13s in release; run with --release -- --ignored"]
+#[ignore = "disabled: asserts the full MessageBoxA happy path, which needs LdrInitializeThunk \
+            to COMPLETE — only true on Win2022 today. Re-enable once the Win11 ConDrv console \
+            blocker is fixed and LdrInit completes under --winver win11."]
 fn ssdt_msgbox_reaches_messageboxa() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -291,7 +299,13 @@ fn ssdt_msgbox_reaches_messageboxa() {
     helpers::setup();
 
     let mut emu = emu64();
-    emu.cfg.maps_folder = helpers::win64_maps_folder();
+    // Disabled (see #[ignore]): this asserts LdrInitializeThunk *completes* and
+    // the EXE reaches MessageBoxA, which the Win11 loader can't do yet (it stalls
+    // in console init — the ConDrv blocker). Targets `--winver win11` so it's
+    // ready to re-enable once that's fixed.
+    if !helpers::set_winver_maps(&mut emu, "win11") {
+        return;
+    }
     emu.cfg.emulate_winapi = true; // --ssdt
 
     let sample = helpers::test_data_path("exe64win_msgbox.bin");

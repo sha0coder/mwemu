@@ -1,8 +1,19 @@
 /target/
 .gitconfig
-# memory maps: real DLLs/libs (fetched on demand) and the system32 extracted
-# from a Windows ISO via --iso — too large/licensed to ship to github
-/maps/
+# memory maps: ship only mwemu's own support files (banzai.csv, loader.exe,
+# m*.bin, the *_stub.c sources and the small libc/libSystem stubs). The
+# Microsoft/Apple proprietary binaries are NOT redistributable, so keep them
+# out of the repo (they are fetched on demand, extracted via --iso, or copied
+# from the host System32 in CI).
+maps/**/*.dll
+maps/**/*.DLL
+maps/**/*.drv
+maps/**/*.DRV
+maps/**/*.nls
+maps/**/*.NLS
+maps/**/ntoskrnl.exe
+maps/iso/
+maps/winver/
 win32_2022/
 shellcodes32/
 shellcodes64/

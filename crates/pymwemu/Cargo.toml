@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 pyo3.workspace = true
 env_logger.workspace = true
-libmwemu = { path = "../libmwemu", version = "0.24.5" }
+libmwemu = { path = "../libmwemu", version = "0.25.0" }
 log.workspace = true
 iced-x86.workspace = true
 yaxpeax-arm.workspace = true

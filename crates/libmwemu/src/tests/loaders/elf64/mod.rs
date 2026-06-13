@@ -4,4 +4,5 @@ mod elf64lin_cpu_arithmetics;
 mod elf64lin_flags;
 mod elf64lin_fpu;
 mod elf64lin_static_helloworld;
+mod elf64lin_real_ls;
 mod elf64lin_syscall64;

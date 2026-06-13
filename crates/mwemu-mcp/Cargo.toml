@@ -18,7 +18,7 @@ path = "src/main.rs"
 [dependencies]
 # Versioned + path so the crate builds locally inside the workspace and is also
 # publishable to crates.io (crates.io ignores `path` and uses `version`).
-libmwemu = { path = "../libmwemu", version = "0.24.5" }
+libmwemu = { path = "../libmwemu", version = "0.25.0" }
 serde = { workspace = true }
 serde_json = "1.0"
 log = { workspace = true }

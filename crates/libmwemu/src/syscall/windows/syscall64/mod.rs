@@ -9,6 +9,31 @@ mod registry;
 mod sync;
 mod system;
 
+/// Resolve a system DLL `basename` (lowercase, e.g. "kernelbase.dll") to a host
+/// file inside the maps folder. When `--winver` is active and the file isn't
+/// cached yet, fetch it from the symbol server on demand and cache it. Returns
+/// `None` only when the file genuinely can't be obtained.
+pub(crate) fn resolve_maps_dll(emu: &Emu, basename: &str) -> Option<std::path::PathBuf> {
+    if basename.is_empty() {
+        return None;
+    }
+    let p = std::path::Path::new(&emu.cfg.maps_folder).join(basename);
+    if p.exists() {
+        return Some(p);
+    }
+    // Lazy symbol-server fetch (only DLLs; data files were seeded at setup).
+    if let Some(build) = emu.cfg.winver.clone() {
+        if basename.ends_with(".dll") {
+            let cache = std::path::Path::new(&emu.cfg.maps_folder);
+            match crate::emu::winver::ensure_dll(cache, &build, basename) {
+                Ok(path) => return Some(path),
+                Err(e) => log::trace!("--winver: {} not fetched: {}", basename, e),
+            }
+        }
+    }
+    None
+}
+
 /// Build a translation table from the syscall numbers the currently-loaded
 /// ntdll actually emits → the "canonical" numbers our dispatcher matches on
 /// (the `WIN64_NT*` constants, which mirror an older Windows build).
@@ -72,6 +97,7 @@ pub fn build_syscall_translation_table(emu: &mut Emu) {
         ("NtContinue", WIN64_NTCONTINUE),
         ("NtQueryAttributesFile", WIN64_NTQUERYATTRIBUTESFILE),
         ("NtOpenFile", WIN64_NTOPENFILE),
+        ("NtCreateFile", WIN64_NTCREATEFILE),
         ("NtOpenDirectoryObject", WIN64_NTOPENDIRECTORYOBJECT),
         ("NtOpenSymbolicLinkObject", WIN64_NTOPENSYMBOLICLINKOBJECT),
         ("NtQuerySymbolicLinkObject", WIN64_NTQUERYSYMBOLICLINKOBJECT),
@@ -287,13 +313,7 @@ pub fn gateway(emu: &mut Emu) {
                 .next()
                 .unwrap_or("")
                 .to_lowercase();
-            let resolved = if basename.is_empty() {
-                None
-            } else {
-                let mut p = std::path::PathBuf::from(&emu.cfg.maps_folder);
-                p.push(&basename);
-                if p.exists() { Some(p) } else { None }
-            };
+            let resolved = resolve_maps_dll(emu, &basename);
             if let Some(path) = resolved {
                 if file_info_ptr != 0 && emu.maps.is_mapped(file_info_ptr) {
                     // FILE_BASIC_INFORMATION: 4× LARGE_INTEGER + ULONG FileAttributes.
@@ -542,13 +562,7 @@ pub fn gateway(emu: &mut Emu) {
                 .next()
                 .unwrap_or("")
                 .to_lowercase();
-            let exists = if basename.is_empty() {
-                false
-            } else {
-                let mut p = std::path::PathBuf::from(&emu.cfg.maps_folder);
-                p.push(&basename);
-                p.exists()
-            };
+            let exists = resolve_maps_dll(emu, &basename).is_some();
             if exists {
                 let h = crate::syscall::windows::syscall64::sync::next_handle();
                 if file_handle_out != 0 && emu.maps.is_mapped(file_handle_out) {
@@ -576,6 +590,66 @@ pub fn gateway(emu: &mut Emu) {
                 log_orange!(
                     emu,
                     "syscall 0x{:x}: NtOpenFile name={:?} → OBJECT_NAME_NOT_FOUND",
+                    nr,
+                    nt_name,
+                );
+                emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
+            }
+        }
+        // `NtCreateFile` (0x55): ntdll's loader opens DLL files on disk with
+        // NtCreateFile (FILE_OPEN disposition) to back a section before mapping.
+        // Same arg layout as NtOpenFile for the handles we care about:
+        // FileHandle=rcx, ObjectAttributes=r8, IoStatusBlock=r9. Resolve the NT
+        // path against `cfg.maps_folder`; hand out a fake handle when the file
+        // exists and only return OBJECT_NAME_NOT_FOUND for genuinely absent paths.
+        WIN64_NTCREATEFILE => {
+            let file_handle_out = emu.regs().rcx;
+            let obj_attr = emu.regs().r8;
+            let io_status_block = emu.regs().r9;
+            let nt_name = crate::syscall::windows::syscall64::memory::read_object_attributes_name(
+                emu, obj_attr,
+            );
+            let basename = nt_name
+                .rsplit(|c| c == '\\' || c == '/')
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            // The console device (`\Device\ConDrv\…`) is opened during process
+            // init (kernel32 `ConsoleAllocate`/`SetUpConsoleHandle`). It is not a
+            // file in `maps_folder`, so resolving it by basename would fail and
+            // make the console DLL init return STATUS_DLL_INIT_FAILED. Hand out a
+            // fake handle so process startup proceeds.
+            let is_console = nt_name.to_lowercase().contains("condrv");
+            let exists = is_console || resolve_maps_dll(emu, &basename).is_some();
+            if exists {
+                let h = crate::syscall::windows::syscall64::sync::next_handle();
+                if file_handle_out != 0 && emu.maps.is_mapped(file_handle_out) {
+                    let _ = emu.maps.write_qword(file_handle_out, h);
+                }
+                if io_status_block != 0 && emu.maps.is_mapped(io_status_block) {
+                    // IO_STATUS_BLOCK: Status (4) + pad(4) + Information (8).
+                    // Information = FILE_OPENED (1).
+                    let _ = emu.maps.write_dword(io_status_block, STATUS_SUCCESS as u32);
+                    let _ = emu.maps.write_qword(io_status_block + 0x08, 1);
+                }
+                // Don't register console pseudo-handles as DLL-backed files; only
+                // real on-disk files feed the NtCreateSection → NtMapViewOfSection
+                // PE-loading path.
+                if !is_console {
+                    emu.file_handles.insert(h, basename.clone());
+                }
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtCreateFile name={:?} → handle 0x{:x} (SUCCESS)",
+                    nr,
+                    nt_name,
+                    h,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
+            } else {
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtCreateFile name={:?} → OBJECT_NAME_NOT_FOUND",
                     nr,
                     nt_name,
                 );

@@ -34,5 +34,7 @@ pytests:
 test_x86:
 	cargo test --release --features rax_x86_tests rax_x86_tests
 
-test_loader:
-	cargo run --release -- -f test/exe64win_msgbox.bin -6 --syscall-mode
+test_syscall:
+	cargo run --release -- -f test/exe64win_msgbox.bin -6 --syscall-mode --winver win11
+test_linux:
+	cargo run --release -- -f /bin/ls -A '"-l"' -6

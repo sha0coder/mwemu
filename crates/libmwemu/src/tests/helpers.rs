@@ -34,6 +34,33 @@ pub fn win32_maps_folder() -> String {
     s
 }
 
+/// Populate `emu`'s maps folder with a genuine Windows system32 fetched from
+/// Microsoft's symbol server (the `--winver` mechanism), so the deep `--ssdt`
+/// loader tests run on Linux/macOS without a Windows VM or an ISO.
+///
+/// Returns `false` when the maps can't be obtained — no network, or the non-PE
+/// NLS code-page tables (which aren't on the symbol server) couldn't be seeded
+/// from an existing `--iso` cache. Callers should treat `false` as "skip" so
+/// the suite stays green on offline machines rather than failing spuriously.
+pub fn set_winver_maps(emu: &mut crate::emu::Emu, version: &str) -> bool {
+    if let Err(e) = emu.set_maps_from_winver(version) {
+        eprintln!("skipping: --winver {} unavailable ({})", version, e);
+        return false;
+    }
+    // The loader needs the NLS tables; --winver seeds them from an iso cache if
+    // present. Without them DLL-name lookups produce zeros and the load fails,
+    // so skip rather than report a misleading failure.
+    let nls = std::path::Path::new(&emu.cfg.maps_folder).join("locale.nls");
+    if !nls.is_file() {
+        eprintln!(
+            "skipping: --winver {} has no NLS tables (seed them once from --iso)",
+            version
+        );
+        return false;
+    }
+    true
+}
+
 /// Maps folder for 64-bit Windows samples (`maps/windows/x86_64/`).
 pub fn win64_maps_folder() -> String {
     let mut s = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
