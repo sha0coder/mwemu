@@ -800,7 +800,6 @@ impl Mem64 {
             .unwrap();
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
-
         let idx = (addr - self.base_addr) as usize;
         let bytes = value.to_le_vec();
         self.mem[idx..idx + T::SIZE].copy_from_slice(&bytes);

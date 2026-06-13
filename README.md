@@ -144,6 +144,7 @@ OPTIONS:
     -e, --exit <POSITION>              exit position of the shellcode
     -f, --filename <FILE>              set the shellcode binary file.
     -i, --inspect <DIRECTION>          monitor memory like: -i 'dword ptr [ebp + 0x24]
+        --iso <ISO>                    extract genuine system32 DLLs from a Windows ISO and use them as the maps folder, e.g. --iso ~/Downloads/win11.iso
     -L, --log <LOG_FILENAME>           log output to file
     -M, --maps <PATH>                  select the memory maps folder
         --mxcsr <MXCSR>                set mxcsr register

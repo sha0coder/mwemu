@@ -69,8 +69,12 @@ pub const DT_JMPREL: u64 = 23;
 pub const PT_DYNAMIC: u32 = 2;
 pub const STT_FUNC: u8 = 2;
 pub const STT_OBJECT: u8 = 1;
+pub const R_X86_64_64: u32 = 1;
 pub const R_X86_64_GLOB_DAT: u32 = 6;
 pub const R_X86_64_JUMP_SLOT: u32 = 7;
+pub const R_X86_64_RELATIVE: u32 = 8;
+pub const R_X86_64_IRELATIVE: u32 = 37;
+pub const STT_GNU_IFUNC: u8 = 10;
 pub const R_AARCH64_GLOB_DAT: u32 = 1025;
 pub const R_AARCH64_JUMP_SLOT: u32 = 1026;
 
@@ -89,6 +93,10 @@ pub struct Elf64 {
     pub needed_libs: Vec<String>,
     pub sym_to_addr: HashMap<String, u64>,
     pub addr_to_symbol: HashMap<u64, String>,
+    /// When true, `load()` maps the image by PT_LOAD segments (covering the ELF
+    /// header and program headers, exactly like the kernel/mmap) instead of by
+    /// sections. Required to run the real ld.so / libc code.
+    pub segment_mode: bool,
 }
 
 impl Elf64 {
@@ -145,6 +153,7 @@ impl Elf64 {
             needed_libs: Vec::new(),
             sym_to_addr: HashMap::new(),
             addr_to_symbol: HashMap::new(),
+            segment_mode: false,
         })
     }
 
@@ -206,6 +215,19 @@ impl Elf64 {
             }
         }
         exports
+    }
+
+    /// Addresses of exported STT_GNU_IFUNC resolvers. A relocation pointing at
+    /// one of these must run the resolver to obtain the real implementation
+    /// instead of being written directly.
+    pub fn ifunc_resolver_addrs(&self) -> std::collections::HashSet<u64> {
+        let mut set = std::collections::HashSet::new();
+        for sym in &self.elf_dynsym {
+            if sym.st_value > 0 && sym.get_st_type() == STT_GNU_IFUNC {
+                set.insert(sym.st_value);
+            }
+        }
+        set
     }
 
     pub fn rebase_vaddr(&self, vaddr: u64) -> u64 {
@@ -339,9 +361,25 @@ impl Elf64 {
         maps: &mut Maps,
         export_map: &HashMap<String, u64>,
     ) -> Vec<String> {
-        let mut unresolved = Vec::new();
+        let empty = std::collections::HashSet::new();
+        self.apply_dynamic_relocations_full(maps, export_map, &empty)
+            .unresolved
+    }
+
+    /// Apply all dynamic relocations and report both the unresolved symbolic
+    /// imports and the IRELATIVE (ifunc) relocations, which can only be
+    /// completed once the emulator is able to *run* the resolver function.
+    /// `ifunc_resolvers` is the set of resolver addresses across all loaded
+    /// libraries; symbolic relocations that land on one are deferred too.
+    pub fn apply_dynamic_relocations_full(
+        &self,
+        maps: &mut Maps,
+        export_map: &HashMap<String, u64>,
+        ifunc_resolvers: &std::collections::HashSet<u64>,
+    ) -> RelocationOutcome {
+        let mut outcome = RelocationOutcome::default();
         let Some(info) = self.dynamic_info() else {
-            return unresolved;
+            return outcome;
         };
 
         let rela_ent = if info.rela_ent == 0 {
@@ -353,32 +391,50 @@ impl Elf64 {
         self.apply_rela_table(
             maps,
             export_map,
+            ifunc_resolvers,
             info.rela_addr,
             info.rela_size,
             rela_ent,
-            &mut unresolved,
+            &mut outcome,
         );
 
         self.apply_rela_table(
             maps,
             export_map,
+            ifunc_resolvers,
             info.jmprel_addr,
             info.pltrelsz,
             rela_ent,
-            &mut unresolved,
+            &mut outcome,
         );
 
-        unresolved
+        outcome
     }
 
+    fn write_reloc_qword(&self, maps: &mut Maps, patch_addr: u64, value: u64, what: &str) {
+        if !maps.write_qword(patch_addr, value) {
+            if let Some(map_name) = maps.get_addr_name(patch_addr).map(|s| s.to_string()) {
+                maps.get_mem_mut(&map_name)
+                    .force_write_qword(patch_addr, value);
+            } else {
+                log::warn!(
+                    "elf64: relocation target 0x{:x} for {} is not mapped",
+                    patch_addr, what
+                );
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn apply_rela_table(
         &self,
         maps: &mut Maps,
         export_map: &HashMap<String, u64>,
+        ifunc_resolvers: &std::collections::HashSet<u64>,
         rela_addr: u64,
         rela_size: u64,
         rela_ent: usize,
-        unresolved: &mut Vec<String>,
+        outcome: &mut RelocationOutcome,
     ) {
         if rela_addr == 0 || rela_size == 0 || rela_ent == 0 {
             return;
@@ -393,8 +449,31 @@ impl Elf64 {
         while off + rela_ent <= end {
             let rela = Elf64Rela::parse(&self.bin, off);
             let r_type = rela.r_type();
+            let patch_addr = self.rebase_vaddr(rela.r_offset);
 
-            if r_type != R_X86_64_GLOB_DAT && r_type != R_X86_64_JUMP_SLOT {
+            // Base-relative relocations carry no symbol: *patch = base + addend.
+            // These are what fill libc's own internal data pointers, so they are
+            // essential when executing the real libc code.
+            if r_type == R_X86_64_RELATIVE {
+                let value = self.base.wrapping_add(rela.r_addend as u64);
+                self.write_reloc_qword(maps, patch_addr, value, "RELATIVE");
+                off += rela_ent;
+                continue;
+            }
+
+            // IRELATIVE: the resolver lives at base+addend and must be executed
+            // to obtain the real implementation address. Defer to the caller.
+            if r_type == R_X86_64_IRELATIVE {
+                let resolver = self.base.wrapping_add(rela.r_addend as u64);
+                outcome.irelative.push((patch_addr, resolver));
+                off += rela_ent;
+                continue;
+            }
+
+            if r_type != R_X86_64_GLOB_DAT
+                && r_type != R_X86_64_JUMP_SLOT
+                && r_type != R_X86_64_64
+            {
                 off += rela_ent;
                 continue;
             }
@@ -415,27 +494,28 @@ impl Elf64 {
                 .copied()
                 .or_else(|| self.sym_get_addr_from_name(&sym.st_dynstr_name));
 
-            let Some(target_addr) = resolved else {
-                if !unresolved.contains(&sym.st_dynstr_name) {
-                    unresolved.push(sym.st_dynstr_name.clone());
+            let Some(mut target_addr) = resolved else {
+                if !outcome.unresolved.contains(&sym.st_dynstr_name) {
+                    outcome.unresolved.push(sym.st_dynstr_name.clone());
                 }
                 off += rela_ent;
                 continue;
             };
 
-            let patch_addr = self.rebase_vaddr(rela.r_offset);
-            if !maps.write_qword(patch_addr, target_addr) {
-                if let Some(map_name) = maps.get_addr_name(patch_addr).map(|s| s.to_string()) {
-                    maps.get_mem_mut(&map_name)
-                        .force_write_qword(patch_addr, target_addr);
-                } else {
-                    log::warn!(
-                        "elf64: relocation target 0x{:x} for {} is not mapped",
-                        patch_addr,
-                        sym.st_dynstr_name
-                    );
-                }
+            if r_type == R_X86_64_64 {
+                target_addr = target_addr.wrapping_add(rela.r_addend as u64);
             }
+
+            // If the resolved symbol is an ifunc, the address we have is its
+            // resolver — defer so the emulator can run it and patch the slot
+            // with the real implementation.
+            if ifunc_resolvers.contains(&target_addr) {
+                outcome.irelative.push((patch_addr, target_addr));
+                off += rela_ent;
+                continue;
+            }
+
+            self.write_reloc_qword(maps, patch_addr, target_addr, &sym.st_dynstr_name);
 
             off += rela_ent;
         }
@@ -633,6 +713,11 @@ impl Elf64 {
         self.addr_to_symbol.clear();
         self.needed_libs = self.get_dynamic();
 
+        // Segment (PT_LOAD) mapping for running the real ld.so / libc code.
+        if self.segment_mode {
+            self.map_segments(maps, name, elf64_base);
+        }
+
         // pre-load .dynstr
         for shdr in &self.elf_shdr {
             let sname = self.get_section_name(shdr.sh_name as usize);
@@ -709,6 +794,14 @@ impl Elf64 {
                 }
             }
 
+            // Segment mode already mapped the whole image by PT_LOAD; here we
+            // only need the section walk for symbol/.dynamic parsing, so skip
+            // the per-section map creation entirely.
+            if self.segment_mode {
+                self.elf_shdr[i].sh_addr = self.rebase_vaddr(sh_addr);
+                continue;
+            }
+
             // map if its vaddr is on a PT_LOAD program
             if self.is_loadable(sh_addr) || !dynamic_linking {
                 if sname == ".shstrtab" || sname == ".tbss" {
@@ -750,6 +843,16 @@ impl Elf64 {
                     }
                 };
 
+                // SHT_NOBITS (.bss / .tbss) occupies memory but has NO file
+                // contents — its `sh_offset` points at unrelated file bytes.
+                // The map is already zero-filled, so just leave it untouched;
+                // copying file bytes here would corrupt e.g. ld.so's `_rtld_local`.
+                const SHT_NOBITS: u32 = 8;
+                if self.elf_shdr[i].sh_type == SHT_NOBITS {
+                    self.elf_shdr[i].sh_addr = sh_addr;
+                    continue;
+                }
+
                 let mut end_off = (sh_offset + sh_size) as usize;
                 if end_off > self.bin.len() {
                     end_off = self.bin.len();
@@ -771,6 +874,103 @@ impl Elf64 {
                 mem.force_write_bytes(sh_addr, segment);
 
                 self.elf_shdr[i].sh_addr = sh_addr;
+            }
+        }
+    }
+
+    /// Map the image by PT_LOAD segments (like the kernel/`mmap` does), so the
+    /// ELF header, program headers and inter-section padding are all present and
+    /// contiguous — required for the real ld.so / libc to introspect themselves.
+    fn map_segments(&mut self, maps: &mut Maps, name: &str, base: u64) {
+        const PAGE: u64 = 0x1000;
+        for idx in 0..self.elf_phdr.len() {
+            let phdr = &self.elf_phdr[idx];
+            if phdr.p_type != constants::PT_LOAD {
+                continue;
+            }
+
+            let seg_vaddr = base + phdr.p_vaddr;
+            let map_start = seg_vaddr & !(PAGE - 1);
+            let map_end = (seg_vaddr + phdr.p_memsz + PAGE - 1) & !(PAGE - 1);
+            let map_size = (map_end - map_start).max(PAGE);
+
+            let can_x = phdr.p_flags & 1 != 0;
+            let can_w = phdr.p_flags & 2 != 0;
+            let can_r = phdr.p_flags & 4 != 0;
+            // ld.so writes into its own RELRO/GOT during bootstrap before the
+            // kernel would mprotect it read-only, so keep writable here.
+            let perm = Permission::from_flags(can_r, true, can_x);
+            let _ = can_w;
+
+            let map_name = format!("{}.seg{}", name, idx);
+            let file_start = phdr.p_offset as usize;
+            let file_end = (phdr.p_offset + phdr.p_filesz).min(self.bin.len() as u64) as usize;
+
+            match maps.create_map(&map_name, map_start, map_size, perm) {
+                Ok(mem) => {
+                    if file_end > file_start {
+                        mem.force_write_bytes(seg_vaddr, &self.bin[file_start..file_end]);
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "segment map {} failed at 0x{:x} size 0x{:x}: {:?}",
+                        map_name, map_start, map_size, e
+                    );
+                }
+            }
+        }
+    }
+
+    /// Apply RELR (DT_RELR / `.relr.dyn`) relative relocations: `*where += base`
+    /// for a compact bitmap-encoded list of addresses. Modern glibc ld.so uses
+    /// this for most of its internal pointers; we apply it as the loader so the
+    /// real interpreter's data pointers are valid before it runs.
+    pub fn apply_relr(&self, maps: &mut Maps, base: u64) {
+        const SHT_RELR: u32 = 19;
+        let Some((off, size)) = self.elf_shdr.iter().find_map(|sh| {
+            if sh.sh_type == SHT_RELR || self.get_section_name(sh.sh_name as usize) == ".relr.dyn" {
+                Some((sh.sh_offset as usize, sh.sh_size as usize))
+            } else {
+                None
+            }
+        }) else {
+            return;
+        };
+
+        let end = (off + size).min(self.bin.len());
+        let mut cur = off;
+        let mut where_addr: u64 = 0;
+
+        let reloc = |maps: &mut Maps, at: u64, base: u64| {
+            let v = maps.read_qword(at).unwrap_or(0).wrapping_add(base);
+            if !maps.write_qword(at, v) {
+                if let Some(name) = maps.get_addr_name(at).map(|s| s.to_string()) {
+                    maps.get_mem_mut(&name).force_write_qword(at, v);
+                }
+            }
+        };
+
+        while cur + 8 <= end {
+            let entry = read_u64_le!(self.bin, cur);
+            cur += 8;
+            if entry & 1 == 0 {
+                // Address entry: relocate one slot, set the running pointer.
+                where_addr = base.wrapping_add(entry);
+                reloc(maps, where_addr, base);
+                where_addr = where_addr.wrapping_add(8);
+            } else {
+                // Bitmap entry: bits 1..63 relocate consecutive slots.
+                let mut bits = entry >> 1;
+                let mut i = 0u64;
+                while bits != 0 {
+                    if bits & 1 != 0 {
+                        reloc(maps, where_addr.wrapping_add(i * 8), base);
+                    }
+                    i += 1;
+                    bits >>= 1;
+                }
+                where_addr = where_addr.wrapping_add(63 * 8);
             }
         }
     }
@@ -804,6 +1004,24 @@ impl Elf64 {
         self.dynamic_info()
             .map(|info| info.needed)
             .unwrap_or_default()
+    }
+
+    /// Path of the program interpreter (PT_INTERP), e.g.
+    /// `/lib64/ld-linux-x86-64.so.2`, if present.
+    pub fn get_interp(&self) -> Option<String> {
+        const PT_INTERP: u32 = 3;
+        for phdr in &self.elf_phdr {
+            if phdr.p_type == PT_INTERP {
+                let start = phdr.p_offset as usize;
+                let end = (phdr.p_offset + phdr.p_filesz) as usize;
+                if end <= self.bin.len() {
+                    let bytes = &self.bin[start..end];
+                    let s: Vec<u8> = bytes.iter().take_while(|&&c| c != 0).copied().collect();
+                    return String::from_utf8(s).ok();
+                }
+            }
+        }
+        None
     }
 
     pub fn is_elf64_x64(filename: &str) -> bool {
@@ -977,6 +1195,16 @@ pub struct Elf64Sym {
     pub st_shndx: u16,
     pub st_value: u64,
     pub st_size: u64,
+}
+
+/// Result of applying a binary's dynamic relocations.
+#[derive(Debug, Default)]
+pub struct RelocationOutcome {
+    /// Symbolic imports that could not be resolved against any loaded library.
+    pub unresolved: Vec<String>,
+    /// IRELATIVE (ifunc) relocations as `(patch_addr, resolver_addr)`; the
+    /// resolver must be executed by the emulator to obtain the final value.
+    pub irelative: Vec<(u64, u64)>,
 }
 
 #[derive(Debug, Default)]

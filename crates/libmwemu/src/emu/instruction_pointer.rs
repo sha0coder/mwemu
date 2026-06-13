@@ -133,6 +133,24 @@ impl Emu {
             }
 
             self.regs_mut().rip = addr;
+        } else if self.os.is_linux() && self.cfg.linux_real_libc {
+            // Real-libc mode: execute the actual mapped libc/ld machine code.
+            // Only `__libc_start_main` is still bootstrapped in Rust so we can
+            // drive `main` without running glibc's full CSU init; everything
+            // else (including libc->libc internal calls) runs for real and
+            // reaches the `syscall` instruction, handled by the syscall layer.
+            // When the real ld.so drives the bootstrap, nothing is hooked: the
+            // real libc (including __libc_start_main) executes for real. Only in
+            // the lighter "no ld.so" mode do we still bootstrap main in Rust.
+            if !self.ld_bootstrap {
+                let symbol = self.resolve_unix_x64_symbol(addr);
+                if symbol == "__libc_start_main" {
+                    let section_name = name.to_string();
+                    return self.intercept_unix_x64_api_call(addr, &section_name);
+                }
+            }
+            self.regs_mut().rip = addr;
+            return true;
         } else if self.os.is_linux() || self.os.is_macos() {
             let section_name = name.to_string();
             return self.intercept_unix_x64_api_call(addr, &section_name);

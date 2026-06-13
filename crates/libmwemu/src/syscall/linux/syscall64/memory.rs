@@ -13,6 +13,37 @@ pub(super) fn dispatch(emu: &mut emu::Emu) -> bool {
 }
 
 pub(super) fn handle_syscall64_brk(emu: &mut emu::Emu) {
+    // Real-libc mode: ld.so bootstrap leaves no heap, so `brk` must return a
+    // real, growable program break. A bogus break (0 / the requested value
+    // with no backing map) makes glibc's main malloc arena unusable and it
+    // falls back to a half-broken mmap arena whose chunk metadata gets
+    // corrupted (manifesting as `free(): invalid size`, truncated strings, or
+    // infinite hash loops in dependent programs like id / ls -l).
+    if emu.cfg.linux_real_libc && !emu.cfg.arch.is_aarch64() {
+        use crate::maps::mem64::Permission;
+        const HEAP_START: u64 = 0x6000_0000_0000;
+        const HEAP_MAX: u64 = 0x0800_0000; // 128 MiB
+        let requested = emu.regs().rdi;
+
+        if emu.heap_addr < HEAP_START || emu.heap_addr > HEAP_START + HEAP_MAX {
+            emu.heap_addr = HEAP_START;
+            if !emu.maps.is_mapped(HEAP_START) {
+                let _ = emu
+                    .maps
+                    .create_map("heap", HEAP_START, HEAP_MAX, Permission::READ_WRITE);
+            }
+        }
+        if requested >= HEAP_START && requested <= HEAP_START + HEAP_MAX {
+            emu.heap_addr = requested; // move the program break
+        }
+        emu.regs_mut().rax = emu.heap_addr;
+        log::trace!(
+            "{}** {} syscall brk(0x{:x}) =0x{:x} {}",
+            emu.colors.light_red, emu.pos, requested, emu.heap_addr, emu.colors.nc
+        );
+        return;
+    }
+
     let heap_base = 0x4b5b00;
     let heap_size = 0x4d8000 - 0x4b5000;
 

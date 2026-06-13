@@ -80,22 +80,7 @@ fn test_bit_ops() {
     // Bug in libmwemu: lzcnt on 32-bit operands seems to behave as 64-bit (returning 64-5 = 59).
     // Correct 32-bit result is 27.
     assert_eq!(emu.regs().rdx, 59, "LZCNT failed. Got {}", emu.regs().rdx);
-    // Same bug for TZCNT likely?
-    // Wait, TZCNT of 16 (0x10) is 4 (trailing zeros).
-    // If it treats as 64-bit: ...00010000. Still 4 trailing zeros.
-    // Why did it fail with 59?
-    // Left: 59, Right: 4.
-    // It seems TZCNT implementation might be copy-pasted LZCNT or just wrong?
-    // Or maybe I am calling LZCNT instead of TZCNT in the opcode bytes?
-    // F3 0F BC C1 = TZCNT.
-    // F3 0F BD C1 = LZCNT.
-    // I used `f3 0f bc c1` for TZCNT.
-    // If it returns 59, it means it counted leading zeros?
-    // 64 bits - 5 (position of 1 bit) = 59.
-    // Yes, it acts like LZCNT!
-    assert_eq!(
-        emu.regs().rsi,
-        59,
-        "TZCNT failed (Seems to behave like LZCNT)."
-    );
+    // TZCNT of 16 (0x10 = ...0001 0000) has 4 trailing zeros, written to the
+    // destination operand (eax), then copied to esi.
+    assert_eq!(emu.regs().rsi, 4, "TZCNT failed. Got {}", emu.regs().rsi);
 }

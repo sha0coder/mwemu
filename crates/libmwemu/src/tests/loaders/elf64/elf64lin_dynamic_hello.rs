@@ -15,6 +15,9 @@ fn elf64lin_dynamic_hello_puts_bridge() {
     std::fs::write(&tmp, ELF64_LINUX_X64_HELLO).unwrap();
 
     let mut emu = emu64();
+    // This test validates the in-Rust libc-hook fallback path specifically, so
+    // disable the default real-ld.so/libc emulation here.
+    emu.cfg.linux_real_libc = false;
     emu.load_code(tmp.to_str().unwrap());
 
     assert!(emu.cfg.arch.is_x64());

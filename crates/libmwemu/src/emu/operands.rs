@@ -113,6 +113,16 @@ impl Emu {
 
         if fs {
             if self.os.is_linux() {
+                // Real TLS: once ld.so/libc install a thread pointer via
+                // arch_prctl(ARCH_SET_FS), `fs:[disp]` addresses real memory at
+                // fs_base+disp (the TCB, whose first qword is the self pointer,
+                // the stack canary at +0x28, errno, etc.).
+                let fs_base = self.regs().fs;
+                if fs_base != 0 {
+                    let real = fs_base.wrapping_add(mem_addr);
+                    let v = self.maps.read_qword(real).unwrap_or(0);
+                    return Some(v);
+                }
                 return if let Some(val) = self.fs().get(&mem_addr) {
                     if self.cfg.verbose > 0 {
                         log::trace!("reading FS[0x{:x}] -> 0x{:x}", mem_addr, *val);
@@ -540,6 +550,31 @@ impl Emu {
 
                 if mem_seg == Register::FS || mem_base == Register::GS {
                     if self.os.is_linux() {
+                        // Real TLS active: write through to memory at fs_base+offset.
+                        // The offset must include any base register (e.g.
+                        // `mov rax, fs:[rdx]` in __uselocale) — using only the
+                        // displacement would smash the TCB self pointer at fs:[0].
+                        let fs_base = self.regs().fs;
+                        if fs_base != 0 {
+                            let fs_off = if mem_base != Register::None
+                                && mem_base != Register::RIP
+                                && mem_base != Register::FS
+                                && mem_base != Register::GS
+                            {
+                                self.regs().get_reg(mem_base).wrapping_add(temp_displace)
+                            } else {
+                                temp_displace
+                            };
+                            let real = fs_base.wrapping_add(fs_off);
+                            let fs_sz = self.get_operand_sz(ins, noperand);
+                            match fs_sz {
+                                8 => { let _ = self.maps.write_byte(real, value as u8); }
+                                16 => { let _ = self.maps.write_word(real, value as u16); }
+                                32 => { let _ = self.maps.write_dword(real, value as u32); }
+                                _ => { let _ = self.maps.write_qword(real, value); }
+                            }
+                            return true;
+                        }
                         if self.cfg.verbose > 0 {
                             log::trace!("writting FS[0x{:x}] = 0x{:x}", temp_displace, value);
                         }

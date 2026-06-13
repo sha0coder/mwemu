@@ -2,19 +2,12 @@ use std::collections::HashMap;
 
 use crate::emu;
 use crate::loaders::pe::readers::{
-    read_u32_le as read_u32_le_shared, read_u64_le as read_u64_le_shared,
-    write_u64_le as write_u64_le_shared,
+    read_u64_le as read_u64_le_shared, write_u64_le as write_u64_le_shared,
 };
 use crate::winapi::winapi64;
 
 use crate::loaders::pe::pe32::HintNameItem;
 use super::PE64;
-
-macro_rules! read_u32_le {
-    ($raw:expr, $off:expr) => {
-        read_u32_le_shared(($raw).as_ref(), $off)
-    };
-}
 
 macro_rules! read_u64_le {
     ($raw:expr, $off:expr) => {
@@ -41,6 +34,14 @@ impl PE64 {
 
             let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, dld.name_table) as usize;
             let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, dld.address_table) as usize;
+            // RVA of the current Delay Import Address Table slot. This is the
+            // location to patch in process memory; it advances in lock-step with
+            // `off_addr`. The previous code patched `base_addr + <slot contents>`
+            // instead of `base_addr + <slot RVA>` — for pre-bound delay-load
+            // tables (advapi32, rpcrt4) the slot contents pointed back into the
+            // PE header page, so the resolved address overwrote the MZ magic and
+            // ntdll rejected the freshly-mapped image with STATUS_INVALID_IMAGE_FORMAT.
+            let mut slot_rva = dld.address_table;
 
             loop {
                 if self.raw.len() <= off_name + 4 || self.raw.len() <= off_addr + 4 {
@@ -48,11 +49,11 @@ impl PE64 {
                 }
 
                 let hint = HintNameItem::load(&self.raw, off_name);
-                let addr = read_u32_le!(self.raw, off_addr);
                 let off2 = PE64::vaddr_to_off(&self.sect_hdr, hint.func_name_addr) as usize;
                 if off2 == 0 {
                     off_name += HintNameItem::size();
                     off_addr += 8;
+                    slot_rva += 8;
                     continue;
                 }
 
@@ -72,13 +73,14 @@ impl PE64 {
                 }
 
                 write_u64_le!(self.raw, off_addr, real_addr);
-                let patch_addr = base_addr + addr as u64;
+                let patch_addr = base_addr + slot_rva as u64;
                 if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                     mem.force_write_qword(patch_addr, real_addr);
                 }
 
                 off_name += HintNameItem::size();
                 off_addr += 8;
+                slot_rva += 8;
             }
         }
         log::trace!("delay load bound!");
@@ -126,13 +128,23 @@ impl PE64 {
             let first_thunk = iim.first_thunk;
 
             if winapi64::kernel32::load_library(emu, &import_dll) == 0 {
-                if emu.cfg.verbose >= 1 {
-                    log::trace!(
-                        "cannot find/import library `{}` (IAT binding will skip it)",
-                        &import_dll
-                    );
+                // API-set contract DLLs (`api-ms-win-*`, `ext-ms-*`) are virtual
+                // names, not real files: a given build only ships some versioned
+                // stubs (e.g. `...libraryloader-l1-1-0.dll`) yet binaries import
+                // other versions (`...-l1-2-0.dll`). When the stub file is absent
+                // we must NOT skip the descriptor — its functions still resolve to
+                // the backing DLLs (kernelbase/kernel32/…) via the per-function
+                // resolver below. Skipping would leave the whole import group
+                // (GetModuleHandleW, GetProcAddress, …) unbound and crash on use.
+                if !crate::api::windows::common::kernel32::is_api_set_contract(&import_dll) {
+                    if emu.cfg.verbose >= 1 {
+                        log::trace!(
+                            "cannot find/import library `{}` (IAT binding will skip it)",
+                            &import_dll
+                        );
+                    }
+                    continue;
                 }
-                continue;
             }
 
             if original_first_thunk == 0 {

@@ -26,9 +26,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         let mut result = 0u128;
         for i in 0..16 {
-            let byte0 = (value0 >> (8 * i)) & 0xFF;
-            let byte1 = (value1 >> (8 * i)) & 0xFF;
-            let res_byte = byte0.wrapping_sub(byte1);
+            let byte0 = ((value0 >> (8 * i)) & 0xFF) as u8;
+            let byte1 = ((value1 >> (8 * i)) & 0xFF) as u8;
+            // Per-byte wrapping subtraction; staying in u8 prevents an underflow
+            // (e.g. 0x00 - 0xff = 0x01) from bleeding into higher byte lanes.
+            let res_byte = byte0.wrapping_sub(byte1) as u128;
             result |= res_byte << (8 * i);
         }
 

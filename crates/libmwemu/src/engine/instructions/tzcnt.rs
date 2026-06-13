@@ -22,6 +22,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.flags_mut().f_cf = dest == sz;
     emu.flags_mut().f_zf = dest == 0;
 
-    emu.set_operand_value(ins, 1, dest);
+    // TZCNT writes the count to the destination (operand 0), not the source.
+    emu.set_operand_value(ins, 0, dest);
     true
 }

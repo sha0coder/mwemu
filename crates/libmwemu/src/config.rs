@@ -59,6 +59,7 @@ pub struct Config {
 
     // --- API emulation behavior ---
     pub emulate_winapi: bool,
+    pub linux_real_libc: bool, // execute the real mapped libc/ld code, only intercept `syscall`
     pub skip_unimplemented: bool,
     pub short_circuit_sleep: bool, // Sleep/Wait calls advance tick but return immediately
 
@@ -158,6 +159,11 @@ impl Config {
             entropy: false,
             shellcode: false,
             emulate_winapi: false,
+            // On Linux, emulate the real libc/ld.so by default (executing the
+            // genuine interpreter + libc, intercepting only at `syscall`).
+            // Falls back to the in-Rust libc hooks when the host interpreter
+            // can't be located.
+            linux_real_libc: true,
             max_alloc_size: 0xffffff, // 16MB default
             module_name: constants::MODULE_NAME.to_string(),
             exe_name: constants::EXE_NAME.to_string(),

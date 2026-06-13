@@ -455,14 +455,25 @@ impl Emu {
         // 4b. Base relocs on the mapped image (all load paths, including DLL without emulate_winapi).
         pe64.apply_relocations(self, base);
 
-        if set_entry || self.cfg.emulate_winapi {
-            if !is_maps || self.cfg.emulate_winapi {
-                // In SSDT + LdrInitializeThunk bootstrap mode, skip eager IAT binding for the main image.
-                if !(set_entry && self.cfg.emulate_winapi) {
-                    pe64.iat_binding(self, base);
-                    pe64.delay_load_binding(self, base);
-                }
-            }
+        // Decide whether to eagerly bind this image's IAT.
+        let bind_iat = if self.cfg.emulate_winapi {
+            // SSDT/syscall mode: the main image's IAT is bound later by the
+            // LdrInitializeThunk bootstrap, so skip it here; bind everything else.
+            !set_entry
+        } else {
+            // Default API-stub mode: bind the main image AND every dependency DLL
+            // loaded from maps/. mwemu executes the *real* bytes of any exported
+            // function it has no stub for (e.g. msvcrt's CRT startup `_initterm`,
+            // `__wgetmainargs`), and that real code calls further APIs through this
+            // image's own IAT. Pointing those slots at the real export VAs is safe:
+            // mwemu still intercepts them via its API gateway. Without this, the
+            // dependency's IAT stays unbound and the first such call jumps to the
+            // raw import-name RVA and crashes.
+            true
+        };
+        if bind_iat {
+            pe64.iat_binding(self, base);
+            pe64.delay_load_binding(self, base);
         }
 
         // 5. ldr table entry creation and link

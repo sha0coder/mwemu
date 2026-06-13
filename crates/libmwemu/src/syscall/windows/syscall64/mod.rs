@@ -329,15 +329,77 @@ pub fn gateway(emu: &mut Emu) {
             }
         }
         // `NtAreMappedFilesTheSame` (0x8e on some Windows builds, 0x90 on others):
-        // ntdll uses it during DLL caching. STATUS_NOT_SAME_DEVICE is the documented
-        // negative answer — callers treat it as "different mappings" and continue.
+        // the loader calls this right after mapping a KnownDll section to check
+        // whether the freshly section-mapped view and the on-disk file are the
+        // same image. For the genuine System32 DLLs we serve via --iso they ARE
+        // the same file, so the correct answer is STATUS_SUCCESS. Answering
+        // STATUS_NOT_SAME_DEVICE makes ntdll reject the KnownDll mapping, fall
+        // back to relocating the disk copy itself, and then fail re-validation
+        // with STATUS_INVALID_IMAGE_FORMAT — which aborts process init.
         0x8e | 0x90 => {
             log_orange!(
                 emu,
-                "syscall 0x{:x}: NtAreMappedFilesTheSame (stub → NOT_SAME_DEVICE)",
+                "syscall 0x{:x}: NtAreMappedFilesTheSame (stub → SAME / SUCCESS)",
                 nr,
             );
-            emu.regs_mut().rax = STATUS_NOT_SAME_DEVICE;
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        // `NtConnectPort` (0xa4): the CSR client (`CsrClientConnectToServer`,
+        // called from kernelbase's DLL init) connects to the CSRSS API port.
+        // There is no CSRSS to talk to, but the connect MUST succeed — returning
+        // STATUS_NOT_IMPLEMENTED makes kernelbase's DllMain return FALSE and
+        // ntdll aborts process init with STATUS_DLL_INIT_FAILED. We fake a
+        // connected port: hand back a port handle and map the shared-memory view
+        // the client passed in via its PORT_VIEW, filling ViewBase so the
+        // client's `CsrPortHeap` / remote-delta arithmetic stays self-consistent.
+        // PORT_VIEW layout: {Length@0, SectionHandle@8, SectionOffset@0x10,
+        // ViewSize@0x18, ViewBase@0x20, ViewRemoteBase@0x28}.
+        0xa4 => {
+            let port_handle_ptr = emu.regs().rcx;
+            let client_view_ptr = emu.regs().r9;
+            let rsp = emu.regs().rsp;
+            // arg6 (MaxMessageLength, PULONG out) sits at [rsp+0x30] in the
+            // syscall stack frame; the slot holds the caller's pointer.
+            let max_msg_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
+
+            let h = crate::syscall::windows::syscall64::sync::next_handle();
+            if port_handle_ptr != 0 && emu.maps.is_mapped(port_handle_ptr) {
+                let _ = emu.maps.write_qword(port_handle_ptr, h);
+            }
+
+            let mut view_base = 0u64;
+            if client_view_ptr != 0 && emu.maps.is_mapped(client_view_ptr) {
+                let req = emu.maps.read_qword(client_view_ptr + 0x18).unwrap_or(0);
+                // Clamp to a sane window; the client only needs a scratch heap
+                // for CSR messages it will never actually send here.
+                let size = if req == 0 || req > 0x0010_0000 { 0x0001_0000 } else { req };
+                let base = emu.maps.lib64_alloc(size).unwrap_or(0);
+                if base != 0 {
+                    let perm = crate::maps::mem64::Permission::from_flags(true, true, false);
+                    let _ = emu
+                        .maps
+                        .create_map(&format!("csr_port_view_{:x}", h), base, size, perm);
+                    // ViewRemoteBase == ViewBase → remote delta 0, which is fine
+                    // in our single address space (no separate CSR server view).
+                    let _ = emu.maps.write_qword(client_view_ptr + 0x20, base);
+                    let _ = emu.maps.write_qword(client_view_ptr + 0x28, base);
+                    view_base = base;
+                }
+            }
+
+            if max_msg_ptr != 0 && emu.maps.is_mapped(max_msg_ptr) {
+                // LPC/ALPC default maximum message length.
+                let _ = emu.maps.write_dword(max_msg_ptr, 0x148);
+            }
+
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtConnectPort → fake CSR port handle 0x{:x}, view 0x{:x} (SUCCESS)",
+                nr,
+                h,
+                view_base,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
         }
         // `NtQuerySystemEnvironmentValueEx` (0x16d): newer ntdll enumerates
         // UEFI variables during init. NOT_IMPLEMENTED and VARIABLE_NOT_FOUND
@@ -384,17 +446,69 @@ pub fn gateway(emu: &mut Emu) {
         0x16e => {
             let rsp = emu.regs().rsp;
             let info_class = emu.regs().rcx;
+            let in_buf = emu.regs().rdx;
+            let sysinfo = emu.regs().r9;
+            let sysinfo_len = emu.maps.read_qword(rsp + 0x28).unwrap_or(0) as u32;
             let ret_len_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
-            if ret_len_ptr != 0 && emu.maps.is_mapped(ret_len_ptr) {
-                let _ = emu.maps.write_dword(ret_len_ptr, 0);
+
+            // class 0x6b = SystemLogicalProcessorAndGroupInformation. ntdll's
+            // parallel loader queries this (RelationGroup) very early: it calls
+            // once with a NULL/short buffer expecting STATUS_INFO_LENGTH_MISMATCH
+            // plus the required size, allocates, and retries. Answering SUCCESS
+            // the first time breaks that pattern and ntdll dereferences a NULL
+            // result buffer. We model one processor group with one active core.
+            let relationship = if in_buf != 0 {
+                emu.maps.read_dword(in_buf).unwrap_or(0xffff_ffff)
+            } else {
+                0xffff_ffff
+            };
+            if info_class == 0x6b && relationship == 4 {
+                // SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX (RelationGroup): a
+                // 0x20-byte header + one 0x30-byte PROCESSOR_GROUP_INFO = 0x50.
+                const NEED: u32 = 0x50;
+                if ret_len_ptr != 0 && emu.maps.is_mapped(ret_len_ptr) {
+                    let _ = emu.maps.write_dword(ret_len_ptr, NEED);
+                }
+                if sysinfo == 0 || sysinfo_len < NEED || !emu.maps.is_mapped(sysinfo) {
+                    log_orange!(
+                        emu,
+                        "syscall 0x{:x}: NtQuerySystemInformationEx SystemLogicalProcessorAndGroupInformation (need 0x{:x}, got 0x{:x}) → STATUS_INFO_LENGTH_MISMATCH",
+                        nr, NEED, sysinfo_len,
+                    );
+                    emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
+                } else {
+                    for off in 0..NEED as u64 {
+                        let _ = emu.maps.write_byte(sysinfo + off, 0);
+                    }
+                    let _ = emu.maps.write_dword(sysinfo + 0x00, 4); // Relationship = RelationGroup
+                    let _ = emu.maps.write_dword(sysinfo + 0x04, NEED); // Size
+                    let _ = emu.maps.write_word(sysinfo + 0x08, 1); // MaximumGroupCount
+                    let _ = emu.maps.write_word(sysinfo + 0x0a, 1); // ActiveGroupCount
+                    let _ = emu.maps.write_byte(sysinfo + 0x20, 1); // GroupInfo[0].MaximumProcessorCount
+                    let _ = emu.maps.write_byte(sysinfo + 0x21, 1); // GroupInfo[0].ActiveProcessorCount
+                    let _ = emu.maps.write_qword(sysinfo + 0x48, 1); // GroupInfo[0].ActiveProcessorMask
+                    log_orange!(
+                        emu,
+                        "syscall 0x{:x}: NtQuerySystemInformationEx SystemLogicalProcessorAndGroupInformation → 1 group/1 cpu",
+                        nr,
+                    );
+                    emu.regs_mut().rax = STATUS_SUCCESS;
+                }
+            } else {
+                // Generic fallback: SUCCESS with ReturnLength=0. We do NOT zero the
+                // output buffer — callers sometimes pass wildly inflated `out_len`
+                // and a bulk memset would overrun the destination map.
+                if ret_len_ptr != 0 && emu.maps.is_mapped(ret_len_ptr) {
+                    let _ = emu.maps.write_dword(ret_len_ptr, 0);
+                }
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtQuerySystemInformationEx class=0x{:x} (stub → SUCCESS, len=0)",
+                    nr,
+                    info_class,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
             }
-            log_orange!(
-                emu,
-                "syscall 0x{:x}: NtQuerySystemInformationEx class=0x{:x} (stub → SUCCESS, len=0)",
-                nr,
-                info_class,
-            );
-            emu.regs_mut().rax = STATUS_SUCCESS;
         }
         // `NtQueryQuotaInformationFile` (0x166): kernelbase's TLS-callback /
         // process-init path queries this for each loaded module. Returning

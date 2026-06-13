@@ -1,5 +1,8 @@
 /target/
 .gitconfig
+# memory maps: real DLLs/libs (fetched on demand) and the system32 extracted
+# from a Windows ISO via --iso — too large/licensed to ship to github
+/maps/
 win32_2022/
 shellcodes32/
 shellcodes64/

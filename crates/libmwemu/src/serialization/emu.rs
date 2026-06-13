@@ -377,6 +377,7 @@ impl From<SerializableEmu> for Emu {
             skip_apicall,
             its_apicall,
             is_api_run: false,
+            ld_bootstrap: false,
             is_break_on_api: false,
             banzai,
             // Debugging & breakpoints

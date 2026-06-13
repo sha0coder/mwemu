@@ -59,6 +59,16 @@ fn align_up_page(size: u64) -> u64 {
     size.saturating_add(PAGE - 1) & !(PAGE - 1)
 }
 
+/// `create_map` backs every region with an eager `vec![0; size]`, so a multi-GB
+/// reservation (e.g. an ntdll heap `MEM_RESERVE` of 0x100020000) would stall the
+/// host zeroing RAM — or OOM — even though real Windows commits no pages for a
+/// reserve. Cap the backing size to `max_alloc_size`, mirroring the truncation
+/// `Maps::alloc` already applies when it picks the base address.
+fn clamp_backing_size(emu: &Emu, size: u64) -> u64 {
+    let cap = align_up_page(emu.maps.max_alloc_size);
+    size.min(cap)
+}
+
 /// ntdll heap expansion (`RtlAllocateHeap` internals) can leave a `LIST_ENTRY` at
 /// `allocBase + 0xb000` zeroed; the next walk does `mov rax,[rsi]` / follow Flink and faults.
 /// Prime a self-linked sentinel at that offset for large private regions (observed with
@@ -180,8 +190,16 @@ pub fn nt_query_virtual_memory(emu: &mut Emu) {
         return;
     }
 
-    // MemoryImageInformation (class 6): returns {ImageBase: u64, SizeOfImage: u64, ImageFlags: u32}
-    if memory_information_class == MEMORY_INFORMATION_CLASS_MEMORY_IMAGE_INFORMATION {
+    // MemoryImageInformation (class 6) and MemoryImageExtensionInformation
+    // (class 0xe, newer): both return a 0x18-byte image descriptor
+    // {ImageBase: u64, SizeOfImage: u64, ImageFlags: u32}. Win11's
+    // LdrInitializeThunk queries class 0xe for ntdll's own image; returning the
+    // image base/size (flags zeroed = no special extensions) keeps init going,
+    // whereas the generic fallback below would answer STATUS_INVALID_PARAMETER
+    // and ntdll aborts the process with a hard error.
+    if memory_information_class == MEMORY_INFORMATION_CLASS_MEMORY_IMAGE_INFORMATION
+        || memory_information_class == MEMORY_INFORMATION_CLASS_MEMORY_IMAGE_EXTENSION_INFORMATION
+    {
         const MEMORY_IMAGE_INFO_SIZE: u64 = 0x18;
         if memory_information_length < MEMORY_IMAGE_INFO_SIZE {
             emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
@@ -335,6 +353,7 @@ pub fn nt_allocate_virtual_memory(emu: &mut Emu) {
     }
 
     size = align_up_page(size);
+    size = clamp_backing_size(emu, size);
 
     let preferred_base = match emu.maps.read_qword(base_ptr) {
         Some(b) => b,
@@ -497,6 +516,7 @@ pub fn nt_allocate_virtual_memory_ex(emu: &mut Emu) {
     }
 
     size = align_up_page(size);
+    size = clamp_backing_size(emu, size);
 
     let preferred_base = match emu.maps.read_qword(base_ptr) {
         Some(b) => b,

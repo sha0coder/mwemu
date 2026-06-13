@@ -2,15 +2,60 @@
 
 A multi-platform x86/x64/AArch64 binary emulator written in Rust. Supports PE, ELF, and Mach-O formats across Windows, Linux, and macOS.
 
-## Development Environment
+Also implement some Windows system simulation, EPB+TEB+LDR, --syscall-mode, and also winapi implementations.
 
-A Nix flake is provided for a reproducible Rust development shell. To enter it:
+## Golden Rules
+
+1. MWEMU should be able to emulate the maximum number of instructions possible.
+
+2. no usafe blocks and no unsafe dependencies or risky of supply chain attacks.
+
+3. keep it offline
+
+4. every function 1 unique purpose
+
+5. keep it simple, no unneeded overcomplications
+
+6. easy to use API
+
+7. don't break any test, unless the test is bad implemented.
+
+
+## Testing
+
+`cargo test` (if there is no test folder `make tests` will download it)
+
+Testing in release mode could mask errors.
+
+Check correct exe loader with IAT binding:
 
 ```bash
-nix develop
+cargo run --release -- -f ~/soft/calc.exe -6 -v 
 ```
 
-This gives you the stable Rust toolchain (with rust-src, rust-analyzer, clippy), pkg-config, and openssl.
+Check syscall mode:
+
+```bash
+cargo run --release -- -f ~/soft/calc.exe -6 -v --syscall-mode
+```
+
+
+## Verbose 
+
+for syscall mode:
+
+1. no verbose --> syscalls in yellow
+2. -v --> also WinAPI in red and messages.
+2. -vv --> also assembly
+3. -vvv --> also rep iterations
+
+for non-syscall mode:
+
+1. no verbose --> WinAPI in red
+2. -v --> also messages
+3. -vv --> also assembly
+4. -vvv --> also rep iterations
+
 
 ## Building & Testing on Apple Silicon
 

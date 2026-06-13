@@ -962,6 +962,32 @@ impl Regs64 {
 
             _ => unimplemented!("SSE  XMM register: {:?} ", reg),
         };
+
+        // XMMn aliases the low 128 bits of YMMn. Mix of SSE/AVX code (e.g. glibc
+        // string functions: `vpxor xmm0,...` then `vpcmpeqb ymm1,ymm0,[mem]`)
+        // relies on this aliasing, so keep YMM's low half in sync. The upper
+        // 128 bits are preserved here (legacy-SSE semantics).
+        let lo = value as u64;
+        let hi = (value >> 64) as u64;
+        match reg {
+            Register::XMM0 => { self.ymm0.0[0] = lo; self.ymm0.0[1] = hi; }
+            Register::XMM1 => { self.ymm1.0[0] = lo; self.ymm1.0[1] = hi; }
+            Register::XMM2 => { self.ymm2.0[0] = lo; self.ymm2.0[1] = hi; }
+            Register::XMM3 => { self.ymm3.0[0] = lo; self.ymm3.0[1] = hi; }
+            Register::XMM4 => { self.ymm4.0[0] = lo; self.ymm4.0[1] = hi; }
+            Register::XMM5 => { self.ymm5.0[0] = lo; self.ymm5.0[1] = hi; }
+            Register::XMM6 => { self.ymm6.0[0] = lo; self.ymm6.0[1] = hi; }
+            Register::XMM7 => { self.ymm7.0[0] = lo; self.ymm7.0[1] = hi; }
+            Register::XMM8 => { self.ymm8.0[0] = lo; self.ymm8.0[1] = hi; }
+            Register::XMM9 => { self.ymm9.0[0] = lo; self.ymm9.0[1] = hi; }
+            Register::XMM10 => { self.ymm10.0[0] = lo; self.ymm10.0[1] = hi; }
+            Register::XMM11 => { self.ymm11.0[0] = lo; self.ymm11.0[1] = hi; }
+            Register::XMM12 => { self.ymm12.0[0] = lo; self.ymm12.0[1] = hi; }
+            Register::XMM13 => { self.ymm13.0[0] = lo; self.ymm13.0[1] = hi; }
+            Register::XMM14 => { self.ymm14.0[0] = lo; self.ymm14.0[1] = hi; }
+            Register::XMM15 => { self.ymm15.0[0] = lo; self.ymm15.0[1] = hi; }
+            _ => {}
+        }
     }
 
     // ymm
@@ -1042,6 +1068,29 @@ impl Regs64 {
 
             _ => unimplemented!("SSE  YMM register: {:?} ", reg),
         };
+
+        // Mirror the low 128 bits into the aliased XMM register so subsequent
+        // SSE reads (get_xmm_reg) observe the YMM write.
+        let lo = ((value.0[1] as u128) << 64) | value.0[0] as u128;
+        match reg {
+            Register::YMM0 => self.xmm0 = lo,
+            Register::YMM1 => self.xmm1 = lo,
+            Register::YMM2 => self.xmm2 = lo,
+            Register::YMM3 => self.xmm3 = lo,
+            Register::YMM4 => self.xmm4 = lo,
+            Register::YMM5 => self.xmm5 = lo,
+            Register::YMM6 => self.xmm6 = lo,
+            Register::YMM7 => self.xmm7 = lo,
+            Register::YMM8 => self.xmm8 = lo,
+            Register::YMM9 => self.xmm9 = lo,
+            Register::YMM10 => self.xmm10 = lo,
+            Register::YMM11 => self.xmm11 = lo,
+            Register::YMM12 => self.xmm12 = lo,
+            Register::YMM13 => self.xmm13 = lo,
+            Register::YMM14 => self.xmm14 = lo,
+            Register::YMM15 => self.xmm15 = lo,
+            _ => {}
+        }
     }
 
     pub fn get_reg(&self, reg: Register) -> u64 {

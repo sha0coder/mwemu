@@ -168,6 +168,9 @@ impl Maps {
         let base_key = self.mem_slab.insert(mem);
         self.name_map.insert(name.to_string(), base_key);
         self.maps.insert(base, base_key);
+        // Creating a map can reuse a freed slab slot, leaving stale TLB entries
+        // that still point at the recycled key — flush so lookups re-resolve.
+        self.tlb.get_mut().flush();
         Ok(self.mem_slab.get_mut(base_key).unwrap())
     }
 

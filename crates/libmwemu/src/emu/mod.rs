@@ -59,6 +59,7 @@ mod fpu;
 mod fs;
 mod initialization;
 mod instruction_pointer;
+mod iso;
 mod loaders;
 mod maps;
 mod memory;
@@ -133,6 +134,7 @@ pub struct Emu {
     pub skip_apicall: bool,       // stub/skip current API call
     pub its_apicall: Option<u64>, // address of API call currently being dispatched
     pub is_api_run: bool,         // true while inside a Windows/system API handler
+    pub ld_bootstrap: bool,       // Linux --libc: real ld.so is driving the bootstrap (no libc hooks)
     pub is_break_on_api: bool,    // break on API calls (internal, for python interface)
     pub banzai: Banzai,           // auto-recovery: skip unimplemented APIs and continue
 

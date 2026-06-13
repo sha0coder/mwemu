@@ -13,6 +13,24 @@ fn write_return_length(emu: &mut Emu, ret_len_ptr: u64, n: u32) {
     let _ = emu.maps.write_dword(ret_len_ptr, n);
 }
 
+/// Fill a 0x40-byte x64 `SYSTEM_BASIC_INFORMATION`. Field offsets follow the
+/// native 64-bit layout: the `ULONG_PTR` members are 8-byte aligned, so
+/// `MinimumUserModeAddress` is at +0x20 and `MaximumUserModeAddress` at +0x28
+/// (not +0x1c/+0x24 as in the 32-bit struct). ntdll reads `MaximumUserModeAddress`
+/// to size loader bitmaps, so it must be the real top-of-user-VA value.
+fn fill_system_basic_information(emu: &mut Emu, info: u64, len: u32) {
+    for off in 0..len.min(0x40) {
+        let _ = emu.maps.write_byte(info + u64::from(off), 0);
+    }
+    let _ = emu.maps.write_dword(info + 0x08, 0x1000); // PageSize
+    let _ = emu.maps.write_dword(info + 0x0c, 0x0010_0000); // NumberOfPhysicalPages (~4GB)
+    let _ = emu.maps.write_dword(info + 0x18, 0x0001_0000); // AllocationGranularity (64KB)
+    let _ = emu.maps.write_qword(info + 0x20, 0x0000_0000_0001_0000); // MinimumUserModeAddress
+    let _ = emu.maps.write_qword(info + 0x28, 0x0000_7fff_fffe_ffff); // MaximumUserModeAddress
+    let _ = emu.maps.write_qword(info + 0x30, 1); // ActiveProcessorsAffinityMask
+    let _ = emu.maps.write_byte(info + 0x38, 1); // NumberOfProcessors
+}
+
 /// `SYSTEM_INFORMATION_CLASS` values commonly hit during ntdll bootstrap (subset).
 const SYSTEM_BASIC_INFORMATION: u64 = 0;
 const SYSTEM_PROCESSOR_INFORMATION: u64 = 1;
@@ -20,10 +38,18 @@ const SYSTEM_PERFORMANCE_INFORMATION: u64 = 2;
 const SYSTEM_TIMEOFDAY_INFORMATION: u64 = 3;
 const SYSTEM_PROCESS_INFORMATION: u64 = 5;
 
+/// `SystemEmulationBasicInformation` (class 0x3e = 62). Returns a
+/// `SYSTEM_BASIC_INFORMATION` for the emulated environment (identical layout to
+/// class 0). Win11's `LdrInitializeThunk` queries this very early and reads
+/// `MaximumUserModeAddress` (offset 0x28) to size a loader bitmap (2 bits per MB
+/// of the user address space). Returning the wrong/short structure makes that
+/// size 0 and the following `NtAllocateVirtualMemoryEx` fails with
+/// STATUS_INVALID_PARAMETER, aborting process init.
+const SYSTEM_EMULATION_BASIC_INFORMATION: u64 = 0x3e;
 /// `SYSTEM_KERNEL_DEBUGGER_INFORMATION` (class 0x23 = 35).
 const SYSTEM_KERNEL_DEBUGGER_INFORMATION: u64 = 0x23;
-/// `SystemKernelDebuggerInformationEx` (class 0x3e = 62) — modern alias.
-const SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX: u64 = 0x3e;
+/// `SystemKernelDebuggerInformationEx` (class 0x95 = 149).
+const SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX: u64 = 0x95;
 /// `SYSTEM_CODE_INTEGRITY_INFORMATION` (Windows 8+).
 const SYSTEM_CODE_INTEGRITY_INFORMATION: u64 = 103;
 /// `SystemCodeIntegrityPolicyInformation` (0xC0) — ntdll `LdrInitializeThunk` queries this on
@@ -65,23 +91,16 @@ pub fn nt_query_system_information(emu: &mut Emu) {
     }
 
     match class {
-        SYSTEM_BASIC_INFORMATION => {
+        // Both return the same x64 `SYSTEM_BASIC_INFORMATION`; the emulation
+        // variant just describes the (here identical) emulated environment.
+        SYSTEM_BASIC_INFORMATION | SYSTEM_EMULATION_BASIC_INFORMATION => {
             const NEED: u32 = 0x40;
             if len < NEED {
                 write_return_length(emu, ret_len_ptr, NEED);
                 emu.regs_mut().rax = STATUS_INFO_LENGTH_MISMATCH;
                 return;
             }
-            for off in 0..len {
-                let _ = emu.maps.write_byte(info + u64::from(off), 0);
-            }
-            // `SYSTEM_BASIC_INFORMATION` (layout per Windows SDK / x64)
-            let _ = emu.maps.write_dword(info + 8, 4096); // PageSize
-            let _ = emu.maps.write_dword(info + 12, 0x1000); // NumberOfPhysicalPages (stub)
-            let _ = emu.maps.write_qword(info + 28, 0x0000_0000_0001_0000); // MinimumUserModeAddress
-            let _ = emu.maps.write_qword(info + 36, 0x0000_7fff_ffff_ffff); // MaximumUserModeAddress
-            let _ = emu.maps.write_qword(info + 44, 1); // ActiveProcessorsAffinityMask
-            let _ = emu.maps.write_byte(info + 52, 1); // NumberOfProcessors
+            fill_system_basic_information(emu, info, len);
             write_return_length(emu, ret_len_ptr, NEED);
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
@@ -144,7 +163,7 @@ pub fn nt_query_system_information(emu: &mut Emu) {
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
 
-        SYSTEM_KERNEL_DEBUGGER_INFORMATION | SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX => {
+        SYSTEM_KERNEL_DEBUGGER_INFORMATION => {
             // SYSTEM_KERNEL_DEBUGGER_INFORMATION: { DebuggerEnabled: BOOLEAN, DebuggerNotPresent: BOOLEAN }
             const NEED: u32 = 2;
             if len < NEED {
@@ -218,10 +237,11 @@ pub fn nt_query_system_information(emu: &mut Emu) {
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
 
-        // SystemKernelDebuggerInformationEx (0x73):
-        // SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX { DebuggerAllowed, DebuggerEnabled, DebuggerPresent }
-        // Return all-zero (no kernel debugger) so the js/jl on negative return is not taken.
-        0x73 => {
+        // SystemKernelDebuggerInformationEx (0x95) and the historically-probed
+        // 0x73: SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX { DebuggerAllowed,
+        // DebuggerEnabled, DebuggerPresent }. Return all-zero (no kernel
+        // debugger) so the js/jl on negative return is not taken.
+        SYSTEM_KERNEL_DEBUGGER_INFORMATION_EX | 0x73 => {
             const NEED: u32 = 3;
             if len < NEED {
                 write_return_length(emu, ret_len_ptr, NEED);

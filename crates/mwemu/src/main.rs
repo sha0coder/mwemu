@@ -107,6 +107,7 @@ fn main() {
         .arg(clap_arg!("trace_memory", "m", "trace_memory", "trace all the memory accesses read and write."))
         .arg(clap_arg!("flags", "", "flags", "trace the flags hex value in every instruction."))
         .arg(clap_arg!("maps", "M", "maps", "select the memory maps folder", "PATH"))
+        .arg(clap_arg!("iso", "", "iso", "extract the genuine system32 DLLs from a Windows installation ISO (download it yourself) and use them as the maps folder, e.g. --iso ~/Downloads/win11.iso", "ISO"))
         .arg(clap_arg!("trace_registers", "r", "trace_registers", "print the register values in every step."))
         .arg(clap_arg!("register", "R", "trace_register", "trace a specific register in every step, value and content", "REGISTER1,REGISTER2"))
         .arg(clap_arg!("console", "c", "console", "select in which moment will spawn the console to inspect.", "NUMBER"))
@@ -165,6 +166,20 @@ fn main() {
                     "run real DLL PE bytes and intercept only at syscalls \
                      (alias: --syscall-mode). Slower but more accurate against \
                      anti-emulation checks.",
+                )
+                .takes_value(false),
+        )
+        // `--libc` is the Linux counterpart of `--ssdt`: it maps the real
+        // libc/ld code and executes it, intercepting only at the `syscall`
+        // instruction instead of hooking each libc function in Rust.
+        .arg(
+            Arg::with_name("libc")
+                .long("libc")
+                .alias("linux-syscall-mode")
+                .help(
+                    "run the real mapped libc/ld code and intercept only at \
+                     syscalls (alias: --linux-syscall-mode). Linux counterpart \
+                     of --ssdt.",
                 )
                 .takes_value(false),
         )
@@ -260,6 +275,14 @@ fn main() {
         }
         emu.cfg.emulate_winapi = true;
     }
+
+    // Linux real-libc execution mode (counterpart of --ssdt).
+    if matches.is_present("libc") {
+        if !emu.cfg.is_x64() {
+            panic!("--libc real-libc mode is only supported in 64-bit mode yet.");
+        }
+        emu.cfg.linux_real_libc = true;
+    }
     // -V N        → enable verbose from step N onwards (permanent)
     // -V N-M      → enable verbose only between steps N and M (range, restores afterwards)
     if matches.is_present("verbose_at") {
@@ -318,7 +341,19 @@ fn main() {
     }
 
     // maps
-    if matches.is_present("maps") {
+    if matches.is_present("iso") {
+        let iso = matches.value_of("iso").expect("specify the ISO path");
+        // The logger isn't initialized yet here and extracting from a multi-GB
+        // ISO is slow, so talk to the user directly on stderr.
+        eprintln!("[mwemu] extracting genuine system32 from {} ...", iso);
+        match emu.set_maps_from_iso(iso) {
+            Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
+            Err(e) => {
+                eprintln!("[mwemu] --iso failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+    } else if matches.is_present("maps") {
         emu.set_maps_folder(matches.value_of("maps").expect("specify the maps folder"));
     } else {
         // if maps is not selected, by default ...

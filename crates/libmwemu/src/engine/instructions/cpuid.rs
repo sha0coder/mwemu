@@ -127,7 +127,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rbx = 0;
             emu.regs_mut().rcx = 0x121;
             emu.regs_mut().rdx = 0x2c100800;
-            emu.regs_mut().rsi = 0x80000008;
         }
         0x80000007 => {
             emu.regs_mut().rax = 0;
