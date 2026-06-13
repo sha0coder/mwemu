@@ -58,6 +58,7 @@ pub fn emulate_instruction(
         Mnemonic::Rol => instructions::rol::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Rcl => instructions::rcl::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Mul => instructions::mul::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Mulx => instructions::mulx::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Div => instructions::div::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Idiv => instructions::idiv::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Imul => instructions::imul::execute(emu, ins, instruction_sz, rep_step),
@@ -284,6 +285,7 @@ pub fn emulate_instruction(
         // `orps`/`orpd`: identical full 128-bit bitwise OR, share a handler.
         Mnemonic::Orpd | Mnemonic::Orps => instructions::orpd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pextrw => instructions::pextrw::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Pinsrw => instructions::pinsrw::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Addps => instructions::addps::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Addpd => instructions::addpd::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Addsd => instructions::addsd::execute(emu, ins, instruction_sz, rep_step),
@@ -317,6 +319,9 @@ pub fn emulate_instruction(
         Mnemonic::Vzeroupper => {
             instructions::vzeroupper::execute(emu, ins, instruction_sz, rep_step)
         }
+        Mnemonic::Vmovups => instructions::vmovups::execute(emu, ins, instruction_sz, rep_step),
+        // VMOVAPS is VMOVUPS minus the alignment fault, which we don't model.
+        Mnemonic::Vmovaps => instructions::vmovups::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vmovdqu => instructions::vmovdqu::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vmovdqa => instructions::vmovdqa::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Movaps => instructions::movaps::execute(emu, ins, instruction_sz, rep_step),
@@ -332,6 +337,7 @@ pub fn emulate_instruction(
         Mnemonic::Vpcmpgtb => instructions::vpcmpgtb::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vpsubb => instructions::vpsubb::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Vpxor => instructions::vpxor::execute(emu, ins, instruction_sz, rep_step),
+        Mnemonic::Vxorps => instructions::vxorps::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Pcmpeqb => instructions::pcmpeqb::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Psubsb => instructions::psubsb::execute(emu, ins, instruction_sz, rep_step),
         Mnemonic::Fcomp => instructions::fcomp::execute(emu, ins, instruction_sz, rep_step),

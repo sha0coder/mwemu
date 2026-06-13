@@ -85,6 +85,24 @@ fn dispatch_legacy_syscall64(emu: &mut emu::Emu) {
 
         constants::NR64_WRITE => super::fs::handle_syscall64_write(emu),
 
+        // getrandom(buf, buflen, flags): fill `buflen` bytes and return the
+        // count. Without this the unimplemented-syscall fallback leaves rax = the
+        // syscall number (318), which glibc/std reads as "318 bytes written" and
+        // then indexes past a smaller buffer (panic: range start 318 of len 16).
+        constants::NR64_GETRANDOM => {
+            let buf = emu.regs().rdi;
+            let count = emu.regs().rsi;
+            // Deterministic, non-zero-ish fill (functional, not cryptographic).
+            for i in 0..count {
+                emu.maps.write_byte(buf + i, (0x9e * (i + 1)) as u8);
+            }
+            log::trace!(
+                "{}** {} syscall getrandom(buf:0x{:x} len:{}) ={} {}",
+                emu.colors.light_red, emu.pos, buf, count, count, emu.colors.nc
+            );
+            emu.regs_mut().rax = count;
+        }
+
         /*
         constants::NR64_WRITEV => {
             let fd = emu.regs().rdi;

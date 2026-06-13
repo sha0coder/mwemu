@@ -124,7 +124,7 @@ impl Emu {
             || (!map_name.is_empty() && name.starts_with(&map_name))
             || name == "loader.text"*/
         if addr < constants::LIBS64_MIN {
-            if self.cfg.verbose > 0 {
+            if self.cfg.verbose > 1 {
                 let rip = self.regs().rip;
                 let prev = self.maps.get_addr_name(rip).unwrap_or("??");
                 if prev != name {
@@ -352,7 +352,7 @@ impl Emu {
             || (!map_name.is_empty() && name.starts_with(&map_name))
             || name == "loader.text"*/
         if addr < constants::LIBS32_MIN {
-            if self.cfg.verbose > 0 {
+            if self.cfg.verbose > 1 {
                 let eip = self.regs().get_eip();
                 let prev = self.maps.get_addr_name(eip).unwrap_or("??");
                 if prev != name {

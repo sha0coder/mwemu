@@ -40,4 +40,6 @@ test_linux:
 	cargo run --release -- -f /bin/ls -A '"-l"' -6
 test_windows:
 	cargo run --release -- -f test/exe64win_enigma.bin -6 --winver win11 -v
+test_inception:
+	cargo run --release -- -f target/release/mwemu -6 --winver win11 -v
 

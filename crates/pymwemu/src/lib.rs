@@ -390,6 +390,23 @@ impl Emu {
         self.emu.cfg.maps_folder = folder.to_string();
     }
 
+    /// Fetch genuine Windows system DLLs from Microsoft's symbol server and use
+    /// them as the maps folder, instead of needing a local copy. `version` is a
+    /// friendly name ("win11", "win10", "win2019") or an exact build number
+    /// ("26100.7920"). Also sets the build so any DLL the loader needs later is
+    /// auto-fetched on demand. Requires network access on first use; results are
+    /// cached under maps/winver/.
+    ///
+    /// Example:
+    ///     emu = pymwemu.init_win64()
+    ///     emu.load_maps_from_winver("win11")
+    ///     emu.load_binary("sample.exe")
+    fn load_maps_from_winver(&mut self, version: &str) -> PyResult<()> {
+        self.emu
+            .set_maps_from_winver(version)
+            .map_err(|e| PyValueError::new_err(format!("winver maps fetch failed: {}", e)))
+    }
+
     /// load_binary() already calls init_win32() if its PE or shellcode.
     /// if you dont use load_binary and need the windows simulation
     /// then call this to have peb/teb/ldr/dlls loaded.

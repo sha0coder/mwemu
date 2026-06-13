@@ -1154,6 +1154,7 @@ impl Emu {
 
         // Stage 1: map kernel32
         for dll in &base {
+            self.ensure_maps_dll(dll); // fetch from the symbol server if missing
             let filepath = self.cfg.get_maps_folder(dll);
             log::debug!("mapping base lib64: {}", &filepath);
             assert!(
@@ -1187,6 +1188,7 @@ impl Emu {
 
         // Stage 3: map dependencies
         for dll in dependencies {
+            self.ensure_maps_dll(&dll); // fetch from the symbol server if missing
             let filepath = self.cfg.get_maps_folder(&dll);
             log::debug!("mapping depenency {}", &filepath);
             assert!(

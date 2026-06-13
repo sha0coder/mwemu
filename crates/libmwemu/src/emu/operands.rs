@@ -1091,13 +1091,16 @@ impl Emu {
                 | MemorySize::Packed64_Float32
                 | MemorySize::Packed256_UInt32
                 | MemorySize::Packed128_Float32
+                | MemorySize::Packed256_Float32
                 | MemorySize::SegPtr32 => 32,
                 MemorySize::Float64
                 | MemorySize::UInt64
                 | MemorySize::Int64
                 | MemorySize::QwordOffset
                 | MemorySize::Packed128_UInt64
-                | MemorySize::Packed256_UInt64 => 64,
+                | MemorySize::Packed256_UInt64
+                | MemorySize::Packed128_Float64
+                | MemorySize::Packed256_Float64 => 64,
                 MemorySize::UInt8 | MemorySize::Int8 => 8,
                 MemorySize::Packed256_UInt128 => 128,
                 _ => unimplemented!("memory size {:?}", ins.memory_size()),

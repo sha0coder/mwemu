@@ -21,6 +21,11 @@ use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+/// Serializes symbol-server fetches so concurrent emulator threads don't race
+/// on the shared maps cache or burst-hammer the server.
+static FETCH_LOCK: Mutex<()> = Mutex::new(());
 
 /// Friendly alias → Windows build (as it appears inside winbindex's `version`
 /// string, e.g. "10.0.26100.7920"). A bare build number passed to `--winver`
@@ -69,6 +74,15 @@ pub fn ensure_dll(
     basename: &str,
 ) -> Result<PathBuf, Box<dyn Error>> {
     let dest = cache.join(basename);
+    // Fast path: already cached, no lock needed.
+    if dest.is_file() {
+        return Ok(dest);
+    }
+    // Serialize concurrent fetches: many emulator threads loading PEs at once
+    // would otherwise hammer the symbol server and race on the shared cache /
+    // index files. Re-check under the lock so we don't re-download what another
+    // thread just fetched.
+    let _guard = FETCH_LOCK.lock().unwrap();
     if dest.is_file() {
         return Ok(dest);
     }
@@ -116,6 +130,14 @@ fn winbindex_key(basename: &str, build: &str) -> Result<String, Box<dyn Error>> 
     // the x64 image (IMAGE_FILE_MACHINE_AMD64 = 0x8664 = 34404), otherwise the
     // substring match can pick the 32-bit ntdll of the same build.
     const MACHINE_AMD64: u64 = 0x8664;
+    // Apisets (api-ms-win-*) and a few forwarders carry a much lower UBR than the
+    // main system DLLs (e.g. 26100.1 vs 26100.7920) because they almost never
+    // change. So match the exact build first, then fall back to the same major
+    // build (".26100.") picking the highest UBR available.
+    let major = build.split('.').next().unwrap_or(build);
+    let major_needle = format!(".{}.", major);
+    let mut fallback: Option<(u64, u64, u64)> = None; // (ubr, timestamp, virtualSize)
+
     for entry in obj.values() {
         let fi = match entry.get("fileInfo") {
             Some(v) => v,
@@ -125,22 +147,35 @@ fn winbindex_key(basename: &str, build: &str) -> Result<String, Box<dyn Error>> 
             continue;
         }
         let version = fi.get("version").and_then(|v| v.as_str()).unwrap_or("");
-        if !version.contains(build) {
-            continue;
+        let ts = match fi.get("timestamp").and_then(|v| v.as_u64()) {
+            Some(v) => v,
+            None => continue,
+        };
+        let vsize = match fi.get("virtualSize").and_then(|v| v.as_u64()) {
+            Some(v) => v,
+            None => continue,
+        };
+        if version.contains(build) {
+            return Ok(format!("{:08X}{:X}", ts as u32, vsize as u32)); // exact
         }
-        let ts = fi
-            .get("timestamp")
-            .and_then(|v| v.as_u64())
-            .ok_or("winbindex: entry missing timestamp")?;
-        let vsize = fi
-            .get("virtualSize")
-            .and_then(|v| v.as_u64())
-            .ok_or("winbindex: entry missing virtualSize")?;
+        if version.contains(&major_needle) {
+            let ubr = version
+                .split_whitespace()
+                .next()
+                .and_then(|v| v.rsplit('.').next())
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(0);
+            if fallback.map_or(true, |(u, _, _)| ubr > u) {
+                fallback = Some((ubr, ts, vsize));
+            }
+        }
+    }
+    if let Some((_, ts, vsize)) = fallback {
         return Ok(format!("{:08X}{:X}", ts as u32, vsize as u32));
     }
     Err(format!(
-        "no {} variant for build {} in winbindex (try an exact build number)",
-        basename, build
+        "no {} variant for build {} (nor major {}) in winbindex",
+        basename, build, major
     )
     .into())
 }
@@ -179,6 +214,36 @@ const SEED_DATA_FILES: &[&str] = &["C_1252.NLS", "C_437.NLS", "locale.nls"];
 const SEED_DLLS: &[&str] = &["ntdll.dll", "kernel32.dll", "kernelbase.dll"];
 
 impl crate::emu::Emu {
+    /// Ensure a Windows system `dll` is present in the current maps folder,
+    /// fetching it from the symbol server when missing. This is the library-wide
+    /// safety net: any consumer (CLI, pymwemu, MCP, a test, a third party) that
+    /// loads a Windows image/shellcode gets the DLLs auto-provisioned instead of
+    /// hitting "required DLL not found". Best-effort — on failure it logs and
+    /// returns so the caller's own missing-DLL handling still runs.
+    ///
+    /// x64 only for now (winver is AMD64-only); 32-bit no-ops until symbol-server
+    /// support for `machineType 332` lands.
+    pub(crate) fn ensure_maps_dll(&self, dll: &str) {
+        if !self.cfg.arch.is_x64() {
+            return;
+        }
+        let filepath = self.cfg.get_maps_folder(dll);
+        if std::path::Path::new(&filepath).exists() {
+            return;
+        }
+        // Use the configured build if the consumer picked one (--winver / API),
+        // else default to win11.
+        let build = self
+            .cfg
+            .winver
+            .clone()
+            .unwrap_or_else(|| resolve_build("win11"));
+        let folder = self.cfg.maps_folder.clone();
+        if let Err(e) = ensure_dll(std::path::Path::new(&folder), &build, &dll.to_lowercase()) {
+            log::warn!("winver: could not fetch {} (build {}): {}", dll, build, e);
+        }
+    }
+
     /// Point the maps folder at a build's symbol-server cache, fetching the seed
     /// DLLs up front and enabling lazy fetch for the rest. `name` is a friendly
     /// alias (`win11`) or an exact build number (`26100.7920`).

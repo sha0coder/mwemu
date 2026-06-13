@@ -24,6 +24,9 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     match peb32::get_module_base(&dll, emu) {
         Some(base) => base,
         None => {
+            // Safety net: fetch from the symbol server if missing (no-op until
+            // winver gains 32-bit support; harmless meanwhile).
+            emu.ensure_maps_dll(&dll);
             if std::path::Path::new(dll_path.as_str()).exists() {
                 let (base, pe_off) = emu.load_pe32(&dll_path, false, 0);
                 peb32::dynamic_link_module(base as u64, pe_off, &dll, emu);

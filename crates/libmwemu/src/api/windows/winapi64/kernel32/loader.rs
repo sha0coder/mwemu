@@ -61,6 +61,12 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
                 return base;
             }
 
+            // Library-wide safety net: if the DLL isn't in the maps folder,
+            // fetch it from the symbol server (--winver, default win11). Covers
+            // PE-load-time deps, IAT/delay-load binding, runtime LoadLibrary and
+            // the SSDT `load_library("ntdll")` — so no consumer hits a missing DLL.
+            emu.ensure_maps_dll(&dll);
+
             let path = std::path::Path::new(&dll_path);
             if path.try_exists().unwrap() {
                 let (base, pe_off) = emu.load_pe64(&dll_path, false, 0);
