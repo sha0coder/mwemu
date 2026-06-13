@@ -177,10 +177,13 @@ OPTIONS:
 
 ## Command line examples
 
-64bits needs the -6 flag, -vv for viewing asm, and -c for spawning console at specific moment:
+64bits needs the -6 flag, -vv for viewing ASM, and -c for spawning console at specific moment:
 
 ```bash
 cargo run --release -- -f /tmp/shellcode.bin -6 -vv -c 19291
+cargo run --release -- -f /bin/ls -6 -A '"-l"' -v 
+cargo run --release -- -f calc.exe -6 --winver win11
+cargo run --release -- -f calc.exe -6 --winver win11 --syscall-mode
 ```
 
 ## Testing
