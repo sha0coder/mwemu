@@ -366,9 +366,17 @@ fn main() {
     } else if matches.is_present("maps") {
         emu.set_maps_folder(matches.value_of("maps").expect("specify the maps folder"));
     } else {
-        // if maps is not selected, by default ...
+        // No --iso/--winver/--maps: default to fetching genuine system DLLs from
+        // Microsoft's symbol server (--winver win11) for 64-bit. 32-bit has no
+        // symbol-server support yet, so it keeps using the bundled maps folder.
         if emu.cfg.is_x64() {
-            emu.set_maps_folder("maps/windows/x86_64/");
+            match emu.set_maps_from_winver("win11") {
+                Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
+                Err(e) => {
+                    eprintln!("[mwemu] default --winver win11 failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         } else {
             emu.set_maps_folder("maps/windows/x86/");
         }

@@ -38,3 +38,6 @@ test_syscall:
 	cargo run --release -- -f test/exe64win_msgbox.bin -6 --syscall-mode --winver win11
 test_linux:
 	cargo run --release -- -f /bin/ls -A '"-l"' -6
+test_windows:
+	cargo run --release -- -f test/exe64win_enigma.bin -6 --winver win11 -v
+

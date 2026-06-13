@@ -14,6 +14,13 @@ maps/**/*.NLS
 maps/**/ntoskrnl.exe
 maps/iso/
 maps/winver/
+# the winver cache is written relative to the CWD, so running tests from a
+# crate dir creates crates/<crate>/maps/... — ignore caches at any depth, plus
+# the stray top-level maps64/ extraction dir.
+**/maps/iso/
+**/maps/winver/
+crates/**/maps/
+/maps64/
 win32_2022/
 shellcodes32/
 shellcodes64/
