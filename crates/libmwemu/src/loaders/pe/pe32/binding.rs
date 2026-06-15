@@ -25,7 +25,6 @@ macro_rules! write_u32_le {
 
 impl PE32 {
     pub fn pe32_delay_load_binding(&mut self, emu: &mut emu::Emu, base_addr: u32) {
-        log::trace!("Delay load binding started for {} ...", self.filename);
         for i in 0..self.delay_load_dir.len() {
             let dld = &self.delay_load_dir[i];
             if dld.name.is_empty() {
@@ -75,7 +74,6 @@ impl PE32 {
                 rva += 4;
             }
         }
-        log::trace!("delay load bound!");
     }
 
     pub fn pe32_iat_binding(&mut self, emu: &mut emu::Emu, base_addr: u32) {
@@ -165,7 +163,6 @@ impl PE32 {
                 rva += 4;
             }
         }
-        log::trace!("{} IAT Bound.", &self.filename);
     }
 
     pub fn pe32_import_addr_to_name(&self, paddr: u32) -> String {

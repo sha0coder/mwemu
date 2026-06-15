@@ -297,9 +297,10 @@ fn ssdt_ldr_initialize_thunk() {
 ///     --release -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "disabled: asserts the full MessageBoxA happy path, which needs LdrInitializeThunk \
-            to COMPLETE — only true on Win2022 today. Re-enable once the Win11 ConDrv console \
-            blocker is fixed and LdrInit completes under --winver win11."]
+#[ignore = "slow (~9 min): asserts the full MessageBoxA happy path under --winver win11, which \
+            needs LdrInitializeThunk to COMPLETE. As of 2026-06-14 this works (ConDrv console, \
+            movsd GS-cookie, and thread-pool loop blockers fixed); kept #[ignore] only for runtime. \
+            Run with: cargo test -p libmwemu --release ssdt_msgbox_reaches_messageboxa -- --ignored --nocapture"]
 fn ssdt_msgbox_reaches_messageboxa() {
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -307,10 +308,8 @@ fn ssdt_msgbox_reaches_messageboxa() {
     helpers::setup();
 
     let mut emu = emu64();
-    // Disabled (see #[ignore]): this asserts LdrInitializeThunk *completes* and
-    // the EXE reaches MessageBoxA, which the Win11 loader can't do yet (it stalls
-    // in console init — the ConDrv blocker). Targets `--winver win11` so it's
-    // ready to re-enable once that's fixed.
+    // LdrInitializeThunk now completes under --winver win11 (pos ~15.8M) and the
+    // EXE reaches MessageBoxA. Kept #[ignore] only because the full run is slow.
     if !helpers::set_winver_maps(&mut emu, "win11") {
         return;
     }

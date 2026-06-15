@@ -155,7 +155,7 @@ impl Emu {
             let section_name = name.to_string();
             return self.intercept_unix_x64_api_call(addr, &section_name);
         } else {
-            if self.cfg.verbose >= 1 && !self.cfg.emulate_winapi {
+            if self.cfg.verbose >= 2 && !self.cfg.emulate_winapi {
                 log::trace!("/!\\ changing RIP to {} ", name);
             }
 

@@ -30,6 +30,17 @@ pub fn dump_module_iat(emu: &mut emu::Emu, module: &str) {
 }
 
 pub fn resolve_api_addr_to_name(emu: &mut emu::Emu, addr: u64) -> String {
+    if let Some(n) = emu.api_addr_name_cache.get(&addr) {
+        return n.clone();
+    }
+    let name = resolve_api_addr_to_name_uncached(emu, addr);
+    if !name.is_empty() {
+        emu.api_addr_name_cache.insert(addr, name.clone());
+    }
+    name
+}
+
+fn resolve_api_addr_to_name_uncached(emu: &mut emu::Emu, addr: u64) -> String {
     let mut flink = peb64::Flink::new(emu);
     flink.load(emu);
     let first_ptr = flink.get_ptr();
@@ -102,6 +113,30 @@ fn resolve_in_module_exports_depth(
 /// API-set / `ext-ms-*` names are mapped to the backing DLLs used in `maps/windows/` (see `get_dependencies`).
 pub fn resolve_api_name_in_module(emu: &mut emu::Emu, module: &str, name: &str) -> u64 {
     let module_lc = module.trim().to_lowercase();
+
+    // Memoize: the (module, name) -> VA mapping is stable for a run, and the
+    // loader re-resolves the same apiset imports ~100x (the kernelbase dance),
+    // each time scanning every export name (read_string + to_lowercase). The
+    // cache turns that O(exports) scan into a hash hit.
+    let cache_key = {
+        let mut k = String::with_capacity(module_lc.len() + 1 + name.len());
+        k.push_str(&module_lc);
+        k.push('\x01');
+        k.push_str(name);
+        k
+    };
+    if let Some(&a) = emu.api_resolve_cache.get(&cache_key) {
+        return a;
+    }
+    let resolved = resolve_api_name_in_module_inner(emu, &module_lc, name);
+    if resolved != 0 {
+        emu.api_resolve_cache.insert(cache_key, resolved);
+    }
+    resolved
+}
+
+fn resolve_api_name_in_module_inner(emu: &mut emu::Emu, module_lc: &str, name: &str) -> u64 {
+    let module_lc = module_lc.to_string();
 
     if kernel32_common::is_api_set_contract(&module_lc) {
         // 1) Try the apiset stub itself — its export table is just a list of

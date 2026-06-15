@@ -776,6 +776,19 @@ impl Emu {
                 let mut aarch64_decode_offset: u64 = 0;
 
                 while inner_running {
+                    // Ctrl-C (--handle): drop into the console at a clean
+                    // instruction boundary (not mid-REP), then re-fetch. Gated on
+                    // the plain `enabled_ctrlc` bool so normal runs never touch
+                    // the atomic on the per-instruction hot path.
+                    if self.enabled_ctrlc
+                        && self.rep.is_none()
+                        && self.ctrlc_console.load(atomic::Ordering::Relaxed) == 1
+                    {
+                        self.ctrlc_console.store(0, atomic::Ordering::Relaxed);
+                        Console::spawn_console(self);
+                        break; // re-fetch from current PC (console may have stepped)
+                    }
+
                     // Decode next instruction from cache
                     let decoded: DecodedInstruction;
                     if is_aarch64 {
@@ -846,6 +859,17 @@ impl Emu {
                     self.last_decoded = Some(decoded);
                     self.last_decoded_addr = addr;
                     self.memory_operations.clear();
+
+                    // Bulk fast-path for REP string ops (rep stos/scas/movs/lods):
+                    // executes the whole REP in one shot instead of one element
+                    // per loop iteration. Only engages in pure-execution mode; in
+                    // any observing mode it returns false and the per-element path
+                    // below runs unchanged. Handles pos/instruction_count/rip.
+                    if !is_aarch64 && self.rep.is_none() && self.try_fast_rep_string(&x86_ins, sz) {
+                        inner_running = self.instruction_cache_can_decode();
+                        continue;
+                    }
+
                     self.pos += 1;
                     self.instruction_count += 1;
 
@@ -1318,9 +1342,18 @@ impl Emu {
                             log::trace!("-------");
                             log::trace!("{} 0x{:x}: {}", self.pos, addr, output);
                         }
+                        let rip_before_console = self.pc();
                         Console::spawn_console(self);
                         if self.force_break {
                             self.force_break = false;
+                            break;
+                        }
+                        // If the console single-stepped (`enter`/`n` runs
+                        // `emu.step()`), the instruction decoded above has
+                        // already executed and `rip` moved on. Re-fetch from the
+                        // new PC instead of falling through to `emulate` below —
+                        // otherwise that stale instruction runs a second time.
+                        if self.pc() != rip_before_console {
                             break;
                         }
                     }

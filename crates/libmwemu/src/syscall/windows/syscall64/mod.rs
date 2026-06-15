@@ -99,6 +99,13 @@ pub fn build_syscall_translation_table(emu: &mut Emu) {
         ("NtQueryAttributesFile", WIN64_NTQUERYATTRIBUTESFILE),
         ("NtOpenFile", WIN64_NTOPENFILE),
         ("NtCreateFile", WIN64_NTCREATEFILE),
+        ("NtDeviceIoControlFile", WIN64_NTDEVICEIOCONTROLFILE),
+        ("NtCreateIoCompletion", WIN64_NTCREATEIOCOMPLETION),
+        ("NtCreateWaitCompletionPacket", WIN64_NTCREATEWAITCOMPLETIONPACKET),
+        ("NtCreateWorkerFactory", WIN64_NTCREATEWORKERFACTORY),
+        ("NtSetInformationWorkerFactory", WIN64_NTSETINFORMATIONWORKERFACTORY),
+        ("NtShutdownWorkerFactory", WIN64_NTSHUTDOWNWORKERFACTORY),
+        ("NtQueryWnfStateData", WIN64_NTQUERYWNFSTATEDATA),
         ("NtOpenDirectoryObject", WIN64_NTOPENDIRECTORYOBJECT),
         ("NtOpenSymbolicLinkObject", WIN64_NTOPENSYMBOLICLINKOBJECT),
         ("NtQuerySymbolicLinkObject", WIN64_NTQUERYSYMBOLICLINKOBJECT),
@@ -620,7 +627,19 @@ pub fn gateway(emu: &mut Emu) {
             // file in `maps_folder`, so resolving it by basename would fail and
             // make the console DLL init return STATUS_DLL_INIT_FAILED. Hand out a
             // fake handle so process startup proceeds.
-            let is_console = nt_name.to_lowercase().contains("condrv");
+            //
+            // After opening `\Device\ConDrv\Server`, kernel32 opens the console
+            // sub-objects *relative* to that handle: `NtCreateFile("\Reference",
+            // RootDirectory = ConDrv handle)`, then `\Connect`, `\Input`,
+            // `\Output`. These carry no "condrv" in their ObjectName, so detect
+            // them by their RootDirectory being a handle we already tagged as a
+            // console object.
+            let root_dir =
+                crate::syscall::windows::syscall64::memory::read_object_attributes_root_directory(
+                    emu, obj_attr,
+                );
+            let is_console = nt_name.to_lowercase().contains("condrv")
+                || (root_dir != 0 && emu.console_handles.contains(&root_dir));
             let exists = is_console || resolve_maps_dll(emu, &basename).is_some();
             if exists {
                 let h = crate::syscall::windows::syscall64::sync::next_handle();
@@ -635,8 +654,12 @@ pub fn gateway(emu: &mut Emu) {
                 }
                 // Don't register console pseudo-handles as DLL-backed files; only
                 // real on-disk files feed the NtCreateSection → NtMapViewOfSection
-                // PE-loading path.
-                if !is_console {
+                // PE-loading path. Track them in `console_handles` instead so the
+                // relative sub-object opens above resolve and NtDeviceIoControlFile
+                // can answer the CONDRV IOCTLs on them.
+                if is_console {
+                    emu.console_handles.insert(h);
+                } else {
                     emu.file_handles.insert(h, basename.clone());
                 }
                 log_orange!(
@@ -656,6 +679,135 @@ pub fn gateway(emu: &mut Emu) {
                 );
                 emu.regs_mut().rax = STATUS_OBJECT_NAME_NOT_FOUND;
             }
+        }
+        // `NtDeviceIoControlFile` (0x7): kernel32's console client driver issues
+        // the CONDRV IOCTLs (BIND_HANDLE / SET_SERVER_INFORMATION / GET_HANDLE …)
+        // against the console object handles opened above during process init
+        // (`ConsoleClientConnectToServer`). Without an answer the console DLL
+        // init returns FALSE → ntdll raises DLL_INIT_FAILED → NtTerminateProcess.
+        // We don't model the real console protocol; for a console handle, report
+        // success with an empty (zeroed) output so the client treats the console
+        // as connected and continues. Non-console handles keep the previous
+        // unimplemented behaviour.
+        WIN64_NTDEVICEIOCONTROLFILE => {
+            let file_handle = emu.regs().rcx;
+            let rsp = emu.regs().rsp;
+            let io_status_block = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+            let io_control_code = emu.maps.read_qword(rsp + 0x30).unwrap_or(0) as u32;
+            let output_buffer = emu.maps.read_qword(rsp + 0x48).unwrap_or(0);
+            let output_len = emu.maps.read_qword(rsp + 0x50).unwrap_or(0) as u32;
+            if emu.console_handles.contains(&file_handle) {
+                if io_status_block != 0 && emu.maps.is_mapped(io_status_block) {
+                    // IO_STATUS_BLOCK: Status (4) + pad(4) + Information (8).
+                    // Report 0 bytes transferred — we don't synthesize a CONDRV
+                    // reply payload, and writing into the (possibly stack-based)
+                    // output buffer risks clobbering live locals / stack cookies.
+                    let _ = emu.maps.write_dword(io_status_block, STATUS_SUCCESS as u32);
+                    let _ = emu.maps.write_qword(io_status_block + 0x08, 0u64);
+                }
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtDeviceIoControlFile console handle 0x{:x} ioctl 0x{:x} out_buf 0x{:x} out_len 0x{:x} (stub → SUCCESS)",
+                    nr,
+                    file_handle,
+                    io_control_code,
+                    output_buffer,
+                    output_len,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
+            } else {
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: NtDeviceIoControlFile handle 0x{:x} ioctl 0x{:x} (unimplemented)",
+                    nr,
+                    file_handle,
+                    io_control_code,
+                );
+                emu.regs_mut().rax = STATUS_NOT_IMPLEMENTED;
+            }
+        }
+        // Thread-pool object creation during process init: the pool manager
+        // (`TpAllocPool` / `TppWorkerThread`) creates an I/O completion port,
+        // a worker factory bound to it, and wait-completion packets. Returning
+        // STATUS_NOT_IMPLEMENTED for any of them makes the manager retry forever
+        // (an observable ~280K-instruction loop that never converges under
+        // SSDT — IoCompletion → WorkerFactory → WaitCompletionPacket → cleanup →
+        // repeat). Hand out a fake handle so the pool initializes and init
+        // proceeds. All three return the OUT PHANDLE in rcx.
+        WIN64_NTCREATEIOCOMPLETION
+        | WIN64_NTCREATEWAITCOMPLETIONPACKET
+        | WIN64_NTCREATEWORKERFACTORY => {
+            let handle_out = emu.regs().rcx;
+            if handle_out == 0 || !emu.maps.is_mapped(handle_out) {
+                emu.regs_mut().rax = STATUS_INVALID_PARAMETER;
+            } else {
+                let h = crate::syscall::windows::syscall64::sync::next_handle();
+                let _ = emu.maps.write_qword(handle_out, h);
+                log_orange!(
+                    emu,
+                    "syscall 0x{:x}: {} out: 0x{:x} → handle 0x{:x} (stub → SUCCESS)",
+                    nr,
+                    what_syscall(real_nr),
+                    handle_out,
+                    h,
+                );
+                emu.regs_mut().rax = STATUS_SUCCESS;
+            }
+        }
+        // Thread-pool worker-factory configuration / teardown. After creating a
+        // worker factory the pool manager configures it
+        // (`NtSetInformationWorkerFactory`: min/max threads, binding info) and,
+        // on a probe path, tears it down (`NtShutdownWorkerFactory`). Neither
+        // returns data we must synthesize; STATUS_SUCCESS lets the pool setup
+        // run to completion instead of looping on STATUS_NOT_IMPLEMENTED.
+        WIN64_NTSETINFORMATIONWORKERFACTORY | WIN64_NTSHUTDOWNWORKERFACTORY => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: {} (stub → SUCCESS)",
+                nr,
+                what_syscall(real_nr),
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        // `NtQueryWnfStateData` (0x170): the loader / kernelbase poll WNF
+        // (Windows Notification Facility) state names during init (feature
+        // flags, telemetry opt-in, etc.). Returning STATUS_NOT_IMPLEMENTED left
+        // them retrying. Report an empty, stable state (ChangeStamp=0, 0 bytes)
+        // with SUCCESS so callers treat the state as "present but empty/default"
+        // and move on.
+        // Args: rcx=StateName*, rdx=TypeId, r8=ExplicitScope, r9=ChangeStamp*(out),
+        //       [rsp+0x28]=Buffer(out), [rsp+0x30]=BufferSize*(in/out).
+        WIN64_NTQUERYWNFSTATEDATA => {
+            let state_name_ptr = emu.regs().rcx;
+            let change_stamp_ptr = emu.regs().r9;
+            let rsp = emu.regs().rsp;
+            let buffer = emu.maps.read_qword(rsp + 0x28).unwrap_or(0);
+            let bufsize_ptr = emu.maps.read_qword(rsp + 0x30).unwrap_or(0);
+            let state_name = if state_name_ptr != 0 {
+                emu.maps.read_qword(state_name_ptr).unwrap_or(0)
+            } else {
+                0
+            };
+            let in_size = if bufsize_ptr != 0 && emu.maps.is_mapped(bufsize_ptr) {
+                emu.maps.read_dword(bufsize_ptr).unwrap_or(0)
+            } else {
+                0
+            };
+            if change_stamp_ptr != 0 && emu.maps.is_mapped(change_stamp_ptr) {
+                let _ = emu.maps.write_dword(change_stamp_ptr, 0);
+            }
+            if bufsize_ptr != 0 && emu.maps.is_mapped(bufsize_ptr) {
+                let _ = emu.maps.write_dword(bufsize_ptr, 0);
+            }
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtQueryWnfStateData state=0x{:x} buf=0x{:x} in_size=0x{:x} (stub → SUCCESS, empty)",
+                nr,
+                state_name,
+                buffer,
+                in_size,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
         }
         // `NtApphelpCacheControl` (0x4c): kernel32/kernelbase consult the
         // app-compat shim cache during process start (`BasepCheckBadapp`,

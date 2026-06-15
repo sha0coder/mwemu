@@ -202,8 +202,12 @@ impl Maps {
         let end_addr = addr + T::SIZE as u64 - 1;
         match self.get_mem_by_addr_mut(addr) {
             Some(mem) if mem.inside(end_addr) && mem.can_write() => {
-                let bytes = value.to_le_vec();
-                mem.write_bytes(addr, &bytes);
+                // Stack buffer — avoids a heap allocation per memory write
+                // (this is the hot path; `to_le_vec` here dominated CPU via
+                // malloc/free churn).
+                let mut buf = [0u8; 16];
+                value.write_le(&mut buf);
+                mem.write_bytes(addr, &buf[..T::SIZE]);
                 true
             }
             Some(mem) => {

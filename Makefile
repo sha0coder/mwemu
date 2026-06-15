@@ -61,3 +61,5 @@ test_windows:
 test_inception:
 	cargo run --release -- -f target/release/mwemu -6 -v
 
+#test_bench:
+#	time cargo run --release -- -f test/exe64win_enigma.bin -6 --winver win11 -c 10000000 --cmd q

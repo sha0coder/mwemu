@@ -472,7 +472,6 @@ impl PE64 {
     }
 
     pub fn delay_load_binding(&mut self, emu: &mut emu::Emu) {
-        log::trace!("Delay load binding started ...");
         for i in 0..self.delay_load_dir.len() {
             let dld = &self.delay_load_dir[i];
             if dld.name.is_empty() {
@@ -519,7 +518,6 @@ impl PE64 {
                 off_addr += 8;
             }
         }
-        log::trace!("delay load bound!");
     }
 
     pub fn iat_binding(&mut self, emu: &mut emu::Emu) {
@@ -553,7 +551,6 @@ impl PE64 {
                 self.iat_binding_original(emu, iim.original_first_thunk, iim.first_thunk);
             }
         }
-        log::trace!("IAT Bound.");
     }
 
     pub fn iat_binding_alternative(&mut self, emu: &mut emu::Emu, first_thunk: u32) {

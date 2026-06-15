@@ -21,12 +21,20 @@ impl Emu {
             return;
         }
 
+        // With `--handle` + console mode, Ctrl-C should drop into the
+        // interactive console at the next clean instruction boundary (the run
+        // loop polls `ctrlc_console`), not stop the emulation. Without console
+        // mode it just stops the run.
+        let console_mode = self.cfg.console_enabled;
         let is_running = Arc::clone(&self.is_running);
-        ctrlc::set_handler(move || {
-            log::trace!("Ctrl-C detected, spawning console");
-            is_running.store(0, atomic::Ordering::Relaxed);
-        })
-        .expect("ctrl-c handler failed");
+        let ctrlc_console = Arc::clone(&self.ctrlc_console);
+        let _ = ctrlc::set_handler(move || {
+            if console_mode {
+                ctrlc_console.store(1, atomic::Ordering::Relaxed);
+            } else {
+                is_running.store(0, atomic::Ordering::Relaxed);
+            }
+        });
     }
 
     pub(crate) fn reached_outer_run_limit(&self, pc: u64, end_addr: Option<u64>) -> Option<u64> {

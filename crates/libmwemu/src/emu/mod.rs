@@ -104,6 +104,7 @@ pub struct Emu {
     pub max_pos: Option<u64>, // optional execution position limit
     pub tick: usize, // global tick counter, used for thread scheduling
     pub is_running: Arc<AtomicU32>, // thread-safe flag for emulation running state
+    pub ctrlc_console: Arc<AtomicU32>, // set by the Ctrl-C handler (--handle) to request dropping into the console at the next clean instruction boundary
     pub now: Instant, // timestamp of emulation start (wall-clock timing)
     pub force_break: bool, // set by breakpoints, memory violations, etc. to stop execution
     pub process_terminated: bool, // set by NtTerminateProcess; prevents run() from resetting is_running
@@ -164,6 +165,9 @@ pub struct Emu {
     pub syscall_number_map: HashMap<u64, u64>, // real_nr (from loaded ntdll) → canonical_nr (the value our gateway dispatcher matches on). Built at init by scanning ntdll exports; empty means no translation.
     pub syscall_name_by_real: HashMap<u64, String>, // real_nr → "Nt<Name>" as exported by the loaded ntdll. Used in diagnostics so unimplemented-syscall logs name the right function (the static `what_syscall()` table is tied to a single Windows build and would otherwise mislabel cross-build syscalls).
     pub known_dll_dir_handles: HashSet<u64>,   // handles returned by NtOpenDirectoryObject for \KnownDlls / \KnownDlls32; used by NtOpenSection to recognise relative DLL opens
+    pub console_handles: HashSet<u64>,         // handles backed by the console device (\Device\ConDrv\... and relative opens like \Reference / \Connect / \Input / \Output under a ConDrv root); used to recognise relative console opens and to answer NtDeviceIoControlFile on them
+    pub api_resolve_cache: HashMap<String, u64>, // memoizes resolve_api_name_in_module: "module_lc\x01name" -> resolved VA. The resolver does an O(exports) string-read+lowercase scan per call; the loader resolves the same apiset imports ~100x (the kernelbase dance), so this dominated CPU without the cache. Only successful (non-zero) resolutions are cached.
+    pub api_addr_name_cache: HashMap<u64, String>, // memoizes resolve_api_addr_to_name: VA -> export name. Same O(exports) scan; cached because module addresses are stable for a run.
     pub symbolic_link_targets: HashMap<u64, String>, // NtOpenSymbolicLinkObject handle → resolved link target (e.g. "\KnownDlls\KnownDllPath" → "C:\\Windows\\System32"); read back by NtQuerySymbolicLinkObject so ntdll's LdrInit can resolve the KnownDlls search path
     pub ssdt_pad_stack: Vec<u64>,              // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
 }

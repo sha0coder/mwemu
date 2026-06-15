@@ -23,7 +23,6 @@ macro_rules! write_u64_le {
 
 impl PE64 {
     pub(crate) fn pe64_delay_load_binding(&mut self, emu: &mut emu::Emu, base_addr: u64) {
-        log::trace!("Delay load binding started ...");
         let mut resolved_cache: HashMap<String, u64> = HashMap::new();
 
         for i in 0..self.delay_load_dir.len() {
@@ -83,7 +82,6 @@ impl PE64 {
                 slot_rva += 8;
             }
         }
-        log::trace!("delay load bound!");
     }
 
     pub(crate) fn pe64_get_dependencies(&mut self, _emu: &mut emu::Emu) -> Vec<String> {
@@ -166,7 +164,6 @@ impl PE64 {
                 );
             }
         }
-        log::trace!("IAT Bound.");
     }
 
     pub(crate) fn pe64_iat_binding_alternative(

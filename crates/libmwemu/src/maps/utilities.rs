@@ -161,29 +161,15 @@ impl Maps {
 
     pub fn read_string(&self, addr: u64) -> String {
         if addr == 0 {
-            return "".to_string();
+            return String::new();
         }
-
-        let mut bytes: Vec<char> = Vec::new();
-        let mut b: u8;
-        let mut i: u64 = 0;
-
-        loop {
-            b = match self.read_byte(addr + i) {
-                Some(v) => v,
-                None => break,
-            };
-
-            if b == 0x00 {
-                break;
-            }
-
-            i += 1;
-            bytes.push(b as char);
+        // One map lookup, then scan that map's backing slice for the NUL — vs.
+        // the old per-char `read_byte` (a full `get_mem_by_addr` TLB lookup
+        // each). This is a top CPU hot path (export/registry name reads).
+        match self.get_mem_by_addr(addr) {
+            Some(mem) if mem.can_read() => mem.read_string(addr),
+            _ => String::new(),
         }
-
-        let s: String = bytes.into_iter().collect();
-        s
     }
 
     pub fn read_wide_string_nocrash(&self, addr: u64) -> String {

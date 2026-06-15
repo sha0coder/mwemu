@@ -44,12 +44,7 @@ pub fn load_library(emu: &mut emu::Emu, libname: &str) -> u64 {
     });
 
     match already_linked_base {
-        Some(base) => {
-            if emu.cfg.verbose > 0 {
-                log::trace!("dll {} already linked.", dll);
-            }
-            base
-        }
+        Some(base) => base,
         None => {
             // Guard against re-entrant loading (circular imports): if the .pe map was
             // already created by an in-progress load_pe64 call further up the stack,

@@ -62,6 +62,11 @@ pub(crate) trait LittleEndianScalar: Copy {
     fn from_le_slice(bytes: &[u8]) -> Self;
 
     fn to_le_vec(self) -> Vec<u8>;
+
+    /// Write the little-endian bytes into `out[..SIZE]` without allocating.
+    /// This is the hot write path (every `write_dword`/`write_qword`/… goes
+    /// through it), so it avoids the heap allocation `to_le_vec` does per call.
+    fn write_le(self, out: &mut [u8]);
 }
 
 macro_rules! impl_little_endian_scalar {
@@ -76,6 +81,11 @@ macro_rules! impl_little_endian_scalar {
 
             fn to_le_vec(self) -> Vec<u8> {
                 <$ty>::to_le_bytes(self).to_vec()
+            }
+
+            #[inline(always)]
+            fn write_le(self, out: &mut [u8]) {
+                out[..$size].copy_from_slice(&<$ty>::to_le_bytes(self));
             }
         }
     };

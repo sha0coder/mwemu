@@ -438,12 +438,15 @@ fn read_unicode_string(emu: &Emu, addr: u64) -> String {
     if addr == 0 || !emu.maps.is_mapped(addr) {
         return String::new();
     }
-    let _len = emu.maps.read_word(addr).unwrap_or(0);
+    // UNICODE_STRING.Length (bytes) is authoritative; the buffer need not be
+    // NUL-terminated. Reading to a NUL overran non-terminated names into heap
+    // fill bytes (0xABAB/0xFEEE), corrupting the trailing characters.
+    let len = emu.maps.read_word(addr).unwrap_or(0);
     let buf = emu.maps.read_qword(addr + 8).unwrap_or(0);
     if buf == 0 || !emu.maps.is_mapped(buf) {
         return String::new();
     }
-    emu.maps.read_wide_string(buf)
+    emu.maps.read_wide_string_n(buf, (len / 2) as usize)
 }
 
 fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {

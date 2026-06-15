@@ -101,6 +101,7 @@ impl Emu {
             main_thread_cont: 0,
             gateway_return: 0,
             is_running: Arc::new(AtomicU32::new(0)),
+            ctrlc_console: Arc::new(AtomicU32::new(0)),
             break_on_next_cmp: false,
             break_on_next_return: false,
             filename: String::new(),
@@ -147,6 +148,9 @@ impl Emu {
             syscall_number_map: HashMap::new(),
             syscall_name_by_real: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
+            console_handles: HashSet::new(),
+            api_resolve_cache: HashMap::new(),
+            api_addr_name_cache: HashMap::new(),
             symbolic_link_targets: HashMap::new(),
             ssdt_pad_stack: Vec::new(),
         }
@@ -331,8 +335,14 @@ impl Emu {
         if !atty::is(Stream::Stdout) {
             self.cfg.nocolors = true;
             self.colors.disable();
-            self.cfg.console_enabled = false;
-            self.disable_ctrlc();
+            // Auto-disable the interactive console only when the user did NOT
+            // explicitly ask for it (`--handle` sets `enabled_ctrlc`, `-c`/`-C`
+            // set `console_enabled`). An explicit request must work even with
+            // redirected/piped stdout.
+            if !self.enabled_ctrlc && !self.cfg.console_enabled {
+                self.cfg.console_enabled = false;
+                self.disable_ctrlc();
+            }
         }
 
         // Ensure arch_state and thread context match the target architecture before

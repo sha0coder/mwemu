@@ -667,17 +667,16 @@ impl Mem64 {
             panic!("FAILED to read without permission: addr: 0x{:x?}", addr);
         }
 
-        let MAX_SIZE_STR = 1_000_000;
-        let mut s: Vec<u8> = Vec::new();
-        let mut idx = addr;
-        while idx < addr + MAX_SIZE_STR {
-            let b = self.read_byte(idx);
-            if b == 0 {
-                break;
-            }
-            s.push(b);
-            idx += 1;
-        }
+        // Scan the backing slice directly for the NUL terminator instead of a
+        // per-byte `read_byte` (each of which is a bounds check + branch). This
+        // is a very hot path (export-name / registry-name reads), so it avoids
+        // the growing `Vec<u8>` too. The string is bounded by this map's end.
+        const MAX_SIZE_STR: usize = 1_000_000;
+        let start = (addr - self.base_addr) as usize;
+        let avail = self.mem.len().saturating_sub(start).min(MAX_SIZE_STR);
+        let region = &self.mem[start..start + avail];
+        let end = region.iter().position(|&b| b == 0).unwrap_or(avail);
+        let s = &region[..end];
         if cfg!(feature = "log_mem_read") {
             emu_context::with_current_emu(|emu| {
                 if emu.cfg.trace_mem {
@@ -691,7 +690,7 @@ impl Mem64 {
             })
             .unwrap();
         }
-        String::from_utf8_lossy(&s).into_owned()
+        String::from_utf8_lossy(s).into_owned()
     }
 
     #[inline(always)]
@@ -801,8 +800,9 @@ impl Mem64 {
             panic!("FAILED to write without permission: addr: 0x{:x?}", addr);
         }
         let idx = (addr - self.base_addr) as usize;
-        let bytes = value.to_le_vec();
-        self.mem[idx..idx + T::SIZE].copy_from_slice(&bytes);
+        let mut buf = [0u8; 16];
+        value.write_le(&mut buf);
+        self.mem[idx..idx + T::SIZE].copy_from_slice(&buf[..T::SIZE]);
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {
@@ -827,8 +827,9 @@ impl Mem64 {
         trace: ScalarTrace,
     ) {
         let idx = (addr - self.base_addr) as usize;
-        let bytes = value.to_le_vec();
-        self.mem[idx..idx + T::SIZE].copy_from_slice(&bytes);
+        let mut buf = [0u8; 16];
+        value.write_le(&mut buf);
+        self.mem[idx..idx + T::SIZE].copy_from_slice(&buf[..T::SIZE]);
 
         if cfg!(feature = "log_mem_write") {
             emu_context::with_current_emu(|emu| {

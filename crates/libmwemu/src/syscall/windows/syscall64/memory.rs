@@ -101,18 +101,9 @@ pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
     if !emu.cfg.emulate_winapi {
         return;
     }
-    // Code lives in per-section maps (`ntdll.text`, …), not only the small `ntdll.pe` header map.
-    let in_ntdll = emu
-        .maps
-        .get_mem_by_addr(rip)
-        .map(|m| {
-            let n = m.get_name();
-            n == "ntdll.pe" || n.starts_with("ntdll.")
-        })
-        .unwrap_or(false);
-    if !in_ntdll {
-        return;
-    }
+    // Cheap instruction-shape checks FIRST (they run per-instruction, so the
+    // expensive map lookup below must only happen for the handful of candidates).
+    // We only care about `mov r64, [rsi]`.
     if ins.mnemonic() != Mnemonic::Mov || ins.op_count() < 2 {
         return;
     }
@@ -123,6 +114,18 @@ pub fn ntdll_heap_list_walk_fixup(emu: &mut Emu, ins: &Instruction, rip: u64) {
         return;
     }
     if ins.memory_displacement64() != 0 {
+        return;
+    }
+    // Code lives in per-section maps (`ntdll.text`, …), not only the small `ntdll.pe` header map.
+    let in_ntdll = emu
+        .maps
+        .get_mem_by_addr(rip)
+        .map(|m| {
+            let n = m.get_name();
+            n == "ntdll.pe" || n.starts_with("ntdll.")
+        })
+        .unwrap_or(false);
+    if !in_ntdll {
         return;
     }
 
@@ -1227,12 +1230,17 @@ fn read_unicode_string(emu: &Emu, addr: u64) -> String {
     if addr == 0 || !emu.maps.is_mapped(addr) {
         return String::new();
     }
-    let _len = emu.maps.read_word(addr).unwrap_or(0);
+    // UNICODE_STRING { USHORT Length; USHORT MaximumLength; PWSTR Buffer; }.
+    // `Length` is the size in BYTES of the string and is authoritative — the
+    // buffer is NOT required to be null-terminated. Reading to a NUL (the old
+    // behaviour) overran non-terminated strings into adjacent heap fill bytes
+    // (0xABAB guard / 0xFEEE freed), appending garbage that broke name matches.
+    let len = emu.maps.read_word(addr).unwrap_or(0);
     let buf = emu.maps.read_qword(addr + 8).unwrap_or(0);
     if buf == 0 || !emu.maps.is_mapped(buf) {
         return String::new();
     }
-    emu.maps.read_wide_string(buf)
+    emu.maps.read_wide_string_n(buf, (len / 2) as usize)
 }
 
 pub fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
@@ -1244,7 +1252,7 @@ pub fn read_object_attributes_name(emu: &Emu, addr: u64) -> String {
     read_unicode_string(emu, object_name_ptr)
 }
 
-fn read_object_attributes_root_directory(emu: &Emu, addr: u64) -> u64 {
+pub(crate) fn read_object_attributes_root_directory(emu: &Emu, addr: u64) -> u64 {
     if addr == 0 || !emu.maps.is_mapped(addr) {
         return 0;
     }

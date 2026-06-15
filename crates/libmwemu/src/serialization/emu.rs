@@ -349,6 +349,7 @@ impl From<SerializableEmu> for Emu {
             max_pos,
             tick,
             is_running: Arc::new(atomic::AtomicU32::new(is_running)),
+            ctrlc_console: Arc::new(atomic::AtomicU32::new(0)),
             now: now.to_instant(),
             force_break,
             process_terminated: false,
@@ -403,6 +404,9 @@ impl From<SerializableEmu> for Emu {
             syscall_number_map: HashMap::new(),
             syscall_name_by_real: HashMap::new(),
             known_dll_dir_handles: HashSet::new(),
+            console_handles: HashSet::new(),
+            api_resolve_cache: HashMap::new(),
+            api_addr_name_cache: HashMap::new(),
             symbolic_link_targets: HashMap::new(),
             ssdt_pad_stack: Vec::new(),
         };

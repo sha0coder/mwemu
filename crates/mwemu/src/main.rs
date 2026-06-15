@@ -216,6 +216,15 @@ fn main() {
 
     emu.running_script = false;
 
+    // `--handle`: Ctrl-C → spawn console. Set this BEFORE any emulation runs
+    // (in SSDT mode `load_code` already runs ntdll!LdrInitializeThunk, and the
+    // global current-emu snapshot is taken before load), so the handler covers
+    // the whole run including init.
+    if !matches.is_present("script") && !matches.is_present("gdb") && matches.is_present("handle") {
+        emu.cfg.console_enabled = true;
+        emu.enable_ctrlc();
+    }
+
     // filename
     let filename = matches
         .value_of("filename")
@@ -671,11 +680,8 @@ fn main() {
         libmwemu::emu_context::clear_current_emu();
         log::logger().flush();
     } else {
-        if matches.is_present("handle") {
-            emu.cfg.console_enabled = true;
-            emu.enable_ctrlc();
-        }
-
+        // `--handle` was already applied before load_code (Ctrl-C → console must
+        // cover the SSDT LdrInitializeThunk init that runs during load).
         let result = emu.run(None);
 
         // Dump registers/stack like the panic hook — run() returns Err without panicking.
