@@ -40,7 +40,7 @@ pub fn rcl_bit_based(emu: &Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         rot2 & 0b11111
     };
 
-    if emu.flags().f_cf {
+    if emu.flag_cf() {
         set_bit!(ret, bits, 1);
     } else {
         set_bit!(ret, bits, 0);
@@ -102,7 +102,7 @@ pub fn rcr(emu: &mut Emu, val: u64, rot2: u64, bits: u32) -> u64 {
         rot2 & 0b11111
     };
 
-    if emu.flags().f_cf {
+    if emu.flag_cf() {
         set_bit!(ret, bits, 1);
     } else {
         set_bit!(ret, bits, 0);
@@ -185,7 +185,7 @@ pub fn imul64p1(emu: &mut Emu, value0: u64) {
     let rax = emu.regs().rax as i64;
     let rdx = emu.regs().rdx as i64;
     emu.flags_mut().f_of = !((rax < 0 && rdx == -1) || (rax >= 0 && rdx == 0));
-    emu.flags_mut().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_cf = emu.flag_of();
 }
 
 pub fn imul32p1(emu: &mut Emu, value0: u64) {
@@ -198,7 +198,7 @@ pub fn imul32p1(emu: &mut Emu, value0: u64) {
     let eax = emu.regs().get_eax() as i32;
     let edx = emu.regs().get_edx() as i32;
     emu.flags_mut().f_of = !((eax < 0 && edx == -1) || (eax >= 0 && edx == 0));
-    emu.flags_mut().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_cf = emu.flag_of();
 }
 
 pub fn imul16p1(emu: &mut Emu, value0: u64) {
@@ -211,7 +211,7 @@ pub fn imul16p1(emu: &mut Emu, value0: u64) {
     let ax = emu.regs().get_ax() as i16;
     let dx = emu.regs().get_dx() as i16;
     emu.flags_mut().f_of = !((ax < 0 && dx == -1) || (ax >= 0 && dx == 0));
-    emu.flags_mut().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_cf = emu.flag_of();
 }
 
 pub fn imul8p1(emu: &mut Emu, value0: u64) {
@@ -225,7 +225,7 @@ pub fn imul8p1(emu: &mut Emu, value0: u64) {
     let ah = ((ax >> 8) & 0x00FF) as i8 as i16;
 
     emu.flags_mut().f_of = !((al < 0 && ah == -1) || (al >= 0 && ah == 0));
-    emu.flags_mut().f_cf = emu.flags().f_of;
+    emu.flags_mut().f_cf = emu.flag_of();
 }
 
 pub fn div64(emu: &mut Emu, value0: u64) {
@@ -248,7 +248,7 @@ pub fn div64(emu: &mut Emu, value0: u64) {
     emu.regs_mut().rdx = resr as u64;
     emu.flags_mut().calc_pf(resq as u8);
     emu.flags_mut().f_of = resq > 0xffffffffffffffff;
-    if emu.flags().f_of {
+    if emu.flag_of() {
         log::trace!("/!\\ int overflow on division");
     }
 }
@@ -273,7 +273,7 @@ pub fn div32(emu: &mut Emu, value0: u64) {
     emu.regs_mut().set_edx(resr);
     emu.flags_mut().calc_pf(resq as u8);
     emu.flags_mut().f_of = resq > 0xffffffff;
-    if emu.flags().f_of {
+    if emu.flag_of() {
         log::trace!("/!\\ int overflow on division");
     }
 }
@@ -297,7 +297,7 @@ pub fn div16(emu: &mut Emu, value0: u64) {
     emu.flags_mut().calc_pf(resq as u8);
     emu.flags_mut().f_of = resq > 0xffff;
     emu.flags_mut().f_tf = false;
-    if emu.flags().f_of {
+    if emu.flag_of() {
         log::trace!("/!\\ int overflow on division");
     }
 }
@@ -320,7 +320,7 @@ pub fn div8(emu: &mut Emu, value0: u64) {
     emu.flags_mut().calc_pf(resq as u8);
     emu.flags_mut().f_of = resq > 0xff;
     emu.flags_mut().f_tf = false;
-    if emu.flags().f_of {
+    if emu.flag_of() {
         log::trace!("/!\\ int overflow");
     }
 }
@@ -475,7 +475,7 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
             log::trace!("/!\\ SHRD undefined behaviour value0 = 0x{:x} value1 = 0x{:x} pcounter = 0x{:x} counter = 0x{:x} size = 0x{:x}", value0, value1, pcounter, counter, size);
         }
         let result = 0; //inline::shrd(value0, value1, pcounter, size);
-        emu.flags_mut().calc_flags(result, size);
+        emu.flags_overwrite_mut().calc_flags(result, size);
         return (result, true);
     }
 
@@ -511,7 +511,7 @@ pub fn shrd(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }*/
 
-    emu.flags_mut().calc_flags(storage0, size);
+    emu.flags_overwrite_mut().calc_flags(storage0, size);
     (storage0, false)
 }
 
@@ -541,7 +541,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
 
         let result = 0;
         //let result = inline::shld(value0, value1, pcounter, size);
-        emu.flags_mut().calc_flags(result, size);
+        emu.flags_overwrite_mut().calc_flags(result, size);
 
         return (result, true);
         //counter = pcounter - size as u64;
@@ -563,7 +563,7 @@ pub fn shld(emu: &mut Emu, value0: u64, value1: u64, pcounter: u64, size: u32) -
         set_bit!(storage0, i, bit);
     }
 
-    emu.flags_mut().calc_flags(storage0, size);
+    emu.flags_overwrite_mut().calc_flags(storage0, size);
 
     (storage0, false)
 }

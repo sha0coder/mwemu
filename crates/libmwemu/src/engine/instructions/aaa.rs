@@ -10,7 +10,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, _instruction_sz: usize, _rep_st
 
     let al = emu.regs().get_al();
     let ah = emu.regs().get_ah();
-    let af = emu.flags().f_af;
+    let af = emu.flag_af();
 
     if (al & 0x0f) > 9 || af {
         let new_al = (al + 6) & 0x0f;

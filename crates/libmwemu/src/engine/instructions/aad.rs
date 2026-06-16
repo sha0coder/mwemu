@@ -22,6 +22,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.regs_mut().set_al(low);
     emu.regs_mut().set_ah(0);
 
-    emu.flags_mut().calc_flags(low, 8);
+    emu.flags_overwrite_mut().calc_flags(low, 8);
     true
 }

@@ -17,9 +17,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let rax = emu.regs().rax;
-    emu.flags_mut().sub64(rax, value0);
+    emu.flags_overwrite_mut().sub64(rax, value0);
 
-    if emu.flags().f_df {
+    if emu.flag_df() {
         emu.regs_mut().rdi -= 8;
     } else {
         emu.regs_mut().rdi += 8;

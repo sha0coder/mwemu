@@ -8,6 +8,7 @@ mod emulator_initialization;
 mod error_conditions;
 mod hooks_system;
 mod instruction_pointer_tests;
+mod lazy_flags_bench;
 mod maps_memory_operations;
 mod maps_operations_tests;
 mod memory_map_operations;

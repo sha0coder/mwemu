@@ -148,8 +148,8 @@ impl SingleRegisterAccess<()> for MwemuTarget64<'_> {
         reg_id: X86_64CoreRegId,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
+        let flags = self.emu.flags_snapshot();
         let regs = self.emu.regs();
-        let flags = self.emu.flags();
 
         let (val, size): (u64, usize) = match reg_id {
             X86_64CoreRegId::Gpr(n) => {

@@ -15,7 +15,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         value1 & 0xffffffff
     };
     emu.set_operand_value(ins, 0, value);
-    if !emu.flags().f_pf {
+    if !emu.flag_pf() {
         let value2 = match emu.get_operand_value(ins, 1, true) {
             Some(v) => v,
             _ => return false,

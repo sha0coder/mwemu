@@ -318,10 +318,10 @@ impl Emu {
         }
 
         if is_string_comparison {
-            if instruction.has_repe_prefix() && !self.flags().f_zf {
+            if instruction.has_repe_prefix() && !self.flag_zf() {
                 self.rep = None;
             }
-            if instruction.has_repne_prefix() && self.flags().f_zf {
+            if instruction.has_repne_prefix() && self.flag_zf() {
                 self.rep = None;
             }
             return;

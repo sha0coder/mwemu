@@ -150,8 +150,8 @@ impl SingleRegisterAccess<()> for MwemuTarget32<'_> {
         reg_id: X86CoreRegId,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
+        let flags = self.emu.flags_snapshot();
         let regs = self.emu.regs();
-        let flags = self.emu.flags();
 
         let (val, size): (u32, usize) = match reg_id {
             X86CoreRegId::Eax => (regs.rax as u32, 4),

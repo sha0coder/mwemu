@@ -26,7 +26,8 @@ impl Emu {
             }
         } else {
             self.set_pre_op_regs(*self.regs());
-            self.set_pre_op_flags(*self.flags());
+            let flags = *self.flags();
+            self.set_pre_op_flags(flags);
         }
     }
 
@@ -40,7 +41,8 @@ impl Emu {
             }
         } else {
             self.set_post_op_regs(*self.regs());
-            self.set_post_op_flags(*self.flags());
+            let flags = *self.flags();
+            self.set_post_op_flags(flags);
         }
     }
 

@@ -446,7 +446,7 @@ impl Script {
                         let nzcv = &mut emu.regs_aarch64_mut().nzcv;
                         nzcv.z = !nzcv.z;
                     } else {
-                        emu.flags_mut().f_zf = !emu.flags().f_zf;
+                        emu.flags_mut().f_zf = !emu.flag_zf();
                     }
                 }
                 "fs" => {
@@ -454,7 +454,7 @@ impl Script {
                         let nzcv = &mut emu.regs_aarch64_mut().nzcv;
                         nzcv.n = !nzcv.n;
                     } else {
-                        emu.flags_mut().f_sf = !emu.flags().f_sf;
+                        emu.flags_mut().f_sf = !emu.flag_sf();
                     }
                 }
                 "mc" => {

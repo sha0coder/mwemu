@@ -25,6 +25,6 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     let sz = emu.get_operand_sz(ins, 0);
 
-    emu.flags_mut().test(value0, value1, sz);
+    emu.flags_overwrite_mut().test(value0, value1, sz);
     true
 }

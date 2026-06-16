@@ -30,7 +30,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             emu.regs_mut().rsi -= 2;
             emu.regs_mut().rdi -= 2;
         } else {
@@ -54,7 +54,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
 
-        if emu.flags().f_df {
+        if emu.flag_df() {
             let esi = emu.regs().get_esi() - 2;
             let edi = emu.regs().get_edi() - 2;
             emu.regs_mut().set_esi(esi);
@@ -67,7 +67,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
     }
 
-    emu.flags_mut().sub16(value0 as u64, value1 as u64);
+    emu.flags_overwrite_mut()
+        .sub16(value0 as u64, value1 as u64);
 
     if emu.cfg.verbose >= 2 {
         if value0 > value1 {

@@ -13,10 +13,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     };
 
     let res = match emu.get_operand_sz(ins, 0) {
-        64 => emu.flags_mut().inc64(value0),
-        32 => emu.flags_mut().inc32(value0),
-        16 => emu.flags_mut().inc16(value0),
-        8 => emu.flags_mut().inc8(value0),
+        64 => emu.flags_overwrite_mut().inc64(value0),
+        32 => emu.flags_overwrite_mut().inc32(value0),
+        16 => emu.flags_overwrite_mut().inc16(value0),
+        8 => emu.flags_overwrite_mut().inc8(value0),
         _ => panic!("weird size"),
     };
 

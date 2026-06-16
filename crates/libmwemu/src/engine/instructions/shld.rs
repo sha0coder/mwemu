@@ -22,7 +22,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     let sz = emu.get_operand_sz(ins, 0);
 
-    let result = emu.flags_mut().shld(value0, value1, counter, sz);
+    let result = emu.flags_overwrite_mut().shld(value0, value1, counter, sz);
     if !emu.set_operand_value(ins, 0, result) {
         return false;
     }

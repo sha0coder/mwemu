@@ -19,7 +19,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rcx -= 1;
         }
 
-        if emu.regs().rcx > 0 && !emu.flags().f_zf {
+        if emu.regs().rcx > 0 && !emu.flag_zf() {
             return emu.set_rip(addr, false);
         }
     } else if addr > 0xffff {
@@ -30,7 +30,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().set_ecx(ecx);
         }
 
-        if emu.regs().get_ecx() > 0 && !emu.flags().f_zf {
+        if emu.regs().get_ecx() > 0 && !emu.flag_zf() {
             if emu.cfg.is_x64() {
                 return emu.set_rip(addr, false);
             } else {
@@ -45,7 +45,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().set_cx(cx);
         }
 
-        if emu.regs().get_cx() > 0 && !emu.flags().f_zf {
+        if emu.regs().get_cx() > 0 && !emu.flag_zf() {
             if emu.cfg.is_x64() {
                 return emu.set_rip(addr, false);
             } else {
