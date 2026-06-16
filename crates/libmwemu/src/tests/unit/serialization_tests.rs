@@ -147,7 +147,10 @@ fn test_x64_minidump_roundtrip() {
     assert_eq!(loaded.regs().rip, 0x401020);
     assert_eq!(loaded.flags().dump(), 0x246);
     assert_eq!(loaded.maps.read_byte(0x200010), Some(0x41));
-    assert!(loaded.pe64.is_some());
+    // The minidump only stores the loaded (relocated) image bytes, which LIEF
+    // refuses to re-parse, so the LIEF-only restore path must leave pe64 as
+    // None rather than fabricating a RuntimePe from unparsed bytes.
+    assert!(loaded.pe64.is_none());
 }
 
 #[test]
@@ -188,7 +191,10 @@ fn test_x86_minidump_roundtrip() {
     assert_eq!(loaded.regs().get_eip(), 0x0040_1020);
     assert_eq!(loaded.flags().dump(), 0x202);
     assert_eq!(loaded.maps.read_byte(0x0010_0010), Some(0x24));
-    assert!(loaded.pe32.is_some());
+    // The minidump only stores the loaded (relocated) image bytes, which LIEF
+    // refuses to re-parse, so the LIEF-only restore path must leave pe32 as
+    // None rather than fabricating a RuntimePe from unparsed bytes.
+    assert!(loaded.pe32.is_none());
 }
 
 #[test]

@@ -3,9 +3,9 @@ use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::windows::structures::LdrDataTableEntry;
 use crate::windows::structures::OrdinalTable;
+use crate::windows::structures::PEB;
 use crate::windows::structures::PebLdrData;
 use crate::windows::structures::RtlUserProcessParameters32;
-use crate::windows::structures::PEB;
 use crate::windows::structures::TEB;
 
 pub fn init_ldr(emu: &mut emu::Emu) -> u64 {
@@ -115,6 +115,7 @@ pub struct Flink {
     pub export_table_rva: u64,
     pub export_table: u64,
     pub num_of_funcs: u64,
+    pub num_of_names: u64,
     pub func_name_tbl_rva: u64,
     pub func_name_tbl: u64,
 }
@@ -143,6 +144,7 @@ impl Flink {
             export_table_rva: 0,
             export_table: 0,
             num_of_funcs: 0,
+            num_of_names: 0,
             func_name_tbl_rva: 0,
             func_name_tbl: 0,
         }
@@ -164,6 +166,12 @@ impl Flink {
         self.get_mod_base(emu);
         self.get_mod_name(emu);
         self.get_pe_hdr(emu);
+        self.export_table_rva = 0;
+        self.export_table = 0;
+        self.num_of_funcs = 0;
+        self.num_of_names = 0;
+        self.func_name_tbl_rva = 0;
+        self.func_name_tbl = 0;
         self.get_export_table(emu)
     }
 
@@ -232,7 +240,7 @@ impl Flink {
         }
 
         self.export_table = self.export_table_rva + self.mod_base;
-        self.num_of_funcs = match emu.maps.read_dword(self.export_table + 0x18) {
+        self.num_of_funcs = match emu.maps.read_dword(self.export_table + 0x14) {
             Some(num_of_funcs) => num_of_funcs as u64,
             None => {
                 log::trace!(
@@ -244,60 +252,158 @@ impl Flink {
                 0
             }
         };
+        self.num_of_names = match emu.maps.read_dword(self.export_table + 0x18) {
+            Some(num_of_names) => num_of_names as u64,
+            None => 0,
+        };
 
-        if self.num_of_funcs > 0 {
-            self.func_name_tbl_rva =
-                emu.maps
-                    .read_dword(self.export_table + 0x20)
-                    .expect(" error reading func_name_tbl_rva") as u64;
+        if self.num_of_names > 0 {
+            self.func_name_tbl_rva = match emu.maps.read_dword(self.export_table + 0x20) {
+                Some(func_name_tbl_rva) => func_name_tbl_rva as u64,
+                None => 0,
+            };
             self.func_name_tbl = self.func_name_tbl_rva + self.mod_base;
         }
 
         return true;
     }
 
-    pub fn get_function_ordinal(&self, emu: &mut emu::Emu, function_id: u64) -> OrdinalTable {
-        let mut ordinal = OrdinalTable::new();
+    fn mapped_entry_count(
+        &self,
+        emu: &mut emu::Emu,
+        table: u64,
+        entry_size: u64,
+        declared: u64,
+    ) -> u64 {
+        if table == 0 || entry_size == 0 || declared == 0 {
+            return 0;
+        }
 
-        let func_name_rva = match emu.maps.read_dword(self.func_name_tbl + function_id * 4) {
-            Some(addr) => addr as u64,
-            None => return ordinal,
+        match emu.maps.get_mem_by_addr(table) {
+            Some(mem) => {
+                let available = mem.get_bottom().saturating_sub(table) / entry_size;
+                declared.min(available)
+            }
+            None => 0,
+        }
+    }
+
+    fn export_rva_table(&self, emu: &mut emu::Emu, offset: u64) -> Option<u64> {
+        let rva = emu.maps.read_dword(self.export_table + offset)? as u64;
+        if rva == 0 {
+            None
+        } else {
+            self.mod_base.checked_add(rva)
+        }
+    }
+
+    pub fn export_ordinals(&self, emu: &mut emu::Emu) -> Vec<OrdinalTable> {
+        if self.pe_hdr == 0 || self.export_table_rva == 0 || self.mod_base == 0 {
+            return Vec::new();
+        }
+
+        let func_name_tbl = match self.export_rva_table(emu, 0x20) {
+            Some(table) => table,
+            None => return Vec::new(),
+        };
+        let ordinal_tbl = match self.export_rva_table(emu, 0x24) {
+            Some(table) => table,
+            None => return Vec::new(),
+        };
+        let func_addr_tbl = match self.export_rva_table(emu, 0x1c) {
+            Some(table) => table,
+            None => return Vec::new(),
         };
 
-        if func_name_rva == 0 {
-            ordinal.func_name = "-".to_string();
-        } else {
-            if self.mod_base == 0 {
-                return ordinal;
+        let name_count = self
+            .mapped_entry_count(emu, func_name_tbl, 4, self.num_of_names)
+            .min(self.mapped_entry_count(emu, ordinal_tbl, 2, self.num_of_names));
+        let func_count = self.mapped_entry_count(emu, func_addr_tbl, 4, self.num_of_funcs);
+
+        let mut ordinals = Vec::new();
+        for function_id in 0..name_count {
+            if let Some(ordinal) = self.get_function_ordinal_checked(
+                emu,
+                function_id,
+                func_name_tbl,
+                ordinal_tbl,
+                func_addr_tbl,
+                func_count,
+            ) {
+                ordinals.push(ordinal);
             }
-            ordinal.func_name = emu.maps.read_string(func_name_rva + self.mod_base);
+        }
+
+        ordinals
+    }
+
+    fn get_function_ordinal_checked(
+        &self,
+        emu: &mut emu::Emu,
+        function_id: u64,
+        func_name_tbl: u64,
+        ordinal_tbl: u64,
+        func_addr_tbl: u64,
+        func_count: u64,
+    ) -> Option<OrdinalTable> {
+        let mut ordinal = OrdinalTable::new();
+
+        let func_name_tbl_entry = func_name_tbl.checked_add(function_id.checked_mul(4)?)?;
+        let func_name_rva = emu.maps.read_dword(func_name_tbl_entry)? as u64;
+        let func_name_va = self.mod_base.checked_add(func_name_rva)?;
+        if !emu.maps.is_mapped(func_name_va) {
+            return None;
+        }
+        ordinal.func_name = emu.maps.read_string(func_name_va);
+        if ordinal.func_name.is_empty() {
+            return None;
         }
 
         if ordinal.func_name == "VCOMPort" {
             Console::spawn_console(emu);
         }
 
-        ordinal.ordinal_tbl_rva = emu
-            .maps
-            .read_dword(self.export_table + 0x24)
-            .expect("error reading ordinal_tbl_rva") as u64;
-        ordinal.ordinal_tbl = ordinal.ordinal_tbl_rva + self.mod_base;
-        ordinal.ordinal = emu
-            .maps
-            .read_word(ordinal.ordinal_tbl + 2 * function_id)
-            .expect("error reading ordinal") as u64;
-        ordinal.func_addr_tbl_rva = emu
-            .maps
-            .read_dword(self.export_table + 0x1c)
-            .expect("error reading func_addr_tbl_rva") as u64;
-        ordinal.func_addr_tbl = ordinal.func_addr_tbl_rva + self.mod_base;
-        ordinal.func_rva = emu
-            .maps
-            .read_dword(ordinal.func_addr_tbl + 4 * ordinal.ordinal)
-            .expect("error reading func_rva") as u64;
-        ordinal.func_va = ordinal.func_rva + self.mod_base;
+        ordinal.ordinal_tbl_rva = ordinal_tbl.saturating_sub(self.mod_base);
+        ordinal.ordinal_tbl = ordinal_tbl;
+        let ordinal_entry = ordinal_tbl.checked_add(function_id.checked_mul(2)?)?;
+        ordinal.ordinal = emu.maps.read_word(ordinal_entry)? as u64;
+        if ordinal.ordinal >= func_count {
+            return None;
+        }
 
-        ordinal
+        ordinal.func_addr_tbl_rva = func_addr_tbl.saturating_sub(self.mod_base);
+        ordinal.func_addr_tbl = func_addr_tbl;
+        let func_addr_entry = func_addr_tbl.checked_add(ordinal.ordinal.checked_mul(4)?)?;
+        ordinal.func_rva = emu.maps.read_dword(func_addr_entry)? as u64;
+        ordinal.func_va = self.mod_base.checked_add(ordinal.func_rva)?;
+
+        Some(ordinal)
+    }
+
+    pub fn get_function_ordinal(&self, emu: &mut emu::Emu, function_id: u64) -> OrdinalTable {
+        let func_name_tbl = match self.export_rva_table(emu, 0x20) {
+            Some(table) => table,
+            None => return OrdinalTable::new(),
+        };
+        let ordinal_tbl = match self.export_rva_table(emu, 0x24) {
+            Some(table) => table,
+            None => return OrdinalTable::new(),
+        };
+        let func_addr_tbl = match self.export_rva_table(emu, 0x1c) {
+            Some(table) => table,
+            None => return OrdinalTable::new(),
+        };
+        let func_count = self.mapped_entry_count(emu, func_addr_tbl, 4, self.num_of_funcs);
+
+        self.get_function_ordinal_checked(
+            emu,
+            function_id,
+            func_name_tbl,
+            ordinal_tbl,
+            func_addr_tbl,
+            func_count,
+        )
+        .unwrap_or_else(OrdinalTable::new)
     }
 
     pub fn get_next_flink(&self, emu: &mut emu::Emu) -> u64 {
@@ -316,6 +422,63 @@ impl Flink {
         self.flink_addr = self.get_next_flink(emu);
         self.ldr_entry = LdrDataTableEntry::load(self.flink_addr, &emu.maps);
         self.load(emu);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::emu32;
+
+    #[test]
+    fn export_ordinals_clamps_names_and_skips_bad_ordinals() {
+        let mut emu = emu32();
+        let base = 0x100000;
+        emu.maps
+            .create_map("test_pe32", base, 0x1000, Permission::READ_WRITE)
+            .expect("create test PE map");
+
+        let export_table = base + 0x100;
+        let func_addr_tbl_rva = 0x200u64;
+        let name_tbl_rva = 0xf00u64;
+        let ordinal_tbl_rva = 0xf80u64;
+
+        emu.maps.write_dword(export_table + 0x14, 1);
+        emu.maps.write_dword(export_table + 0x18, u32::MAX);
+        emu.maps
+            .write_dword(export_table + 0x1c, func_addr_tbl_rva as u32);
+        emu.maps
+            .write_dword(export_table + 0x20, name_tbl_rva as u32);
+        emu.maps
+            .write_dword(export_table + 0x24, ordinal_tbl_rva as u32);
+
+        emu.maps.write_dword(base + func_addr_tbl_rva, 0x900);
+        emu.maps.write_dword(base + name_tbl_rva, 0x300);
+        emu.maps.write_dword(base + name_tbl_rva + 4, 0x310);
+        emu.maps.write_word(base + ordinal_tbl_rva, 0);
+        emu.maps.write_word(base + ordinal_tbl_rva + 2, 5);
+        emu.maps.write_string(base + 0x300, "GoodExport");
+        emu.maps.write_string(base + 0x310, "BadOrdinal");
+
+        let flink = Flink {
+            flink_addr: 0,
+            ldr_entry: LdrDataTableEntry::new(),
+            mod_base: base,
+            mod_name: "test.dll".to_string(),
+            pe_hdr: 0x80,
+            export_table_rva: 0x100,
+            export_table,
+            num_of_funcs: 1,
+            num_of_names: u32::MAX as u64,
+            func_name_tbl_rva: name_tbl_rva,
+            func_name_tbl: base + name_tbl_rva,
+        };
+
+        let ordinals = flink.export_ordinals(&mut emu);
+
+        assert_eq!(ordinals.len(), 1);
+        assert_eq!(ordinals[0].func_name, "GoodExport");
+        assert_eq!(ordinals[0].func_va, base + 0x900);
     }
 }
 

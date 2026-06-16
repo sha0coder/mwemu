@@ -8,11 +8,10 @@ use crate::loaders::pe::readers::{
 use crate::windows::structures;
 
 use super::{
-    DelayLoadDirectory, ImageDosHeader, ImageExportDirectory, ImageFileHeader,
-    ImageImportDescriptor, ImageNtHeaders, ImageOptionalHeader, ImageSectionHeader, PE32,
-    TlsDirectory32, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
+    DelayLoadDirectory, IMAGE_DIRECTORY_ENTRY_DELAY_LOAD, IMAGE_DIRECTORY_ENTRY_EXPORT,
     IMAGE_DIRECTORY_ENTRY_IAT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_DIRECTORY_ENTRY_TLS,
-    SECTION_HEADER_SZ,
+    ImageDosHeader, ImageExportDirectory, ImageFileHeader, ImageImportDescriptor, ImageNtHeaders,
+    ImageOptionalHeader, ImageSectionHeader, PE32, SECTION_HEADER_SZ, TlsDirectory32,
 };
 
 macro_rules! read_u32_le {
@@ -22,6 +21,14 @@ macro_rules! read_u32_le {
 }
 
 impl PE32 {
+    /// IMAGE_FILE_DLL flag (0x2000) from the file header characteristics.
+    const IMAGE_FILE_DLL: u16 = 0x2000;
+
+    /// Returns true if the file header characteristics indicate a DLL image.
+    pub fn is_dll(&self) -> bool {
+        self.fh.characteristics & Self::IMAGE_FILE_DLL != 0
+    }
+
     pub fn is_pe32(filename: &str) -> bool {
         let mut fd = match File::open(filename) {
             Ok(file) => file,

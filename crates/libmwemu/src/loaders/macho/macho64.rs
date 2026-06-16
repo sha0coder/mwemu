@@ -13,6 +13,12 @@ const CPU_TYPE_X86_64: u32 = 0x01000007;
 // Chained fixup pointer format constants
 const DYLD_CHAINED_PTR_64_OFFSET: u16 = 6;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ParserBackendKind {
+    Legacy,
+    Lief,
+}
+
 #[derive(Debug)]
 pub struct Macho64Segment {
     pub name: String,
@@ -34,17 +40,22 @@ pub struct Macho64 {
     /// `dataoff`/`fileoff` fields are relative to the *slice* start, so any
     /// raw indexing into `bin` for those needs to add this offset.
     pub slice_offset: u64,
+    pub libs_cache: Option<Vec<String>>,
+    pub exports_cache: Option<Vec<(String, u64)>>,
+    pub fixups_cache: Option<(Vec<ChainedImport>, Vec<ChainedBind>)>,
+    pub selected_arch: Option<crate::arch::Arch>,
+    pub backend: ParserBackendKind,
 }
 
 /// A resolved chained fixup bind entry: GOT address -> import ordinal
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChainedBind {
     pub got_vmaddr: u64,
     pub import_ordinal: u32,
 }
 
 /// An import from the chained fixups import table
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChainedImport {
     pub name: String,
     pub lib_ordinal: i8,
@@ -177,6 +188,11 @@ impl Macho64 {
             segments,
             addr_to_symbol: std::collections::HashMap::new(),
             slice_offset,
+            libs_cache: None,
+            exports_cache: None,
+            fixups_cache: None,
+            selected_arch: None,
+            backend: ParserBackendKind::Legacy,
         })
     }
 
@@ -221,6 +237,11 @@ impl Macho64 {
             segments,
             addr_to_symbol: std::collections::HashMap::new(),
             slice_offset: 0,
+            libs_cache: None,
+            exports_cache: None,
+            fixups_cache: None,
+            selected_arch: None,
+            backend: ParserBackendKind::Legacy,
         })
     }
 
@@ -249,6 +270,10 @@ impl Macho64 {
     /// Get the list of dependent dylib paths from load commands.
     /// Supports plain Mach-O and FAT/universal binaries.
     pub fn get_libs(&self) -> Vec<String> {
+        if let Some(cache) = &self.libs_cache {
+            return cache.clone();
+        }
+
         let macho = self.reparse().expect("re-parse for libs");
         macho
             .libs
@@ -278,7 +303,9 @@ impl Macho64 {
                         .map_err(|e| MwemuError::new(&format!("cannot parse fat arch: {}", e)))?;
                     if arch.cputype == goblin::mach::constants::cputype::CPU_TYPE_ARM64 {
                         return goblin::mach::MachO::parse(&self.bin, arch.offset as usize)
-                            .map_err(|e| MwemuError::new(&format!("cannot parse arm64 slice: {}", e)));
+                            .map_err(|e| {
+                                MwemuError::new(&format!("cannot parse arm64 slice: {}", e))
+                            });
                     }
                 }
                 Err(MwemuError::new("no ARM64 slice found in FAT Mach-O"))
@@ -299,6 +326,10 @@ impl Macho64 {
 
     /// Get exported symbols with their offsets (relative to binary load address).
     pub fn get_exports(&self) -> Vec<(String, u64)> {
+        if let Some(cache) = &self.exports_cache {
+            return cache.clone();
+        }
+
         let macho = self.reparse().expect("re-parse for exports");
         match macho.exports() {
             Ok(exports) => exports.iter().map(|e| (e.name.clone(), e.offset)).collect(),
@@ -313,6 +344,10 @@ impl Macho64 {
     /// Returns (imports_table, bind_entries) where each bind entry references
     /// an import by ordinal and specifies the GOT vmaddr to patch.
     pub fn parse_chained_fixups(&self) -> (Vec<ChainedImport>, Vec<ChainedBind>) {
+        if let Some(cache) = &self.fixups_cache {
+            return cache.clone();
+        }
+
         let macho = self.reparse().expect("re-parse for fixups");
 
         let mut imports = Vec::new();
@@ -329,7 +364,9 @@ impl Macho64 {
                 if end > self.bin.len() {
                     log::warn!(
                         "macho64: chained fixups data range [{:#x}..{:#x}] exceeds bin len {:#x}",
-                        base, end, self.bin.len()
+                        base,
+                        end,
+                        self.bin.len()
                     );
                     continue;
                 }

@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 
 use crate::emu::disassemble::InstructionCache;
 use crate::emu::{ArchState, Emu};
-use crate::loaders::pe::pe64;
+use crate::loaders::pe::runtime_pe64::RuntimePe64;
 use crate::maps::mem64::Permission;
 use crate::windows::peb::{peb32, peb64};
 use crate::{
@@ -50,7 +50,7 @@ impl Default for Emu {
 }
 
 pub struct Lib {
-    pe64: pe64::PE64,
+    pe64: RuntimePe64,
     base: u64,
     name: String,
 }
@@ -143,6 +143,7 @@ impl Emu {
             fault_count: 0,
             handle_management: HandleManagement::new(),
             library_loaded: false,
+            api_set_resolver: None,
             section_handles: HashMap::new(),
             file_handles: HashMap::new(),
             syscall_number_map: HashMap::new(),
@@ -1219,7 +1220,7 @@ impl Emu {
         // Stage 3: dynamic linking base + deps
         for dll in &metadata {
             log::debug!("dynamic linking {}", &dll.name);
-            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_off(), &dll.name, self);
+            peb64::dynamic_link_module(dll.base, dll.pe64.get_pe_offset(), &dll.name, self);
         }
 
         // Stage 3: IAT binding for base + deps (relocs already applied in `map_dll_pe64`).

@@ -10,12 +10,7 @@ macro_rules! read_u16_le {
 
 macro_rules! read_u32_le {
     ($raw:expr, $off:expr) => {
-        u32::from_le_bytes([
-            $raw[$off],
-            $raw[$off + 1],
-            $raw[$off + 2],
-            $raw[$off + 3],
-        ])
+        u32::from_le_bytes([$raw[$off], $raw[$off + 1], $raw[$off + 2], $raw[$off + 3]])
     };
 }
 
@@ -122,7 +117,10 @@ impl PE32 {
         Some((data_off as u64, data_entry.size as usize))
     }
 
-    pub fn pe32_get_resource_name(&self, entry: &structures::ImageResourceDirectoryEntry) -> String {
+    pub fn pe32_get_resource_name(
+        &self,
+        entry: &structures::ImageResourceDirectoryEntry,
+    ) -> String {
         let off = PE32::vaddr_to_off(&self.sect_hdr, entry.get_name_or_id() as u32) as usize;
         let length = u16::from_le_bytes([self.raw[off], self.raw[off + 1]]) as usize;
         let string_start = off + 2;

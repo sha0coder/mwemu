@@ -1,6 +1,6 @@
 use crate::err::MwemuError;
-use crate::maps::mem64::{Mem64, Permission};
 use crate::maps::Maps;
+use crate::maps::mem64::{Mem64, Permission};
 use crate::windows::constants;
 use std::collections::HashMap;
 use std::fs::File;
@@ -78,6 +78,20 @@ pub const STT_GNU_IFUNC: u8 = 10;
 pub const R_AARCH64_GLOB_DAT: u32 = 1025;
 pub const R_AARCH64_JUMP_SLOT: u32 = 1026;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ParserBackendKind {
+    Legacy,
+    Lief,
+}
+
+#[derive(Debug, Clone)]
+pub struct Elf64RelocationInfo {
+    pub offset: u64,
+    pub reloc_type: u32,
+    pub addend: i64,
+    pub symbol_name: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct Elf64 {
     pub base: u64,
@@ -85,7 +99,7 @@ pub struct Elf64 {
     pub elf_hdr: Elf64Ehdr,
     pub elf_phdr: Vec<Elf64Phdr>,
     pub elf_shdr: Vec<Elf64Shdr>,
-    pub elf_strtab: Vec<u8>, // no sense, use offset instead repeat the blob
+    pub elf_strtab: Vec<u8>,
     pub init: Option<u64>,
     pub elf_dynsym: Vec<Elf64Sym>,
     pub elf_dynstr_off: u64,
@@ -97,6 +111,9 @@ pub struct Elf64 {
     /// header and program headers, exactly like the kernel/mmap) instead of by
     /// sections. Required to run the real ld.so / libc code.
     pub segment_mode: bool,
+    pub backend: ParserBackendKind,
+    pub lief_dynamic_info: Option<Elf64DynamicInfo>,
+    pub lief_relocations: Vec<Elf64RelocationInfo>,
 }
 
 impl Elf64 {
@@ -154,6 +171,9 @@ impl Elf64 {
             sym_to_addr: HashMap::new(),
             addr_to_symbol: HashMap::new(),
             segment_mode: false,
+            backend: ParserBackendKind::Legacy,
+            lief_dynamic_info: None,
+            lief_relocations: Vec::new(),
         })
     }
 
@@ -312,6 +332,12 @@ impl Elf64 {
     }
 
     pub fn dynamic_info(&self) -> Option<Elf64DynamicInfo> {
+        if self.backend == ParserBackendKind::Lief {
+            if let Some(info) = &self.lief_dynamic_info {
+                return Some(info.clone());
+            }
+        }
+
         let (mut off, size) = self.dynamic_table_bounds()?;
         let end = off.saturating_add(size).min(self.bin.len());
         let mut info = Elf64DynamicInfo::default();
@@ -378,6 +404,12 @@ impl Elf64 {
         ifunc_resolvers: &std::collections::HashSet<u64>,
     ) -> RelocationOutcome {
         let mut outcome = RelocationOutcome::default();
+
+        if self.backend == ParserBackendKind::Lief && !self.lief_relocations.is_empty() {
+            self.apply_lief_relocations(maps, export_map, &mut outcome.unresolved);
+            return outcome;
+        }
+
         let Some(info) = self.dynamic_info() else {
             return outcome;
         };
@@ -521,13 +553,87 @@ impl Elf64 {
         }
     }
 
-    /// Apply AArch64 relocations (.rela.dyn and .rela.plt) using section headers.
-    /// Handles R_AARCH64_GLOB_DAT and R_AARCH64_JUMP_SLOT.
-    pub fn apply_rela_aarch64(
-        &mut self,
+    fn apply_lief_relocations(
+        &self,
         maps: &mut Maps,
         export_map: &HashMap<String, u64>,
+        unresolved: &mut Vec<String>,
     ) {
+        for reloc in &self.lief_relocations {
+            let r_type = reloc.reloc_type;
+            if r_type != R_X86_64_GLOB_DAT
+                && r_type != R_X86_64_JUMP_SLOT
+                && r_type != R_AARCH64_GLOB_DAT
+                && r_type != R_AARCH64_JUMP_SLOT
+            {
+                log::warn!("elf64: unsupported LIEF relocation type {}", r_type);
+                continue;
+            }
+
+            let sym_name = reloc.symbol_name.as_deref().unwrap_or("");
+            if sym_name.is_empty() {
+                continue;
+            }
+
+            let resolved = export_map
+                .get(sym_name)
+                .copied()
+                .or_else(|| self.sym_get_addr_from_name(sym_name));
+
+            let Some(target_addr) = resolved else {
+                if !unresolved.contains(&sym_name.to_string()) {
+                    unresolved.push(sym_name.to_string());
+                }
+                continue;
+            };
+
+            let patch_addr = self.rebase_vaddr(reloc.offset);
+            if !maps.write_qword(patch_addr, target_addr) {
+                if let Some(map_name) = maps.get_addr_name(patch_addr).map(|s| s.to_string()) {
+                    maps.get_mem_mut(&map_name)
+                        .force_write_qword(patch_addr, target_addr);
+                } else {
+                    log::warn!(
+                        "elf64: lief relocation target 0x{:x} for {} is not mapped",
+                        patch_addr,
+                        sym_name
+                    );
+                }
+            }
+        }
+    }
+
+    /// Apply AArch64 relocations (.rela.dyn and .rela.plt) using section headers.
+    /// Handles R_AARCH64_GLOB_DAT and R_AARCH64_JUMP_SLOT.
+    pub fn apply_rela_aarch64(&mut self, maps: &mut Maps, export_map: &HashMap<String, u64>) {
+        if self.backend == ParserBackendKind::Lief && !self.lief_relocations.is_empty() {
+            for reloc in &self.lief_relocations {
+                let r_type = reloc.reloc_type;
+                if r_type != R_AARCH64_GLOB_DAT && r_type != R_AARCH64_JUMP_SLOT {
+                    continue;
+                }
+
+                let sym_name = reloc.symbol_name.as_deref().unwrap_or("");
+                if sym_name.is_empty() {
+                    continue;
+                }
+
+                if let Some(&target_addr) = export_map.get(sym_name) {
+                    let got_addr = if reloc.offset < self.base {
+                        reloc.offset + self.base
+                    } else {
+                        reloc.offset
+                    };
+
+                    maps.write_qword(got_addr, target_addr);
+                    self.sym_to_addr.insert(sym_name.to_string(), target_addr);
+                    self.addr_to_symbol
+                        .insert(target_addr, sym_name.to_string());
+                }
+            }
+            return;
+        }
+
         let rela_sections: Vec<(u64, u64)> = self
             .elf_shdr
             .iter()
@@ -587,9 +693,10 @@ impl Elf64 {
         }
 
         // Fallback: read from raw binary
-        let dynsym_shdr = self.elf_shdr.iter().find(|shdr| {
-            self.get_section_name(shdr.sh_name as usize) == ".dynsym"
-        });
+        let dynsym_shdr = self
+            .elf_shdr
+            .iter()
+            .find(|shdr| self.get_section_name(shdr.sh_name as usize) == ".dynsym");
         let Some(shdr) = dynsym_shdr else {
             return String::new();
         };
@@ -762,6 +869,9 @@ impl Elf64 {
 
             // load dynsym
             if sname == ".dynsym" {
+                if self.backend == ParserBackendKind::Lief && !self.elf_dynsym.is_empty() {
+                    continue;
+                }
                 self.elf_dynsym.clear();
                 let mut off = sh_offset as usize;
                 let entsize = if self.elf_shdr[i].sh_entsize == 0 {
@@ -1043,7 +1153,12 @@ impl Elf64 {
             return false;
         }
 
-        if raw[0] != 0x7f || raw[1] != b'E' || raw[2] != b'L' || raw[3] != b'F' || raw[4] != ELFCLASS64 {
+        if raw[0] != 0x7f
+            || raw[1] != b'E'
+            || raw[2] != b'L'
+            || raw[3] != b'F'
+            || raw[4] != ELFCLASS64
+        {
             return false;
         }
 
@@ -1207,7 +1322,7 @@ pub struct RelocationOutcome {
     pub irelative: Vec<(u64, u64)>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Elf64DynamicInfo {
     pub needed: Vec<String>,
     pub strtab_addr: u64,

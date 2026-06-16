@@ -1,15 +1,40 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::config::BinaryBackend;
 use crate::emu::Emu;
 use crate::loaders::elf::elf64::Elf64;
+use crate::loaders::elf::lief::LiefElf64;
 use crate::windows::constants;
 
 impl Emu {
     /// Loads an ELF64 parsing sections etc, powered by elf64.rs
     /// This is called from load_code() if the sample is ELF64
     pub fn load_elf64(&mut self, filename: &str) {
-        let mut elf64 = Elf64::parse(filename).unwrap();
+        self.load_elf64_with_backend(filename, self.cfg.elf64_backend);
+    }
+
+    /// Load an ELF64 binary with the specified backend.
+    pub fn load_elf64_with_backend(&mut self, filename: &str, backend: BinaryBackend) {
+        let mut elf64 = match backend {
+            BinaryBackend::Legacy => Elf64::parse(filename).unwrap(),
+            BinaryBackend::Lief => LiefElf64::load(filename)
+                .and_then(|lief| lief.to_legacy_model())
+                .unwrap_or_else(|e| panic!("LIEF ELF64 parsing failed for {}: {}", filename, e)),
+            BinaryBackend::Auto => {
+                match LiefElf64::load(filename).and_then(|lief| lief.to_legacy_model()) {
+                    Ok(elf) => {
+                        log::trace!("elf64: LIEF parsing succeeded (Auto mode)");
+                        elf
+                    }
+                    Err(e) => {
+                        log::warn!("elf64: LIEF parsing failed, falling back to legacy: {}", e);
+                        Elf64::parse(filename).unwrap()
+                    }
+                }
+            }
+        };
+
         let dyn_link = !elf64.get_dynamic().is_empty();
 
         if dyn_link {
@@ -169,7 +194,13 @@ impl Emu {
             };
 
             let map_name = lib.rsplit('/').next().unwrap_or(lib);
-            elflib.load(&mut self.maps, map_name, true, true, constants::CFG_DEFAULT_BASE);
+            elflib.load(
+                &mut self.maps,
+                map_name,
+                true,
+                true,
+                constants::CFG_DEFAULT_BASE,
+            );
 
             for (sym, addr) in elflib.exported_symbols() {
                 export_map.entry(sym.clone()).or_insert(addr);

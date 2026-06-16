@@ -1,6 +1,6 @@
-use crate::windows::constants;
 use crate::emu;
 use crate::maps::mem64::Permission;
+use crate::windows::constants;
 
 const PAGE_NOACCESS: u32 = 0x01;
 const PAGE_READONLY: u32 = 0x02;
@@ -57,19 +57,31 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         if mem_commit && addr > 0 {
             base = addr;
         } else {
-            base = emu
-                .maps
-                .alloc(size)
-                .expect("kernel32!VirtualAlloc out of memory");
+            base = match emu.maps.alloc(size) {
+                Some(b) => b,
+                None => {
+                    log::warn!("kernel32!VirtualAlloc out of memory");
+                    emu.regs_mut().rax = 0;
+                    for _ in 0..4 {
+                        emu.stack_pop32(false);
+                    }
+                    return;
+                }
+            };
         }
-        emu.maps
-            .create_map(
-                format!("alloc_{:x}", base).as_str(),
-                base,
-                size,
-                Permission::from_flags(can_read, can_write, can_execute),
-            )
-            .expect("kernel32!VirtualAlloc out of memory");
+        if let Err(e) = emu.maps.create_map(
+            format!("alloc_{:x}", base).as_str(),
+            base,
+            size,
+            Permission::from_flags(can_read, can_write, can_execute),
+        ) {
+            log::warn!("kernel32!VirtualAlloc {}", e);
+            emu.regs_mut().rax = 0;
+            for _ in 0..4 {
+                emu.stack_pop32(false);
+            }
+            return;
+        }
     } else {
         if mem_commit && emu.maps.is_allocated(addr) {
             base = addr

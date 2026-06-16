@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use byteorder::{LittleEndian, WriteBytesExt};
 use minidump::format as md;
 
-use super::context::{build_thread_context, ThreadContextInput};
+use super::context::{ThreadContextInput, build_thread_context};
 use crate::arch::{Arch, OperatingSystem};
 use crate::emu::Emu;
 use crate::maps::mem64::Permission;
@@ -57,8 +57,7 @@ impl MinidumpWriter {
         let regions = collect_memory_regions(emu);
         let modules = collect_modules(emu, &regions);
         let stream_count = 5u32;
-        let payload_start =
-            align4(MINIDUMP_HEADER_SIZE + (stream_count * MINIDUMP_DIRECTORY_SIZE));
+        let payload_start = align4(MINIDUMP_HEADER_SIZE + (stream_count * MINIDUMP_DIRECTORY_SIZE));
         let memory_rva = payload_start;
         let (memory_stream, memory_trailing_data, memory_locations) =
             build_memory_list_stream(&regions, memory_rva)?;
@@ -243,7 +242,12 @@ fn region_belongs_to_module(name: &str, prefix: &str) -> bool {
         return false;
     };
 
-    rest.starts_with('.') || rest.chars().next().map(|c| c.is_ascii_hexdigit()).unwrap_or(false)
+    rest.starts_with('.')
+        || rest
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_hexdigit())
+            .unwrap_or(false)
 }
 
 fn build_memory_list_stream(
@@ -332,12 +336,11 @@ fn build_system_info_stream(emu: &Emu, _base_rva: u32) -> io::Result<Vec<u8>> {
         OperatingSystem::Linux => md::PlatformId::Linux as u32,
         OperatingSystem::MacOS => md::PlatformId::MacOs as u32,
     };
-    let (major_version, minor_version, build_number, product_type) =
-        if emu.os.is_windows() {
-            (10, 0, 19041, 1)
-        } else {
-            (0, 0, 0, 0)
-        };
+    let (major_version, minor_version, build_number, product_type) = if emu.os.is_windows() {
+        (10, 0, 19041, 1)
+    } else {
+        (0, 0, 0, 0)
+    };
 
     output.write_u16::<LittleEndian>(processor_architecture)?;
     output.write_u16::<LittleEndian>(6)?;
@@ -355,7 +358,10 @@ fn build_system_info_stream(emu: &Emu, _base_rva: u32) -> io::Result<Vec<u8>> {
     Ok(output)
 }
 
-fn build_module_list_stream(modules: &[ModuleInfo], base_rva: u32) -> io::Result<(Vec<u8>, Vec<u8>)> {
+fn build_module_list_stream(
+    modules: &[ModuleInfo],
+    base_rva: u32,
+) -> io::Result<(Vec<u8>, Vec<u8>)> {
     let header_size = 4 + ((modules.len() as u32) * MINIDUMP_MODULE_SIZE);
     let mut next_name_rva = base_rva + header_size;
     let mut output = Vec::new();
@@ -424,11 +430,7 @@ fn build_thread_list_stream(
 
         let context_rva = next_context_rva;
         next_context_rva += context.len() as u32;
-        let (stack_base, stack_location) = stack_location_for_thread(
-            sp,
-            regions,
-            memory_locations,
-        );
+        let (stack_base, stack_location) = stack_location_for_thread(sp, regions, memory_locations);
         let teb = if thread_idx == emu.current_thread_id {
             emu.maps
                 .get_map_by_name("teb")

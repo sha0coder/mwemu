@@ -50,18 +50,25 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         addr
     );
 
-    let base = emu
-        .maps
-        .alloc(size)
-        .expect("kernel32!VirtualAllocExNuma out of memory");
-    emu.maps
-        .create_map(
-            format!("alloc_{:x}", base).as_str(),
-            base,
-            size,
-            Permission::from_flags(can_read, can_write, can_execute),
-        )
-        .expect("kernel32!VirtualAllocExNuma cannot create map");
+    let base = match emu.maps.alloc(size) {
+        Some(b) => b,
+        None => {
+            log::warn!("kernel32!VirtualAllocExNuma out of memory");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
+
+    if let Err(e) = emu.maps.create_map(
+        format!("alloc_{:x}", base).as_str(),
+        base,
+        size,
+        Permission::from_flags(can_read, can_write, can_execute),
+    ) {
+        log::warn!("kernel32!VirtualAllocExNuma {}", e);
+        emu.regs_mut().rax = 0;
+        return;
+    }
 
     emu.regs_mut().rax = base;
 }
