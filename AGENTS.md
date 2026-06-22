@@ -10,7 +10,7 @@ Also implement some Windows system simulation, EPB+TEB+LDR, --syscall-mode, and 
 
 2. no usafe blocks and no unsafe dependencies or risky of supply chain attacks.
 
-3. keep it offline
+3. keep it offline except microsoft symbols server
 
 4. every function 1 unique purpose
 

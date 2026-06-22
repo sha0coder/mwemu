@@ -64,9 +64,12 @@ pub fn known_aliases() -> Vec<(&'static str, &'static str)> {
     WINVER_ALIASES.to_vec()
 }
 
-/// Where a build's fetched DLLs are cached.
-pub fn cache_folder(build: &str) -> PathBuf {
-    PathBuf::from(format!("maps/winver/{}/x86_64/", build))
+/// Where a build's fetched DLLs are cached. Split by architecture
+/// (`maps/winver/<build>/{x86_64,x86}/`) so 32- and 64-bit DLLs of the same
+/// build don't collide in one folder.
+pub fn cache_folder(build: &str, is_x64: bool) -> PathBuf {
+    let arch_dir = if is_x64 { "x86_64" } else { "x86" };
+    PathBuf::from(format!("maps/winver/{}/{}/", build, arch_dir))
 }
 
 /// Ensure `<cache>/<basename>` exists, fetching it from the symbol server when
@@ -253,22 +256,29 @@ impl crate::emu::Emu {
     /// Point the maps folder at a build's symbol-server cache, fetching the seed
     /// DLLs up front and enabling lazy fetch for the rest. `name` is a friendly
     /// alias (`win11`) or an exact build number (`26100.7920`).
+    ///
+    /// Architecture follows `cfg.arch`: a 64-bit guest fetches the AMD64 DLLs
+    /// (cached under `…/x86_64/`), a 32-bit guest fetches the I386 DLLs (cached
+    /// under `…/x86/`). Set the guest architecture (e.g. `init_win64()` /
+    /// `--64bits`) before calling, since the default is 32-bit.
     pub fn set_maps_from_winver(&mut self, name: &str) -> Result<(), Box<dyn Error>> {
         let build = resolve_build(name);
-        let cache = cache_folder(&build);
+        let is_x64 = self.cfg.arch.is_x64();
+        let machine = if is_x64 { MACHINE_AMD64 } else { MACHINE_I386 };
+        let cache = cache_folder(&build, is_x64);
         fs::create_dir_all(&cache)?;
         eprintln!(
-            "[mwemu] --winver {}: build {} → fetching system DLLs from the symbol server",
-            name, build
+            "[mwemu] --winver {}: build {} ({}) → fetching system DLLs from the symbol server",
+            name,
+            build,
+            if is_x64 { "x64" } else { "x86" },
         );
 
         // Seed the non-PE NLS data files from an existing iso cache if present.
-        seed_data_files(&cache);
+        seed_data_files(&cache, is_x64);
 
         for dll in SEED_DLLS {
-            // set_maps_from_winver caches under x86_64/ — it's the explicit x64
-            // `--winver` path; 32-bit guests auto-fetch via ensure_maps_dll.
-            match ensure_dll(&cache, &build, dll, MACHINE_AMD64) {
+            match ensure_dll(&cache, &build, dll, machine) {
                 Ok(_) => {}
                 Err(e) => {
                     return Err(format!("--winver: failed to fetch {}: {}", dll, e).into());
@@ -285,14 +295,30 @@ impl crate::emu::Emu {
 /// Copy the NLS data files into `cache` from any already-extracted iso cache,
 /// best-effort. These aren't on the symbol server but barely change between
 /// builds, so reusing them is fine.
-fn seed_data_files(cache: &Path) {
-    let iso_caches = ["maps/iso/x86_64", "../../maps/iso/x86_64"];
+fn seed_data_files(cache: &Path, is_x64: bool) {
+    // NLS code-page tables are architecture-independent, so either iso cache
+    // works; prefer the matching arch, fall back to the other.
+    let iso_caches: &[&str] = if is_x64 {
+        &[
+            "maps/iso/x86_64",
+            "../../maps/iso/x86_64",
+            "maps/iso/x86",
+            "../../maps/iso/x86",
+        ]
+    } else {
+        &[
+            "maps/iso/x86",
+            "../../maps/iso/x86",
+            "maps/iso/x86_64",
+            "../../maps/iso/x86_64",
+        ]
+    };
     for f in SEED_DATA_FILES {
         let dest = cache.join(f);
         if dest.is_file() {
             continue;
         }
-        for src_dir in &iso_caches {
+        for src_dir in iso_caches {
             let src = Path::new(src_dir).join(f);
             if src.is_file() {
                 let _ = fs::copy(&src, &dest);

@@ -809,6 +809,54 @@ pub fn gateway(emu: &mut Emu) {
             );
             emu.regs_mut().rax = STATUS_SUCCESS;
         }
+        // `NtSetWnfProcessNotificationEvent` (0x1c5): Win11's ntdll registers a
+        // per-process event the kernel signals on any subscribed WNF state
+        // change (`RtlpInitializeWnf` / the thread-pool WNF subscription path).
+        // Returning STATUS_NOT_IMPLEMENTED made the caller treat the
+        // subscription as failed and busy-retry the whole dance (query WNF →
+        // create event → create wait-completion-packet → set-notify → tear
+        // down) forever — the WorkerFactory churn visible during init. Win2022's
+        // ntdll doesn't take this path, which is why only Win11 hangs here.
+        // Report SUCCESS so the subscription "registers" and init continues; we
+        // never signal the event, which is fine — no subscribed state changes.
+        WIN64_NTSETWNFPROCESSNOTIFICATIONEVENT => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtSetWnfProcessNotificationEvent (stub → SUCCESS)",
+                real_nr,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        // `NtSubscribeWnfStateChange` (0x1cd) / `NtUnsubscribeWnfStateChange`
+        // (0x1e0): Win11's `RtlSubscribeWnfStateChangeNotification` (reached
+        // from `RtlRegisterFeatureConfigurationChangeNotification` during init)
+        // subscribes to the feature-configuration-change WNF state. The outer
+        // registration retries the whole subscribe in a tight loop until it
+        // returns success, so STATUS_NOT_IMPLEMENTED hung here. Report SUCCESS
+        // (and hand back a non-zero SubscriptionId for subscribe so the caller
+        // doesn't treat 0 as "not subscribed"); we never deliver a change
+        // notification, which is correct — the state never changes.
+        WIN64_NTSUBSCRIBEWNFSTATECHANGE => {
+            // rcx=StateName*, rdx=ChangeStamp, r8=EventFilter, r9=SubscriptionId*(out)
+            let subscription_id_ptr = emu.regs().r9;
+            if subscription_id_ptr != 0 && emu.maps.is_mapped(subscription_id_ptr) {
+                let _ = emu.maps.write_qword(subscription_id_ptr, 1);
+            }
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtSubscribeWnfStateChange (stub → SUCCESS)",
+                real_nr,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
+        WIN64_NTUNSUBSCRIBEWNFSTATECHANGE => {
+            log_orange!(
+                emu,
+                "syscall 0x{:x}: NtUnsubscribeWnfStateChange (stub → SUCCESS)",
+                real_nr,
+            );
+            emu.regs_mut().rax = STATUS_SUCCESS;
+        }
         // `NtApphelpCacheControl` (0x4c): kernel32/kernelbase consult the
         // app-compat shim cache during process start (`BasepCheckBadapp`,
         // `BasepCheckAppCompat`, etc.). STATUS_NOT_SUPPORTED tells callers

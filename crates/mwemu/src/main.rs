@@ -384,13 +384,26 @@ fn main() {
     } else if matches.is_present("maps") {
         emu.set_maps_folder(matches.value_of("maps").expect("specify the maps folder"));
     } else {
-        // No --iso/--winver/--maps: use the standard maps folder. For x64 it can
-        // be empty — the loader auto-fetches each missing DLL from the symbol
-        // server (default win11) on demand. 32-bit uses the legacy bundled maps.
-        if emu.cfg.is_x64() {
-            emu.set_maps_folder("maps/windows/x86_64/");
+        // No --iso/--winver/--maps: default to genuine win11 DLLs from the
+        // symbol server (same as `--winver win11`), for both 64- and 32-bit
+        // guests, so the emulator runs against a real, current ntdll/kernelbase
+        // instead of the stale bundled maps. set_maps_from_winver picks the
+        // architecture from cfg.arch (already set above). If the fetch fails
+        // (e.g. offline), fall back to the legacy bundled maps so it still runs.
+        let legacy = if emu.cfg.is_x64() {
+            "maps/windows/x86_64/"
         } else {
-            emu.set_maps_folder("maps/windows/x86/");
+            "maps/windows/x86/"
+        };
+        match emu.set_maps_from_winver("win11") {
+            Ok(()) => eprintln!("[mwemu] system32 ready: {}", emu.cfg.maps_folder),
+            Err(e) => {
+                eprintln!(
+                    "[mwemu] default --winver win11 failed ({}); falling back to bundled maps",
+                    e
+                );
+                emu.set_maps_folder(legacy);
+            }
         }
     }
 
