@@ -109,3 +109,72 @@ pub fn shift_counts(bits: u32) -> Vec<u64> {
         127,
     ]
 }
+
+use crate::emu::Emu;
+use crate::maps::mem64::Permission;
+
+/// Make sure `rsp`/`esp` points inside a writable stack region, mapping one on
+/// demand. Used by `call_winapi32`/`call_winapi64` so a bare `emu32()`/`emu64()`
+/// can invoke an API hook without the caller hand-rolling a stack.
+fn ensure_stack(emu: &mut Emu) {
+    let sp = if emu.cfg.arch.is_64bits() {
+        emu.regs().rsp
+    } else {
+        emu.regs().get_esp()
+    };
+    if emu.maps.is_mapped(sp) && emu.maps.is_mapped(sp.wrapping_sub(0x1000)) {
+        return;
+    }
+    let sz = 0x40000u64;
+    let base = emu.maps.alloc(sz).expect("cannot reserve test stack");
+    emu.maps
+        .create_map("teststack", base, sz, Permission::READ_WRITE)
+        .expect("cannot create test stack");
+    let sp = base + sz / 2;
+    if emu.cfg.arch.is_64bits() {
+        emu.regs_mut().rsp = sp;
+    } else {
+        emu.regs_mut().set_esp(sp);
+    }
+}
+
+/// Invoke a 64-bit WinAPI hook honoring the Windows x64 calling convention,
+/// exactly as the engine presents it to a hook: the `call`'s return address has
+/// already been popped, so `rsp` points at the base of the 32-byte shadow space
+/// and the 5th+ stack arguments live at `rsp+0x20`, `rsp+0x28`, ... The first
+/// four arguments go in `rcx`, `rdx`, `r8`, `r9`. Returns the hook's `rax`.
+pub fn call_winapi64(emu: &mut Emu, func: fn(&mut Emu), args: &[u64]) -> u64 {
+    ensure_stack(emu);
+
+    let reg_setters: [fn(&mut Emu, u64); 4] = [
+        |e, v| e.regs_mut().rcx = v,
+        |e, v| e.regs_mut().rdx = v,
+        |e, v| e.regs_mut().r8 = v,
+        |e, v| e.regs_mut().r9 = v,
+    ];
+    for (i, &a) in args.iter().take(4).enumerate() {
+        reg_setters[i](emu, a);
+    }
+    // Stack arguments (5th onward) at rsp+0x20, rsp+0x28, ...
+    let rsp = emu.regs().rsp;
+    for (i, &a) in args.iter().enumerate().skip(4) {
+        let slot = rsp + 0x20 + ((i - 4) as u64) * 8;
+        emu.maps.write_qword(slot, a);
+    }
+
+    func(emu);
+    emu.regs().rax
+}
+
+/// Invoke a 32-bit WinAPI hook honoring the `stdcall` convention as the engine
+/// presents it: the return address has already been popped, so arguments sit at
+/// `[esp+0]`, `[esp+4]`, ... (the hook pops them itself). Arguments are pushed
+/// right-to-left. Returns the hook's `eax`.
+pub fn call_winapi32(emu: &mut Emu, func: fn(&mut Emu), args: &[u32]) -> u32 {
+    ensure_stack(emu);
+    for &a in args.iter().rev() {
+        emu.stack_push32(a);
+    }
+    func(emu);
+    emu.regs().get_eax() as u32
+}

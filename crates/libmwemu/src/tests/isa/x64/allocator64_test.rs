@@ -24,25 +24,31 @@ pub fn allocator64_test() {
 
     emu.maps.clear();
 
-    emu.regs_mut().rcx = 0; // addr
-    emu.regs_mut().rdx = 1024; // sz
-    emu.regs_mut().r8 = constants::MEM_RESERVE as u64;
-    emu.regs_mut().r9 = 0x40; // rwx
-    winapi64::kernel32::VirtualAlloc(&mut emu);
-    assert_eq!(emu.maps.is_allocated(emu.regs().rax), true);
+    // VirtualAlloc(addr, sz, flAllocationType, flProtect)
+    let p = helpers::call_winapi64(
+        &mut emu,
+        winapi64::kernel32::VirtualAlloc,
+        &[0, 1024, constants::MEM_RESERVE as u64, 0x40],
+    );
+    assert_eq!(emu.maps.is_allocated(p), true);
 
-    emu.regs_mut().rcx = 0x30000000; // addr
-    emu.regs_mut().rdx = 1024; // sz
-    emu.regs_mut().r8 = (constants::MEM_RESERVE | constants::MEM_COMMIT) as u64;
-    emu.regs_mut().r9 = 0x40; // rwx
-    winapi64::kernel32::VirtualAlloc(&mut emu);
+    helpers::call_winapi64(
+        &mut emu,
+        winapi64::kernel32::VirtualAlloc,
+        &[
+            0x30000000,
+            1024,
+            (constants::MEM_RESERVE | constants::MEM_COMMIT) as u64,
+            0x40,
+        ],
+    );
 
-    emu.regs_mut().rcx = 0x30000000; // addr
-    emu.regs_mut().rdx = 1024; // sz
-    emu.regs_mut().r8 = constants::MEM_COMMIT as u64;
-    emu.regs_mut().r9 = 0x40; // rwx
-    winapi64::kernel32::VirtualAlloc(&mut emu);
-    assert_eq!(emu.regs().rax, 0x30000000);
+    let committed = helpers::call_winapi64(
+        &mut emu,
+        winapi64::kernel32::VirtualAlloc,
+        &[0x30000000, 1024, constants::MEM_COMMIT as u64, 0x40],
+    );
+    assert_eq!(committed, 0x30000000);
 
     assert_eq!(emu.maps.is_allocated(0x30000000), true);
     assert_eq!(emu.maps.mem_test(), true);

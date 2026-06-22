@@ -25,25 +25,31 @@ pub fn allocator32_test() {
 
     assert_eq!(emu.maps.mem_test(), true);
 
-    emu.stack_push32(0x40); // rwx
-    emu.stack_push32(constants::MEM_RESERVE);
-    emu.stack_push32(1024); // sz
-    emu.stack_push32(0); // addr
-    winapi32::kernel32::VirtualAlloc(&mut emu);
-    assert_eq!(emu.maps.is_allocated(emu.regs().rax), true);
+    // VirtualAlloc(addr, sz, flAllocationType, flProtect)
+    let p = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAlloc,
+        &[0, 1024, constants::MEM_RESERVE, 0x40],
+    );
+    assert_eq!(emu.maps.is_allocated(p as u64), true);
 
-    emu.stack_push32(0x40); // rwx
-    emu.stack_push32(constants::MEM_RESERVE | constants::MEM_COMMIT);
-    emu.stack_push32(1024); // sz
-    emu.stack_push32(0x30000000); // addr
-    winapi32::kernel32::VirtualAlloc(&mut emu);
+    helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAlloc,
+        &[
+            0x30000000,
+            1024,
+            constants::MEM_RESERVE | constants::MEM_COMMIT,
+            0x40,
+        ],
+    );
 
-    emu.stack_push32(0x40); // rwx
-    emu.stack_push32(constants::MEM_COMMIT);
-    emu.stack_push32(1024); // sz
-    emu.stack_push32(0x30000000); // addr
-    winapi32::kernel32::VirtualAlloc(&mut emu);
-    assert_eq!(emu.regs().rax, 0x30000000);
+    let committed = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAlloc,
+        &[0x30000000, 1024, constants::MEM_COMMIT, 0x40],
+    );
+    assert_eq!(committed, 0x30000000);
 
     assert!(emu.maps.is_allocated(0x30000000));
     assert!(emu.maps.mem_test());
