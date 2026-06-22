@@ -149,3 +149,51 @@ fn test_virtual_alloc() {
     let val = emu.maps.read_dword(base).unwrap();
     assert_eq!(val, 0xDEADBEEF);
 }
+
+// Regression test for the heap bug reported by kishou: a small `HeapAlloc`
+// panicked because `heap_management` was `None` unless the 64-bit normal-mode
+// init had run (it is left `None` by the 32-bit path, by SSDT/syscall mode,
+// and right after deserialization). `Emu::heap_mut()` now creates the arena
+// lazily, so a bare `emu64()` can allocate without any prior init.
+#[test]
+fn test_heap_alloc_64() {
+    helpers::setup();
+    let mut emu = emu64();
+
+    // Stack (HeapAlloc reads its args from registers on x64, but keep a sane rsp).
+    emu.maps
+        .create_map("stack", 0x10000, 0x10000, Permission::READ_WRITE)
+        .expect("stack map");
+    emu.regs_mut().rsp = 0x18000;
+
+    // Small allocation → managed heap path (< 0x8000).
+    emu.regs_mut().rcx = 0x1234; // hHeap (ignored handle)
+    emu.regs_mut().rdx = 0x8; // HEAP_ZERO_MEMORY
+    emu.regs_mut().r8 = 0x100; // size
+    winapi64::kernel32::HeapAlloc(&mut emu);
+    let p1 = emu.regs().rax;
+    assert!(p1 != 0, "HeapAlloc(0x100) returned NULL");
+    assert!(emu.maps.is_mapped(p1), "HeapAlloc(0x100) pointer not mapped");
+    emu.maps.write_qword(p1, 0xdead_beef_cafe_babe);
+    assert_eq!(emu.maps.read_qword(p1).unwrap(), 0xdead_beef_cafe_babe);
+
+    // Second small allocation must not overlap the first.
+    emu.regs_mut().rcx = 0x1234;
+    emu.regs_mut().rdx = 0;
+    emu.regs_mut().r8 = 0x100;
+    winapi64::kernel32::HeapAlloc(&mut emu);
+    let p2 = emu.regs().rax;
+    assert!(p2 != 0, "second HeapAlloc returned NULL");
+    assert!(p2 != p1, "two allocations returned the same pointer");
+
+    // Large allocation → dedicated map path (>= 0x8000).
+    emu.regs_mut().rcx = 0x1234;
+    emu.regs_mut().rdx = 0;
+    emu.regs_mut().r8 = 0x20000;
+    winapi64::kernel32::HeapAlloc(&mut emu);
+    let big = emu.regs().rax;
+    assert!(big != 0, "large HeapAlloc returned NULL");
+    assert!(emu.maps.is_mapped(big), "large HeapAlloc not mapped");
+    emu.maps.write_dword(big + 0x1fff0, 0x11223344);
+    assert_eq!(emu.maps.read_dword(big + 0x1fff0).unwrap(), 0x11223344);
+}

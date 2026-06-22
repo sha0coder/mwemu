@@ -6,7 +6,7 @@ pub fn LocalAlloc(emu: &mut emu::Emu) {
 
     log_red!(emu, "kernel32!LocalAlloc flags: {:x} sz: {}", flags, size);
 
-    let heap_management = emu.heap_management.as_mut().unwrap();
+    let heap_management = emu.heap_mut();
     let base = heap_management.allocate(size as usize);
     emu.regs_mut().rax = base.unwrap();
 }

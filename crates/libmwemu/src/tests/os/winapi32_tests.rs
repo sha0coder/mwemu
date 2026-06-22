@@ -118,3 +118,47 @@ fn test_write_file_32() {
         .expect("Cannot read bytes written");
     assert_eq!(bytes, 100);
 }
+
+// 32-bit counterpart of the kishou HeapAlloc regression. The 32-bit init path
+// (`init_win32_mem32`) never set up `heap_management`, so a small `HeapAlloc`
+// panicked on `unwrap()`. `Emu::heap_mut()` now lazily builds the arena.
+#[test]
+fn test_heap_alloc_32() {
+    helpers::setup();
+    let mut emu = emu32();
+
+    // Stack: stdcall args are read from [esp+0..], and HeapAlloc pops 3 dwords.
+    emu.maps
+        .create_map("stack", 0x0, 0x20000, Permission::READ_WRITE)
+        .expect("stack map");
+    emu.regs_mut().set_esp(0x10000);
+
+    // HeapAlloc(hHeap, dwFlags, dwBytes) — push right-to-left.
+    emu.stack_push32(0x100); // dwBytes
+    emu.stack_push32(0x8); // HEAP_ZERO_MEMORY
+    emu.stack_push32(0x1234); // hHeap (ignored handle)
+    winapi32::kernel32::HeapAlloc(&mut emu);
+    let p1 = emu.regs().get_eax() as u64;
+    assert!(p1 != 0, "HeapAlloc(0x100) returned NULL");
+    assert!(emu.maps.is_mapped(p1), "HeapAlloc(0x100) pointer not mapped");
+    emu.maps.write_dword(p1, 0xcafebabe);
+    assert_eq!(emu.maps.read_dword(p1).unwrap(), 0xcafebabe);
+
+    // A second allocation must land somewhere else.
+    emu.stack_push32(0x100);
+    emu.stack_push32(0);
+    emu.stack_push32(0x1234);
+    winapi32::kernel32::HeapAlloc(&mut emu);
+    let p2 = emu.regs().get_eax() as u64;
+    assert!(p2 != 0, "second HeapAlloc returned NULL");
+    assert!(p2 != p1, "two allocations returned the same pointer");
+
+    // Large allocation → dedicated map path (>= 0x8000).
+    emu.stack_push32(0x20000);
+    emu.stack_push32(0);
+    emu.stack_push32(0x1234);
+    winapi32::kernel32::HeapAlloc(&mut emu);
+    let big = emu.regs().get_eax() as u64;
+    assert!(big != 0, "large HeapAlloc returned NULL");
+    assert!(emu.maps.is_mapped(big), "large HeapAlloc not mapped");
+}

@@ -111,7 +111,7 @@ fn getaddrinfo(emu: &mut emu::Emu) {
     let sockaddr_in_size = 16; // Size of sockaddr_in structure
 
     // Allocate memory for the result
-    let heap_management = emu.heap_management.as_mut().unwrap();
+    let heap_management = emu.heap_mut();
     let addrinfo_addr = heap_management
         .allocate((addrinfo_size + sockaddr_in_size + 100) as usize)
         .unwrap();
