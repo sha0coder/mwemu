@@ -1,6 +1,6 @@
 [package]
 name = "pymwemu"
-version = "0.11.5"
+version = "0.11.6"
 edition.workspace = true
 description.workspace = true
 homepage = "http://mwemu.github.io/#pymwemu"
