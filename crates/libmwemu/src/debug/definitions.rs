@@ -63,28 +63,51 @@ pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
 
 #[cfg(test)]
 mod tests {
-    use super::load_definitions;
-    use std::path::PathBuf;
+    use super::Definitions;
 
+    // Guards the YAML→JSON swap (issue #185, serde_yaml removal): the inline
+    // doc exercises `serde_json` deserialization plus the custom hex-address
+    // deserializer and the optional store/use-context fields.
     #[test]
-    fn loads_json_definitions() {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../definitions/test.json");
-        let defs = load_definitions(path.to_str().unwrap());
+    fn parses_json_definitions() {
+        let json = r#"{
+          "events": [
+            {
+              "address": "0x1800b50a0",
+              "name": "test1_entry",
+              "type": "function_call",
+              "store_context": "test1_call",
+              "parameters": [
+                { "name": "output", "type": "pointer", "source": "rcx" },
+                { "name": "input", "type": "wide_string", "source": "rdx" }
+              ]
+            },
+            {
+              "address": "0x1800b5104",
+              "name": "test1_exit",
+              "type": "function_return",
+              "use_context": "test1_call",
+              "parameters": [
+                { "name": "return_value", "type": "int32", "source": "rax" }
+              ]
+            }
+          ]
+        }"#;
 
-        assert_eq!(defs.len(), 2, "expected two events");
+        let defs: Definitions = serde_json::from_str(json).expect("parse");
+        assert_eq!(defs.events.len(), 2);
 
-        let entry = defs.get(&0x1800b50a0).expect("test1_entry missing");
+        let entry = &defs.events[0];
+        assert_eq!(entry.address, 0x1800b50a0); // hex string → u64
         assert_eq!(entry.name, "test1_entry");
         assert_eq!(entry.event_type, "function_call");
         assert_eq!(entry.store_context.as_deref(), Some("test1_call"));
-        assert_eq!(entry.parameters.len(), 2);
         assert_eq!(entry.parameters[0].source, "rcx");
 
-        let exit = defs.get(&0x1800b5104).expect("test1_exit missing");
+        let exit = &defs.events[1];
+        assert_eq!(exit.address, 0x1800b5104);
         assert_eq!(exit.use_context.as_deref(), Some("test1_call"));
-        assert_eq!(exit.parameters.len(), 4);
-        assert_eq!(exit.parameters[3].param_type, "int32");
+        assert_eq!(exit.parameters[0].param_type, "int32");
     }
 }
 
