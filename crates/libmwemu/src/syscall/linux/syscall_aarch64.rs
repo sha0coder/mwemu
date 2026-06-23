@@ -31,6 +31,9 @@ const SYS_FCNTL: u64 = 25;
 
 pub fn gateway(emu: &mut emu::Emu) {
     let syscall_nr = emu.regs_aarch64().x[8];
+    if !emu.call_syscall_hook(syscall_nr) {
+        return;
+    }
 
     match syscall_nr {
         SYS_EXIT | SYS_EXIT_GROUP => {

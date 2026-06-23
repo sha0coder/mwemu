@@ -125,6 +125,9 @@ fn is_loopback_addr(addr: &str) -> bool {
 #[cfg(unix)]
 fn redirect_stdout_to_stderr() -> std::fs::File {
     use std::os::fd::FromRawFd;
+    // SAFETY: `dup`/`dup2` are plain libc fd calls. `saved` is a fresh fd from
+    // `dup(1)` that nothing else owns, so `File::from_raw_fd` taking ownership of
+    // it is sound (no double-close, no aliasing of an existing `File`).
     unsafe {
         let saved = libc::dup(1);
         libc::dup2(2, 1);

@@ -361,6 +361,8 @@ impl FileSystem {
         // If root is empty and we're on Windows, list logical drives
         #[cfg(target_os = "windows")]
         if self.root.as_os_str().is_empty() {
+            // SAFETY: `GetLogicalDrives` is a parameterless Win32 call that just
+            // returns a bitmask; there are no pointer or lifetime invariants.
             unsafe {
                 let drive_bits = GetLogicalDrives();
                 for drive in b'a'..=b'z' {

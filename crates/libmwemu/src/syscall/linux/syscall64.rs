@@ -25,6 +25,10 @@ fn trace_syscall64(emu: &mut emu::Emu, name: &str) {
 }
 
 pub fn gateway(emu: &mut emu::Emu) {
+    let nr = emu.regs().rax;
+    if !emu.call_syscall_hook(nr) {
+        return;
+    }
     if fs::dispatch(emu)
         || proc::dispatch(emu)
         || net::dispatch(emu)

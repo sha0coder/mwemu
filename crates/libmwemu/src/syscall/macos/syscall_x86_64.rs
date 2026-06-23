@@ -36,6 +36,9 @@ fn log_syscall(emu: &emu::Emu, msg: &str) {
 
 pub fn gateway(emu: &mut emu::Emu) {
     let syscall_nr = syscall_nr(emu);
+    if !emu.call_syscall_hook(syscall_nr) {
+        return;
+    }
 
     match syscall_nr {
         SYS_EXIT => {

@@ -53,7 +53,6 @@ serde_arrays = "0.2.0"
 slab = { version = "0.4.10", features = ["serde"] }
 bytemuck = "1.23.1"
 minidump = "0.26.0"
-serde_yaml = "0.9"
 nohash-hasher = "0.2.0"
 memmap2 = "0.9.7"
 byteorder = "1.5.0"

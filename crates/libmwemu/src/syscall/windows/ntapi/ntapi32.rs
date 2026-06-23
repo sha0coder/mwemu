@@ -1,6 +1,9 @@
 use crate::emu;
 
 pub fn gateway(syscall: u64, argv: u64, emu: &mut emu::Emu) {
+    if !emu.call_syscall_hook(syscall) {
+        return;
+    }
     match syscall {
         0xdc => {
             log::trace!("/!\\ direct syscall: NtAlpcSendWaitReceivePort");

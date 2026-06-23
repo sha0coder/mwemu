@@ -1,6 +1,6 @@
 // tracing.rs
 
-use std::cell::UnsafeCell;
+use std::cell::{Cell, RefCell};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use crate::emu::Emu;
 
-// Fixed-size trace record: 144 bytes per instruction
+// Fixed-size trace record: 152 bytes per instruction
 // This covers all general purpose registers + RIP + instruction counter
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
@@ -90,34 +90,55 @@ impl TraceRecord {
         }
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
-        unsafe {
-            std::slice::from_raw_parts(
-                self as *const Self as *const u8,
-                std::mem::size_of::<Self>(),
-            )
+    /// Serialize the record to its fixed 152-byte little-endian-on-x86 layout.
+    /// Returns an owned array (built field by field) so no `unsafe` byte cast is
+    /// needed; the 19 register-sized fields map 1:1 to 8-byte little-endian slots.
+    pub fn to_bytes(&self) -> [u8; std::mem::size_of::<Self>()] {
+        let fields = [
+            self.instruction_count,
+            self.rip,
+            self.rflags,
+            self.rax,
+            self.rbx,
+            self.rcx,
+            self.rdx,
+            self.rsi,
+            self.rdi,
+            self.rbp,
+            self.rsp,
+            self.r8,
+            self.r9,
+            self.r10,
+            self.r11,
+            self.r12,
+            self.r13,
+            self.r14,
+            self.r15,
+        ];
+        let mut out = [0u8; std::mem::size_of::<Self>()];
+        for (i, f) in fields.iter().enumerate() {
+            out[i * 8..i * 8 + 8].copy_from_slice(&f.to_ne_bytes());
         }
+        out
     }
 }
 
-// Thread-local trace writer
+// Thread-local trace state. `RefCell`/`Cell` give us interior mutability with
+// safe, checked access — no `unsafe`. Tracing is off the hot path (it only does
+// anything once a writer is installed), so the borrow/cell checks are free in
+// practice.
 thread_local! {
     // The actual writer - None if tracing is disabled
-    static TRACE_WRITER: UnsafeCell<Option<BufWriter<File>>> = UnsafeCell::new(None);
+    static TRACE_WRITER: RefCell<Option<BufWriter<File>>> = const { RefCell::new(None) };
 
     // Counter for periodic flushing
-    static TRACE_RECORDS_WRITTEN: UnsafeCell<u64> = UnsafeCell::new(0);
-
-    // Reusable buffer for the trace record to avoid allocations
-    static TRACE_RECORD_BUFFER: UnsafeCell<TraceRecord> = UnsafeCell::new(unsafe { std::mem::zeroed() });
+    static TRACE_RECORDS_WRITTEN: Cell<u64> = const { Cell::new(0) };
 
     // Start time for IPS calculations
-    static TRACE_START_TIME: UnsafeCell<Option<Instant>> = UnsafeCell::new(None);
+    static TRACE_START_TIME: Cell<Option<Instant>> = const { Cell::new(None) };
 
-    // Last IPS log time and count for rate limiting logs
-    static LAST_IPS_LOG: UnsafeCell<(Instant, u64)> = UnsafeCell::new(unsafe {
-        (std::mem::zeroed(), 0)
-    });
+    // Last time we logged an IPS line, for rate limiting (None until first log)
+    static LAST_IPS_LOG: Cell<Option<Instant>> = const { Cell::new(None) };
 }
 
 pub fn init_tracing(path: impl AsRef<Path>) -> std::io::Result<()> {
@@ -125,19 +146,9 @@ pub fn init_tracing(path: impl AsRef<Path>) -> std::io::Result<()> {
     // 16MB buffer for maximum efficiency
     let writer = BufWriter::with_capacity(16 * 1024 * 1024, file);
 
-    TRACE_WRITER.with(|w| unsafe {
-        *w.get() = Some(writer);
-    });
-
-    // Initialize start time
-    TRACE_START_TIME.with(|t| unsafe {
-        *t.get() = Some(Instant::now());
-    });
-
-    // Initialize last IPS log
-    LAST_IPS_LOG.with(|l| unsafe {
-        *l.get() = (Instant::now(), 0);
-    });
+    TRACE_WRITER.with(|w| *w.borrow_mut() = Some(writer));
+    TRACE_START_TIME.with(|t| t.set(Some(Instant::now())));
+    LAST_IPS_LOG.with(|l| l.set(Some(Instant::now())));
 
     log::info!("📝 Trace logging initialized");
     Ok(())
@@ -146,78 +157,69 @@ pub fn init_tracing(path: impl AsRef<Path>) -> std::io::Result<()> {
 #[inline(always)]
 pub fn trace_instruction(emu: &Emu, instruction_count: u64) {
     TRACE_WRITER.with(|writer_cell| {
-        let writer = unsafe { &mut *writer_cell.get() };
-        if let Some(w) = writer {
-            // Capture directly into our reusable buffer
-            TRACE_RECORD_BUFFER.with(|rec_cell| {
-                let record = unsafe { &mut *rec_cell.get() };
-                *record = TraceRecord::capture(emu, instruction_count);
+        let mut writer = writer_cell.borrow_mut();
+        let Some(w) = writer.as_mut() else { return };
 
-                // Write the record
-                if let Err(e) = w.write_all(record.as_bytes()) {
-                    log::error!("Failed to write trace record: {}", e);
-                    return;
-                }
-            });
+        // Capture into a stack-local record and write it out.
+        let record = TraceRecord::capture(emu, instruction_count);
+        if let Err(e) = w.write_all(&record.to_bytes()) {
+            log::error!("Failed to write trace record: {}", e);
+            return;
+        }
 
-            // Update counter and flush periodically
-            TRACE_RECORDS_WRITTEN.with(|count_cell| {
-                let count = unsafe { &mut *count_cell.get() };
-                *count += 1;
+        // Update counter and flush periodically
+        let count = TRACE_RECORDS_WRITTEN.with(|c| {
+            let n = c.get() + 1;
+            c.set(n);
+            n
+        });
 
-                // Calculate and log IPS every 10M instructions
-                if *count % 10_000_000 == 0 {
-                    TRACE_START_TIME.with(|start_cell| {
-                        if let Some(start_time) = unsafe { *start_cell.get() } {
-                            // If emu.now is available as Instant from execution start
-                            let elapsed = start_time.elapsed();
-                            let elapsed_secs = elapsed.as_secs_f64();
-                            if elapsed_secs > 0.0 {
-                                let ips = instruction_count as f64 / elapsed_secs;
+        // Calculate and log IPS every 10M instructions
+        if count % 10_000_000 == 0 {
+            if let Some(start_time) = TRACE_START_TIME.with(|s| s.get()) {
+                let elapsed = start_time.elapsed();
+                let elapsed_secs = elapsed.as_secs_f64();
+                if elapsed_secs > 0.0 {
+                    let ips = instruction_count as f64 / elapsed_secs;
 
-                                // Rate limit IPS logs to once per second
-                                LAST_IPS_LOG.with(|last_log_cell| {
-                                    let (last_time, _) = unsafe { &mut *last_log_cell.get() };
-                                    let now = Instant::now();
-                                    if now.duration_since(*last_time).as_secs() >= 1 {
-                                        log::info!(
-                                            "⚡ IPS: {:.2} ({} instructions in {:.2}s)",
-                                            ips,
-                                            instruction_count,
-                                            elapsed_secs
-                                        );
-                                        *last_time = now;
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-
-                // Flush every 1M records to avoid losing too much data if we crash
-                if *count % 1_000_000 == 0 {
-                    if let Err(e) = w.flush() {
-                        log::error!("Failed to flush trace: {}", e);
-                    } else {
-                        log::debug!("Trace: Flushed {} records", count);
+                    // Rate limit IPS logs to once per second
+                    let now = Instant::now();
+                    let should_log = LAST_IPS_LOG
+                        .with(|l| l.get())
+                        .map_or(true, |last| now.duration_since(last).as_secs() >= 1);
+                    if should_log {
+                        log::info!(
+                            "⚡ IPS: {:.2} ({} instructions in {:.2}s)",
+                            ips,
+                            instruction_count,
+                            elapsed_secs
+                        );
+                        LAST_IPS_LOG.with(|l| l.set(Some(now)));
                     }
                 }
-            });
+            }
+        }
+
+        // Flush every 1M records to avoid losing too much data if we crash
+        if count % 1_000_000 == 0 {
+            if let Err(e) = w.flush() {
+                log::error!("Failed to flush trace: {}", e);
+            } else {
+                log::debug!("Trace: Flushed {} records", count);
+            }
         }
     });
 }
 
 pub fn flush_trace() {
     TRACE_WRITER.with(|writer_cell| {
-        let writer = unsafe { &mut *writer_cell.get() };
-        if let Some(w) = writer {
+        let mut writer = writer_cell.borrow_mut();
+        if let Some(w) = writer.as_mut() {
             if let Err(e) = w.flush() {
                 log::error!("Failed to flush trace: {}", e);
             } else {
-                TRACE_RECORDS_WRITTEN.with(|count_cell| {
-                    let count = unsafe { *count_cell.get() };
-                    log::info!("📝 Flushed {} trace records", count);
-                });
+                let count = TRACE_RECORDS_WRITTEN.with(|c| c.get());
+                log::info!("📝 Flushed {} trace records", count);
             }
         }
     });

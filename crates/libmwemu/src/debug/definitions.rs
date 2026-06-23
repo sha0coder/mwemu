@@ -51,13 +51,41 @@ where
 pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
     let contents = fs::read_to_string(filename).expect("Failed to read definitions file");
 
-    let definitions: Definitions = serde_yaml::from_str(&contents).expect("Failed to parse YAML");
+    let definitions: Definitions =
+        serde_json::from_str(&contents).expect("Failed to parse definitions JSON");
 
     let mut map = HashMap::new();
     for def in definitions.events {
         map.insert(def.address, def);
     }
     map
+}
+
+#[cfg(test)]
+mod tests {
+    use super::load_definitions;
+    use std::path::PathBuf;
+
+    #[test]
+    fn loads_json_definitions() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../definitions/test.json");
+        let defs = load_definitions(path.to_str().unwrap());
+
+        assert_eq!(defs.len(), 2, "expected two events");
+
+        let entry = defs.get(&0x1800b50a0).expect("test1_entry missing");
+        assert_eq!(entry.name, "test1_entry");
+        assert_eq!(entry.event_type, "function_call");
+        assert_eq!(entry.store_context.as_deref(), Some("test1_call"));
+        assert_eq!(entry.parameters.len(), 2);
+        assert_eq!(entry.parameters[0].source, "rcx");
+
+        let exit = defs.get(&0x1800b5104).expect("test1_exit missing");
+        assert_eq!(exit.use_context.as_deref(), Some("test1_call"));
+        assert_eq!(exit.parameters.len(), 4);
+        assert_eq!(exit.parameters[3].param_type, "int32");
+    }
 }
 
 impl Emu {

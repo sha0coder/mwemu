@@ -22,6 +22,7 @@ pub fn hooks_system() {
     assert!(hooks.hook_on_pre_instruction.is_none());
     assert!(hooks.hook_on_post_instruction.is_none());
     assert!(hooks.hook_on_winapi_call.is_none());
+    assert!(hooks.hook_on_syscall.is_none());
 
     // Test setting hooks using the setter methods (which accept closures)
     hooks.on_interrupt(|_emu, _addr, _interrupt| true);
@@ -45,6 +46,9 @@ pub fn hooks_system() {
     hooks.on_winapi_call(|_emu, _addr, _called_addr| true);
     assert!(hooks.hook_on_winapi_call.is_some());
 
+    hooks.on_syscall(|_emu, _nr| true);
+    assert!(hooks.hook_on_syscall.is_some());
+
     // Test if all hooks are set
     assert!(!hooks.hook_on_interrupt.is_none());
     assert!(!hooks.hook_on_exception.is_none());
@@ -53,6 +57,75 @@ pub fn hooks_system() {
     assert!(!hooks.hook_on_pre_instruction.is_none());
     assert!(!hooks.hook_on_post_instruction.is_none());
     assert!(!hooks.hook_on_winapi_call.is_none());
+    assert!(!hooks.hook_on_syscall.is_none());
+}
+
+#[test]
+pub fn test_on_syscall() {
+    helpers::setup();
+
+    use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
+
+    let mut emu = emu64();
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+    let seen_nr = Arc::new(AtomicU64::new(0));
+    let counter = Arc::clone(&call_counter);
+    let nr_slot = Arc::clone(&seen_nr);
+
+    // The hook claims to fully handle the syscall: it writes its own return
+    // value into rax and returns false to skip the internal dispatch.
+    emu.hooks.on_syscall(move |emu: &mut Emu, nr: u64| -> bool {
+        counter.fetch_add(1, SeqCst);
+        nr_slot.store(nr, SeqCst);
+        emu.regs_mut().rax = 0x1337;
+        false
+    });
+
+    // Drive the Windows x64 syscall gateway directly with an arbitrary number.
+    emu.regs_mut().rax = 0x55;
+    crate::syscall::windows::syscall64::gateway(&mut emu);
+
+    assert_eq!(call_counter.load(SeqCst), 1, "hook should fire once");
+    assert_eq!(seen_nr.load(SeqCst), 0x55, "hook should see the raw syscall nr");
+    assert_eq!(
+        emu.regs().rax,
+        0x1337,
+        "returning false must skip the default dispatch and keep the hook's rax"
+    );
+}
+
+#[test]
+pub fn test_on_syscall_proceeds() {
+    helpers::setup();
+
+    let mut emu = emu64();
+
+    let call_counter = Arc::new(AtomicI32::new(0));
+    let counter = Arc::clone(&call_counter);
+
+    // Returning true lets the default dispatch run, which overwrites rax with
+    // an NTSTATUS (failure for an arbitrary/unimplemented number).
+    emu.hooks.on_syscall(move |_emu: &mut Emu, _nr: u64| -> bool {
+        counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        true
+    });
+
+    emu.regs_mut().rax = 0x55;
+    crate::syscall::windows::syscall64::gateway(&mut emu);
+
+    assert_eq!(
+        call_counter.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "hook should fire once"
+    );
+    let rax = emu.regs().rax;
+    assert_ne!(rax, 0x55, "default dispatch should have run and changed rax");
+    assert!(
+        rax >= 0xC000_0000,
+        "default dispatch should leave a failure NTSTATUS, got 0x{:x}",
+        rax
+    );
 }
 
 #[test]

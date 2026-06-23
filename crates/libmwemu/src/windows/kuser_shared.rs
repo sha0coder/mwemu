@@ -266,9 +266,22 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
         )
         .expect("cannot create KuserSharedData map");
 
-    // The KUSER_SHARED_DATA is getting from: https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
-    // TODO: rebuild with no usafe block.
-    let mut kusd: KuserSharedData = unsafe { MaybeUninit::zeroed().assume_init() };
+    // The KUSER_SHARED_DATA layout is taken from:
+    // https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
+    //
+    // SAFETY: every field of `KuserSharedData` is valid when zero-initialized
+    // EXCEPT `NtProductType`, a `#[repr(u32)]` enum whose discriminants start at
+    // 1 (no `0` variant) — a zeroed value would be an invalid enum and
+    // `assume_init()` on it is instant UB. So we write a valid variant into the
+    // zeroed buffer (via `addr_of_mut!`, never forming a reference to the
+    // not-yet-initialized field) before `assume_init()`. It is overwritten with
+    // the real value a few lines below. Integers, bools (false), arrays and the
+    // unions are all valid at all-zero.
+    let mut kusd: KuserSharedData = unsafe {
+        let mut buf = MaybeUninit::<KuserSharedData>::zeroed();
+        ptr::addr_of_mut!((*buf.as_mut_ptr()).NtProductType).write(NtProductType::WinNt);
+        buf.assume_init()
+    };
     kusd.TickCountMultiplier = 0x0fa00000;
     kusd.InterruptTime.LowPart = 0x17bd9547;
     kusd.InterruptTime.High1Time = 0x0000004b;
@@ -292,6 +305,8 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     kusd.SystemExpirationDate = 0x01dc26860a9ff300;
     kusd.SuiteMask = 0x00000110;
     kusd.MitigationPolicies.MitigationPolicies = 0x0a;
+    // SAFETY: `MitigationPolicies` is a C union; accessing the `Anonymous`
+    // bitfield view is always valid (any bit pattern is a valid union value).
     unsafe {
         kusd.MitigationPolicies.Anonymous.set_nx_support_policy(0x2);
         kusd.MitigationPolicies
@@ -332,8 +347,11 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
     let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] =
         [0; std::mem::size_of::<KuserSharedData>()];
 
+    // SAFETY: reinterpret the fully-initialized `KuserSharedData` as its raw
+    // bytes to copy into the guest map. `kusd` was zero-initialized (so any
+    // padding bytes are defined as 0) and every field has since been set, so all
+    // `size_of::<KuserSharedData>()` bytes are initialized and the read is sound.
     unsafe {
-        // Copy the struct into the allocated memory
         let struct_ptr = &kusd as *const KuserSharedData as *const u8;
         let memory_ptr = memory.as_mut_ptr();
         ptr::copy_nonoverlapping(

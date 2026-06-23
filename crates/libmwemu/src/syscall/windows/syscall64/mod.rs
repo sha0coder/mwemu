@@ -187,6 +187,9 @@ pub fn build_syscall_translation_table(emu: &mut Emu) {
 
 pub fn gateway(emu: &mut Emu) {
     let real_nr = emu.regs().rax;
+    if !emu.call_syscall_hook(real_nr) {
+        return;
+    }
     let mut nr = real_nr;
     // Translate the syscall number coming from the loaded ntdll to the
     // canonical number our dispatcher matches against.

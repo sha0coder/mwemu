@@ -38,7 +38,6 @@ serde_json.workspace = true
 slab.workspace = true
 bytemuck.workspace = true
 minidump.workspace = true
-serde_yaml.workspace = true
 fast_log.workspace = true
 nohash-hasher.workspace = true
 memmap2.workspace = true

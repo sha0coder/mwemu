@@ -1,6 +1,23 @@
 use std::cell::RefCell;
 
 use crate::emu::Emu;
+use crate::emu::decoded_instruction::DecodedInstruction;
+
+/// Format a decoded instruction read-only (with a throwaway formatter), so we
+/// don't need `&mut Emu` just to render one line. Used by the panic-time state
+/// dump; the per-call formatter allocation is irrelevant on that path.
+fn format_decoded(decoded: &DecodedInstruction) -> String {
+    match decoded {
+        DecodedInstruction::X86(ins) => {
+            use iced_x86::{Formatter as _, IntelFormatter};
+            let mut formatter = IntelFormatter::new();
+            let mut out = String::new();
+            formatter.format(ins, &mut out);
+            out
+        }
+        DecodedInstruction::AArch64(ins) => format!("{}", ins),
+    }
+}
 
 thread_local! {
     static CURRENT_EMU: RefCell<Option<*const Emu>> = RefCell::new(None);
@@ -13,18 +30,17 @@ where
     CURRENT_EMU.with(|current| {
         current
             .borrow()
+            // SAFETY: the stored pointer (if any) was set by `set_current_emu`
+            // from a live `&Emu` and is cleared via `clear_current_emu` before
+            // that `Emu` is dropped, so it is non-null and points at a live
+            // value here. `f` only gets a shared `&Emu`.
+            //
+            // CAVEAT: this reconstructs a `&Emu` from a raw pointer while the
+            // owner may simultaneously hold a `&mut Emu` further up the stack
+            // (e.g. the run loop). That is the fragile part of this global-
+            // pointer pattern — see the module note in the issue. It is only
+            // used for read-only logging of emulator state.
             .and_then(|ptr| unsafe { ptr.as_ref().map(|emu| f(emu)) })
-    })
-}
-
-pub fn with_current_emu_mut<F, R>(f: F) -> Option<R>
-where
-    F: FnOnce(&mut Emu) -> R,
-{
-    CURRENT_EMU.with(|current| {
-        current
-            .borrow()
-            .and_then(|ptr| unsafe { (ptr as *mut Emu).as_mut().map(|emu| f(emu)) })
     })
 }
 
@@ -44,13 +60,13 @@ pub fn is_emu_set() -> bool {
     CURRENT_EMU.with(|current| current.borrow().is_some())
 }
 
-pub fn log_emu_state(emu: &mut Emu) {
+pub fn log_emu_state(emu: &Emu) {
     log::error!("=== EMULATOR STATE ===");
     log::error!("Current position: {}", emu.pos);
 
     let color = "\x1b[0;31m";
     if let Some(decoded) = emu.last_decoded {
-        let out = emu.format_instruction(&decoded);
+        let out = format_decoded(&decoded);
         // Use `last_decoded_addr` (where the instruction lived) instead of
         // `emu.pc()` (which already reflects the *next* instruction after
         // a `ret`/branch) so the dump shows e.g.
@@ -124,12 +140,12 @@ pub fn log_emu_state(emu: &mut Emu) {
         log::error!("  RIP: 0x{:016x}", emu.regs().rip);
 
         // Log flags
-        log::error!("EFLAGS: 0x{:08x}", emu.flags().dump());
+        log::error!("EFLAGS: 0x{:08x}", emu.flags_snapshot().dump());
     }
 
     // Log last instruction if available
     if let Some(decoded) = emu.last_decoded {
-        let out = emu.format_instruction(&decoded);
+        let out = format_decoded(&decoded);
         log::error!("Last instruction: {}", out);
         log::error!("Instruction size: {}", emu.last_instruction_size);
     }

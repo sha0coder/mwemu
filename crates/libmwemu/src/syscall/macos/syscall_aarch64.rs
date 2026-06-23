@@ -15,6 +15,9 @@ const SYS_ISSETUGID: u64 = 327;
 
 pub fn gateway(emu: &mut emu::Emu) {
     let syscall_nr = emu.regs_aarch64().x[16];
+    if !emu.call_syscall_hook(syscall_nr) {
+        return;
+    }
 
     match syscall_nr {
         SYS_EXIT => {

@@ -606,20 +606,20 @@ fn main() {
     }
 
     // definitions
-    //emu.cfg.definitions = definitions::load_definitions("definitions/test.yaml");
+    //emu.cfg.definitions = definitions::load_definitions("definitions/test.json");
 
     // setup hook to flush the log when end the program
     let orig_hook = panic::take_hook();
     panic::set_hook(Box::new(move |panic_info| {
         // Try to log emulator state if available
-        libmwemu::emu_context::with_current_emu_mut(|emu| {
+        libmwemu::emu_context::with_current_emu(|emu| {
             // log state
             libmwemu::emu_context::log_emu_state(emu);
 
             // dump on exit
             if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
                 serialization::Serialization::dump(
-                    &emu,
+                    emu,
                     emu.cfg.dump_filename.as_ref().unwrap(),
                 );
             }
