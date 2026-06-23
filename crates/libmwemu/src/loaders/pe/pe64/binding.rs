@@ -235,7 +235,16 @@ impl PE64 {
             rva += 8;
         }
 
-        if unresolved > 0 && emu.cfg.verbose >= 1 {
+        // apiset contract DLLs ("phantom" forwarders like `api-ms-win-*`) routinely
+        // carry unresolved imports — that's expected noise, not a real problem — so
+        // only summarize those at -vv. Genuine DLLs get the summary at -v.
+        let summary_threshold =
+            if crate::api::windows::common::kernel32::is_api_set_contract(import_dll) {
+                2
+            } else {
+                1
+            };
+        if unresolved > 0 && emu.cfg.verbose >= summary_threshold {
             log::trace!(
                 "{} unresolved imports from {} (use -vv to list them)",
                 unresolved,
@@ -320,7 +329,16 @@ impl PE64 {
             rva += 8;
         }
 
-        if unresolved > 0 && emu.cfg.verbose >= 1 {
+        // apiset contract DLLs ("phantom" forwarders like `api-ms-win-*`) routinely
+        // carry unresolved imports — that's expected noise, not a real problem — so
+        // only summarize those at -vv. Genuine DLLs get the summary at -v.
+        let summary_threshold =
+            if crate::api::windows::common::kernel32::is_api_set_contract(import_dll) {
+                2
+            } else {
+                1
+            };
+        if unresolved > 0 && emu.cfg.verbose >= summary_threshold {
             log::trace!(
                 "{} unresolved imports from {} (use -vv to list them)",
                 unresolved,
