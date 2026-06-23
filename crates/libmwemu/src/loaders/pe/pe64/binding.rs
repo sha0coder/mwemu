@@ -175,6 +175,7 @@ impl PE64 {
         resolved_cache: &mut HashMap<String, u64>,
     ) {
         let mut rva = first_thunk;
+        let mut unresolved = 0u32;
 
         loop {
             let off = PE64::vaddr_to_off(&self.sect_hdr, rva) as usize;
@@ -215,17 +216,31 @@ impl PE64 {
                     if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                         mem.force_write_qword(patch_addr, real_addr);
                     }
-                } else if emu.cfg.verbose >= 1 {
-                    log::trace!(
-                        "unresolved import {}!{} (IAT rva 0x{:x})",
-                        import_dll,
-                        api_name,
-                        rva
-                    );
+                } else {
+                    unresolved += 1;
+                    // Per-symbol detail is noisy (apiset CRT forwarders alone are
+                    // hundreds of names), so keep it at -vv; -v gets one summary
+                    // line per DLL below.
+                    if emu.cfg.verbose >= 2 {
+                        log::trace!(
+                            "unresolved import {}!{} (IAT rva 0x{:x})",
+                            import_dll,
+                            api_name,
+                            rva
+                        );
+                    }
                 }
             }
 
             rva += 8;
+        }
+
+        if unresolved > 0 && emu.cfg.verbose >= 1 {
+            log::trace!(
+                "{} unresolved imports from {} (use -vv to list them)",
+                unresolved,
+                import_dll
+            );
         }
     }
 
@@ -241,6 +256,7 @@ impl PE64 {
         let mut off_name = PE64::vaddr_to_off(&self.sect_hdr, original_first_thunk) as usize;
         let mut off_addr = PE64::vaddr_to_off(&self.sect_hdr, first_thunk) as usize;
         let mut rva = first_thunk;
+        let mut unresolved = 0u32;
 
         loop {
             if self.raw.len() <= off_name + 8 || self.raw.len() <= off_addr + 8 {
@@ -287,18 +303,29 @@ impl PE64 {
                 if let Some(mem) = emu.maps.get_mem_by_addr_mut(patch_addr) {
                     mem.force_write_qword(patch_addr, real_addr);
                 }
-            } else if emu.cfg.verbose >= 1 {
-                log::trace!(
-                    "unresolved import {}!{} (IAT rva 0x{:x})",
-                    import_dll,
-                    func_name,
-                    rva
-                );
+            } else {
+                unresolved += 1;
+                if emu.cfg.verbose >= 2 {
+                    log::trace!(
+                        "unresolved import {}!{} (IAT rva 0x{:x})",
+                        import_dll,
+                        func_name,
+                        rva
+                    );
+                }
             }
 
             off_name += 8;
             off_addr += 8;
             rva += 8;
+        }
+
+        if unresolved > 0 && emu.cfg.verbose >= 1 {
+            log::trace!(
+                "{} unresolved imports from {} (use -vv to list them)",
+                unresolved,
+                import_dll
+            );
         }
     }
 
