@@ -1,8 +1,6 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
 use bitfield::bitfield;
-use std::mem::MaybeUninit;
-use std::ptr;
 
 const USER_KUSER_SHARED_ADDR: u64 = 0x7FFE0000;
 
@@ -266,105 +264,142 @@ pub fn init_kuser_shared_data(emu: &mut emu::Emu) -> u64 {
         )
         .expect("cannot create KuserSharedData map");
 
-    // The KUSER_SHARED_DATA layout is taken from:
-    // https://github.com/momo5502/sogen/blob/main/src/windows-emulator/kusd_mmio.cpp
+    // KUSER_SHARED_DATA layout from Windows 11 24H2 (vergiliusproject) / sogen.
     //
-    // SAFETY: every field of `KuserSharedData` is valid when zero-initialized
-    // EXCEPT `NtProductType`, a `#[repr(u32)]` enum whose discriminants start at
-    // 1 (no `0` variant) — a zeroed value would be an invalid enum and
-    // `assume_init()` on it is instant UB. So we write a valid variant into the
-    // zeroed buffer (via `addr_of_mut!`, never forming a reference to the
-    // not-yet-initialized field) before `assume_init()`. It is overwritten with
-    // the real value a few lines below. Integers, bools (false), arrays and the
-    // unions are all valid at all-zero.
-    let mut kusd: KuserSharedData = unsafe {
-        let mut buf = MaybeUninit::<KuserSharedData>::zeroed();
-        ptr::addr_of_mut!((*buf.as_mut_ptr()).NtProductType).write(NtProductType::WinNt);
-        buf.assume_init()
-    };
-    kusd.TickCountMultiplier = 0x0fa00000;
-    kusd.InterruptTime.LowPart = 0x17bd9547;
-    kusd.InterruptTime.High1Time = 0x0000004b;
-    kusd.InterruptTime.High2Time = 0x0000004b;
-    kusd.SystemTime.LowPart = 0x7af9da99;
-    kusd.SystemTime.High1Time = 0x01db27b9;
-    kusd.SystemTime.High2Time = 0x01db27b9;
-    kusd.TimeZoneBias.LowPart = 0x3c773000;
-    kusd.TimeZoneBias.High1Time = -17;
-    kusd.TimeZoneBias.High2Time = -17;
-    kusd.TimeZoneId = 0x00000002;
-    kusd.LargePageMinimum = 0x00200000;
-    kusd.RNGSeedVersion = 0x0000000000000013;
-    kusd.TimeZoneBiasStamp = 0x00000004;
-    kusd.NtBuildNumber = 0x00006c51;
-    kusd.NtProductType = NtProductType::WinNt;
-    kusd.ProductTypeIsValid = true;
-    kusd.NativeProcessorArchitecture = 0x0009;
-    kusd.NtMajorVersion = 0x0000000a;
-    kusd.BootId = 0x0000000b;
-    kusd.SystemExpirationDate = 0x01dc26860a9ff300;
-    kusd.SuiteMask = 0x00000110;
-    kusd.MitigationPolicies.MitigationPolicies = 0x0a;
-    // SAFETY: `MitigationPolicies` is a C union; accessing the `Anonymous`
-    // bitfield view is always valid (any bit pattern is a valid union value).
-    unsafe {
-        kusd.MitigationPolicies.Anonymous.set_nx_support_policy(0x2);
-        kusd.MitigationPolicies
-            .Anonymous
-            .set_seh_validation_policy(0x2);
+    // Written field-by-field directly into the guest map — the same safe "save"
+    // idiom the structures in structs.rs use. The region is zeroed, then each
+    // non-zero field is written at its `#[repr(C)]` offset (resolved by
+    // `offset_of!`). No `unsafe`: no zeroed-enum, no union access, no raw byte
+    // reinterpretation. Fields left at zero keep their zero-initialized value.
+    use std::mem::offset_of;
+    let base = USER_KUSER_SHARED_ADDR;
+    emu.maps
+        .write_bytes(base, &vec![0u8; std::mem::size_of::<KuserSharedData>()]);
+
+    macro_rules! wr8 {
+        ($($f:tt).+, $v:expr) => {
+            emu.maps
+                .write_byte(base + offset_of!(KuserSharedData, $($f).+) as u64, $v);
+        };
     }
-    kusd.CyclesPerYield = 0x0064;
-    kusd.DismountCount = 0x00000006;
-    kusd.ComPlusPackage = 0x00000001;
-    kusd.LastSystemRITEventTickCount = 0x01ec1fd3;
-    kusd.NumberOfPhysicalPages = 0x0000000000bf0958;
-    kusd.TickCount.TickCount.LowPart = 0x001f7f05;
-    kusd.TickCount.TickCountQuad = 0x00000000001f7f05;
-    kusd.Cookie = 0x1c3471da;
-    kusd.ConsoleSessionForegroundProcessId = 0x00000000000028f4;
-    kusd.TimeUpdateLock = 0x0000000002b28586;
-    kusd.BaselineSystemTimeQpc = 0x0000004b17cd596c;
-    kusd.BaselineInterruptTimeQpc = 0x0000004b17cd596c;
-    kusd.QpcSystemTimeIncrement = 0x8000000000000000;
-    kusd.QpcInterruptTimeIncrement = 0x8000000000000000;
-    kusd.QpcSystemTimeIncrementShift = 0x01;
-    kusd.QpcInterruptTimeIncrementShift = 0x01;
-    kusd.UnparkedProcessorCount = 0x000c;
-    kusd.TelemetryCoverageRound = 0x00000001;
-    kusd.LangGenerationCount = 0x00000003;
-    kusd.InterruptTimeBias = 0x00000015a5d56406;
-    kusd.ActiveProcessorCount = 0x0000000c;
-    kusd.ActiveGroupCount = 0x01;
-    kusd.TimeZoneBiasEffectiveStart = 0x01db276e654cb2ff;
-    kusd.TimeZoneBiasEffectiveEnd = 0x01db280b8c3b2800;
-    kusd.XState.EnabledFeatures = 0x000000000000001f;
-    kusd.XState.EnabledVolatileFeatures = 0x000000000000000f;
-    kusd.XState.Size = 0x000003c0;
-    kusd.QpcData.QpcData = 0x0083;
-    kusd.QpcData.anonymous.QpcBypassEnabled = 0x83;
-    kusd.QpcBias = 0x000000159530c4af;
-
-    let mut memory: [u8; std::mem::size_of::<KuserSharedData>()] =
-        [0; std::mem::size_of::<KuserSharedData>()];
-
-    // SAFETY: reinterpret the fully-initialized `KuserSharedData` as its raw
-    // bytes to copy into the guest map. `kusd` was zero-initialized (so any
-    // padding bytes are defined as 0) and every field has since been set, so all
-    // `size_of::<KuserSharedData>()` bytes are initialized and the read is sound.
-    unsafe {
-        let struct_ptr = &kusd as *const KuserSharedData as *const u8;
-        let memory_ptr = memory.as_mut_ptr();
-        ptr::copy_nonoverlapping(
-            struct_ptr,
-            memory_ptr,
-            std::mem::size_of::<KuserSharedData>(),
-        );
+    macro_rules! wr16 {
+        ($($f:tt).+, $v:expr) => {
+            emu.maps
+                .write_word(base + offset_of!(KuserSharedData, $($f).+) as u64, $v);
+        };
+    }
+    macro_rules! wr32 {
+        ($($f:tt).+, $v:expr) => {
+            emu.maps
+                .write_dword(base + offset_of!(KuserSharedData, $($f).+) as u64, $v);
+        };
+    }
+    macro_rules! wr64 {
+        ($($f:tt).+, $v:expr) => {
+            emu.maps
+                .write_qword(base + offset_of!(KuserSharedData, $($f).+) as u64, $v);
+        };
     }
 
-    emu.maps.write_bytes(USER_KUSER_SHARED_ADDR, &memory);
+    wr32!(TickCountMultiplier, 0x0fa00000);
+    wr32!(InterruptTime.LowPart, 0x17bd9547);
+    wr32!(InterruptTime.High1Time, 0x0000004b);
+    wr32!(InterruptTime.High2Time, 0x0000004b);
+    wr32!(SystemTime.LowPart, 0x7af9da99);
+    wr32!(SystemTime.High1Time, 0x01db27b9);
+    wr32!(SystemTime.High2Time, 0x01db27b9);
+    wr32!(TimeZoneBias.LowPart, 0x3c773000);
+    wr32!(TimeZoneBias.High1Time, (-17i32) as u32);
+    wr32!(TimeZoneBias.High2Time, (-17i32) as u32);
+    wr32!(TimeZoneId, 0x00000002);
+    wr32!(LargePageMinimum, 0x00200000);
+    wr64!(RNGSeedVersion, 0x0000000000000013);
+    wr32!(TimeZoneBiasStamp, 0x00000004);
+    wr32!(NtBuildNumber, 0x00006c51);
+    wr32!(NtProductType, NtProductType::WinNt as u32);
+    wr8!(ProductTypeIsValid, 1);
+    wr16!(NativeProcessorArchitecture, 0x0009);
+    wr32!(NtMajorVersion, 0x0000000a);
+    wr32!(BootId, 0x0000000b);
+    wr64!(SystemExpirationDate, 0x01dc26860a9ff300);
+    wr32!(SuiteMask, 0x00000110);
+    // MitigationPolicies (u8) = 0x0a already encodes NXSupportPolicy=2 (bits 0-1)
+    // and SEHValidationPolicy=2 (bits 2-3).
+    wr8!(MitigationPolicies, 0x0a);
+    wr16!(CyclesPerYield, 0x0064);
+    wr32!(DismountCount, 0x00000006);
+    wr32!(ComPlusPackage, 0x00000001);
+    wr32!(LastSystemRITEventTickCount, 0x01ec1fd3);
+    wr32!(NumberOfPhysicalPages, 0x00bf0958);
+    // TickCount union: write the 64-bit quad (covers LowPart; high parts stay 0).
+    wr64!(TickCount, 0x00000000001f7f05);
+    wr32!(Cookie, 0x1c3471da);
+    wr64!(ConsoleSessionForegroundProcessId, 0x00000000000028f4);
+    wr64!(TimeUpdateLock, 0x0000000002b28586);
+    wr64!(BaselineSystemTimeQpc, 0x0000004b17cd596c);
+    wr64!(BaselineInterruptTimeQpc, 0x0000004b17cd596c);
+    wr64!(QpcSystemTimeIncrement, 0x8000000000000000);
+    wr64!(QpcInterruptTimeIncrement, 0x8000000000000000);
+    wr8!(QpcSystemTimeIncrementShift, 0x01);
+    wr8!(QpcInterruptTimeIncrementShift, 0x01);
+    wr16!(UnparkedProcessorCount, 0x000c);
+    wr32!(TelemetryCoverageRound, 0x00000001);
+    wr32!(LangGenerationCount, 0x00000003);
+    wr64!(InterruptTimeBias, 0x00000015a5d56406);
+    wr32!(ActiveProcessorCount, 0x0000000c);
+    wr8!(ActiveGroupCount, 0x01);
+    wr64!(TimeZoneBiasEffectiveStart, 0x01db276e654cb2ff);
+    wr64!(TimeZoneBiasEffectiveEnd, 0x01db280b8c3b2800);
+    wr64!(XState.EnabledFeatures, 0x000000000000001f);
+    wr64!(XState.EnabledVolatileFeatures, 0x000000000000000f);
+    wr32!(XState.Size, 0x000003c0);
+    // QpcData union (u16): 0x0083 sets the low byte (QpcBypassEnabled).
+    wr16!(QpcData, 0x0083);
+    wr64!(QpcBias, 0x000000159530c4af);
 
     // RtlAllocateHeap checks [0x7ffe0380]. If 0, it falls back to STATUS_NO_MEMORY (error).
-    emu.maps.write_byte(USER_KUSER_SHARED_ADDR + 0x380, 1);
+    emu.maps.write_byte(base + 0x380, 1);
 
     USER_KUSER_SHARED_ADDR
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::offset_of;
+
+    // Guards the field-by-field "save" rewrite (no more unsafe struct→bytes copy):
+    // verifies representative fields land at their `#[repr(C)]` offsets with the
+    // right width/value, so a wrong write width or a dropped field is caught.
+    #[test]
+    fn writes_expected_fields() {
+        let mut emu = crate::emu64();
+        let base = init_kuser_shared_data(&mut emu);
+        assert_eq!(base, USER_KUSER_SHARED_ADDR);
+
+        let rd = |o: usize| -> u64 {
+            emu.maps.read_qword(base + o as u64).unwrap()
+        };
+        let rd32 = |o: usize| -> u32 {
+            emu.maps.read_dword(base + o as u64).unwrap()
+        };
+
+        assert_eq!(rd32(offset_of!(KuserSharedData, TickCountMultiplier)), 0x0fa00000);
+        assert_eq!(rd32(offset_of!(KuserSharedData, InterruptTime.LowPart)), 0x17bd9547);
+        assert_eq!(rd32(offset_of!(KuserSharedData, NtBuildNumber)), 0x6c51);
+        assert_eq!(rd32(offset_of!(KuserSharedData, NtProductType)), 1); // WinNt
+        assert_eq!(rd32(offset_of!(KuserSharedData, NtMajorVersion)), 0xa);
+        assert_eq!(rd32(offset_of!(KuserSharedData, Cookie)), 0x1c3471da);
+        assert_eq!(
+            emu.maps.read_byte(base + offset_of!(KuserSharedData, MitigationPolicies) as u64).unwrap(),
+            0x0a
+        );
+        assert_eq!(rd(offset_of!(KuserSharedData, TickCount)), 0x1f7f05);
+        assert_eq!(rd(offset_of!(KuserSharedData, QpcBias)), 0x000000159530c4af);
+        assert_eq!(rd(offset_of!(KuserSharedData, XState.EnabledFeatures)), 0x1f);
+        // RtlAllocateHeap probe byte.
+        assert_eq!(emu.maps.read_byte(base + 0x380).unwrap(), 1);
+        // A field left at zero stays zero.
+        assert_eq!(rd32(offset_of!(KuserSharedData, TickCountLowDeprecated)), 0);
+    }
 }
