@@ -13,6 +13,7 @@ use pyo3_stub_gen::derive::gen_stub_pyfunction;
 use libmwemu::console::Console;
 use libmwemu::emu32;
 use libmwemu::emu64;
+use libmwemu::emu_aarch64;
 use libmwemu::maps::mem64::Permission;
 use pyo3::class::basic::CompareOp;
 
@@ -169,6 +170,12 @@ impl Emu {
     /// Or better can use: emu = pymwemu.init32()
     fn set_32bits(&mut self) {
         self.emu.cfg.arch = libmwemu::arch::Arch::X86;
+    }
+
+    /// Set aarch64 (ARM64) mode.
+    /// Or better can use: emu = pymwemu.init_aarch64()
+    fn set_aarch64(&mut self) {
+        self.emu.cfg.arch = libmwemu::arch::Arch::Aarch64;
     }
 
     /// disable the colored mode for instructions, api calls and other logs.
@@ -1389,6 +1396,17 @@ fn init64() -> PyResult<Emu> {
     Ok(emu)
 }
 
+#[gen_stub_pyfunction(module = "pymwemu._pymwemu")]
+#[pyfunction]
+fn init_aarch64() -> PyResult<Emu> {
+    let mut emu = Emu { emu: emu_aarch64() };
+    emu.emu.cfg.console_enabled = false;
+    emu.emu.cfg.verbose = 0;
+    emu.emu.cfg.shellcode = false;
+
+    Ok(emu)
+}
+
 #[pymodule]
 fn _pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // Filter `goblin=warn` to drop the LoadCommand / Mach-o header / Ctx
@@ -1403,6 +1421,7 @@ fn _pymwemu(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<Emu>()?;
     m.add_function(wrap_pyfunction!(init32, m)?)?;
     m.add_function(wrap_pyfunction!(init64, m)?)?;
+    m.add_function(wrap_pyfunction!(init_aarch64, m)?)?;
 
 
     // Serialization functions

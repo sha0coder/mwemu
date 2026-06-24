@@ -9,6 +9,7 @@ __all__ = [
     "deserialize",
     "init32",
     "init64",
+    "init_aarch64",
     "load",
     "load_from_file",
     "load_from_minidump",
@@ -137,6 +138,11 @@ class Emu:
         r"""
         Set 32bits mode, it's necessary to load the 32bits maps with load_maps() method.
         Or better can use: emu = pymwemu.init32()
+        """
+    def set_aarch64(self) -> None:
+        r"""
+        Set aarch64 (ARM64) mode.
+        Or better can use: emu = pymwemu.init_aarch64()
         """
     def disable_colors(self) -> None:
         r"""
@@ -291,6 +297,20 @@ class Emu:
         r"""
         It is necessary to load the 32bits or 64bits maps folder for having a realistic memory layout.
         The maps can be downloaded from the https://github.com/sha0coder/mwemu
+        """
+    def load_maps_from_winver(self, version: builtins.str) -> None:
+        r"""
+        Fetch genuine Windows system DLLs from Microsoft's symbol server and use
+        them as the maps folder, instead of needing a local copy. `version` is a
+        friendly name ("win11", "win10", "win2019") or an exact build number
+        ("26100.7920"). Also sets the build so any DLL the loader needs later is
+        auto-fetched on demand. Requires network access on first use; results are
+        cached under maps/winver/.
+        
+        Example:
+            emu = pymwemu.init_win64()
+            emu.load_maps_from_winver("win11")
+            emu.load_binary("sample.exe")
         """
     def init_win32(self) -> None:
         r"""
@@ -726,6 +746,8 @@ def deserialize(data: typing.Sequence[builtins.int]) -> Emu:
 def init32() -> Emu: ...
 
 def init64() -> Emu: ...
+
+def init_aarch64() -> Emu: ...
 
 def load(filename: builtins.str) -> Emu:
     r"""

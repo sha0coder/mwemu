@@ -32,6 +32,25 @@ https://github.com/sha0coder/mwemu
 
 ## Usage
 
+### Quick start (no maps download needed, using `--winver`)
+
+You don't need a local maps folder: `load_maps_from_winver()` fetches the genuine
+Windows system DLLs straight from Microsoft's symbol server and caches them under
+`maps/winver/`. Just pick a version and go:
+
+```python
+import pymwemu
+
+emu = pymwemu.init64()                 # 64-bit engine (init32() for x86, init_aarch64() for ARM64)
+emu.load_maps_from_winver("win11")     # genuine Win11 DLLs from the symbol server (cached after first run)
+emu.load_binary("sample.exe")          # PE/shellcode; sets up PEB/TEB/LDR automatically
+emu.run()                              # emulate (run(addr) to stop at an address)
+```
+
+`version` accepts a friendly name (`"win11"`, `"win10"`, `"win2019"`) or an exact
+build number (`"26100.7920"`). Any extra DLL the loader needs later is fetched on
+demand. First run needs network access; afterwards everything is served from the cache.
+
 ### Fully emulation of a shellcode
 
 ```python

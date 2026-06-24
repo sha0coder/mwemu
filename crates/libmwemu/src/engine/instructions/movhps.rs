@@ -7,66 +7,57 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     assert!(ins.op_count() == 2);
 
     let sz0 = emu.get_operand_sz(ins, 0);
-    let sz1 = emu.get_operand_sz(ins, 1);
 
-    if sz0 == 128 && sz1 == 64 {
-        let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
+    if sz0 == 128 {
+        // `movhps xmm, m64`: load the high quadword of the xmm from memory,
+        // keeping the low quadword. The memory operand is ALWAYS 64-bit;
+        // `get_operand_sz` sometimes misreports it as 32, which previously made
+        // us read only 32 bits and place them at bits [127:96] — corrupting the
+        // high qword (e.g. a pointer became 0xVAL00000000). So read a qword
+        // explicitly from the source address, like `movlps` does.
+        let value0 = match emu.get_operand_xmm_value_128(ins, 0, false) {
             Some(v) => v,
             None => {
                 log::trace!("error getting xmm value0");
                 return false;
             }
         };
-
-        let value1 = match emu.get_operand_value(ins, 0, true) {
+        let addr = match emu.get_operand_value(ins, 1, false) {
             Some(v) => v,
             None => {
-                log::trace!("error getting value1");
+                log::trace!("error getting movhps source address");
+                return false;
+            }
+        };
+        let value1 = match emu.maps.read_qword(addr) {
+            Some(v) => v,
+            None => {
+                log::trace!("error reading movhps source qword at 0x{:x}", addr);
                 return false;
             }
         };
 
-        let lower_value0 = value0 & 0x00000000_FFFFFFFF_00000000_FFFFFFFF;
-        let upper_value1 = (value1 as u128) << 64;
-        let result = lower_value0 | upper_value1;
-
+        // keep low 64 bits of the destination, replace the high 64 bits.
+        let result = (value0 & 0x0000000000000000_FFFFFFFFFFFFFFFFu128) | ((value1 as u128) << 64);
         emu.set_operand_xmm_value_128(ins, 0, result);
-    } else if sz0 == 64 && sz1 == 128 {
-        let value1 = match emu.get_operand_xmm_value_128(ins, 0, true) {
+    } else {
+        // `movhps m64, xmm`: store the high quadword of the xmm to memory (64-bit).
+        let value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
                 log::trace!("error getting xmm value1");
                 return false;
             }
         };
-
-        let result = (value1 >> 64) as u64;
-
-        emu.set_operand_value(ins, 0, result);
-    } else if sz0 == 128 && sz1 == 32 {
-        let value0 = match emu.get_operand_xmm_value_128(ins, 0, true) {
+        let high = (value1 >> 64) as u64;
+        let addr = match emu.get_operand_value(ins, 0, false) {
             Some(v) => v,
             None => {
-                log::trace!("error getting xmm value0");
+                log::trace!("error getting movhps destination address");
                 return false;
             }
         };
-
-        let value1 = match emu.get_operand_value(ins, 1, true) {
-            Some(v) => (v & 0xffffffff) as u32,
-            None => {
-                log::trace!("error getting value1");
-                return false;
-            }
-        };
-
-        let lower_value0 = value0 & 0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF;
-        let upper_value1 = (value1 as u128) << 96;
-        let result = lower_value0 | upper_value1;
-
-        emu.set_operand_xmm_value_128(ins, 0, result);
-    } else {
-        unimplemented!("case of movhps unimplemented {} {}", sz0, sz1);
+        emu.maps.write_qword(addr, high);
     }
     true
 }
