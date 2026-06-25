@@ -4,9 +4,12 @@ use crate::winapi::helper;
 
 pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
     match api {
-        "RtlAllocateHeap" => RtlAllocateHeap(emu),
-        "RtlFreeHeap" => RtlFreeHeap(emu),
-        "RtlReAllocateHeap" => RtlReAllocateHeap(emu),
+        // kernel32 Heap* are forwarders to these Rtl workers (same arg layout:
+        // rcx=heap, rdx=flags, r8=ptr/size), so GetProcAddress-resolved callers
+        // that land on the ntdll target hit the same handlers.
+        "RtlAllocateHeap" | "HeapAlloc" => RtlAllocateHeap(emu),
+        "RtlFreeHeap" | "HeapFree" => RtlFreeHeap(emu),
+        "RtlReAllocateHeap" | "HeapReAlloc" => RtlReAllocateHeap(emu),
         "RtlGetProcessHeaps" => RtlGetProcessHeaps(emu),
         "RtlFreeAnsiString" => RtlFreeAnsiString(emu),
         _ => return false,

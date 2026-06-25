@@ -1,5 +1,7 @@
 use crate::emu;
-use crate::winapi::winapi64::kernel32::{self, InitializeCriticalSection};
+use crate::winapi::winapi64::kernel32::{
+    self, InitializeCriticalSection, TlsAlloc, TlsFree, TlsGetValue, TlsSetValue,
+};
 use crate::windows::constants;
 
 pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
@@ -14,6 +16,11 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "NtWaitForSingleObject" => NtWaitForSingleObject(emu),
         "RtlAddVectoredExceptionHandler" => RtlAddVectoredExceptionHandler(emu),
         "RtlRemoveVectoredExceptionHandler" => RtlRemoveVectoredExceptionHandler(emu),
+        // ntdll TLS workers — same slot semantics as the kernel32 wrappers.
+        "RtlTlsAlloc" => TlsAlloc(emu),
+        "RtlTlsFree" => TlsFree(emu),
+        "RtlTlsGetValue" => TlsGetValue(emu),
+        "RtlTlsSetValue" => TlsSetValue(emu),
         _ => return false,
     }
     true

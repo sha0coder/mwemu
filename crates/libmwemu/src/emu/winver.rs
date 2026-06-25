@@ -277,6 +277,12 @@ impl crate::emu::Emu {
         // Seed the non-PE NLS data files from an existing iso cache if present.
         seed_data_files(&cache, is_x64);
 
+        // Seed loader.exe, mwemu's placeholder host EXE used as the PEB's main
+        // image when loading shellcode. It's not on the symbol server, so copy
+        // it from the bundled `maps/windows/<arch>/` folder. Without it,
+        // shellcode loading would point the PEB ImageBase at a missing file.
+        seed_loader_exe(&cache, is_x64);
+
         for dll in SEED_DLLS {
             match ensure_dll(&cache, &build, dll, machine) {
                 Ok(_) => {}
@@ -324,6 +330,31 @@ fn seed_data_files(cache: &Path, is_x64: bool) {
                 let _ = fs::copy(&src, &dest);
                 break;
             }
+        }
+    }
+}
+
+/// Copy `loader.exe` into `cache` from the bundled `maps/windows/<arch>/`
+/// folder, best-effort. This placeholder host EXE is an mwemu support file (not
+/// a symbol-server artifact) that shellcode loading uses as the PEB's main
+/// image; without it the PEB ImageBase would point at a missing file.
+fn seed_loader_exe(cache: &Path, is_x64: bool) {
+    let dest = cache.join(crate::windows::constants::EXE_NAME);
+    if dest.is_file() {
+        return;
+    }
+    // The bundled loader lives under maps/windows/<arch>/; try the CWD-relative
+    // path and the one relative to the crate (tests run from the crate dir).
+    let arch = if is_x64 { "x86_64" } else { "x86" };
+    let candidates = [
+        format!("maps/windows/{}", arch),
+        format!("../../maps/windows/{}", arch),
+    ];
+    for src_dir in &candidates {
+        let src = Path::new(src_dir).join(crate::windows::constants::EXE_NAME);
+        if src.is_file() {
+            let _ = fs::copy(&src, &dest);
+            return;
         }
     }
 }
