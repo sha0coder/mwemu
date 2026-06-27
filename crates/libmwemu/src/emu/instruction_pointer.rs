@@ -72,7 +72,7 @@ impl Emu {
         }
 
         let name = match self.maps.get_addr_name(addr) {
-            Some(n) => n.to_string(),
+            Some(n) => n, //DON"T EVER MODIFY THIS AND ADD to_string IT MAKE THE COMPILER SO SO MUCH SLOWER
             None => {
                 if self.os.is_linux() {
                     return false;
@@ -145,15 +145,15 @@ impl Emu {
             if !self.ld_bootstrap {
                 let symbol = self.resolve_unix_x64_symbol(addr);
                 if symbol == "__libc_start_main" {
-                    let section_name = name.to_string();
-                    return self.intercept_unix_x64_api_call(addr, &section_name);
+                    let section_name = name;
+                    return self.intercept_unix_x64_api_call(addr, &section_name.to_string());
                 }
             }
             self.regs_mut().rip = addr;
             return true;
         } else if self.os.is_linux() || self.os.is_macos() {
-            let section_name = name.to_string();
-            return self.intercept_unix_x64_api_call(addr, &section_name);
+            let section_name = name;
+            return self.intercept_unix_x64_api_call(addr, &section_name.to_string());
         } else {
             if self.cfg.verbose >= 2 && !self.cfg.emulate_winapi {
                 log::trace!("/!\\ changing RIP to {} ", name);
