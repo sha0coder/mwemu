@@ -54,3 +54,66 @@ pub fn allocator32_test() {
     assert!(emu.maps.is_allocated(0x30000000));
     assert!(emu.maps.mem_test());
 }
+
+#[test]
+fn virtual_alloc_zero_size_32() {
+    helpers::setup();
+    let mut emu = emu32();
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
+    emu.maps.clear();
+    emu.init_win32(false, false);
+
+    let r = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAlloc,
+        &[0, 0, constants::MEM_COMMIT, 0x40],
+    );
+    assert_eq!(r, 0);
+    assert_eq!(
+        helpers::call_winapi32(&mut emu, winapi32::kernel32::GetLastError, &[]),
+        constants::ERROR_INVALID_PARAMETER as u32
+    );
+
+    let r = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAllocEx,
+        &[0xffff_ffff, 0, 0, constants::MEM_COMMIT, 0x40],
+    );
+    assert_eq!(r, 0);
+    assert_eq!(
+        helpers::call_winapi32(&mut emu, winapi32::kernel32::GetLastError, &[]),
+        constants::ERROR_INVALID_PARAMETER as u32
+    );
+
+    let r = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAllocExNuma,
+        &[0xffff_ffff, 0, 0, constants::MEM_COMMIT, 0x40, 0],
+    );
+    assert_eq!(r, 0);
+    assert_eq!(
+        helpers::call_winapi32(&mut emu, winapi32::kernel32::GetLastError, &[]),
+        constants::ERROR_INVALID_PARAMETER as u32
+    );
+}
+
+#[test]
+fn virtual_alloc_commit_unmapped_32() {
+    helpers::setup();
+    let mut emu = emu32();
+    emu.cfg.maps_folder = helpers::win32_maps_folder();
+    emu.maps.clear();
+    emu.init_win32(false, false);
+
+    // MEM_COMMIT at a fresh, never-mapped fixed address must fail.
+    let r = helpers::call_winapi32(
+        &mut emu,
+        winapi32::kernel32::VirtualAlloc,
+        &[0x40000000, 0x1000, constants::MEM_COMMIT, 0x40],
+    );
+    assert_eq!(r, 0);
+    assert_eq!(
+        helpers::call_winapi32(&mut emu, winapi32::kernel32::GetLastError, &[]),
+        constants::ERROR_INVALID_PARAMETER as u32
+    );
+}
