@@ -42,6 +42,9 @@ pub use read_process_memory::*;
 mod local_free;
 pub use local_free::*;
 
+#[path = "../virtual_alloc_common.rs"]
+mod virtual_alloc_common;
+
 #[path = "../virtual_alloc.rs"]
 mod virtual_alloc;
 pub use virtual_alloc::*;

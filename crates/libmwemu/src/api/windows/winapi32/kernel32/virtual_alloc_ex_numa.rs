@@ -1,77 +1,10 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
+use crate::winapi::common::virtual_alloc::{permissions, round_up};
 use crate::winapi::winapi32::kernel32::set_last_error;
 use crate::windows::constants;
-use crate::emu::Emu;
 
-const PAGE_NOACCESS: u32 = 0x01;
-const PAGE_READONLY: u32 = 0x02;
-const PAGE_READWRITE: u32 = 0x04;
-const PAGE_WRITECOPY: u32 = 0x08;
-const PAGE_EXECUTE: u32 = 0x10;
-const PAGE_EXECUTE_READ: u32 = 0x20;
-const PAGE_EXECUTE_READWRITE: u32 = 0x40;
-const PAGE_EXECUTE_WRITECOPY: u32 = 0x80;
-const PAGE_GUARD: u32 = 0x100;
-const PAGE_NOCACHE: u32 = 0x200;
-
-fn permissions(prot: u32) -> (bool, bool, bool) {
-    let can_read = (prot
-        & (PAGE_READONLY
-            | PAGE_READWRITE
-            | PAGE_WRITECOPY
-            | PAGE_EXECUTE_READ
-            | PAGE_EXECUTE_READWRITE
-            | PAGE_EXECUTE_WRITECOPY))
-        != 0;
-    let can_write = (prot
-        & (PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
-        != 0;
-    let can_execute = (prot
-        & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
-        != 0;
-    (can_read, can_write, can_execute)
-}
-
-fn round_up(size: u64) -> u64 {
-    const PAGE_SIZE: u64 = 0x1000;
-    (size + PAGE_SIZE - 1) & !(PAGE_SIZE - 1)
-}
-
-fn fail(emu: &mut Emu, label: &str, proc_hndl: u64, addr: u64, size: u64, orig_size: u64, typ: u32, prot: u32, nnd: u32, reason: &str) {
-    log_red!(
-        emu,
-        "kernel32!{} hproc: 0x{:x} addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} nnd: {} = 0 reason: {}",
-        label,
-        proc_hndl,
-        addr,
-        orig_size,
-        size,
-        typ,
-        prot,
-        nnd,
-        reason
-    );
-    set_last_error(constants::ERROR_INVALID_PARAMETER as u32);
-    emu.regs_mut().rax = 0;
-}
-
-fn fail_oom(emu: &mut Emu, label: &str, proc_hndl: u64, addr: u64, size: u64, orig_size: u64, typ: u32, prot: u32, nnd: u32) {
-    log_red!(
-        emu,
-        "kernel32!{} hproc: 0x{:x} addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} nnd: {} = 0 reason: out of memory",
-        label,
-        proc_hndl,
-        addr,
-        orig_size,
-        size,
-        typ,
-        prot,
-        nnd
-    );
-    set_last_error(constants::ERROR_NOT_ENOUGH_MEMORY as u32);
-    emu.regs_mut().rax = 0;
-}
+use super::virtual_alloc_common::{fail, fail_oom};
 
 pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     let proc_hndl = emu
@@ -103,20 +36,13 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     let mem_reserve = (typ & constants::MEM_RESERVE) != 0;
     let mem_commit = (typ & constants::MEM_COMMIT) != 0;
     let (can_read, can_write, can_execute) = permissions(prot);
+    let ctx = format!(
+        "hproc: 0x{:x} addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} nnd: {}",
+        proc_hndl, addr, orig_size, size, typ, prot, nnd
+    );
 
     if orig_size == 0 {
-        fail(
-            emu,
-            "VirtualAllocExNuma",
-            proc_hndl,
-            addr,
-            size,
-            orig_size,
-            typ,
-            prot,
-            nnd,
-            "zero size",
-        );
+        fail(emu, "VirtualAllocExNuma", &ctx, "zero size");
         for _ in 0..6 {
             emu.stack_pop32(false);
         }
@@ -124,18 +50,7 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     }
 
     if !mem_reserve && !mem_commit {
-        fail(
-            emu,
-            "VirtualAllocExNuma",
-            proc_hndl,
-            addr,
-            size,
-            orig_size,
-            typ,
-            prot,
-            nnd,
-            "unsupported allocation type",
-        );
+        fail(emu, "VirtualAllocExNuma", &ctx, "unsupported allocation type");
         for _ in 0..6 {
             emu.stack_pop32(false);
         }
@@ -143,18 +58,7 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     }
 
     if mem_commit && !mem_reserve && addr > 0 && !emu.maps.is_allocated(addr) {
-        fail(
-            emu,
-            "VirtualAllocExNuma",
-            proc_hndl,
-            addr,
-            size,
-            orig_size,
-            typ,
-            prot,
-            nnd,
-            "commit target unmapped",
-        );
+        fail(emu, "VirtualAllocExNuma", &ctx, "commit target unmapped");
         for _ in 0..6 {
             emu.stack_pop32(false);
         }
@@ -165,18 +69,7 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         addr
     } else if addr > 0 {
         if emu.maps.is_allocated(addr) {
-            fail(
-                emu,
-                "VirtualAllocExNuma",
-                proc_hndl,
-                addr,
-                size,
-                orig_size,
-                typ,
-                prot,
-                nnd,
-                "address already mapped",
-            );
+            fail(emu, "VirtualAllocExNuma", &ctx, "address already mapped");
             for _ in 0..6 {
                 emu.stack_pop32(false);
             }
@@ -187,17 +80,7 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         match emu.maps.alloc(size) {
             Some(b) => b,
             None => {
-                fail_oom(
-                    emu,
-                    "VirtualAllocExNuma",
-                    proc_hndl,
-                    addr,
-                    size,
-                    orig_size,
-                    typ,
-                    prot,
-                    nnd,
-                );
+                fail_oom(emu, "VirtualAllocExNuma", &ctx);
                 for _ in 0..6 {
                     emu.stack_pop32(false);
                 }

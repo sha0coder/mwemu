@@ -42,6 +42,9 @@ pub use map_view_of_file::*;
 mod read_process_memory;
 pub use read_process_memory::*;
 
+#[path = "../virtual_alloc_common.rs"]
+mod virtual_alloc_common;
+
 #[path = "../virtual_alloc.rs"]
 mod virtual_alloc;
 pub use virtual_alloc::*;

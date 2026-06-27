@@ -1,0 +1,19 @@
+[package]
+name = "mwemu-c"
+version = "0.25.2"
+edition.workspace = true
+authors = ["sha0coder"]
+license.workspace = true
+rust-version.workspace = true
+description = "C ABI bindings for libmwemu (x86/x64/arm64 emulator)."
+repository.workspace = true
+
+[lib]
+name = "mwemu_c"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+libmwemu = { workspace = true }
+
+[build-dependencies]
+cbindgen = "0.29"
