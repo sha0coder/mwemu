@@ -26,7 +26,7 @@ shellcodes32/
 shellcodes64/
 .DS_Store
 prompt.md
-private
+private/
 trace_LdrInitializeThunk.txt
 .offcode.ctx
 *prompt*
@@ -34,15 +34,15 @@ x
 *.txt
 *.swp
 *.idb
+*.bin
 .venv/
 .env/
 deps/
 dumps/
 *.zip
-test
+test/
 test.zip*
 .gdb_history
-*.zip
 *.log
 *.pyc
 .idea
