@@ -1,7 +1,7 @@
 # MWEmu 
-[![Rust CI](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml/badge.svg)](https://github.com/sha0coder/mwemu/actions/workflows/ci.yaml)
+[![Rust CI](https://github.com/mwemuorg/mwemu/actions/workflows/ci.yaml/badge.svg)](https://github.com/mwemuorg/mwemu/actions/workflows/ci.yaml)
 [![mwemu crates.io](https://img.shields.io/crates/v/mwemu.svg)](https://crates.io/crates/mwemu)
-[![codecov](https://codecov.io/gh/sha0coder/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/sha0coder/mwemu)
+[![codecov](https://codecov.io/gh/mwemuorg/mwemu/branch/main/graph/badge.svg)](https://codecov.io/gh/mwemuorg/mwemu)
 
 ## Official documentation
 
@@ -23,7 +23,7 @@ The hardware is x86 32/64bits it's fast and reliable.
 
 ## Three ways of using the software
 
-- mwemu commandline https://github.com/sha0coder/mwemu
+- mwemu commandline https://github.com/mwemuorg/mwemu
 - libmwemu crate https://crates.io/crates/libmwemu
 - pymwemu https://pypi.org/project/pymwemu/
 
@@ -430,7 +430,7 @@ And here we have the error routine 0x4f96f4 and the filter 0x51068c
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=sha0coder/mwemu&type=date&legend=top-left)](https://www.star-history.com/#sha0coder/mwemu&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=mwemuorg/mwemu&type=date&legend=top-left)](https://www.star-history.com/#mwemuorg/mwemu&type=date&legend=top-left)
 
 
 
