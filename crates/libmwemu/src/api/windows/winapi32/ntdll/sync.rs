@@ -8,6 +8,8 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "RtlEnterCriticalSection" => RtlEnterCriticalSection(emu),
         "RtlLeaveCriticalSection" => RtlLeaveCriticalSection(emu),
         "RtlInitializeCriticalSectionEx" => RtlInitializeCriticalSectionEx(emu),
+        "RtlAddVectoredExceptionHandler" => RtlAddVectoredExceptionHandler(emu),
+        "RtlRemoveVectoredExceptionHandler" => RtlRemoveVectoredExceptionHandler(emu),
         _ => return false,
     }
     true
@@ -52,6 +54,50 @@ fn RtlLeaveCriticalSection(emu: &mut emu::Emu) {
     log_red!(emu, "ntdll!RtlLeaveCriticalSection");
 
     emu.stack_pop32(false);
+    emu.regs_mut().rax = 1;
+}
+
+fn RtlAddVectoredExceptionHandler(emu: &mut emu::Emu) {
+    let first = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("ntdll!RtlAddVectoredExceptionHandler error reading first param");
+    let fptr = emu
+        .maps
+        .read_dword(emu.regs().get_esp() + 4)
+        .expect("ntdll!RtlAddVectoredExceptionHandler error reading callback param")
+        as u64;
+
+    log_red!(
+        emu,
+        "ntdll!RtlAddVectoredExceptionHandler  first={} callback: 0x{:x}",
+        first,
+        fptr
+    );
+
+    emu.stack_pop32(false);
+    emu.stack_pop32(false);
+
+    emu.add_veh(first != 0, fptr);
+    emu.regs_mut().rax = 0x2c2878;
+}
+
+fn RtlRemoveVectoredExceptionHandler(emu: &mut emu::Emu) {
+    let handle = emu
+        .maps
+        .read_dword(emu.regs().get_esp())
+        .expect("ntdll!RtlRemoveVectoredExceptionHandler error reading handle param")
+        as u64;
+
+    log_red!(
+        emu,
+        "ntdll!RtlRemoveVectoredExceptionHandler  handle: 0x{:x}",
+        handle
+    );
+
+    emu.stack_pop32(false);
+
+    emu.remove_veh(handle);
     emu.regs_mut().rax = 1;
 }
 

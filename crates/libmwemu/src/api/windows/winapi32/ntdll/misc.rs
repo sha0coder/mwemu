@@ -44,10 +44,10 @@ fn NtGetContextThread(emu: &mut emu::Emu) {
 }
 
 fn RtlVectoredExceptionHandler(emu: &mut emu::Emu) {
-    let p1 = emu
+    let first = emu
         .maps
         .read_dword(emu.regs().get_esp())
-        .expect("ntdll_RtlVectoredExceptionHandler: error reading p1") as u64;
+        .expect("ntdll_RtlVectoredExceptionHandler: error reading first") as u64;
     let fptr = emu
         .maps
         .read_dword(emu.regs().get_esp() + 4)
@@ -55,12 +55,12 @@ fn RtlVectoredExceptionHandler(emu: &mut emu::Emu) {
 
     log_red!(
         emu,
-        "ntdll!RtlVectoredExceptionHandler  {} callback: 0x{:x}",
-        p1,
+        "ntdll!RtlVectoredExceptionHandler  first={} callback: 0x{:x}",
+        first,
         fptr
     );
 
-    emu.set_veh(fptr);
+    emu.add_veh(first != 0, fptr);
 
     emu.regs_mut().rax = 0x2c2878;
     emu.stack_pop32(false);
