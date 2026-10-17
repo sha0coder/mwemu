@@ -28,8 +28,7 @@ fn build_minimal_pe64(emu: &mut emu::Emu, pe_base: u64, handler_rva: u32) {
     // Optional header (PE32+)
     emu.maps.write_word(pe + 24, 0x020B); // PE32+ magic
     // SizeOfImage is at pe + 0x50 (OptionalHeader + 0x38)
-    emu.maps
-        .write_dword(pe + 0x50, pe_size as u32);
+    emu.maps.write_dword(pe + 0x50, pe_size as u32);
 
     // NumberOfRvaAndSizes at offset 0x84 from PE signature
     emu.maps.write_dword(pe + 0x84, 16);
@@ -160,7 +159,8 @@ fn x64_veh_takes_priority_over_pdata() {
     emu.exception(ExceptionType::Int3);
 
     assert_eq!(
-        emu.regs().rip, veh_addr,
+        emu.regs().rip,
+        veh_addr,
         "VEH should take priority over .pdata SEH"
     );
 }
@@ -187,8 +187,7 @@ fn x64_pdata_chaininfo() {
     emu.maps.write_word(pe + 4, 0x8664);
     emu.maps.write_word(pe + 20, 0xF0);
     emu.maps.write_word(pe + 24, 0x020B);
-    emu.maps
-        .write_dword(pe + 0x50, pe_size as u32);
+    emu.maps.write_dword(pe + 0x50, pe_size as u32);
     emu.maps.write_dword(pe + 0x84, 16);
 
     // .pdata: one entry
@@ -197,7 +196,7 @@ fn x64_pdata_chaininfo() {
     emu.maps.write_dword(pe + 0xA4, 12);
 
     let pdata_addr = pe_base + pdata_rva as u64;
-    emu.maps.write_dword(pdata_addr, 0x2000);     // BeginAddress
+    emu.maps.write_dword(pdata_addr, 0x2000); // BeginAddress
     emu.maps.write_dword(pdata_addr + 4, 0x3000); // EndAddress
     emu.maps.write_dword(pdata_addr + 8, 0x4000); // -> UNWIND_INFO #1
 
@@ -207,15 +206,14 @@ fn x64_pdata_chaininfo() {
     emu.maps.write_byte(ui1, 1 | (chain_flag << 3));
     emu.maps.write_byte(ui1 + 2, 0); // 0 codes
     // Chained RUNTIME_FUNCTION at ui1+4
-    emu.maps.write_dword(ui1 + 4, 0x2000);  // BeginAddress (ignored for chain)
-    emu.maps.write_dword(ui1 + 8, 0x3000);  // EndAddress (ignored)
+    emu.maps.write_dword(ui1 + 4, 0x2000); // BeginAddress (ignored for chain)
+    emu.maps.write_dword(ui1 + 8, 0x3000); // EndAddress (ignored)
     emu.maps.write_dword(ui1 + 12, 0x4100); // -> UNWIND_INFO #2
 
     // UNWIND_INFO #2: EHANDLER with actual handler
     let ui2 = pe_base + 0x4100;
     let ehandler_flag: u8 = 0x01;
-    emu.maps
-        .write_byte(ui2, 1 | (ehandler_flag << 3));
+    emu.maps.write_byte(ui2, 1 | (ehandler_flag << 3));
     emu.maps.write_byte(ui2 + 2, 0);
     emu.maps.write_dword(ui2 + 4, 0x6000); // handler RVA
 
