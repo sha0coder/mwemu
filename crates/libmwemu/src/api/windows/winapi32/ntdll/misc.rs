@@ -1,6 +1,7 @@
 use crate::context::context32::Context32;
 use crate::debug::console::Console;
 use crate::emu;
+use crate::winapi::winapi32::{arg, stdcall_ret};
 use crate::windows::constants;
 use crate::windows::structures;
 
@@ -14,6 +15,12 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "RtlGetVersion" => RtlGetVersion(emu),
         "RtlSetUnhandledExceptionFilter" => RtlSetUnhandledExceptionFilter(emu),
         "VerSetConditionMask" => VerSetConditionMask(emu),
+        "NtQueryInformationProcess" => NtQueryInformationProcess(emu),
+        "NtQuerySystemInformation" => NtQuerySystemInformation(emu),
+        "NtSetInformationThread" => NtSetInformationThread(emu),
+        "NtTerminateThread" => NtTerminateThread(emu),
+        "RtlEncodePointer" => RtlEncodePointer(emu),
+        "RtlDecodePointer" => RtlDecodePointer(emu),
         _ => return false,
     }
     true
@@ -139,4 +146,79 @@ fn VerSetConditionMask(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.stack_pop32(false);
     emu.regs_mut().rax = 0xffff;
+}
+
+fn NtQueryInformationProcess(emu: &mut emu::Emu) {
+    let info_class = arg(emu, 1);
+    let buffer = arg(emu, 2) as u64;
+    let buffer_length = arg(emu, 3) as u64;
+    let return_length_ptr = arg(emu, 4) as u64;
+    log_red!(
+        emu,
+        "ntdll!NtQueryInformationProcess class: {} buf: 0x{:x} len: {}",
+        info_class,
+        buffer,
+        buffer_length
+    );
+    let fill = buffer_length.min(256);
+    emu.maps.memset(buffer, 0, fill as usize);
+    if info_class == 31 && buffer_length >= 4 {
+        emu.maps.write_dword(buffer, 1); // ProcessDebugFlags
+    }
+    if return_length_ptr != 0 {
+        emu.maps.write_dword(return_length_ptr, fill as u32);
+    }
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 5);
+}
+fn NtQuerySystemInformation(emu: &mut emu::Emu) {
+    let info_class = arg(emu, 0);
+    let buffer = arg(emu, 1) as u64;
+    let buffer_length = arg(emu, 2) as u64;
+    let return_length_ptr = arg(emu, 3) as u64;
+    log_red!(
+        emu,
+        "ntdll!NtQuerySystemInformation class: {} buf: 0x{:x} len: {}",
+        info_class,
+        buffer,
+        buffer_length
+    );
+    let fill = buffer_length.min(256);
+    emu.maps.memset(buffer, 0, fill as usize);
+    if return_length_ptr != 0 {
+        emu.maps.write_dword(return_length_ptr, fill as u32);
+    }
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 4);
+}
+fn NtSetInformationThread(emu: &mut emu::Emu) {
+    let handle = arg(emu, 0);
+    let info_class = arg(emu, 1);
+    log_red!(
+        emu,
+        "ntdll!NtSetInformationThread handle: 0x{:x} class: {}",
+        handle,
+        info_class
+    );
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 4);
+}
+fn NtTerminateThread(emu: &mut emu::Emu) {
+    let handle = arg(emu, 0);
+    let status = arg(emu, 1);
+    log_red!(emu, "ntdll!NtTerminateThread 0x{:x} {}", handle, status);
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 2);
+}
+fn RtlEncodePointer(emu: &mut emu::Emu) {
+    let ptr = arg(emu, 0);
+    log_red!(emu, "ntdll!RtlEncodePointer 0x{:x}", ptr);
+    emu.regs_mut().rax = ptr as u64;
+    stdcall_ret(emu, 1);
+}
+fn RtlDecodePointer(emu: &mut emu::Emu) {
+    let ptr = arg(emu, 0);
+    log_red!(emu, "ntdll!RtlDecodePointer 0x{:x}", ptr);
+    emu.regs_mut().rax = ptr as u64;
+    stdcall_ret(emu, 1);
 }
