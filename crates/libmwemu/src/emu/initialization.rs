@@ -106,6 +106,7 @@ impl Emu {
             pe32: None,
             pe64_raw: None,
             pe32_raw: None,
+            pe32_flat_loaded: false,
             elf64: None,
             elf32: None,
             macho64: None,
@@ -815,8 +816,14 @@ impl Emu {
         peb32::init_peb(self);
         kuser_shared::init_kuser_shared_data(self);
         winapi32::kernel32::load_library(self, "ntdll.dll");
-        let ntdll_base = self.maps.get_mem("ntdll.pe").get_base();
-        peb32::update_peb_image_base(self, ntdll_base as u32);
+        let ntdll_base = self
+            .maps
+            .get_map_by_name("ntdll.pe")
+            .map(|m| m.get_base())
+            .unwrap_or(0);
+        if ntdll_base != 0 {
+            peb32::update_peb_image_base(self, ntdll_base as u32);
+        }
 
         winapi32::kernel32::load_library(self, "kernel32.dll");
         winapi32::kernel32::load_library(self, "kernelbase.dll");

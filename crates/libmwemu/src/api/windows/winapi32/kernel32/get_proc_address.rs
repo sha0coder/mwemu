@@ -35,7 +35,20 @@ pub fn GetProcAddress(emu: &mut emu::Emu) {
             emu.regs().get_eax() as u32
         );
     } else {
-        log::warn!("kernel32!GetProcAddress error searching 0x{:x}", func_ptr);
+        if is_ordinal {
+            log::warn!(
+                "kernel32!GetProcAddress error: ordinal #{} hndl=0x{:x}",
+                func_ptr & 0xFFFF,
+                hndl
+            );
+        } else {
+            let name = emu.maps.read_string(func_ptr);
+            log::warn!(
+                "kernel32!GetProcAddress error: '{}' hndl=0x{:x}",
+                name,
+                hndl
+            );
+        }
     }
 }
 

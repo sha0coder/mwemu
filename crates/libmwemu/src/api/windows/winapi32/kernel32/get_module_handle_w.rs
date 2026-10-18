@@ -23,6 +23,7 @@ pub fn GetModuleHandleW(emu: &mut emu::Emu) {
             Some(m) => m,
             None => {
                 emu.regs_mut().rax = 0;
+                emu.stack_pop32(false);
                 return;
             }
         };
