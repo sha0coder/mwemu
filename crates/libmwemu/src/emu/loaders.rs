@@ -17,6 +17,8 @@ mod elf;
 mod ko;
 mod macho;
 mod pe;
+mod pe_stub;
+pub(crate) mod pe_stub_exports;
 
 impl Emu {
     /// Classify a target the way `load_code` will, reporting whether it is a
@@ -292,15 +294,31 @@ impl Emu {
             match self.pe32 {
                 Some(ref pe32) => {
                     if let Some((module, rl_addr)) = reflective {
+                        self.cfg.soft_exception_recovery = true;
+                        let rl_ep = if self.pe32_flat_loaded {
+                            let rva = (rl_addr - base as u64) as u32;
+                            let foff = pe32
+                                .sect_hdr
+                                .iter()
+                                .find(|s| {
+                                    rva >= s.virtual_address
+                                        && rva < s.virtual_address + s.virtual_size
+                                })
+                                .map(|s| rva - s.virtual_address + s.pointer_to_raw_data)
+                                .unwrap_or(rva);
+                            base as u64 + foff as u64
+                        } else {
+                            rl_addr
+                        };
                         log::trace!(
                             "emulating ReflectiveLoader of {} at 0x{:x} (base=0x{:x})",
                             module,
-                            rl_addr,
+                            rl_ep,
                             base
                         );
                         self.stack_push32(0); // lpParameter
                         self.stack_push32(base); // fake return address
-                        ep = rl_addr;
+                        ep = rl_ep;
                     } else if pe32.is_dll() {
                         log::trace!("emulating DllMain x86 base=0x{:x}", base);
                         self.stack_push32(0); // lpvReserved

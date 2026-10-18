@@ -21,8 +21,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().rsi) {
             Some(v) => v,
             None => {
-                log::trace!("cannot read memory on rsi");
-                return false;
+                if emu.rep.is_some() {
+                    log::trace!(
+                        "rep movsb: unmapped read at rsi=0x{:x}, filling with zeros",
+                        emu.regs().rsi
+                    );
+                    0u8
+                } else {
+                    log::trace!("cannot read memory on rsi");
+                    return false;
+                }
             }
         };
         if !emu.maps.write_byte(emu.regs().rdi, val) {
@@ -56,8 +64,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         let val = match emu.maps.read_byte(emu.regs().get_esi()) {
             Some(v) => v,
             None => {
-                log::trace!("cannot read memory on esi");
-                return false;
+                if emu.rep.is_some() {
+                    log::trace!(
+                        "rep movsb: unmapped read at esi=0x{:x}, filling with zeros",
+                        emu.regs().get_esi()
+                    );
+                    0u8
+                } else {
+                    log::trace!("cannot read memory on esi");
+                    return false;
+                }
             }
         };
         if !emu.maps.write_byte(emu.regs().get_edi(), val) {
