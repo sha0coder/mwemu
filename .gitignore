@@ -15,6 +15,7 @@ maps/**/*.DRV
 maps/**/*.nls
 maps/**/*.NLS
 maps/**/ntoskrnl.exe
+maps/windows/x86_64/loader.exe
 maps/iso/
 maps/winver/
 # the winver cache is written relative to the CWD, so running tests from a
