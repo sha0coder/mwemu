@@ -1,5 +1,8 @@
+use crate::api::windows::helper;
 use crate::emu;
+use crate::winapi::winapi32::{arg, stdcall_ret};
 use crate::winapi::winapi64::kernel32::InitializeCriticalSection;
+use crate::windows::constants;
 
 pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
     match api {
@@ -10,6 +13,9 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "RtlInitializeCriticalSectionEx" => RtlInitializeCriticalSectionEx(emu),
         "RtlAddVectoredExceptionHandler" => RtlAddVectoredExceptionHandler(emu),
         "RtlRemoveVectoredExceptionHandler" => RtlRemoveVectoredExceptionHandler(emu),
+        "NtDelayExecution" => NtDelayExecution(emu),
+        "NtWaitForSingleObject" => NtWaitForSingleObject(emu),
+        "RtlQueueWorkItem" => RtlQueueWorkItem(emu),
         _ => return false,
     }
     true
@@ -122,4 +128,41 @@ fn RtlInitializeCriticalSectionEx(emu: &mut emu::Emu) {
     emu.stack_pop32(false);
     emu.stack_pop32(false);
     emu.regs_mut().rax = 1;
+}
+
+fn NtDelayExecution(emu: &mut emu::Emu) {
+    let interval_ptr = arg(emu, 1) as u64;
+    let interval = emu.maps.read_qword(interval_ptr).unwrap_or(0) as i64;
+    // Negative = relative, in 100 ns units.
+    let millis = interval.unsigned_abs() / 10_000;
+    log_red!(emu, "ntdll!NtDelayExecution interval: {} ms", millis);
+    helper::advance_tick(emu, millis);
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 2);
+}
+fn NtWaitForSingleObject(emu: &mut emu::Emu) {
+    let handle = arg(emu, 0);
+    let timeout = arg(emu, 2);
+    log_red!(
+        emu,
+        "ntdll!NtWaitForSingleObject hndl: 0x{:x} timeout: 0x{:x}",
+        handle,
+        timeout
+    );
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 3);
+}
+fn RtlQueueWorkItem(emu: &mut emu::Emu) {
+    let fptr = arg(emu, 0);
+    let ctx = arg(emu, 1);
+    let flags = arg(emu, 2);
+    log_red!(
+        emu,
+        "ntdll!RtlQueueWorkItem fptr: 0x{:x} ctx: 0x{:x} flags: {}",
+        fptr,
+        ctx,
+        flags
+    );
+    emu.regs_mut().rax = constants::STATUS_SUCCESS;
+    stdcall_ret(emu, 3);
 }
