@@ -281,9 +281,27 @@ impl Emu {
             // by the three arguments. We push the arguments in *reverse* order
             // (caller-convention right-to-left) so the callee sees them at the
             // expected offsets after it pops the return address with ret 12.
+            // Reflective-loader payloads (Cobalt Strike beacons, Meterpreter,
+            // ...) ship with an encrypted body and a cleartext `ReflectiveLoader`
+            // export. The PE entry point lands inside the still-encrypted body,
+            // so we must start at that export instead: it resolves its own
+            // imports, maps/decrypts the image and finally calls the real
+            // DllMain. Signature is stdcall `ReflectiveLoader(LPVOID)`.
+            let reflective = self.export_indexes.resolve_reflective_loader();
+            let mut ep = ep;
             match self.pe32 {
                 Some(ref pe32) => {
-                    if pe32.is_dll() {
+                    if let Some((module, rl_addr)) = reflective {
+                        log::trace!(
+                            "emulating ReflectiveLoader of {} at 0x{:x} (base=0x{:x})",
+                            module,
+                            rl_addr,
+                            base
+                        );
+                        self.stack_push32(0); // lpParameter
+                        self.stack_push32(base); // fake return address
+                        ep = rl_addr;
+                    } else if pe32.is_dll() {
                         log::trace!("emulating DllMain x86 base=0x{:x}", base);
                         self.stack_push32(0); // lpvReserved
                         self.stack_push32(1); // fdwReason = DLL_PROCESS_ATTACH

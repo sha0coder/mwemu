@@ -90,6 +90,18 @@ impl Emu {
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
+
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw) {
+            if machine != rs_header::pe::IMAGE_FILE_MACHINE_I386 {
+                log::warn!(
+                    "load_pe32: {} is not x86 (Machine=0x{:04x}), skipping",
+                    filename,
+                    machine
+                );
+                return (0, 0);
+            }
+        }
+
         let mut pe32 = PE32::parse(filename, &raw);
         let raw_len = raw.len() as u64;
         let base: u32;
@@ -220,8 +232,18 @@ impl Emu {
                 sect_name = format!("{:x}", sect.virtual_address);
             }
 
+            // Obfuscated binaries (e.g. Cobalt Strike) carry non-UTF8 section
+            // names that all decode to the same fallback, so the map names
+            // collide and every section after the first is dropped — losing
+            // imports and relocs. The virtual address is unique per section,
+            // so disambiguate with it when the name is already taken.
+            let mut map_name = format!("{}{}", filename2, sect_name);
+            if self.maps.exists_mapname(&map_name) {
+                map_name = format!("{}_{:x}", map_name, sect.virtual_address);
+            }
+
             let map = match self.maps.create_map(
-                &format!("{}{}", filename2, sect_name),
+                &map_name,
                 base as u64 + sect.virtual_address as u64,
                 align_up!(sz, sec_allign as u64),
                 permission,
@@ -489,6 +511,18 @@ impl Emu {
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
+
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw) {
+            if machine == rs_header::pe::IMAGE_FILE_MACHINE_I386 {
+                log::warn!(
+                    "load_pe64: {} is x86 (Machine=0x{:04x}), skipping",
+                    filename,
+                    machine
+                );
+                return (0, 0);
+            }
+        }
+
         let mut pe64 = PE64::parse(filename, &raw);
         let raw_len = raw.len() as u64;
         let image_span = (pe64.opt.size_of_image as u64).max(raw_len);
@@ -624,8 +658,15 @@ impl Emu {
                 sect_name = format!("{:x}", sect.virtual_address);
             }
 
+            // See pe32: obfuscated non-UTF8 section names collide on the same
+            // fallback and drop later sections. Disambiguate by virtual address.
+            let mut map_name = format!("{}{}", filename2, sect_name);
+            if self.maps.exists_mapname(&map_name) {
+                map_name = format!("{}_{:x}", map_name, sect.virtual_address);
+            }
+
             let map = match self.maps.create_map(
-                &format!("{}{}", filename2, sect_name),
+                &map_name,
                 base + sect.virtual_address as u64,
                 align_up!(map_sz, sec_allign as u64),
                 permission,
