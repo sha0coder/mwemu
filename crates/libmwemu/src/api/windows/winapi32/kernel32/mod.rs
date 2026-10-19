@@ -89,6 +89,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "GetCurrentProcessId" => GetCurrentProcessId(emu),
         "GetDiskFreeSpaceA" => GetDiskFreeSpaceA(emu),
         "GetCurrentThreadId" => GetCurrentThreadId(emu),
+        "FreeEnvironmentStringsA" => FreeEnvironmentStringsA(emu),
+        "FreeEnvironmentStringsW" => FreeEnvironmentStringsW(emu),
         "GetEnvironmentStrings" => GetEnvironmentStrings(emu),
         "GetEnvironmentStringsW" => GetEnvironmentStringsW(emu),
         "GetFileAttributesA" => GetFileAttributesA(emu),

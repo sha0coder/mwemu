@@ -28,14 +28,11 @@ pub fn VirtualProtect(emu: &mut emu::Emu) {
         new_prot
     );
 
-    // When making memory executable, check if the allocation base has a PE with TLS
+    // When making memory executable, check if the region contains a PE with TLS
     let is_exec = (new_prot & 0xF0) != 0; // PAGE_EXECUTE(0x10)|READ(0x20)|RW(0x40)|WC(0x80)
     if is_exec {
-        if let Some(map_base) = emu.maps.get_addr_base(addr) {
-            if map_base != addr {
-                emu.init_tls_from_pe32_in_memory(map_base);
-            }
-        }
+        let base = emu.maps.get_addr_base(addr).unwrap_or(addr);
+        emu.init_tls_from_pe32_in_memory(base);
     }
 
     for _ in 0..4 {
