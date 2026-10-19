@@ -27,6 +27,11 @@ pub fn LCMapStringW(emu: &mut emu::Emu) {
         .expect("kernel32!LCMapStringW error reading param");
 
     let s = emu.maps.read_wide_string(src_ptr);
+    let char_count = if src_sz as i32 == -1 {
+        s.len() as u32 + 1
+    } else {
+        src_sz
+    };
 
     log_red!(
         emu,
@@ -37,12 +42,12 @@ pub fn LCMapStringW(emu: &mut emu::Emu) {
         dest_sz
     );
 
-    if dest_ptr > 0 {
+    if dest_ptr > 0 && dest_sz > 0 {
         emu.maps.write_wide_string(dest_ptr, &s);
     }
 
     for _ in 0..6 {
         emu.stack_pop32(false);
     }
-    emu.regs_mut().rax = 1;
+    emu.regs_mut().rax = char_count as u64;
 }

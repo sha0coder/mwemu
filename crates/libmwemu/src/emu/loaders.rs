@@ -18,6 +18,8 @@ mod kext;
 mod ko;
 mod macho;
 mod pe;
+mod pe_stub;
+pub(crate) mod pe_stub_exports;
 
 impl Emu {
     /// Classify a target the way `load_code` will, reporting whether it is a
@@ -304,9 +306,43 @@ impl Emu {
             // by the three arguments. We push the arguments in *reverse* order
             // (caller-convention right-to-left) so the callee sees them at the
             // expected offsets after it pops the return address with ret 12.
+            // Reflective-loader payloads (Cobalt Strike beacons, Meterpreter,
+            // ...) ship with an encrypted body and a cleartext `ReflectiveLoader`
+            // export. The PE entry point lands inside the still-encrypted body,
+            // so we must start at that export instead: it resolves its own
+            // imports, maps/decrypts the image and finally calls the real
+            // DllMain. Signature is stdcall `ReflectiveLoader(LPVOID)`.
+            let reflective = self.export_indexes.resolve_reflective_loader();
+            let mut ep = ep;
             match self.pe32 {
                 Some(ref pe32) => {
-                    if pe32.is_dll() {
+                    if let Some((module, rl_addr)) = reflective {
+                        self.cfg.soft_exception_recovery = true;
+                        let rl_ep = if self.pe32_flat_loaded {
+                            let rva = (rl_addr - base as u64) as u32;
+                            let foff = pe32
+                                .sect_hdr
+                                .iter()
+                                .find(|s| {
+                                    rva >= s.virtual_address
+                                        && rva < s.virtual_address + s.virtual_size
+                                })
+                                .map(|s| rva - s.virtual_address + s.pointer_to_raw_data)
+                                .unwrap_or(rva);
+                            base as u64 + foff as u64
+                        } else {
+                            rl_addr
+                        };
+                        log::trace!(
+                            "emulating ReflectiveLoader of {} at 0x{:x} (base=0x{:x})",
+                            module,
+                            rl_ep,
+                            base
+                        );
+                        self.stack_push32(0); // lpParameter
+                        self.stack_push32(base); // fake return address
+                        ep = rl_ep;
+                    } else if pe32.is_dll() {
                         log::trace!("emulating DllMain x86 base=0x{:x}", base);
                         self.stack_push32(0); // lpvReserved
                         self.stack_push32(1); // fdwReason = DLL_PROCESS_ATTACH

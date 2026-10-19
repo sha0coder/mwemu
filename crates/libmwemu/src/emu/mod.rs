@@ -95,7 +95,7 @@ mod fs;
 mod initialization;
 mod instruction_pointer;
 mod iso;
-mod loaders;
+pub(crate) mod loaders;
 mod maps;
 mod memory;
 mod operands;
@@ -158,8 +158,9 @@ pub struct Emu {
     // need it (resource lookups, serialization re-parse). Never parsed here.
     pub pe64_raw: Option<Vec<u8>>,
     pub pe32_raw: Option<Vec<u8>>,
-    pub elf64: Option<Elf64>,     // parsed ELF64 (Linux x86_64 / AArch64)
-    pub elf32: Option<Elf32>,     // parsed ELF32 (Linux x86)
+    pub pe32_flat_loaded: bool, // true when PE32 was flat-loaded for a reflective loader
+    pub elf64: Option<Elf64>,   // parsed ELF64 (Linux x86_64 / AArch64)
+    pub elf32: Option<Elf32>,   // parsed ELF32 (Linux x86)
     pub macho64: Option<Macho64>, // parsed Mach-O 64 (macOS AArch64), includes addr_to_symbol
     // --- Kernel-mode (driver) emulation ---
     /// Present once a driver is loaded: the emulated kernel's address-space

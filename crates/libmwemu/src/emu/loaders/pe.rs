@@ -90,6 +90,18 @@ impl Emu {
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
+
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw)
+            && machine != rs_header::pe::IMAGE_FILE_MACHINE_I386
+        {
+            log::warn!(
+                "load_pe32: {} is not x86 (Machine=0x{:04x}), skipping",
+                filename,
+                machine
+            );
+            return (0, 0);
+        }
+
         let mut pe32 = PE32::parse(filename, &raw);
         let raw_len = raw.len() as u64;
         let base: u32;
@@ -170,89 +182,111 @@ impl Emu {
         }
 
         let sec_allign = pe32.opt.section_alignment;
-        // 4. map pe and then sections
-        let pemap = self
-            .maps
-            .create_map(
-                &format!("{}.pe", filename2),
-                base.into(),
-                align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
-                Permission::READ_WRITE,
-            )
-            .expect("cannot create pe map");
-        pemap.memcpy(pe32.headers(&raw), pe32.opt.size_of_headers as usize);
 
-        for i in 0..pe32.num_of_sections() {
-            let ptr = pe32.get_section_ptr(&raw, i);
-            let sect = pe32.get_section(i);
-            let charactis = sect.characteristics;
-            let is_exec = charactis & 0x20000000 != 0x0;
-            let is_read = charactis & 0x40000000 != 0x0;
-            let mut is_write = charactis & 0x80000000 != 0x0;
-            // The loader patches `.didat` (delay-load IAT) during init without
-            // calling NtProtectVirtualMemory first — it relies on SEC_IMAGE COW
-            // promotion, which the emulator does not model. Force RW so the
-            // page-touching helper in ntdll does not fault.
-            if sect.get_name().trim() == ".didat" {
-                is_write = true;
-            }
-            let permission = Permission::from_flags(is_read, is_write, is_exec);
+        let is_reflective = raw
+            .windows(b"ReflectiveLoader".len())
+            .any(|w| w == b"ReflectiveLoader");
 
-            let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
-                sect.virtual_size as u64
-            } else {
-                sect.size_of_raw_data as u64
-            };
+        if is_reflective {
+            // 4-flat. Reflective loaders read from PointerToRawData (file offsets),
+            // so load the entire raw file as one flat RWX map.
+            let flat_size = std::cmp::max(raw.len() as u64, pe32.opt.size_of_image as u64);
+            let flat_map = self
+                .maps
+                .create_map(
+                    &format!("{}.pe", filename2),
+                    base as u64,
+                    flat_size,
+                    Permission::READ_WRITE_EXECUTE,
+                )
+                .expect("cannot create flat pe map");
+            flat_map.memcpy(&raw, raw.len());
+        } else {
+            // 4. Standard mapped loading: header map + per-section maps.
+            let pemap = self
+                .maps
+                .create_map(
+                    &format!("{}.pe", filename2),
+                    base.into(),
+                    align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
+                    Permission::READ_WRITE,
+                )
+                .expect("cannot create pe map");
+            pemap.memcpy(pe32.headers(&raw), pe32.opt.size_of_headers as usize);
 
-            if sz == 0 {
-                log::trace!("size of section {} is 0", sect.get_name());
-                continue;
-            }
+            for i in 0..pe32.num_of_sections() {
+                let ptr = pe32.get_section_ptr(&raw, i);
+                let sect = pe32.get_section(i);
+                let charactis = sect.characteristics;
+                let is_exec = charactis & 0x20000000 != 0x0;
+                let is_read = charactis & 0x40000000 != 0x0;
+                let mut is_write = charactis & 0x80000000 != 0x0;
+                if sect.get_name().trim() == ".didat" {
+                    is_write = true;
+                }
+                let permission = Permission::from_flags(is_read, is_write, is_exec);
 
-            let mut sect_name = sect
-                .get_name()
-                .replace(" ", "")
-                .replace("\t", "")
-                .replace("\x0a", "")
-                .replace("\x0d", "");
+                let sz: u64 = if sect.virtual_size > sect.size_of_raw_data {
+                    sect.virtual_size as u64
+                } else {
+                    sect.size_of_raw_data as u64
+                };
 
-            if sect_name.is_empty() {
-                sect_name = format!("{:x}", sect.virtual_address);
-            }
-
-            let map = match self.maps.create_map(
-                &format!("{}{}", filename2, sect_name),
-                base as u64 + sect.virtual_address as u64,
-                align_up!(sz, sec_allign as u64),
-                permission,
-            ) {
-                Ok(m) => m,
-                Err(_e) => {
-                    log::trace!(
-                        "weird pe, skipping section {} {} because overlaps",
-                        filename2,
-                        sect.get_name()
-                    );
+                if sz == 0 {
+                    log::trace!("size of section {} is 0", sect.get_name());
                     continue;
                 }
-            };
 
-            if ptr.len() > sz as usize {
-                log::warn!(
-                    "pe: section overflow {} {} {} {} (memcpy is size-guarded)",
-                    filename2,
-                    sect.get_name(),
-                    ptr.len(),
-                    sz
-                );
+                let mut sect_name = sect
+                    .get_name()
+                    .replace(" ", "")
+                    .replace("\t", "")
+                    .replace("\x0a", "")
+                    .replace("\x0d", "");
+
+                if sect_name.is_empty() {
+                    sect_name = format!("{:x}", sect.virtual_address);
+                }
+
+                let mut map_name = format!("{}{}", filename2, sect_name);
+                if self.maps.exists_mapname(&map_name) {
+                    map_name = format!("{}_{:x}", map_name, sect.virtual_address);
+                }
+
+                let map = match self.maps.create_map(
+                    &map_name,
+                    base as u64 + sect.virtual_address as u64,
+                    align_up!(sz, sec_allign as u64),
+                    permission,
+                ) {
+                    Ok(m) => m,
+                    Err(_e) => {
+                        log::trace!(
+                            "weird pe, skipping section {} {} because overlaps",
+                            filename2,
+                            sect.get_name()
+                        );
+                        continue;
+                    }
+                };
+
+                if ptr.len() > sz as usize {
+                    log::warn!(
+                        "pe: section overflow {} {} {} {} (memcpy is size-guarded)",
+                        filename2,
+                        sect.get_name(),
+                        ptr.len(),
+                        sz
+                    );
+                }
+                if !ptr.is_empty() {
+                    map.memcpy(ptr, ptr.len());
+                }
             }
-            if !ptr.is_empty() {
-                map.memcpy(ptr, ptr.len());
-            }
+
+            // 4b. Base relocs on the mapped image before IAT binding.
+            pe32.apply_relocations(&raw, self, base);
         }
-
-        // 4b. Base relocs on the mapped image before IAT binding.
-        pe32.apply_relocations(&raw, self, base);
 
         // 4b'. Register the export-name index before IAT binding so that any
         // `GetProcAddress`-style lookup triggered by the binding itself can
@@ -281,7 +315,11 @@ impl Emu {
         }
 
         // 4c. pe binding — sections (incl. the IAT) are mapped now.
-        if (set_entry || self.cfg.emulate_winapi) && (!is_maps || self.cfg.emulate_winapi) {
+        // Reflective loaders handle their own imports via hash-based resolution.
+        if !is_reflective
+            && (set_entry || self.cfg.emulate_winapi)
+            && (!is_maps || self.cfg.emulate_winapi)
+        {
             pe32.iat_binding(&raw, self, base);
             pe32.delay_load_binding(&raw, self, base);
         }
@@ -360,6 +398,9 @@ impl Emu {
 
         // 6. return values
         let pe_hdr_off = pe32.dos.e_lfanew;
+        if is_reflective && set_entry {
+            self.pe32_flat_loaded = true;
+        }
         self.pe32 = Some(pe32);
         self.pe32_raw = Some(raw);
         (base, pe_hdr_off)
@@ -489,6 +530,18 @@ impl Emu {
         let map_name = self.filename_to_mapname(filename);
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
+
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw)
+            && machine == rs_header::pe::IMAGE_FILE_MACHINE_I386
+        {
+            log::warn!(
+                "load_pe64: {} is x86 (Machine=0x{:04x}), skipping",
+                filename,
+                machine
+            );
+            return (0, 0);
+        }
+
         let mut pe64 = PE64::parse(filename, &raw);
         let raw_len = raw.len() as u64;
         let image_span = (pe64.opt.size_of_image as u64).max(raw_len);
@@ -624,8 +677,15 @@ impl Emu {
                 sect_name = format!("{:x}", sect.virtual_address);
             }
 
+            // See pe32: obfuscated non-UTF8 section names collide on the same
+            // fallback and drop later sections. Disambiguate by virtual address.
+            let mut map_name = format!("{}{}", filename2, sect_name);
+            if self.maps.exists_mapname(&map_name) {
+                map_name = format!("{}_{:x}", map_name, sect.virtual_address);
+            }
+
             let map = match self.maps.create_map(
-                &format!("{}{}", filename2, sect_name),
+                &map_name,
                 base + sect.virtual_address as u64,
                 align_up!(map_sz, sec_allign as u64),
                 permission,

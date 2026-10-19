@@ -529,7 +529,14 @@ impl Emu {
                     // --- Failure handling ---
                     if !emulation_ok {
                         self.fault_count += 1;
-                        if self.cfg.console_enabled {
+                        if self.cfg.soft_exception_recovery
+                            && !self.process_terminated
+                            && self.is_running.load(atomic::Ordering::Relaxed) == 1
+                        {
+                            // Soft-recovered from an unhandled exception (no
+                            // SEH/VEH/UEF): skip the faulting instruction and
+                            // keep emulating so we maximize coverage.
+                        } else if self.cfg.console_enabled {
                             Console::spawn_console(self);
                         } else if self.running_script {
                             return Ok(self.pc());
