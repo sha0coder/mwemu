@@ -18,11 +18,8 @@ pub fn VirtualProtect(emu: &mut emu::Emu) {
 
     let is_exec = (new_prot & 0xF0) != 0;
     if is_exec {
-        if let Some(map_base) = emu.maps.get_addr_base(addr) {
-            if map_base != addr {
-                emu.init_tls_from_pe64_in_memory(map_base);
-            }
-        }
+        let base = emu.maps.get_addr_base(addr).unwrap_or(addr);
+        emu.init_tls_from_pe64_in_memory(base);
     }
 
     emu.regs_mut().rax = 1;
