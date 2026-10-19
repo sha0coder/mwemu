@@ -21,6 +21,7 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "NtTerminateThread" => NtTerminateThread(emu),
         "RtlEncodePointer" => RtlEncodePointer(emu),
         "RtlDecodePointer" => RtlDecodePointer(emu),
+        "RtlSizeHeap" => RtlSizeHeap(emu),
         _ => return false,
     }
     true
@@ -221,4 +222,11 @@ fn RtlDecodePointer(emu: &mut emu::Emu) {
     log_red!(emu, "ntdll!RtlDecodePointer 0x{:x}", ptr);
     emu.regs_mut().rax = ptr as u64;
     stdcall_ret(emu, 1);
+}
+fn RtlSizeHeap(emu: &mut emu::Emu) {
+    let mem = arg(emu, 2) as u64;
+    let size = crate::api::windows::common::heap::heap_allocation_size(emu, mem);
+    log_red!(emu, "ntdll!RtlSizeHeap mem: 0x{:x} ={:?}", mem, size);
+    emu.regs_mut().rax = size.map(|s| s as u64).unwrap_or(0xffff_ffff);
+    stdcall_ret(emu, 3);
 }

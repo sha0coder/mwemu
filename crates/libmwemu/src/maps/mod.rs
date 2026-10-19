@@ -195,6 +195,25 @@ impl Maps {
             Some(mem) if mem.inside(end_addr) && mem.can_read() => {
                 scalar::read_le(mem.read_bytes(addr, T::SIZE))
             }
+            Some(mem) if !mem.inside(end_addr) && mem.can_read() && T::SIZE > 1 => {
+                // Cross-map boundary: the read starts in one map and spills
+                // into the next contiguous one (e.g. PE header → first section).
+                let boundary = mem.get_bottom();
+                let lo_len = (boundary - addr) as usize;
+                let hi_len = T::SIZE - lo_len;
+                if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next()
+                    && next_base == boundary
+                    && let Some(next_mem) = self.mem_slab.get(next_key)
+                    && next_mem.can_read()
+                    && next_mem.inside(boundary + hi_len as u64 - 1)
+                {
+                    let mut buf = [0u8; 16];
+                    buf[..lo_len].copy_from_slice(mem.read_bytes(addr, lo_len));
+                    buf[lo_len..T::SIZE].copy_from_slice(next_mem.read_bytes(boundary, hi_len));
+                    return scalar::read_le(&buf[..T::SIZE]);
+                }
+                None
+            }
             None if banzai => {
                 log::warn!(
                     "Reading {} from unmapped region at 0x{:x}",
@@ -214,21 +233,39 @@ impl Maps {
         kind: ScalarKind,
     ) -> bool {
         let end_addr = addr + T::SIZE as u64 - 1;
+        // Check for cross-map boundary write before taking &mut.
+        if T::SIZE > 1
+            && let Some(mem) = self.get_mem_by_addr(addr)
+            && !mem.inside(end_addr)
+            && mem.can_write()
+        {
+            let boundary = mem.get_bottom();
+            let lo_len = (boundary - addr) as usize;
+            let hi_len = T::SIZE - lo_len;
+            if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next()
+                && next_base == boundary
+                && let Some(next_mem) = self.mem_slab.get(next_key)
+                && next_mem.can_write()
+                && next_mem.inside(boundary + hi_len as u64 - 1)
+            {
+                let mut buf = [0u8; 16];
+                value.write_le(&mut buf);
+                let first_key = self.maps.range(..=addr).next_back().unwrap().1;
+                let first_mem = self.mem_slab.get_mut(*first_key).unwrap();
+                first_mem.write_bytes(addr, &buf[..lo_len]);
+                let next_mem_mut = self.mem_slab.get_mut(next_key).unwrap();
+                next_mem_mut.write_bytes(boundary, &buf[lo_len..T::SIZE]);
+                return true;
+            }
+        }
         match self.get_mem_by_addr_mut(addr) {
             Some(mem) if mem.inside(end_addr) && mem.can_write() => {
-                // Stack buffer — avoids a heap allocation per memory write
-                // (this is the hot path; `to_le_vec` here dominated CPU via
-                // malloc/free churn).
                 let mut buf = [0u8; 16];
                 value.write_le(&mut buf);
                 mem.write_bytes(addr, &buf[..T::SIZE]);
                 true
             }
             Some(mem) => {
-                // Lives in a mapped region but the write is rejected — either
-                // the range spills past the map or the map is read-only. Show
-                // the map name so the operator can tell which section the
-                // caller was targeting.
                 let name = mem.get_name();
                 let base = mem.get_base();
                 let size = mem.size() as u64;

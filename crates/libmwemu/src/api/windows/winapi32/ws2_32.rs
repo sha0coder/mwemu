@@ -46,6 +46,15 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "WsaRecv" => WsaRecv(emu),
         "WsaRecvFrom" => WsaRecvFrom(emu),
         "GetSockName" => GetSockName(emu),
+        "htonl" => htonl(emu),
+        "ntohl" => ntohl(emu),
+        "ntohs" => ntohs(emu),
+        "select" => select(emu),
+        "ioctlsocket" => ioctlsocket(emu),
+        "shutdown" => shutdown(emu),
+        "getpeername" => getpeername(emu),
+        "WSAGetLastError" => WsaGetLastError(emu),
+        "WSASetLastError" => WsaSetLastError(emu),
         _ => {
             if !emu.cfg.skip_unimplemented {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
@@ -823,4 +832,66 @@ fn WsaRecvFrom(emu: &mut emu::Emu) {
     }
     emu.regs_mut().rax = 0;
     stdcall_ret(emu, 9);
+}
+
+fn htonl(emu: &mut emu::Emu) {
+    let val = arg(emu, 0) as u32;
+    log_red!(emu, "ws2_32!htonl 0x{:x}", val);
+    emu.regs_mut().rax = val.to_be() as u64;
+    stdcall_ret(emu, 1);
+}
+
+fn ntohl(emu: &mut emu::Emu) {
+    let val = arg(emu, 0) as u32;
+    log_red!(emu, "ws2_32!ntohl 0x{:x}", val);
+    emu.regs_mut().rax = u32::from_be(val) as u64;
+    stdcall_ret(emu, 1);
+}
+
+fn ntohs(emu: &mut emu::Emu) {
+    let val = arg(emu, 0) as u16;
+    log_red!(emu, "ws2_32!ntohs {}", val);
+    emu.regs_mut().rax = u16::from_be(val) as u64;
+    stdcall_ret(emu, 1);
+}
+
+fn select(emu: &mut emu::Emu) {
+    let nfds = arg(emu, 0);
+    log_red!(emu, "ws2_32!select nfds: {}", nfds);
+    emu.regs_mut().rax = 0;
+    stdcall_ret(emu, 5);
+}
+
+fn ioctlsocket(emu: &mut emu::Emu) {
+    let sock = arg(emu, 0);
+    let cmd = arg(emu, 1);
+    log_red!(emu, "ws2_32!ioctlsocket sock: {} cmd: 0x{:x}", sock, cmd);
+    emu.regs_mut().rax = 0;
+    stdcall_ret(emu, 3);
+}
+
+fn shutdown(emu: &mut emu::Emu) {
+    let sock = arg(emu, 0);
+    let how = arg(emu, 1);
+    log_red!(emu, "ws2_32!shutdown sock: {} how: {}", sock, how);
+    emu.regs_mut().rax = 0;
+    stdcall_ret(emu, 2);
+}
+
+fn getpeername(emu: &mut emu::Emu) {
+    let sock = arg(emu, 0);
+    log_red!(emu, "ws2_32!getpeername sock: {}", sock);
+    emu.regs_mut().rax = 0xffff_ffff_u64; // SOCKET_ERROR
+    stdcall_ret(emu, 3);
+}
+
+fn WsaGetLastError(emu: &mut emu::Emu) {
+    log_red!(emu, "ws2_32!WSAGetLastError");
+    emu.regs_mut().rax = 0;
+}
+
+fn WsaSetLastError(emu: &mut emu::Emu) {
+    let err = arg(emu, 0);
+    log_red!(emu, "ws2_32!WSASetLastError err: {}", err);
+    stdcall_ret(emu, 1);
 }

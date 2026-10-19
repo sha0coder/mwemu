@@ -376,7 +376,14 @@ impl Emu {
                         } else {
                             log::trace!("/!\\ error dereferencing qword on 0x{:x}", mem_addr);
                             self.exception(ExceptionType::QWordDereferencing);
-                            None
+                            if self.cfg.soft_exception_recovery && self.process_terminated {
+                                self.process_terminated = false;
+                                self.is_running
+                                    .store(1, std::sync::atomic::Ordering::Relaxed);
+                                Some(0)
+                            } else {
+                                None
+                            }
                         }
                     }
                 }),
@@ -395,7 +402,14 @@ impl Emu {
                             } else {
                                 log::trace!("/!\\ error dereferencing dword on 0x{:x}", mem_addr);
                                 self.exception(ExceptionType::DWordDereferencing);
-                                None
+                                if self.cfg.soft_exception_recovery && self.process_terminated {
+                                    self.process_terminated = false;
+                                    self.is_running
+                                        .store(1, std::sync::atomic::Ordering::Relaxed);
+                                    Some(0)
+                                } else {
+                                    None
+                                }
                             }
                         }
                     }),
@@ -410,7 +424,14 @@ impl Emu {
                         } else {
                             log::trace!("/!\\ error dereferencing word on 0x{:x}", mem_addr);
                             self.exception(ExceptionType::WordDereferencing);
-                            None
+                            if self.cfg.soft_exception_recovery && self.process_terminated {
+                                self.process_terminated = false;
+                                self.is_running
+                                    .store(1, std::sync::atomic::Ordering::Relaxed);
+                                Some(0)
+                            } else {
+                                None
+                            }
                         }
                     }
                 }),
@@ -425,7 +446,14 @@ impl Emu {
                         } else {
                             log::trace!("/!\\ error dereferencing byte on 0x{:x}", mem_addr);
                             self.exception(ExceptionType::ByteDereferencing);
-                            None
+                            if self.cfg.soft_exception_recovery && self.process_terminated {
+                                self.process_terminated = false;
+                                self.is_running
+                                    .store(1, std::sync::atomic::Ordering::Relaxed);
+                                Some(0)
+                            } else {
+                                None
+                            }
                         }
                     }
                 }),
@@ -749,6 +777,11 @@ impl Emu {
                                         mem_addr
                                     );
                                     self.exception(ExceptionType::BadAddressDereferencing);
+                                    if self.cfg.soft_exception_recovery && self.process_terminated {
+                                        self.process_terminated = false;
+                                        self.is_running
+                                            .store(1, std::sync::atomic::Ordering::Relaxed);
+                                    }
                                     false
                                 };
                             }
@@ -780,6 +813,11 @@ impl Emu {
                                         mem_addr
                                     );
                                     self.exception(ExceptionType::BadAddressDereferencing);
+                                    if self.cfg.soft_exception_recovery && self.process_terminated {
+                                        self.process_terminated = false;
+                                        self.is_running
+                                            .store(1, std::sync::atomic::Ordering::Relaxed);
+                                    }
                                     false
                                 };
                             }
@@ -811,6 +849,11 @@ impl Emu {
                                         mem_addr
                                     );
                                     self.exception(ExceptionType::BadAddressDereferencing);
+                                    if self.cfg.soft_exception_recovery && self.process_terminated {
+                                        self.process_terminated = false;
+                                        self.is_running
+                                            .store(1, std::sync::atomic::Ordering::Relaxed);
+                                    }
                                     false
                                 };
                             }
@@ -859,6 +902,11 @@ impl Emu {
                                         mem_addr
                                     );
                                     self.exception(ExceptionType::BadAddressDereferencing);
+                                    if self.cfg.soft_exception_recovery && self.process_terminated {
+                                        self.process_terminated = false;
+                                        self.is_running
+                                            .store(1, std::sync::atomic::Ordering::Relaxed);
+                                    }
                                     false
                                 };
                             }
