@@ -188,19 +188,16 @@ impl Maps {
                 let boundary = mem.get_bottom();
                 let lo_len = (boundary - addr) as usize;
                 let hi_len = T::SIZE - lo_len;
-                if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next() {
-                    if next_base == boundary {
-                        if let Some(next_mem) = self.mem_slab.get(next_key) {
-                            if next_mem.can_read() && next_mem.inside(boundary + hi_len as u64 - 1)
-                            {
-                                let mut buf = [0u8; 16];
-                                buf[..lo_len].copy_from_slice(mem.read_bytes(addr, lo_len));
-                                buf[lo_len..T::SIZE]
-                                    .copy_from_slice(next_mem.read_bytes(boundary, hi_len));
-                                return scalar::read_le(&buf[..T::SIZE]);
-                            }
-                        }
-                    }
+                if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next()
+                    && next_base == boundary
+                    && let Some(next_mem) = self.mem_slab.get(next_key)
+                    && next_mem.can_read()
+                    && next_mem.inside(boundary + hi_len as u64 - 1)
+                {
+                    let mut buf = [0u8; 16];
+                    buf[..lo_len].copy_from_slice(mem.read_bytes(addr, lo_len));
+                    buf[lo_len..T::SIZE].copy_from_slice(next_mem.read_bytes(boundary, hi_len));
+                    return scalar::read_le(&buf[..T::SIZE]);
                 }
                 None
             }
@@ -224,32 +221,28 @@ impl Maps {
     ) -> bool {
         let end_addr = addr + T::SIZE as u64 - 1;
         // Check for cross-map boundary write before taking &mut.
-        if T::SIZE > 1 {
-            if let Some(mem) = self.get_mem_by_addr(addr) {
-                if !mem.inside(end_addr) && mem.can_write() {
-                    let boundary = mem.get_bottom();
-                    let lo_len = (boundary - addr) as usize;
-                    let hi_len = T::SIZE - lo_len;
-                    if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next() {
-                        if next_base == boundary {
-                            if let Some(next_mem) = self.mem_slab.get(next_key) {
-                                if next_mem.can_write()
-                                    && next_mem.inside(boundary + hi_len as u64 - 1)
-                                {
-                                    let mut buf = [0u8; 16];
-                                    value.write_le(&mut buf);
-                                    // Write lo part to first map, hi part to next.
-                                    let first_key = self.maps.range(..=addr).next_back().unwrap().1;
-                                    let first_mem = self.mem_slab.get_mut(*first_key).unwrap();
-                                    first_mem.write_bytes(addr, &buf[..lo_len]);
-                                    let next_mem_mut = self.mem_slab.get_mut(next_key).unwrap();
-                                    next_mem_mut.write_bytes(boundary, &buf[lo_len..T::SIZE]);
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
+        if T::SIZE > 1
+            && let Some(mem) = self.get_mem_by_addr(addr)
+            && !mem.inside(end_addr)
+            && mem.can_write()
+        {
+            let boundary = mem.get_bottom();
+            let lo_len = (boundary - addr) as usize;
+            let hi_len = T::SIZE - lo_len;
+            if let Some((&next_base, &next_key)) = self.maps.range(boundary..).next()
+                && next_base == boundary
+                && let Some(next_mem) = self.mem_slab.get(next_key)
+                && next_mem.can_write()
+                && next_mem.inside(boundary + hi_len as u64 - 1)
+            {
+                let mut buf = [0u8; 16];
+                value.write_le(&mut buf);
+                let first_key = self.maps.range(..=addr).next_back().unwrap().1;
+                let first_mem = self.mem_slab.get_mut(*first_key).unwrap();
+                first_mem.write_bytes(addr, &buf[..lo_len]);
+                let next_mem_mut = self.mem_slab.get_mut(next_key).unwrap();
+                next_mem_mut.write_bytes(boundary, &buf[lo_len..T::SIZE]);
+                return true;
             }
         }
         match self.get_mem_by_addr_mut(addr) {
