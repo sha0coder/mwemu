@@ -463,12 +463,11 @@ impl ExportIndexRegistry {
     pub fn resolve_reflective_loader(&self) -> Option<(String, u64)> {
         for module in self.iter_ordered() {
             for (name_lc, &ord_idx) in module.by_name.iter() {
-                if name_lc.contains("reflectiveloader") {
-                    if let Some(Some(IndexedExport::Direct { address })) =
+                if name_lc.contains("reflectiveloader")
+                    && let Some(Some(IndexedExport::Direct { address })) =
                         module.by_ordinal.get(ord_idx as usize)
-                    {
-                        return Some((module.module_name.clone(), *address));
-                    }
+                {
+                    return Some((module.module_name.clone(), *address));
                 }
             }
         }

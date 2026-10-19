@@ -91,15 +91,15 @@ impl Emu {
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
 
-        if let Some(machine) = rs_header::pe::pe_machine_type(&raw) {
-            if machine != rs_header::pe::IMAGE_FILE_MACHINE_I386 {
-                log::warn!(
-                    "load_pe32: {} is not x86 (Machine=0x{:04x}), skipping",
-                    filename,
-                    machine
-                );
-                return (0, 0);
-            }
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw)
+            && machine != rs_header::pe::IMAGE_FILE_MACHINE_I386
+        {
+            log::warn!(
+                "load_pe32: {} is not x86 (Machine=0x{:04x}), skipping",
+                filename,
+                machine
+            );
+            return (0, 0);
         }
 
         let mut pe32 = PE32::parse(filename, &raw);
@@ -531,15 +531,15 @@ impl Emu {
         let filename2 = map_name;
         let raw = Self::read_pe_raw(filename);
 
-        if let Some(machine) = rs_header::pe::pe_machine_type(&raw) {
-            if machine == rs_header::pe::IMAGE_FILE_MACHINE_I386 {
-                log::warn!(
-                    "load_pe64: {} is x86 (Machine=0x{:04x}), skipping",
-                    filename,
-                    machine
-                );
-                return (0, 0);
-            }
+        if let Some(machine) = rs_header::pe::pe_machine_type(&raw)
+            && machine == rs_header::pe::IMAGE_FILE_MACHINE_I386
+        {
+            log::warn!(
+                "load_pe64: {} is x86 (Machine=0x{:04x}), skipping",
+                filename,
+                machine
+            );
+            return (0, 0);
         }
 
         let mut pe64 = PE64::parse(filename, &raw);
