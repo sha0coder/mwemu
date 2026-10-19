@@ -34,6 +34,10 @@ pub use heap_re_alloc::*;
 mod heap_set_information;
 pub use heap_set_information::*;
 
+#[path = "../heap_size.rs"]
+mod heap_size;
+pub use heap_size::*;
+
 #[path = "../local_alloc.rs"]
 mod local_alloc;
 pub use local_alloc::*;
