@@ -120,37 +120,37 @@ impl Emu {
         let template_sz = tls_data_end.saturating_sub(tls_data_start) as usize;
         let total_sz = template_sz + zero_fill_size as usize;
 
-        if total_sz > 0 {
-            if let Some(tls_data_addr) = self.maps.alloc(total_sz.max(0x1000) as u64) {
+        if total_sz > 0
+            && let Some(tls_data_addr) = self.maps.alloc(total_sz.max(0x1000) as u64)
+        {
+            let _ = self.maps.create_map(
+                &format!(".tls_data_{:x}", base),
+                tls_data_addr,
+                total_sz.max(0x1000) as u64,
+                crate::maps::mem64::Permission::READ_WRITE,
+            );
+            if template_sz > 0 {
+                self.maps.memcpy(tls_data_addr, tls_data_start, template_sz);
+            }
+            if let Some(tls_ptrs_addr) = self.maps.alloc(0x1000) {
                 let _ = self.maps.create_map(
-                    &format!(".tls_data_{:x}", base),
-                    tls_data_addr,
-                    total_sz.max(0x1000) as u64,
+                    &format!(".tls_ptrs_{:x}", base),
+                    tls_ptrs_addr,
+                    0x1000,
                     crate::maps::mem64::Permission::READ_WRITE,
                 );
-                if template_sz > 0 {
-                    self.maps.memcpy(tls_data_addr, tls_data_start, template_sz);
-                }
-                if let Some(tls_ptrs_addr) = self.maps.alloc(0x1000) {
-                    let _ = self.maps.create_map(
-                        &format!(".tls_ptrs_{:x}", base),
+                self.maps.write_dword(tls_ptrs_addr, tls_data_addr as u32);
+                if self.maps.exists_mapname("teb") {
+                    let teb_base = self.maps.get_mem("teb").get_base();
+                    self.maps.write_dword(teb_base + 0x2C, tls_ptrs_addr as u32);
+                    log::info!(
+                        "TLS-reinit: TEB+0x2C=0x{:x} -> [0]=0x{:x} ({}+{} bytes) for PE at 0x{:x}",
                         tls_ptrs_addr,
-                        0x1000,
-                        crate::maps::mem64::Permission::READ_WRITE,
+                        tls_data_addr,
+                        template_sz,
+                        zero_fill_size,
+                        base
                     );
-                    self.maps.write_dword(tls_ptrs_addr, tls_data_addr as u32);
-                    if self.maps.exists_mapname("teb") {
-                        let teb_base = self.maps.get_mem("teb").get_base();
-                        self.maps.write_dword(teb_base + 0x2C, tls_ptrs_addr as u32);
-                        log::info!(
-                            "TLS-reinit: TEB+0x2C=0x{:x} -> [0]=0x{:x} ({}+{} bytes) for PE at 0x{:x}",
-                            tls_ptrs_addr,
-                            tls_data_addr,
-                            template_sz,
-                            zero_fill_size,
-                            base
-                        );
-                    }
                 }
             }
         }
@@ -238,37 +238,37 @@ impl Emu {
         let template_sz = tls_data_end.saturating_sub(tls_data_start) as usize;
         let total_sz = template_sz + zero_fill_size as usize;
 
-        if total_sz > 0 {
-            if let Some(tls_data_addr) = self.maps.alloc(total_sz.max(0x1000) as u64) {
+        if total_sz > 0
+            && let Some(tls_data_addr) = self.maps.alloc(total_sz.max(0x1000) as u64)
+        {
+            let _ = self.maps.create_map(
+                &format!(".tls_data_{:x}", base),
+                tls_data_addr,
+                total_sz.max(0x1000) as u64,
+                crate::maps::mem64::Permission::READ_WRITE,
+            );
+            if template_sz > 0 {
+                self.maps.memcpy(tls_data_addr, tls_data_start, template_sz);
+            }
+            if let Some(tls_ptrs_addr) = self.maps.alloc(0x1000) {
                 let _ = self.maps.create_map(
-                    &format!(".tls_data_{:x}", base),
-                    tls_data_addr,
-                    total_sz.max(0x1000) as u64,
+                    &format!(".tls_ptrs_{:x}", base),
+                    tls_ptrs_addr,
+                    0x1000,
                     crate::maps::mem64::Permission::READ_WRITE,
                 );
-                if template_sz > 0 {
-                    self.maps.memcpy(tls_data_addr, tls_data_start, template_sz);
-                }
-                if let Some(tls_ptrs_addr) = self.maps.alloc(0x1000) {
-                    let _ = self.maps.create_map(
-                        &format!(".tls_ptrs_{:x}", base),
+                self.maps.write_qword(tls_ptrs_addr, tls_data_addr);
+                if self.maps.exists_mapname("teb64") {
+                    let teb_base = self.maps.get_mem("teb64").get_base();
+                    self.maps.write_qword(teb_base + 0x58, tls_ptrs_addr);
+                    log::info!(
+                        "TLS-reinit64: TEB+0x58=0x{:x} -> [0]=0x{:x} ({}+{} bytes) for PE at 0x{:x}",
                         tls_ptrs_addr,
-                        0x1000,
-                        crate::maps::mem64::Permission::READ_WRITE,
+                        tls_data_addr,
+                        template_sz,
+                        zero_fill_size,
+                        base
                     );
-                    self.maps.write_qword(tls_ptrs_addr, tls_data_addr);
-                    if self.maps.exists_mapname("teb64") {
-                        let teb_base = self.maps.get_mem("teb64").get_base();
-                        self.maps.write_qword(teb_base + 0x58, tls_ptrs_addr);
-                        log::info!(
-                            "TLS-reinit64: TEB+0x58=0x{:x} -> [0]=0x{:x} ({}+{} bytes) for PE at 0x{:x}",
-                            tls_ptrs_addr,
-                            tls_data_addr,
-                            template_sz,
-                            zero_fill_size,
-                            base
-                        );
-                    }
                 }
             }
         }
