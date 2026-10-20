@@ -11,7 +11,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
                 serialization::Serialization::dump(emu, emu.cfg.dump_filename.as_ref().unwrap());
             }
 
-            unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
+            log::error!("attempt to call unimplemented API 0x{:x} {}", addr, api);
         }
         log::warn!(
             "calling unimplemented API 0x{:x} {} at 0x{:x}",

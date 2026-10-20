@@ -107,7 +107,7 @@ pub fn gateway_by_name(api: &str, emu: &mut emu::Emu) -> String {
                     );
                 }
 
-                unimplemented!("atemmpt to call unimplemented CRT API {}", api);
+                log::error!("attempt to call unimplemented CRT API {}", api);
             }
             log::warn!(
                 "calling unimplemented CRT API {} at 0x{:x}",
@@ -479,7 +479,7 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
                 log::trace!("string: {}", string);
             }
             _ => {
-                unimplemented!(
+                log::warn!(
                     "wincrt!__stdio_common_vfprintf unknown format character: {}",
                     spec
                 );
