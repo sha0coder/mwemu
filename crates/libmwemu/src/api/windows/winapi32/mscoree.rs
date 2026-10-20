@@ -17,7 +17,11 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
                     );
                 }
 
-                unimplemented!("atemmpt to call unimplemented API 0x{:x} {}", addr, api);
+                log::error!(
+                    "attempt to call unimplemented mscoree API 0x{:x} {}",
+                    addr,
+                    api
+                );
             }
             log::warn!(
                 "calling unimplemented API 0x{:x} {} at 0x{:x}",
@@ -33,7 +37,6 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 pub fn _CorExeMain(emu: &mut emu::Emu) {
-    log_red!(emu, "mscoree!_CorExeMain");
+    log_red!(emu, "mscoree!_CorExeMain  .NET entry point not emulated");
     emu.regs_mut().rax = 1;
-    unimplemented!();
 }

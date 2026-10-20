@@ -661,7 +661,7 @@ impl Regs64 {
                 self.set_r14l(0);
                 self.set_r15l(0);
             }
-            _ => unimplemented!(),
+            _ => log::error!("clear: unsupported bitness {}", B),
         }
     }
 
@@ -736,7 +736,7 @@ impl Regs64 {
                 log::trace!("  esp: 0x{:x}", self.get_esp());
                 log::trace!("  eip: 0x{:x}", self.get_eip());
             }
-            _ => unimplemented!(),
+            _ => log::error!("print: unsupported bitness {}", B),
         }
 
         log::trace!("---");

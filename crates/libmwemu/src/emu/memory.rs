@@ -106,7 +106,7 @@ impl Emu {
                     return reg1_val - (reg2_val * num);
                 }
 
-                unimplemented!();
+                unreachable!();
             }
 
             let reg = spl[0];
