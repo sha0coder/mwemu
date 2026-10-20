@@ -147,7 +147,8 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
         let file_size = metadata.len() as u64;
         emu.regs_mut().rax = file_size;
     } else {
-        unimplemented!("TODO: {}", filename);
+        log::warn!("GetFileVersionInfoSizeA: unsupported file {}", filename);
+        emu.regs_mut().rax = 0;
     }
 }
 
@@ -207,7 +208,8 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
 
         emu.regs_mut().rax = 1; // Success
     } else {
-        unimplemented!("TODO: {}", filename);
+        log::warn!("GetFileVersionInfoA: unsupported file {}", filename);
+        emu.regs_mut().rax = 0;
     }
 }
 

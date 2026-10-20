@@ -72,7 +72,8 @@ impl Emu {
                 return 1;
             }
 
-            unimplemented!("memory operand not implemented: {}", operand);
+            log::warn!("memory operand not implemented: {}", operand);
+            return 0;
         }
 
         if spl.len() == 3 {

@@ -30,7 +30,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             }
         };
     } else {
-        unimplemented!("ymm zmm unimplemented on movq");
+        log::warn!("movq: ymm/zmm not supported");
+        return false;
     }
 
     if sz0 == 128 {
@@ -40,7 +41,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     } else if sz0 < 128 {
         emu.set_operand_value(ins, 0, value1 as u64);
     } else {
-        unimplemented!("ymm zmm unimplemented on movq");
+        log::warn!("movq: ymm/zmm not supported");
+        return false;
     }
     true
 }

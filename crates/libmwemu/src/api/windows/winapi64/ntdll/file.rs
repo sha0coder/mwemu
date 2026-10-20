@@ -430,7 +430,8 @@ fn NtReadFile(emu: &mut emu::Emu) {
             emu.regs_mut().rax = constants::STATUS_SUCCESS;
         }
     } else {
-        unimplemented!("TODO: read {}", filename);
+        log::warn!("NtReadFile: unsupported file read {}", filename);
+        emu.regs_mut().rax = 0xC0000001; // STATUS_UNSUCCESSFUL
     }
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;

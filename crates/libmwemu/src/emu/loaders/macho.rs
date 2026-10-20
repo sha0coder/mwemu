@@ -14,7 +14,8 @@ impl Emu {
         } else if self.cfg.arch.is_x64() {
             self.init_macos64();
         } else {
-            unimplemented!("unsupported Mach-O architecture: {:?}", self.cfg.arch);
+            log::error!("unsupported Mach-O architecture: {:?}", self.cfg.arch);
+            return;
         }
         self.set_pc(macho.entry);
 

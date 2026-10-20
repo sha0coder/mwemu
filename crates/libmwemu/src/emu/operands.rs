@@ -279,7 +279,8 @@ impl Emu {
                     stack.size() as u64
                 }
                 0x14 => {
-                    unimplemented!("GS:[14]  get stack canary")
+                    log::warn!("GS:[0x14] stack canary not implemented");
+                    0
                 }
                 0x1488 => {
                     if self.cfg.verbose >= 1 {
@@ -1029,7 +1030,10 @@ impl Emu {
                     mem_addr as u128
                 }
             }
-            _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
+            _ => {
+                log::warn!("unimplemented operand type {:?}", ins.op_kind(noperand));
+                return None;
+            }
         };
         Some(value)
     }

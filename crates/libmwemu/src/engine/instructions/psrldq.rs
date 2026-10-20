@@ -35,7 +35,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
             emu.set_operand_xmm_value_128(ins, 0, result);
         } else {
-            unimplemented!("size unimplemented");
+            log::warn!("psrldq: unsupported operand size {}", sz0);
+            return false;
         }
     } else if ins.op_count() == 3 {
         let sz0 = emu.get_operand_sz(ins, 0);
@@ -64,7 +65,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
             emu.set_operand_xmm_value_128(ins, 0, result);
         } else {
-            unimplemented!("size unimplemented");
+            log::warn!("psrldq: unsupported operand size {}", sz0);
+            return false;
         }
     } else {
         unreachable!();

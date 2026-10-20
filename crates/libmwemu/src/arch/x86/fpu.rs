@@ -422,7 +422,9 @@ impl FPU {
             Register::ST5 => self.move_to_st0(5),
             Register::ST6 => self.move_to_st0(6),
             Register::ST7 => self.move_to_st0(7),
-            _ => unimplemented!("impossible case"),
+            _ => {
+                log::warn!("move_reg_to_st0: unexpected register {:?}", reg);
+            }
         }
     }
 

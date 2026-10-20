@@ -91,7 +91,7 @@ fn sscanf(emu: &mut emu::Emu) {
     let b = buffer.as_str();
     let _params = scan_fmt_some!(b, &rust_fmt, i32);
 
-    unimplemented!("sscanf is unimplemented for now.");
+    log::warn!("sscanf: stub, not fully implemented");
 }
 
 fn RtlInitAnsiString(emu: &mut emu::Emu) {

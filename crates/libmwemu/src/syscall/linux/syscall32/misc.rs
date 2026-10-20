@@ -476,7 +476,7 @@ fn dispatch_legacy_syscall32(emu: &mut emu::Emu) {
                         .read_dword(emu.regs().get_esp())
                         .expect("getsockname() cannot read sock");
                     trace_socketcall32_args(emu, "getsockname", &[("sock", sock.to_string())]);
-                    todo!("implement this");
+                    log::warn!("getsockname: stub, not implemented");
                 }
 
                 constants::SYS_GETPEERNAME => {
