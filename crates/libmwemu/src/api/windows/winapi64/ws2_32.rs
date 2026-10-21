@@ -542,12 +542,26 @@ fn gethostbyname(emu: &mut emu::Emu) {
 
     log_red!(emu, "ws2_32!gethostbyname `{}`", domain_name);
 
-    let addr = emu.maps.alloc(1024).expect("low memory");
+    let addr = match emu.maps.alloc(1024) {
+        Some(a) => a,
+        None => {
+            log::error!("ws2_32!gethostbyname: out of memory");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let str_addr = addr + 1024 - 100;
-    let mem = emu
+    let mem = match emu
         .maps
         .create_map("hostent", addr, 1024, Permission::READ_WRITE)
-        .expect("cannot create hostent map");
+    {
+        Ok(m) => m,
+        Err(e) => {
+            log::error!("ws2_32!gethostbyname: cannot create hostent map: {}", e);
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     mem.write_dword(addr, 0x04030201);
     mem.write_qword(addr + 8, addr);
     mem.write_qword(addr + 16, 0);

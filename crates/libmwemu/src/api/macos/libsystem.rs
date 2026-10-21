@@ -1273,10 +1273,23 @@ fn api_mmap(emu: &mut Emu) {
         return;
     }
     let permission = prot_to_permission(prot);
-    let base = emu.maps.alloc(len).expect("macOS mmap: out of memory");
-    emu.maps
+    let base = match emu.maps.alloc(len) {
+        Some(a) => a,
+        None => {
+            log::error!("macOS mmap: out of memory (len={})", len);
+            set_ret(emu, u64::MAX);
+            return;
+        }
+    };
+    if emu
+        .maps
         .create_map(&format!("mmap_{:x}", base), base, len, permission)
-        .expect("macOS mmap: cannot create map");
+        .is_err()
+    {
+        log::error!("macOS mmap: cannot create map at 0x{:x}", base);
+        set_ret(emu, u64::MAX);
+        return;
+    }
     // zero-fill
     for i in 0..len {
         emu.maps.write_byte(base + i, 0);
@@ -2744,7 +2757,13 @@ fn write_ftsent(emu: &mut Emu, entry: &FtsEntry) -> u64 {
     let name_bytes = entry.name.as_bytes();
     let path_bytes = entry.path.as_bytes();
     let ftsent_size = FTSENT_FTS_NAME + (name_bytes.len() as u64) + 1;
-    let ftsent = allocate_memory(emu, ftsent_size + 256).expect("ftsent: alloc");
+    let ftsent = match allocate_memory(emu, ftsent_size + 256) {
+        Some(addr) => addr,
+        None => {
+            log::error!("write_ftsent: out of memory");
+            return 0;
+        }
+    };
 
     // Zero-fill
     for i in 0..ftsent_size {
@@ -2757,7 +2776,13 @@ fn write_ftsent(emu: &mut Emu, entry: &FtsEntry) -> u64 {
         .write_byte(ftsent + FTSENT_FTS_NAME + name_bytes.len() as u64, 0);
 
     // Allocate and write path string
-    let path_addr = allocate_memory(emu, (path_bytes.len() + 1) as u64).expect("path: alloc");
+    let path_addr = match allocate_memory(emu, (path_bytes.len() + 1) as u64) {
+        Some(addr) => addr,
+        None => {
+            log::error!("write_ftsent: out of memory for path");
+            return 0;
+        }
+    };
     emu.maps.write_bytes(path_addr, path_bytes);
     emu.maps.write_byte(path_addr + path_bytes.len() as u64, 0);
 
@@ -2855,7 +2880,13 @@ fn api_fstat(emu: &mut Emu) {
 
 fn alloc_string(emu: &mut Emu, s: &str) -> u64 {
     let len = s.len() as u64 + 1;
-    let addr = allocate_memory(emu, len).expect("alloc_string: out of memory");
+    let addr = match allocate_memory(emu, len) {
+        Some(a) => a,
+        None => {
+            log::error!("alloc_string: out of memory (len={})", len);
+            return 0;
+        }
+    };
     emu.maps.write_bytes(addr, s.as_bytes());
     emu.maps.write_byte(addr + s.len() as u64, 0);
     addr
@@ -2995,7 +3026,13 @@ impl StatData {
 const STAT_SIZE: u64 = 0x90;
 
 fn write_stat_struct(emu: &mut Emu, st: &StatData) -> u64 {
-    let addr = allocate_memory(emu, STAT_SIZE).expect("stat: alloc");
+    let addr = match allocate_memory(emu, STAT_SIZE) {
+        Some(a) => a,
+        None => {
+            log::error!("write_stat_struct: out of memory");
+            return 0;
+        }
+    };
     write_stat_at(emu, addr, st);
     addr
 }

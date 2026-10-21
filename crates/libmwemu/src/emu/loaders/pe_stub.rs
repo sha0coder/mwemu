@@ -56,15 +56,18 @@ impl Emu {
         };
 
         // --- 1. PE headers (.pe map) ---
-        let pe_map = self
-            .maps
-            .create_map(
-                &format!("{}.pe", map_name),
-                base as u64,
-                PAGE as u64,
-                Permission::READ_WRITE,
-            )
-            .expect("cannot create stub pe map");
+        let pe_map = match self.maps.create_map(
+            &format!("{}.pe", map_name),
+            base as u64,
+            PAGE as u64,
+            Permission::READ_WRITE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub pe map: {}", e);
+                return 0;
+            }
+        };
 
         let mut hdr = vec![0u8; PAGE as usize];
         // DOS header
@@ -119,30 +122,36 @@ impl Emu {
         pe_map.memcpy(&hdr, hdr.len());
 
         // --- 2. .text map: RET stub at each function slot ---
-        let text_map = self
-            .maps
-            .create_map(
-                &format!("{}.text", map_name),
-                base as u64 + TEXT_RVA as u64,
-                text_size as u64,
-                Permission::READ_WRITE_EXECUTE,
-            )
-            .expect("cannot create stub text map");
+        let text_map = match self.maps.create_map(
+            &format!("{}.text", map_name),
+            base as u64 + TEXT_RVA as u64,
+            text_size as u64,
+            Permission::READ_WRITE_EXECUTE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub text map: {}", e);
+                return 0;
+            }
+        };
         for i in 0..n {
             text_map.write_byte(base as u64 + TEXT_RVA as u64 + (i * FUNC_SLOT) as u64, 0xc3);
         }
 
         // --- 3. .edata map: export directory ---
         let edata_base = base as u64 + edata_rva as u64;
-        let edata_map = self
-            .maps
-            .create_map(
-                &format!("{}.edata", map_name),
-                edata_base,
-                edata_size as u64,
-                Permission::READ_WRITE,
-            )
-            .expect("cannot create stub edata map");
+        let edata_map = match self.maps.create_map(
+            &format!("{}.edata", map_name),
+            edata_base,
+            edata_size as u64,
+            Permission::READ_WRITE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub edata map: {}", e);
+                return 0;
+            }
+        };
 
         let mut ed = vec![0u8; edata_size as usize];
 

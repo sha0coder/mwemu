@@ -85,14 +85,22 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
         alloc_addr
     );
 
-    emu.maps
+    if emu
+        .maps
         .create_map(
             format!("valloc_{:x}", alloc_addr).as_str(),
             alloc_addr,
             size,
             Permission::from_flags(can_read, can_write, can_execute),
         )
-        .expect("ntdll!NtAllocateVirtualMemory cannot create map");
+        .is_err()
+    {
+        log::error!(
+            "ntdll!NtAllocateVirtualMemory cannot create map at 0x{:x}",
+            alloc_addr
+        );
+        return;
+    }
 
     if !emu.maps.write_qword(addr_ptr, alloc_addr) {
         {
@@ -330,14 +338,20 @@ pub fn NtMapViewOfSection(emu: &mut emu::Emu) {
             return;
         }
     };
-    emu.maps
+    if emu
+        .maps
         .create_map(
             &format!("section_map_{:x}", emu.pos),
             base,
             alloc_size,
             Permission::from_flags(true, true, false),
         )
-        .expect("ntdll!NtMapViewOfSection cannot create map");
+        .is_err()
+    {
+        log::error!("ntdll!NtMapViewOfSection cannot create map at 0x{:x}", base);
+        emu.regs_mut().rax = constants::STATUS_NO_MEMORY;
+        return;
+    }
 
     emu.maps.write_qword(base_addr_ptr, base);
 

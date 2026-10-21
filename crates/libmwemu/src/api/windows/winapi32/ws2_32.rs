@@ -598,10 +598,25 @@ fn gethostbyname(emu: &mut emu::Emu) {
     log_red!(emu, "ws2_32!gethostbyname `{}`", name);
     // One block holds the hostent, the address and the name string; the
     // resolved address is a fixed 1.2.3.4 so callers get a well-formed result.
-    let block = emu.maps.alloc(1024).expect("low memory");
-    emu.maps
+    let block = match emu.maps.alloc(1024) {
+        Some(a) => a,
+        None => {
+            log::error!("ws2_32!gethostbyname: out of memory");
+            emu.stack_pop32(false);
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
+    if emu
+        .maps
         .create_map("hostent", block, 1024, Permission::READ_WRITE)
-        .expect("cannot create hostent map");
+        .is_err()
+    {
+        log::error!("ws2_32!gethostbyname: cannot create hostent map");
+        emu.stack_pop32(false);
+        emu.regs_mut().rax = 0;
+        return;
+    }
     let name_addr = block + 1024 - 100;
     emu.maps.write_dword(block, 0x04030201); // the IP
     emu.maps.write_dword(block + 8, block as u32); // addr_list[0]

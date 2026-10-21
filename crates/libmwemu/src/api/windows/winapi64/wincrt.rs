@@ -164,14 +164,28 @@ fn _set_new_mode(emu: &mut emu::Emu) {
 
 fn __p__commode(emu: &mut emu::Emu) {
     // int * __p__commode(void)
-    let p = allocate_memory(emu, 4).expect("wincrt!__p__commode alloc failed");
+    let p = match allocate_memory(emu, 4) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p__commode alloc failed");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let _ = emu.maps.write_dword(p, 0);
     emu.regs_mut().rax = p;
 }
 
 fn __p__fmode(emu: &mut emu::Emu) {
     // int * __p__fmode(void)
-    let p = allocate_memory(emu, 4).expect("wincrt!__p__fmode alloc failed");
+    let p = match allocate_memory(emu, 4) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p__fmode alloc failed");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let _ = emu.maps.write_dword(p, 0);
     emu.regs_mut().rax = p;
 }
@@ -179,7 +193,14 @@ fn __p__fmode(emu: &mut emu::Emu) {
 fn __p__environ(emu: &mut emu::Emu) {
     // char *** __p__environ(void)
     // Return a pointer to a NULL-terminated environment pointer list (empty env).
-    let envp = allocate_memory(emu, 8).expect("wincrt!__p__environ alloc failed");
+    let envp = match allocate_memory(emu, 8) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p__environ alloc failed");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let _ = emu.maps.write_qword(envp, 0);
     emu.regs_mut().rax = envp;
 }
@@ -192,7 +213,14 @@ fn calloc(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 0;
         return;
     }
-    let base = allocate_memory(emu, total).expect("wincrt!calloc out of memory");
+    let base = match allocate_memory(emu, total) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!calloc out of memory (size={})", total);
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     for i in 0..total {
         let _ = emu.maps.write_byte(base + i, 0);
     }
@@ -353,13 +381,25 @@ fn __p___argv(emu: &mut emu::Emu) {
 
     // First, allocate space for argv array (pointer array)
     // We'll allocate space for 2 pointers - one for program name and null terminator
-    let argv_array_addr = allocate_memory(emu, 16) // 2 * sizeof(pointer) on x64
-        .expect("wincrt!__p___argv cannot allocate argv array");
+    let argv_array_addr = match allocate_memory(emu, 16) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p___argv cannot allocate argv array");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
 
     // Allocate space for program name string (using a dummy name)
     let prog_name = "program.exe\0";
-    let prog_name_addr = allocate_memory(emu, prog_name.len() as u64)
-        .expect("wincrt!__p___argv cannot allocate program name");
+    let prog_name_addr = match allocate_memory(emu, prog_name.len() as u64) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p___argv cannot allocate program name");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
 
     // Write program name string
     emu.maps.write_string(prog_name_addr, prog_name);
@@ -371,8 +411,14 @@ fn __p___argv(emu: &mut emu::Emu) {
     emu.maps.write_qword(argv_array_addr + 8, 0);
 
     // Allocate space for pointer to argv array
-    let p_argv_addr = allocate_memory(emu, 8) // sizeof(pointer) on x64
-        .expect("wincrt!__p___argv cannot allocate p_argv");
+    let p_argv_addr = match allocate_memory(emu, 8) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p___argv cannot allocate p_argv");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
 
     // Write pointer to argv array
     emu.maps.write_qword(p_argv_addr, argv_array_addr);
@@ -387,7 +433,14 @@ fn __p___argc(emu: &mut emu::Emu) {
 
     log_red!(emu, "wincrt!__p___argc argc: 0x{:x}", argc);
 
-    let argc_addr = allocate_memory(emu, 4).expect("wincrt!__p___argc cannot allocate");
+    let argc_addr = match allocate_memory(emu, 4) {
+        Some(a) => a,
+        None => {
+            log::error!("wincrt!__p___argc cannot allocate");
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     emu.maps.write_dword(argc_addr, 1);
     emu.regs_mut().rax = argc_addr;
 }

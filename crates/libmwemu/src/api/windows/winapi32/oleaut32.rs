@@ -45,10 +45,17 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
     size += 1; // null byte
     size += 8; // metadata
 
-    let base = emu
-        .maps
-        .alloc(size + 8)
-        .expect("oleaut32!SysAllocStringLen out of memory");
+    let base = match emu.maps.alloc(size + 8) {
+        Some(a) => a,
+        None => {
+            log::error!("oleaut32!SysAllocStringLen out of memory");
+            for _ in 0..2 {
+                emu.stack_pop32(false);
+            }
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let name = format!("alloc_{:x}", base + 8);
     emu.maps
         .create_map(&name, base, size, Permission::READ_WRITE);

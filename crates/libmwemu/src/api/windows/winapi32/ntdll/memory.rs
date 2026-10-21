@@ -29,27 +29,15 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
 }
 
 fn RtlZeroMemory(emu: &mut emu::Emu) {
-    let dest = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("bad RtlZeroMemory address pointer parameter") as u64;
-    let length = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("bad RtlZeroMemory address length parameter") as u64;
+    let dest = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let length = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
 
     ntdll::rtl_zero_memory(emu, dest, length);
 }
 
 fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
-    let addr_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("bad NtAllocateVirtualMemory address pointer parameter") as u64;
-    let size_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("bad NtAllocateVirtualMemory size pointer parameter") as u64;
+    let addr_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let size_ptr = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
     let addr = emu.maps.read_dword(addr_ptr).unwrap_or(0) as u64;
     let size = emu.maps.read_dword(size_ptr).unwrap_or(0) as u64;
 
@@ -94,14 +82,22 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
         alloc_addr
     );
 
-    emu.maps
+    if emu
+        .maps
         .create_map(
             format!("valloc_{:x}", alloc_addr).as_str(),
             alloc_addr,
             size,
             Permission::from_flags(can_read, can_write, can_execute),
         )
-        .expect("ntdll!NtAllocateVirtualMemory cannot create map");
+        .is_err()
+    {
+        log::error!(
+            "ntdll!NtAllocateVirtualMemory cannot create map at 0x{:x}",
+            alloc_addr
+        );
+        return;
+    }
 
     if !emu.maps.write_dword(addr_ptr, alloc_addr as u32) {
         {
@@ -180,10 +176,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
 
 fn CheckRemoteDebuggerPresent(emu: &mut emu::Emu) {
     let hndl = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
-    let bool_ptr =
-        emu.maps
-            .read_dword(emu.regs().get_esp() + 4)
-            .expect("ntdll!CheckRemoteDebuggerPresent reading bool ptr param") as u64;
+    let bool_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
 
     log_red!(emu, "ntdll!CheckRemoteDebuggerPresent");
 

@@ -33,7 +33,13 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
         let dst_map_name = emu
             .maps
             .get_addr_name(dos_path_unicode_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address");
+            .unwrap_or_else(|| {
+                log::warn!(
+                    "ntdll!RtlDosPathNameToNtPathName_U writing on unmapped address 0x{:x}",
+                    dos_path_unicode_ptr
+                );
+                ""
+            });
 
         if dst_map_name.starts_with("alloc_") {
             emu.maps.memcpy(
@@ -56,10 +62,13 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
     }
 
     if nt_path_name_ptr > 0 {
-        let dst_map_name = emu
-            .maps
-            .get_addr_name(nt_path_name_ptr)
-            .expect("ntdll!RtlDosPathNameToNtPathName_U writting on unmapped address.");
+        let dst_map_name = emu.maps.get_addr_name(nt_path_name_ptr).unwrap_or_else(|| {
+            log::warn!(
+                "ntdll!RtlDosPathNameToNtPathName_U writing on unmapped address 0x{:x}",
+                nt_path_name_ptr
+            );
+            ""
+        });
 
         if dst_map_name.starts_with("alloc_") {
             emu.maps.memcpy(
@@ -70,9 +79,13 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
         } else {
             match emu.maps.alloc(255) {
                 Some(a) => {
-                    emu.maps
+                    if emu
+                        .maps
                         .create_map("nt_alloc", a, 255, Permission::READ_WRITE)
-                        .expect("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
+                        .is_err()
+                    {
+                        log::error!("ntdll!RtlDosPathNameToNtPathName_U cannot create map");
+                    }
                     emu.maps.write_dword(nt_path_name_ptr, a as u32);
                     emu.maps.memcpy(
                         a,

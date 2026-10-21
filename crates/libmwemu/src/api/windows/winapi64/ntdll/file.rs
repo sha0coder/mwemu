@@ -61,14 +61,20 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
         match emu.maps.alloc((string_length_bytes + 2) as u64) {
             Some(string_buffer_addr) => {
-                emu.maps
+                if emu
+                    .maps
                     .create_map(
                         &format!("nt_path_string_{:x}", string_buffer_addr),
                         string_buffer_addr,
                         (string_length_bytes + 2) as u64,
                         Permission::READ_WRITE,
                     )
-                    .expect("Failed to create nt_path_string map");
+                    .is_err()
+                {
+                    log::error!("ntdll!RtlDosPathNameToNtPathName_U_WithStatus: cannot create map");
+                    emu.regs_mut().rax = constants::STATUS_NO_MEMORY;
+                    return;
+                }
 
                 emu.maps.write_wide_string(string_buffer_addr, &nt_path);
                 emu.maps

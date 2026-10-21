@@ -14,14 +14,25 @@ pub fn MapViewOfFile(emu: &mut emu::Emu) {
         size = 1024
     }
 
-    let addr = emu
-        .maps
-        .alloc(size)
-        .expect("kernel32!MapViewOfFile cannot allocate");
-    let mem = emu
+    let addr = match emu.maps.alloc(size) {
+        Some(a) => a,
+        None => {
+            log::error!("kernel32!MapViewOfFile cannot allocate (size={})", size);
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
+    let mem = match emu
         .maps
         .create_map("file_map", addr, size, Permission::READ_WRITE)
-        .expect("kernel32!MapViewOfFile cannot create map");
+    {
+        Ok(m) => m,
+        Err(e) => {
+            log::error!("kernel32!MapViewOfFile cannot create map: {}", e);
+            emu.regs_mut().rax = 0;
+            return;
+        }
+    };
     let loaded = mem.load_chunk(&emu.filename, off, size as usize);
 
     log_red!(
