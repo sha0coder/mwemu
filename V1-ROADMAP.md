@@ -24,16 +24,18 @@ is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
 Current audit (v0.26.0 → v0.26.2):
 
-| Signal                | v0.26.0 | v0.26.1  | v0.26.2  | Guest-reachable hot spots            |
-|-----------------------|---------|----------|----------|--------------------------------------|
-| `unimplemented!()`    | 98      | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
-| `panic!(...)`         | 15      | 15       | **15**   | 5 are arch-assertion guards, 10 in tests |
-| `.unwrap()`           | 580     | 796†     | **447**  | maps/heap 15 (internal), engine/ 4 (commented/infallible) |
-| `.expect(...)`        | 2896    | 480      | **312**  | test-only 80, maps/host-invariant 10, remaining scattered |
+| Signal                | v0.26.0 | v0.26.1  | v0.26.2  | v0.26.3  | Guest-reachable hot spots            |
+|-----------------------|---------|----------|----------|----------|--------------------------------------|
+| `unimplemented!()`    | 98      | **0**    | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
+| `panic!(...)`         | 15      | 15       | **15**   | **15**   | 5 are arch-assertion guards, 10 in tests |
+| `.unwrap()`           | 580     | 796†     | **447**  | **403**  | maps/heap 15 (internal), engine/ 4 (commented/infallible) |
+| `.expect(...)`        | 2896    | 480      | **312**  | **211**  | **0 guest-reachable**; 17 heap tests, 8 maps host-invariant, rest test/commented |
 
 † unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
   to `unwrap_or(0)`. In v0.26.2, structures/ 346 unwraps → `unwrap_or(0)`,
-  many more from api/syscall/init expect→unwrap_or conversions.
+  many more from api/syscall/init expect→unwrap_or conversions. In v0.26.3,
+  PEB64/bootstrap, LDR, context, exception, threading, debug, kernel expects
+  all replaced — **zero guest-reachable expects remain**.
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
