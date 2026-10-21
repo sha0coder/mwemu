@@ -1143,7 +1143,9 @@ impl Script {
                     self.trace = true;
                 }
 
-                _ => unreachable!("error in line {}, unknown command", i),
+                _ => {
+                    log::warn!("script: unknown command in line {}", i);
+                }
             }
         }
     }

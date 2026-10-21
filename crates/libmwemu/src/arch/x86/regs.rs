@@ -1788,7 +1788,9 @@ impl Regs64 {
             "dil" => self.set_dil(value),
             "bpl" => self.set_bpl(value),
             "spl" => self.set_spl(value),
-            &_ => unreachable!("weird register name parsed {}", reg_name),
+            &_ => {
+                log::warn!("set_reg_by_name: unknown register '{}'", reg_name);
+            }
         }
     }
 
