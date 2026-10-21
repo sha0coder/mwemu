@@ -44,7 +44,11 @@ fn RtlInitUnicodeString(emu: &mut emu::Emu) {
             "ntoskrnl!RtlInitUnicodeString worng destination pointer 0x{:x}",
             dst_ptr
         );
-        unreachable!();
+        for _ in 0..2 {
+            emu.stack_pop32(false);
+        }
+        emu.regs_mut().rax = 0;
+        return;
     }
 
     let mut s = "".to_string();

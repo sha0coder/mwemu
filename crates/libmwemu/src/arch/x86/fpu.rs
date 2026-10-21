@@ -438,7 +438,10 @@ impl FPU {
             Register::ST5 => 5,
             Register::ST6 => 6,
             Register::ST7 => 7,
-            _ => unreachable!(),
+            _ => {
+                log::warn!("fpu: unexpected register {:?} in reg_to_id", reg);
+                0
+            }
         }
     }
 
@@ -452,7 +455,10 @@ impl FPU {
             Register::ST5 => 5,
             Register::ST6 => 6,
             Register::ST7 => 7,
-            _ => unreachable!(),
+            _ => {
+                log::warn!("fpu: unexpected register {:?} in reg_to_idx", reg);
+                0
+            }
         }
     }
 

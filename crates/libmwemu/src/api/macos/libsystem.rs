@@ -449,7 +449,10 @@ fn get_printf_arg(emu: &Emu, vararg_num: usize, first_vararg: usize) -> u64 {
                 3 => emu.regs().rcx,
                 4 => emu.regs().r8,
                 5 => emu.regs().r9,
-                _ => unreachable!(),
+                _ => {
+                    log::warn!("arg: register idx {} out of range", idx);
+                    0
+                }
             }
         } else {
             let sp = emu.regs().rsp;

@@ -38,15 +38,20 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
                         return false;
                     }
                 },
-                _ => unreachable!(),
+                _ => {
+                    log::warn!("fadd: unsupported memory size {:?}", mem_size);
+                    return false;
+                }
             };
 
             emu.fpu_mut().set_st(0, value);
         } else {
-            unreachable!();
+            log::warn!("fadd: unexpected operand kind");
+            return false;
         }
     } else {
-        unreachable!();
+        log::warn!("fadd: unexpected operand count {}", ins.op_count());
+        return false;
     }
     emu.sync_fpu_ip();
     true
