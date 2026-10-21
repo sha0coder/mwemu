@@ -90,8 +90,10 @@ The public signatures are already `Result`-based (`run`, `run_to`,
 that contract instead of panicking — which is the same sweep as P0 #1.
 
 - [ ] `run()` must propagate every internal failure as `Err`, never abort.
-- [ ] Malformed PE/ELF/Mach-O input: return `Err` from `load_code`, not
-      panic on short reads or missing sections.
+- [x] Malformed PE/ELF/Mach-O input: return `Err` from `load_code`, not
+      panic on short reads or missing sections. `load_code` and
+      `load_code_bytes` now return `Result<(), MwemuError>`. All callers
+      (CLI, pymwemu, cmwemu, MCP, examples, tests) updated.
 - [ ] OOM in `maps.alloc()` / `create_map()`: propagate, don't `expect`.
 
 ### 4. Fuzz the input surface (new)
