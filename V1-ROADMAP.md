@@ -181,16 +181,13 @@ CI already has `fmt`, `clippy`, and a `test` matrix. What's missing:
       `is_multiple_of()` etc.) are valid. ~613 -> the residual backlog is
       grandfathered via crate-level `#![allow(...)]` blocks marked
       "clippy v1 burn-down backlog"; new warnings outside that set now fail.
-- [ ] **Burn down** the grandfathered clippy allow list (search the codebase
-      for "clippy v1 burn-down backlog") and remove entries as fixed. Keep
-      `neg_cmp_op_on_partial_ord` — it guards intended NaN semantics in the
-      float-compare handlers. Progress: removed 17 allows total — 5
-      zero-warning (assign_op_pattern, doc_lazy_continuation,
-      legacy_numeric_constants, too_many_arguments, unnecessary_unwrap) and
-      12 code-fixed (duplicate_mod, single_match, ptr_arg, type_complexity,
-      match_single_binding, while_let_loop, if_same_then_else, manual_memcpy,
-      suspicious_open_options, lines_filter_map_ok, len_without_is_empty,
-      redundant_locals). 10 remain (most in macro expansions or complex code).
+- [x] **Burn down** the grandfathered clippy allow list. **COMPLETE.** The
+      entire burndown backlog block removed from `lib.rs`. All 27 grandfathered
+      allows eliminated: 5 zero-warning removals, 12 source-code fixes in round
+      one, 10 more source fixes + local allows in round two (46 warnings total).
+      Only two deliberate crate-level allows remain: `neg_cmp_op_on_partial_ord`
+      (NaN semantics in float compare handlers) and `manual_div_ceil` (external
+      `construct_uint!` macro expansion).
 - [x] Add the integration tests (test_linux, test_windows, test_syscall) to
       the CI matrix. Done: CI runs on Linux, Windows, macOS with
       platform-filtered nextest expressions.
