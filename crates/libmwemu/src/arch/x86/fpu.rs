@@ -47,14 +47,14 @@ impl FPUState {
 
     pub fn load(addr: u64, emu: &mut emu::Emu) -> FPUState {
         let mut state = FPUState::new();
-        state.fpu_control_word = emu.maps.read_word(addr).unwrap();
-        state.fpu_status_word = emu.maps.read_word(addr + 2).unwrap();
-        state.fpu_tag_word = emu.maps.read_word(addr + 4).unwrap();
-        state.fpu_opcode = emu.maps.read_word(addr + 6).unwrap();
-        state.rip = emu.maps.read_qword(addr + 8).unwrap();
-        state.rdp = emu.maps.read_qword(addr + 16).unwrap();
-        state.mxcsr = emu.maps.read_dword(addr + 24).unwrap();
-        state.mxcsr_mask = emu.maps.read_dword(addr + 28).unwrap();
+        state.fpu_control_word = emu.maps.read_word(addr).unwrap_or(0);
+        state.fpu_status_word = emu.maps.read_word(addr + 2).unwrap_or(0);
+        state.fpu_tag_word = emu.maps.read_word(addr + 4).unwrap_or(0);
+        state.fpu_opcode = emu.maps.read_word(addr + 6).unwrap_or(0);
+        state.rip = emu.maps.read_qword(addr + 8).unwrap_or(0);
+        state.rdp = emu.maps.read_qword(addr + 16).unwrap_or(0);
+        state.mxcsr = emu.maps.read_dword(addr + 24).unwrap_or(0);
+        state.mxcsr_mask = emu.maps.read_dword(addr + 28).unwrap_or(0);
         state
     }
 

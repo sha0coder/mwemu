@@ -551,7 +551,14 @@ fn api_malloc(emu: &mut Emu) {
         let base = if emu.cfg.memory_guard {
             emu.kernel_alloc(Region::Slab, size, "malloc", "malloc", false)
         } else {
-            allocate_memory(emu, size).expect("macOS malloc: out of memory")
+            match allocate_memory(emu, size) {
+                Some(a) => a,
+                None => {
+                    log::error!("macOS malloc: out of memory (size=0x{:x})", size);
+                    set_ret(emu, 0);
+                    return;
+                }
+            }
         };
         log::info!("  -> 0x{:x}", base);
         set_ret(emu, base);
@@ -576,7 +583,11 @@ fn api_calloc(emu: &mut Emu) {
         let base = if emu.cfg.memory_guard {
             emu.kernel_alloc(Region::Slab, total, "malloc", "calloc", true)
         } else {
-            let b = allocate_memory(emu, total).expect("macOS calloc: out of memory");
+            let Some(b) = allocate_memory(emu, total) else {
+                log::error!("macOS calloc: out of memory (size=0x{:x})", total);
+                set_ret(emu, 0);
+                return;
+            };
             for i in 0..total {
                 emu.maps.write_byte(b + i, 0);
             }
@@ -610,7 +621,14 @@ fn api_realloc(emu: &mut Emu) {
     let base = if emu.cfg.memory_guard {
         emu.kernel_alloc(Region::Slab, size, "malloc", "realloc", false)
     } else {
-        allocate_memory(emu, size).expect("macOS realloc: out of memory")
+        match allocate_memory(emu, size) {
+            Some(addr) => addr,
+            None => {
+                log::error!("macOS realloc: out of memory (size=0x{:x})", size);
+                set_ret(emu, 0);
+                return;
+            }
+        }
     };
     if ptr != 0 {
         for i in 0..size {
@@ -1174,7 +1192,14 @@ fn api_strdup(emu: &mut Emu) {
     let base = if emu.cfg.memory_guard {
         emu.kernel_alloc(Region::Slab, len, "malloc", "strdup", false)
     } else {
-        allocate_memory(emu, len).expect("macOS strdup: out of memory")
+        match allocate_memory(emu, len) {
+            Some(addr) => addr,
+            None => {
+                log::error!("macOS strdup: out of memory (size=0x{:x})", len);
+                set_ret(emu, 0);
+                return;
+            }
+        }
     };
     let bytes = s.as_bytes();
     emu.maps.write_bytes(base, bytes);
@@ -1673,7 +1698,11 @@ fn api_getpwuid(emu: &mut Emu) {
     //   0x38: pw_dir    (char *)
     //   0x40: pw_shell  (char *)
     //   0x48: pw_expire (time_t, 8 bytes)
-    let pw_struct = allocate_memory(emu, 0x50).expect("getpwuid: out of memory");
+    let Some(pw_struct) = allocate_memory(emu, 0x50) else {
+        log::error!("getpwuid: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
     let pw_name = alloc_string(emu, "user");
     let pw_passwd = alloc_string(emu, "*");
     let pw_class = alloc_string(emu, "");
@@ -1707,7 +1736,11 @@ fn api_getpwnam(emu: &mut Emu) {
     let name_ptr = arg(emu, 0);
     let name = emu.maps.read_string(name_ptr);
 
-    let pw_struct = allocate_memory(emu, 0x50).expect("getpwnam: out of memory");
+    let Some(pw_struct) = allocate_memory(emu, 0x50) else {
+        log::error!("getpwnam: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
     let pw_name = alloc_string(emu, &name);
     let pw_passwd = alloc_string(emu, "*");
     let pw_class = alloc_string(emu, "");
@@ -1741,10 +1774,18 @@ fn api_getgrgid(emu: &mut Emu) {
     let gid = arg(emu, 0) as u32;
 
     // struct group: gr_name, gr_passwd, gr_gid, gr_mem
-    let gr_struct = allocate_memory(emu, 0x20).expect("getgrgid: out of memory");
+    let Some(gr_struct) = allocate_memory(emu, 0x20) else {
+        log::error!("getgrgid: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
     let gr_name = alloc_string(emu, "staff");
     let gr_passwd = alloc_string(emu, "*");
-    let gr_mem = allocate_memory(emu, 8).expect("getgrgid: out of memory");
+    let Some(gr_mem) = allocate_memory(emu, 8) else {
+        log::error!("getgrgid: out of memory for gr_mem");
+        set_ret(emu, 0);
+        return;
+    };
     emu.maps.write_qword(gr_mem, 0); // NULL-terminated member list
 
     emu.maps.write_qword(gr_struct, gr_name);
@@ -1788,7 +1829,11 @@ fn api_getgrouplist_2(emu: &mut Emu) {
     let groups_ptr_ptr = arg(emu, 2);
 
     // Allocate a gid_t array with 1 group (staff=20)
-    let groups = allocate_memory(emu, 8).expect("getgrouplist_2: out of memory");
+    let Some(groups) = allocate_memory(emu, 8) else {
+        log::error!("getgrouplist_2: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
     emu.maps.write_dword(groups, 20);
 
     if groups_ptr_ptr != 0 {
@@ -2133,7 +2178,11 @@ fn api_localtime(emu: &mut Emu) {
         emu.colors.nc
     );
     // Allocate a fake struct tm (at least 56 bytes on macOS)
-    let tm = allocate_memory(emu, 64).expect("localtime: alloc");
+    let Some(tm) = allocate_memory(emu, 64) else {
+        log::error!("localtime: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
     // tm_sec=0, tm_min=0, tm_hour=12, tm_mday=1, tm_mon=0, tm_year=125 (2025),
     // tm_wday=3, tm_yday=0, tm_isdst=0
     emu.maps.write_dword(tm, 0); // tm_sec
@@ -2374,7 +2423,11 @@ fn api_sysctl(emu: &mut Emu) {
         }
 
         // Data query: fill with fake processes
-        let buf = allocate_memory(emu, total_size).expect("sysctl: out of memory");
+        let Some(buf) = allocate_memory(emu, total_size) else {
+            log::error!("sysctl: out of memory (size=0x{:x})", total_size);
+            set_ret(emu, 0);
+            return;
+        };
 
         // Zero-fill
         for i in 0..total_size {
@@ -2536,7 +2589,11 @@ fn api_fts_open(emu: &mut Emu) {
     }
 
     // Allocate a fake FTS handle (just a small block to serve as an opaque pointer)
-    let handle = allocate_memory(emu, 64).expect("fts_open: alloc");
+    let Some(handle) = allocate_memory(emu, 64) else {
+        log::error!("fts_open: out of memory");
+        set_ret(emu, 0);
+        return;
+    };
 
     // Create the root FTSENT upfront so children can reference it as fts_parent
     let root_entry = entries.iter().find(|e| e.is_root).cloned();

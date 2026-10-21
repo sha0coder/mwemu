@@ -255,11 +255,11 @@ impl ThreadScheduler {
         }
 
         if emu.cfg.trace_regs && emu.cfg.trace_filename.is_some() {
-            emu.trace_file
-                .as_ref()
-                .unwrap()
-                .flush()
-                .expect("failed to flush trace file");
+            if let Some(f) = emu.trace_file.as_mut() {
+                if let Err(e) = f.flush() {
+                    log::warn!("failed to flush trace file: {}", e);
+                }
+            }
         }
     }
 }

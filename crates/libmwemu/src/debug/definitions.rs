@@ -49,10 +49,21 @@ where
 }
 
 pub fn load_definitions(filename: &str) -> HashMap<u64, Definition> {
-    let contents = fs::read_to_string(filename).expect("Failed to read definitions file");
+    let contents = match fs::read_to_string(filename) {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("failed to read definitions file '{}': {}", filename, e);
+            return HashMap::new();
+        }
+    };
 
-    let definitions: Definitions =
-        serde_json::from_str(&contents).expect("Failed to parse definitions JSON");
+    let definitions: Definitions = match serde_json::from_str(&contents) {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("failed to parse definitions JSON '{}': {}", filename, e);
+            return HashMap::new();
+        }
+    };
 
     let mut map = HashMap::new();
     for def in definitions.events {
