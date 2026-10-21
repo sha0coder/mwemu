@@ -2,7 +2,7 @@
 
 What needs to happen before cutting a stable 1.0 release.
 
-Current state: 766+ tests, multi-platform (PE/ELF/Mach-O), x86/x64/AArch64,
+Current state: 733+ tests, multi-platform (PE/ELF/Mach-O), x86/x64/AArch64,
 kernel-mode driver emulation, syscall mode, and Windows system simulation
 (PEB/TEB/LDR, heap, TLS, IAT binding, SEH/VEH). CI already runs `fmt`,
 `clippy`, and a `test` matrix; `examples/` (01–04) exists.
@@ -27,10 +27,10 @@ Current audit (v0.26.0 → v0.26.3):
 | Signal                | v0.26.0 | v0.26.1  | v0.26.2  | v0.26.3  | Guest-reachable hot spots            |
 |-----------------------|---------|----------|----------|----------|--------------------------------------|
 | `unimplemented!()`    | 98      | **0**    | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
-| `unreachable!()`      | —       | —        | 11       | **0** ✅ | 62 remain but all are arch-mismatch host invariants or test code |
+| `unreachable!()`      | —       | —        | 11       | **0** ✅ | 57 remain but all are arch-mismatch host invariants |
 | `panic!(...)`         | 15      | 15       | **15**   | **6**    | 4 arch-assertion guards, 1 heap init fatal, 1 kuser init |
-| `.unwrap()`           | 580     | 796†     | **447**  | **267**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, serialization I/O, tests |
-| `.expect(...)`        | 2896    | 480      | **312**  | **98**   | **0 guest-reachable**; rest are test code, Mutex::lock, host invariants |
+| `.unwrap()`           | 580     | 796†     | **447**  | **164**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, serialization I/O, tests |
+| `.expect(...)`        | 2896    | 480      | **312**  | **49**   | **0 guest-reachable**; 17 heap tests, 5 maps host-invariant, rest test/Mutex/conditional |
 
 † unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
   to `unwrap_or(0)`. v0.26.2: structures/ 346 unwraps → `unwrap_or(0)`,
