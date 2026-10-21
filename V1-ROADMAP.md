@@ -56,6 +56,10 @@ Current audit (v0.26.0 → v0.26.1):
 - [x] **emu/iso.rs, winver.rs**: `to_str().unwrap()` → guarded with if-let.
 - [x] **emu/object_handle**: file_handle/windows_path unwrap → ok_or/ok_or_else.
 - [x] **emu/loaders/pe.rs**: `expect("out of memory")` → match + return (0,0).
+- [x] **emu/loaders.rs**: map creation, heap allocation expects → log + return.
+- [x] **emu/loaders/elf.rs**: interp unwrap → unwrap_or_default.
+- [x] **loaders/macho/macho64.rs**: `reparse().expect()` → match Ok/Err +
+      return empty; bounds checks on all byte-slice indexing in chained fixups.
 - [x] **api/ winapi stubs:** ~2500 `.expect()` on stack reads converted to
       `.unwrap_or(0)` (safe default — gateway sets up the stack). Remaining
       70 `.expect()` in api/ are on map creation or handle lookups with
