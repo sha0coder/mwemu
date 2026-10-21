@@ -339,22 +339,24 @@ impl Mem64 {
             }
         }
 
+        if addr < self.base_addr || addr >= self.bottom_addr {
+            return &[];
+        }
         let idx = (addr - self.base_addr) as usize;
         let max_sz = (self.bottom_addr - self.base_addr) as usize;
-        /*
-        let mut sz = idx + 5;
-        if sz > max_sz {
-            sz = max_sz;
-        }*/
-        let r = self.mem.get(idx..max_sz).unwrap();
-        if cfg!(feature = "log_mem_read") && emu_context::mem_trace_enabled() {
-            log::trace!(
-                "mem_trace: read_from: 0x{:x?} = {:x?}",
-                self.build_addresses(addr, max_sz),
+        match self.mem.get(idx..max_sz) {
+            Some(r) => {
+                if cfg!(feature = "log_mem_read") && emu_context::mem_trace_enabled() {
+                    log::trace!(
+                        "mem_trace: read_from: 0x{:x?} = {:x?}",
+                        self.build_addresses(addr, max_sz),
+                        r
+                    );
+                }
                 r
-            );
+            }
+            None => &[],
         }
-        r
     }
 
     #[inline(always)]
@@ -377,11 +379,9 @@ impl Mem64 {
         let idx = (addr - self.base_addr) as usize;
         let sz2 = idx + sz;
         if sz2 > self.mem.len() {
-            // TODO: log trace?
-            let addr = self.mem.get(idx..self.mem.len()).unwrap();
-            return addr;
+            return self.mem.get(idx..self.mem.len()).unwrap_or(&[]);
         }
-        let r = self.mem.get(idx..sz2).unwrap();
+        let r = self.mem.get(idx..sz2).unwrap_or(&[]);
         if cfg!(feature = "log_mem_read") && emu_context::mem_trace_enabled() {
             log::trace!(
                 "mem_trace: read_bytes: 0x{:x?} = {:x?}",
