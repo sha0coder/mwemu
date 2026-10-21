@@ -171,7 +171,12 @@ impl FileHandle {
         let resolved_path = FILE_SYSTEM
             .get()
             .and_then(|file_system| file_system.translate(&windows_path).ok())
-            .unwrap();
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "filesystem not initialized or path translation failed",
+                )
+            })?;
 
         let metadata = fs::metadata(&resolved_path)?;
 
@@ -562,15 +567,12 @@ impl FileSystem {
         let base = base.as_ref();
 
         // Convert both paths to absolute and canonicalize if possible
-        let abs_path = soft_canonicalize(path).unwrap();
-        let abs_base = soft_canonicalize(base).unwrap();
+        let abs_path = soft_canonicalize(path).ok()?;
+        let abs_base = soft_canonicalize(base).ok()?;
 
         // Strip prefix if path starts with base
         if abs_path.starts_with(&abs_base) {
-            let remainder = abs_path
-                .strip_prefix(&abs_base)
-                .map_err(|_| io::Error::other("Failed to strip prefix"))
-                .unwrap();
+            let remainder = abs_path.strip_prefix(&abs_base).ok()?;
             Some(PathBuf::from(remainder))
         } else {
             // Return the path as-is if it's not under the base

@@ -176,7 +176,7 @@ impl WindowsPath {
             return Err("Device path cannot be computed for relative paths!");
         }
 
-        let drive_index = self.drive.unwrap() as u8 - b'a';
+        let drive_index = self.drive.ok_or("path has no drive letter")? as u8 - b'a';
         let drive_number = (drive_index + 1).to_string();
 
         let mut path = format!("\\Device\\HarddiskVolume{}\\", drive_number);

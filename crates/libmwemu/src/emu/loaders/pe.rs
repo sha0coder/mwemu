@@ -70,13 +70,22 @@ impl Emu {
         let ib = pe64.opt.image_base;
         let span = (pe64.opt.size_of_image as u64).max(raw_len);
         if ib < 0x10000 {
-            return self.maps.lib64_alloc(raw_len).expect("out of memory");
+            return self.maps.lib64_alloc(raw_len).unwrap_or_else(|| {
+                log::error!("pe loader: out of memory allocating {} bytes", raw_len);
+                0
+            });
         }
         let Some(end) = ib.checked_add(span) else {
-            return self.maps.lib64_alloc(raw_len).expect("out of memory");
+            return self.maps.lib64_alloc(raw_len).unwrap_or_else(|| {
+                log::error!("pe loader: out of memory allocating {} bytes", raw_len);
+                0
+            });
         };
         if end > USER_MAX || self.maps.overlaps(ib, span) {
-            return self.maps.lib64_alloc(raw_len).expect("out of memory");
+            return self.maps.lib64_alloc(raw_len).unwrap_or_else(|| {
+                log::error!("pe loader: out of memory allocating {} bytes", raw_len);
+                0
+            });
         }
         ib
     }
@@ -140,20 +149,26 @@ impl Emu {
                         .maps
                         .overlaps(pe32.opt.image_base as u64, pe32.mem_size() as u64)
                 {
-                    base = self
-                        .maps
-                        .alloc(pe32.mem_size() as u64 + 0xff)
-                        .expect("out of memory") as u32;
+                    base = match self.maps.alloc(pe32.mem_size() as u64 + 0xff) {
+                        Some(a) => a as u32,
+                        None => {
+                            log::error!("pe32 loader: out of memory");
+                            return (0, 0);
+                        }
+                    };
                 } else {
                     base = pe32.opt.image_base;
                 }
 
             // system library
             } else {
-                base = self
-                    .maps
-                    .lib32_alloc(pe32.mem_size() as u64)
-                    .expect("out of memory") as u32;
+                base = match self.maps.lib32_alloc(pe32.mem_size() as u64) {
+                    Some(a) => a as u32,
+                    None => {
+                        log::error!("pe32 loader: out of memory for lib");
+                        return (0, 0);
+                    }
+                };
             }
         }
 
@@ -191,27 +206,33 @@ impl Emu {
             // 4-flat. Reflective loaders read from PointerToRawData (file offsets),
             // so load the entire raw file as one flat RWX map.
             let flat_size = std::cmp::max(raw.len() as u64, pe32.opt.size_of_image as u64);
-            let flat_map = self
-                .maps
-                .create_map(
-                    &format!("{}.pe", filename2),
-                    base as u64,
-                    flat_size,
-                    Permission::READ_WRITE_EXECUTE,
-                )
-                .expect("cannot create flat pe map");
+            let flat_map = match self.maps.create_map(
+                &format!("{}.pe", filename2),
+                base as u64,
+                flat_size,
+                Permission::READ_WRITE_EXECUTE,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    log::error!("cannot create flat pe map: {}", e);
+                    return (0, 0);
+                }
+            };
             flat_map.memcpy(&raw, raw.len());
         } else {
             // 4. Standard mapped loading: header map + per-section maps.
-            let pemap = self
-                .maps
-                .create_map(
-                    &format!("{}.pe", filename2),
-                    base.into(),
-                    align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
-                    Permission::READ_WRITE,
-                )
-                .expect("cannot create pe map");
+            let pemap = match self.maps.create_map(
+                &format!("{}.pe", filename2),
+                base.into(),
+                align_up!(pe32.opt.size_of_headers, sec_allign) as u64,
+                Permission::READ_WRITE,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    log::error!("cannot create pe map: {}", e);
+                    return (0, 0);
+                }
+            };
             pemap.memcpy(pe32.headers(&raw), pe32.opt.size_of_headers as usize);
 
             for i in 0..pe32.num_of_sections() {
@@ -587,7 +608,13 @@ impl Emu {
                         "pe64: preferred image base 0x{:x} unavailable or outside program range, relocating",
                         preferred
                     );
-                    base = self.maps.alloc(image_span + 0xff).expect("out of memory");
+                    base = match self.maps.alloc(image_span + 0xff) {
+                        Some(a) => a,
+                        None => {
+                            log::error!("pe64 loader: out of memory");
+                            return (0, 0);
+                        }
+                    };
                 }
 
             // system library

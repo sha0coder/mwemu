@@ -84,30 +84,31 @@ impl Emu {
             if spl[2].contains('*') {
                 let spl2: Vec<&str> = spl[2].split('*').collect();
                 if spl2.len() != 2 {
-                    unreachable!(
+                    log::warn!(
                         "case ie [esi + eax*4] bad parsed the *  operand:{}",
                         operand
                     );
+                    return 0;
                 }
 
                 let reg1_val = self.regs().get_by_name(spl[0]);
                 let reg2_val = self.regs().get_by_name(spl2[0]);
-                let num = u64::from_str_radix(spl2[1].trim_start_matches("0x"), 16)
-                    .expect("bad num conversion");
-
-                if sign != "+" && sign != "-" {
-                    unreachable!("weird sign2 {}", sign);
-                }
+                let num = match u64::from_str_radix(spl2[1].trim_start_matches("0x"), 16) {
+                    Ok(n) => n,
+                    Err(_) => {
+                        log::warn!("bad num conversion in operand '{}'", operand);
+                        return 0;
+                    }
+                };
 
                 if sign == "+" {
                     return reg1_val + (reg2_val * num);
-                }
-
-                if sign == "-" {
+                } else if sign == "-" {
                     return reg1_val - (reg2_val * num);
+                } else {
+                    log::warn!("weird sign '{}' in operand '{}'", sign, operand);
+                    return 0;
                 }
-
-                unreachable!();
             }
 
             let reg = spl[0];
@@ -117,11 +118,18 @@ impl Emu {
             let disp: u64 = if self.regs().is_reg(spl[2]) {
                 self.regs().get_by_name(spl[2])
             } else {
-                u64::from_str_radix(spl[2].trim_start_matches("0x"), 16).expect("bad disp")
+                match u64::from_str_radix(spl[2].trim_start_matches("0x"), 16) {
+                    Ok(n) => n,
+                    Err(_) => {
+                        log::warn!("bad displacement in operand '{}'", operand);
+                        return 0;
+                    }
+                }
             };
 
             if sign != "+" && sign != "-" {
-                unreachable!("weird sign {}", sign);
+                log::warn!("weird sign '{}' in operand '{}'", sign, operand);
+                return 0;
             }
 
             if sign == "+" {
@@ -137,8 +145,13 @@ impl Emu {
             let reg = spl[0];
 
             if reg.contains("0x") {
-                let addr: u64 =
-                    u64::from_str_radix(reg.trim_start_matches("0x"), 16).expect("bad disp2");
+                let addr: u64 = match u64::from_str_radix(reg.trim_start_matches("0x"), 16) {
+                    Ok(n) => n,
+                    Err(_) => {
+                        log::warn!("bad address in operand '{}'", operand);
+                        return 0;
+                    }
+                };
                 return addr;
                 // weird but could be a hardcoded address [0x11223344]
             }
@@ -302,7 +315,10 @@ impl Emu {
                 }
                 None => None,
             },
-            _ => unreachable!("weird size: {}", operand),
+            _ => {
+                log::warn!("memory_read: unsupported size in operand '{}'", operand);
+                None
+            }
         }
     }
 
@@ -343,7 +359,13 @@ impl Emu {
                     32 => self.maps.read_dword(addr).unwrap_or(0) as u64,
                     16 => self.maps.read_word(addr).unwrap_or(0) as u64,
                     8 => self.maps.read_byte(addr).unwrap_or(0) as u64,
-                    _ => unreachable!("weird size: {}", operand),
+                    _ => {
+                        log::warn!(
+                            "memory_write trace: unsupported size in operand '{}'",
+                            operand
+                        );
+                        0
+                    }
                 },
                 new_value: value,
                 name: name.to_string(),
@@ -365,7 +387,10 @@ impl Emu {
             32 => self.maps.write_dword(addr, (value & 0xffffffff) as u32),
             16 => self.maps.write_word(addr, (value & 0x0000ffff) as u16),
             8 => self.maps.write_byte(addr, (value & 0x000000ff) as u8),
-            _ => unreachable!("weird size: {}", operand),
+            _ => {
+                log::warn!("memory_write: unsupported size in operand '{}'", operand);
+                false
+            }
         }
     }
 
@@ -403,7 +428,8 @@ impl Emu {
             }
         }
 
-        unreachable!("weird size: {}", operand);
+        log::warn!("get_size: unsupported operand '{}'", operand);
+        0
     }
 
     /// Attempt to auto-extend the thread stack to cover `fault_addr`.

@@ -185,7 +185,10 @@ impl Maps {
         // Creating a map can reuse a freed slab slot, leaving stale TLB entries
         // that still point at the recycled key — flush so lookups re-resolve.
         self.tlb.get_mut().flush();
-        Ok(self.mem_slab.get_mut(base_key).unwrap())
+        Ok(self
+            .mem_slab
+            .get_mut(base_key)
+            .expect("just-inserted slab key missing"))
     }
 
     fn read_scalar<T: LittleEndianScalar>(&self, addr: u64, kind: ScalarKind) -> Option<T> {
@@ -250,10 +253,16 @@ impl Maps {
             {
                 let mut buf = [0u8; 16];
                 value.write_le(&mut buf);
-                let first_key = self.maps.range(..=addr).next_back().unwrap().1;
-                let first_mem = self.mem_slab.get_mut(*first_key).unwrap();
+                let Some((_, &first_key)) = self.maps.range(..=addr).next_back() else {
+                    return false;
+                };
+                let Some(first_mem) = self.mem_slab.get_mut(first_key) else {
+                    return false;
+                };
                 first_mem.write_bytes(addr, &buf[..lo_len]);
-                let next_mem_mut = self.mem_slab.get_mut(next_key).unwrap();
+                let Some(next_mem_mut) = self.mem_slab.get_mut(next_key) else {
+                    return false;
+                };
                 next_mem_mut.write_bytes(boundary, &buf[lo_len..T::SIZE]);
                 return true;
             }
@@ -898,8 +907,11 @@ impl Maps {
             .range(..top)
             .next_back()
             .map(|(addr, mem)| {
-                let mem = self.mem_slab.get(*mem).unwrap();
-                let sz = mem.size() as u64;
+                let sz = self
+                    .mem_slab
+                    .get(*mem)
+                    .map(|m| m.size() as u64)
+                    .unwrap_or(0);
                 let base = *addr;
                 self.align_up(base + sz, Self::DEFAULT_ALIGNMENT)
             })
@@ -928,7 +940,9 @@ impl Maps {
                 return Some(prev + sz);
             }
 
-            let mem = self.mem_slab.get(*mem_key).unwrap();
+            let Some(mem) = self.mem_slab.get(*mem_key) else {
+                continue;
+            };
             sz = mem.size() as u64;
             prev = mem_base;
         }

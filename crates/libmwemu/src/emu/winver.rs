@@ -311,7 +311,9 @@ impl crate::emu::Emu {
         }
 
         self.cfg.winver = Some(build);
-        self.set_maps_folder(cache.to_str().unwrap());
+        if let Some(s) = cache.to_str() {
+            self.set_maps_folder(s);
+        }
         Ok(())
     }
 }

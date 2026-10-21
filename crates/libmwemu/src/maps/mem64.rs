@@ -869,9 +869,10 @@ impl Mem64 {
         for i in 0..sz {
             self.mem.push(0);
         }
-        reader
-            .read_exact(&mut self.mem)
-            .expect("cannot load chunk of file");
+        if let Err(e) = reader.read_exact(&mut self.mem) {
+            log::error!("cannot load chunk of file: {}", e);
+            return false;
+        }
         f.sync_all(); // thanks, Alberto Segura
         true
     }
@@ -884,13 +885,20 @@ impl Mem64 {
                 return false;
             }
         };
-        let len = f.metadata().unwrap().len();
+        let len = match f.metadata() {
+            Ok(m) => m.len(),
+            Err(e) => {
+                log::error!("cannot read metadata for '{}': {}", filename, e);
+                return false;
+            }
+        };
         self.bottom_addr = self.base_addr + len;
         let mut reader = BufReader::new(&f);
         self.mem.clear();
-        reader
-            .read_to_end(&mut self.mem)
-            .expect("cannot load map file");
+        if let Err(e) = reader.read_to_end(&mut self.mem) {
+            log::error!("cannot load map file '{}': {}", filename, e);
+            return false;
+        }
         f.sync_all(); // thanks, Alberto Segura
         true
     }
