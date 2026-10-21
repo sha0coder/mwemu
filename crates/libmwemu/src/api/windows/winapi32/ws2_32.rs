@@ -57,11 +57,10 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
         "WSASetLastError" => WsaSetLastError(emu),
         _ => {
             if !emu.cfg.skip_unimplemented {
-                if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
-                    serialization::Serialization::dump(
-                        emu,
-                        emu.cfg.dump_filename.as_ref().unwrap(),
-                    );
+                if emu.cfg.dump_on_exit {
+                    if let Some(ref fname) = emu.cfg.dump_filename {
+                        serialization::Serialization::dump(emu, fname);
+                    }
                 }
 
                 log::error!("attempt to call unimplemented API 0x{:x} {}", addr, api);
@@ -128,9 +127,18 @@ fn getaddrinfo(emu: &mut emu::Emu) {
 
     // Allocate memory for the result
     let heap_management = emu.heap_mut();
-    let addrinfo_addr = heap_management
-        .allocate((addrinfo_size + sockaddr_in_size + 100) as usize)
-        .unwrap();
+    let addrinfo_addr =
+        match heap_management.allocate((addrinfo_size + sockaddr_in_size + 100) as usize) {
+            Some(addr) => addr,
+            None => {
+                log::warn!("ws2_32!getaddrinfo: heap allocation failed");
+                for _ in 0..4 {
+                    emu.stack_pop32(false);
+                }
+                emu.regs_mut().rax = 1;
+                return;
+            }
+        };
     let sockaddr_addr = addrinfo_addr + addrinfo_size;
     let canonname_addr = sockaddr_addr + sockaddr_in_size;
 

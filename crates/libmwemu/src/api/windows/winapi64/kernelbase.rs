@@ -143,9 +143,15 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
 
     if filename == "comctl32.dll" {
         let dll_path = format!("{}/comctl32.dll", emu.cfg.maps_folder);
-        let metadata = std::fs::metadata(dll_path).unwrap();
-        let file_size = metadata.len() as u64;
-        emu.regs_mut().rax = file_size;
+        match std::fs::metadata(dll_path) {
+            Ok(metadata) => {
+                emu.regs_mut().rax = metadata.len() as u64;
+            }
+            Err(e) => {
+                log::warn!("GetFileVersionInfoSizeA: cannot stat comctl32.dll: {}", e);
+                emu.regs_mut().rax = 0;
+            }
+        }
     } else {
         log::warn!("GetFileVersionInfoSizeA: unsupported file {}", filename);
         emu.regs_mut().rax = 0;

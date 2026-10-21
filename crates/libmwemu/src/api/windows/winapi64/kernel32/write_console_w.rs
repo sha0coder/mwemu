@@ -13,7 +13,7 @@ pub fn WriteConsoleW(emu: &mut emu::Emu) {
         let wchar = emu
             .maps
             .read_word(lp_buffer as u64 + (i * 2) as u64)
-            .unwrap();
+            .unwrap_or(0);
         wide_chars.push(wchar);
     }
 

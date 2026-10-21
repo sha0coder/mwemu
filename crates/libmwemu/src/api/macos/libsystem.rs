@@ -2676,13 +2676,22 @@ fn api_fts_read(emu: &mut Emu) {
         emu.colors.nc
     );
 
-    let root_addr = emu.fts_handles.get(&handle).unwrap().root_ftsent;
+    let root_addr = match emu.fts_handles.get(&handle) {
+        Some(h) => h.root_ftsent,
+        None => {
+            log::warn!("fts_read: invalid handle 0x{:x}", handle);
+            set_ret(emu, 0);
+            return;
+        }
+    };
     let ftsent_addr = if root_addr != 0 {
         root_addr
     } else {
         write_ftsent(emu, &entry)
     };
-    emu.fts_handles.get_mut(&handle).unwrap().last_ftsent = ftsent_addr;
+    if let Some(h) = emu.fts_handles.get_mut(&handle) {
+        h.last_ftsent = ftsent_addr;
+    }
     set_ret(emu, ftsent_addr);
 }
 
@@ -2767,7 +2776,9 @@ fn api_fts_children(emu: &mut Emu) {
     }
 
     let head = addrs[0];
-    emu.fts_handles.get_mut(&handle).unwrap().children_head = head;
+    if let Some(h) = emu.fts_handles.get_mut(&handle) {
+        h.children_head = head;
+    }
 
     log::info!(
         "{}** {} macOS API fts_children(0x{:x}, instr=0x{:x}) -> {} entries {}",

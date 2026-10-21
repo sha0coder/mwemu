@@ -42,7 +42,14 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
     let temp_emu = FILE_SYSTEM.get();
     let emu_path =
         temp_emu.and_then(|file_system| file_system.local_to_windows_path(&name_utf8).ok());
-    let emu_path_str = emu_path.unwrap().to_string();
+    let emu_path_str = match emu_path {
+        Some(p) => p.to_string(),
+        None => {
+            log::warn!("CreateFileW: cannot map path `{}`", name_utf8);
+            emu.regs_mut().rax = 0xFFFFFFFFFFFFFFFF;
+            return;
+        }
+    };
 
     // Attempt to create or open the file using the FileHandle struct
     match FileHandle::new(

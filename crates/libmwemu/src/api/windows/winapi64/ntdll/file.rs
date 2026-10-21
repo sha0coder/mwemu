@@ -376,10 +376,24 @@ fn NtReadFile(emu: &mut emu::Emu) {
     emu.maps.memset(buff, 0x90, len);
 
     if filename == "\\??\\c:\\cwd" {
-        let mut file = File::open(&emu.filename).unwrap();
+        let mut file = match File::open(&emu.filename) {
+            Ok(f) => f,
+            Err(e) => {
+                log::warn!("NtReadFile: cannot open {}: {}", emu.filename, e);
+                emu.regs_mut().rax = constants::STATUS_OBJECT_NAME_NOT_FOUND;
+                return;
+            }
+        };
         file.seek(SeekFrom::Start(file_offset));
         let mut file_buffer = vec![0u8; len];
-        let bytes_read = file.read(&mut file_buffer).unwrap();
+        let bytes_read = match file.read(&mut file_buffer) {
+            Ok(n) => n,
+            Err(e) => {
+                log::warn!("NtReadFile: read error: {}", e);
+                emu.regs_mut().rax = 0xC0000001; // STATUS_UNSUCCESSFUL
+                return;
+            }
+        };
         for i in 0..bytes_read {
             if let Some(byte_val) = file_buffer.get(i) {
                 emu.maps.write_byte(buff + i as u64, *byte_val);

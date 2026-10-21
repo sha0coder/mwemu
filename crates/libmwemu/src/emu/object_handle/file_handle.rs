@@ -615,14 +615,17 @@ impl FileSystemBuilder {
             .root
             .ok_or_else(|| io::Error::new(ErrorKind::InvalidInput, "Root path not set"))?;
 
-        let result = FileSystem::new(&root);
-        if result.is_err() {
-            let err = result.err().unwrap();
-            println!("Failed to initialize filesystem with err: {}", err);
-            println!("Please check the file location: {}", root.to_str().unwrap());
-            return Err(err);
-        }
-        let mut fs = result?;
+        let mut fs = match FileSystem::new(&root) {
+            Ok(fs) => fs,
+            Err(err) => {
+                log::error!("Failed to initialize filesystem with err: {}", err);
+                log::error!(
+                    "Please check the file location: {}",
+                    root.to_str().unwrap_or("<non-utf8>")
+                );
+                return Err(err);
+            }
+        };
 
         for (src, dest) in self.initial_mappings {
             fs.map(src, dest);

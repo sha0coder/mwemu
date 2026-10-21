@@ -41,7 +41,14 @@ pub fn CreateFileA(emu: &mut emu::Emu) {
     let emu_path = FILE_SYSTEM
         .get()
         .and_then(|file_system| file_system.local_to_windows_path(&name_utf8).ok());
-    let emu_path_str = emu_path.unwrap().to_string();
+    let emu_path_str = match emu_path {
+        Some(p) => p.to_string(),
+        None => {
+            log::warn!("CreateFileA: cannot map path `{}`", name_utf8);
+            emu.regs_mut().rax = 0xFFFFFFFFFFFFFFFF;
+            return;
+        }
+    };
 
     // Attempt to create or open the file using the FileHandle struct
     match FileHandle::new(
