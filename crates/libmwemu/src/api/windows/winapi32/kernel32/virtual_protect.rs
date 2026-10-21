@@ -1,22 +1,10 @@
 use crate::emu;
 
 pub fn VirtualProtect(emu: &mut emu::Emu) {
-    let addr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!VirtualProtect cannot read addr") as u64;
-    let size = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("kernel32!VirtualProtect cannot read size");
-    let new_prot = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("kernel32!VirtualProtect cannot read new_prot");
-    let old_prot_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("kernel32!VirtualProtect cannot read old_prot") as u64;
+    let addr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let size = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let new_prot = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let old_prot_ptr = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
 
     emu.maps.write_dword(old_prot_ptr, new_prot);
 

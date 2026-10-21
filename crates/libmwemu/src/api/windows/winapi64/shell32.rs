@@ -38,14 +38,8 @@ fn ShellExecuteA(emu: &mut emu::Emu) {
     let lp_operation = emu.regs().rdx;
     let lp_file = emu.regs().r8;
     let lp_parameters = emu.regs().r9;
-    let lp_directory = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("shell32!ShellExecuteA error reading lp_directory");
-    let n_show_cmd = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("shell32!ShellExecuteA error reading n_show_cmd");
+    let lp_directory = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let n_show_cmd = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
 
     let operation = if lp_operation != 0 {
         emu.maps.read_string(lp_operation)
@@ -75,14 +69,8 @@ fn ShellExecuteW(emu: &mut emu::Emu) {
     let lp_operation = emu.regs().rdx;
     let lp_file = emu.regs().r8;
     let lp_parameters = emu.regs().r9;
-    let lp_directory = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("shell32!ShellExecuteW error reading lp_directory");
-    let n_show_cmd = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("shell32!ShellExecuteW error reading n_show_cmd");
+    let lp_directory = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let n_show_cmd = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
 
     let operation = if lp_operation != 0 {
         emu.maps.read_wide_string(lp_operation)
@@ -112,14 +100,8 @@ fn RealShellExecuteA(emu: &mut emu::Emu) {
     let operation = emu.regs().rdx;
     let file_ptr = emu.regs().r8;
     let params_ptr = emu.regs().r9;
-    let dir = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("cannot read parameter");
-    let bShowWindow = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("cannot read parameter");
+    let dir = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let bShowWindow = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
 
     let file = emu.maps.read_string(file_ptr);
     let params = emu.maps.read_string(params_ptr);
@@ -143,10 +125,7 @@ fn SHGetFolderPathW(emu: &mut emu::Emu) {
     let csidl = emu.regs().rdx as i32;
     let h_token = emu.regs().r8;
     let dw_flags = emu.regs().r9 as u32;
-    let psz_path = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("shell32!SHGetFolderPathW error reading pszPath");
+    let psz_path = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     log_red!(
         emu,

@@ -1,10 +1,7 @@
 use crate::emu;
 
 pub fn InterlockedIncrement(emu: &mut emu::Emu) {
-    let addend = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!InterlockedIncrement cannot read addend");
+    let addend = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     let prev = emu
         .maps

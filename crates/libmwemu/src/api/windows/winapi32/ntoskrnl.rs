@@ -35,15 +35,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn RtlInitUnicodeString(emu: &mut emu::Emu) {
-    let dst_ptr =
-        emu.maps
-            .read_dword(emu.regs().get_esp())
-            .expect("ntoskrnl!RtlInitUnicodeString: error reading arg1 (dst_ptr)") as u64;
-    let src_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ntoskrnl!RtlInitUnicodeString: error reading optional arg2 (src_ptr)")
-        as u64;
+    let dst_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let src_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
 
     if !emu.maps.is_mapped(dst_ptr) {
         log_red!(

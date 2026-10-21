@@ -123,34 +123,13 @@ fn NtCreateFile(emu: &mut emu::Emu) {
     let access_mask = emu.regs().rdx;
     let oattrib = emu.regs().r8;
     let iostat = emu.regs().r9;
-    let alloc_sz = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("ntdll!NtCreateFile error reading alloc_sz param");
-    let fattrib = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x28)
-        .expect("ntdll!NtCreateFile error reading fattrib param");
-    let share_access = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x30)
-        .expect("ntdll!NtCreateFile error reading share_access param");
-    let create_disp = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x38)
-        .expect("ntdll!NtCreateFile error reading create_disp param");
-    let create_opt = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x40)
-        .expect("ntdll!NtCreateFile error reading create_opt param");
-    let ea_buff = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x48)
-        .expect("ntdll!NtCreateFile error reading ea_buff param");
-    let ea_len = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x50)
-        .expect("ntdll!NtCreateFile error reading ea_len param");
+    let alloc_sz = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let fattrib = emu.maps.read_dword(emu.regs().rsp + 0x28).unwrap_or(0);
+    let share_access = emu.maps.read_dword(emu.regs().rsp + 0x30).unwrap_or(0);
+    let create_disp = emu.maps.read_dword(emu.regs().rsp + 0x38).unwrap_or(0);
+    let create_opt = emu.maps.read_dword(emu.regs().rsp + 0x40).unwrap_or(0);
+    let ea_buff = emu.maps.read_qword(emu.regs().rsp + 0x48).unwrap_or(0);
+    let ea_len = emu.maps.read_dword(emu.regs().rsp + 0x50).unwrap_or(0);
 
     log_red!(
         emu,
@@ -314,10 +293,7 @@ fn NtQueryInformationFile(emu: &mut emu::Emu) {
     let stat = emu.regs().rdx;
     let fileinfo = emu.regs().r8;
     let len = emu.regs().r9;
-    let fileinfoctls = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("ntdll!NtQueryInformationFile cannot read fileinfoctls param");
+    let fileinfoctls = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     log_red!(emu, "ntdll!NtQueryInformationFile");
 
@@ -329,10 +305,7 @@ fn NtSetInformationFile(emu: &mut emu::Emu) {
     let io_status_block = emu.regs().rdx;
     let file_information = emu.regs().r8;
     let length = emu.regs().r9;
-    let file_information_class = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x20)
-        .expect("ntdll!NtSetInformationFile cannot read FileInformationClass param");
+    let file_information_class = emu.maps.read_dword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     log_red!(
         emu,
@@ -363,26 +336,11 @@ fn NtReadFile(emu: &mut emu::Emu) {
     let ev_hndl = emu.regs().rdx;
     let apc_rout = emu.regs().r8;
     let apc_ctx = emu.regs().r9;
-    let stat = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("ntdll!NtReadFile error reading stat param");
-    let buff = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("ntdll!NtReadFile error reading buff param");
-    let len = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x30)
-        .expect("ntdll!NtReadFile error reading len param") as usize;
-    let off = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x38)
-        .expect("ntdll!NtReadFile error reading off param");
-    let key = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x40)
-        .expect("ntdll!NtReadFile error reading key param");
+    let stat = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let buff = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
+    let len = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0) as usize;
+    let off = emu.maps.read_qword(emu.regs().rsp + 0x38).unwrap_or(0);
+    let key = emu.maps.read_qword(emu.regs().rsp + 0x40).unwrap_or(0);
 
     let file_offset = if off != 0 {
         match emu.maps.read_qword(off) {

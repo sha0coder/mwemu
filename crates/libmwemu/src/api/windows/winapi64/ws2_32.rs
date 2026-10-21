@@ -256,19 +256,9 @@ fn connect(emu: &mut emu::Emu) {
     let sock = emu.regs().rcx;
     let sockaddr_ptr = emu.regs().rdx;
     //let sockaddr = emu.maps.read_bytes(sockaddr_ptr, 8);
-    let family: u16 = emu
-        .maps
-        .read_word(sockaddr_ptr)
-        .expect("ws2_32!connect: error reading family");
-    let port: u16 = emu
-        .maps
-        .read_word(sockaddr_ptr + 2)
-        .expect("ws2_32!connect: error reading port")
-        .to_be();
-    let ip: u32 = emu
-        .maps
-        .read_dword(sockaddr_ptr + 4)
-        .expect("ws2_32!connect: error reading ip");
+    let family: u16 = emu.maps.read_word(sockaddr_ptr).unwrap_or(0);
+    let port: u16 = emu.maps.read_word(sockaddr_ptr + 2).unwrap_or(0).to_be();
+    let ip: u32 = emu.maps.read_dword(sockaddr_ptr + 4).unwrap_or(0);
 
     let sip = format!(
         "{}.{}.{}.{}",
@@ -390,18 +380,9 @@ fn bind(emu: &mut emu::Emu) {
     let saddr = emu.regs().rdx;
     let len = emu.regs().r8;
 
-    let family: u16 = emu
-        .maps
-        .read_word(saddr)
-        .expect("ws2_32!connect: error reading family");
-    let port: u16 = emu
-        .maps
-        .read_word(saddr + 2)
-        .expect("ws2_32!connect: error reading port");
-    let ip: u32 = emu
-        .maps
-        .read_dword(saddr + 4)
-        .expect("ws2_32!connect: error reading ip");
+    let family: u16 = emu.maps.read_word(saddr).unwrap_or(0);
+    let port: u16 = emu.maps.read_word(saddr + 2).unwrap_or(0);
+    let ip: u32 = emu.maps.read_dword(saddr + 4).unwrap_or(0);
 
     let sip = format!(
         "{}.{}.{}.{}",
@@ -479,10 +460,7 @@ fn setsockopt(emu: &mut emu::Emu) {
     let level = emu.regs().rdx;
     let optname = emu.regs().r8;
     let optval = emu.regs().r9;
-    let optlen = emu
-        .maps
-        .read_qword(emu.regs().get_esp())
-        .expect("ws2_32!setsockopt: error reading optlen");
+    let optlen = emu.maps.read_qword(emu.regs().get_esp()).unwrap_or(0);
 
     let val = emu.maps.read_dword(optval).unwrap_or_default();
 
@@ -507,10 +485,7 @@ fn getsockopt(emu: &mut emu::Emu) {
     let level = emu.regs().rdx;
     let optname = emu.regs().r8;
     let optval = emu.regs().r9;
-    let optlen = emu
-        .maps
-        .read_qword(emu.regs().get_esp())
-        .expect("ws2_32!getsockopt: error reading optlen");
+    let optlen = emu.maps.read_qword(emu.regs().get_esp()).unwrap_or(0);
 
     emu.maps.write_dword(optval, 1);
 
@@ -529,10 +504,7 @@ fn WsaAccept(emu: &mut emu::Emu) {
     let saddr = emu.regs().rdx;
     let len = emu.regs().r8;
     let cond = emu.regs().r9;
-    let callback = emu
-        .maps
-        .read_qword(emu.regs().get_esp())
-        .expect("ws2_32!WsaAccept: error reading callback");
+    let callback = emu.maps.read_qword(emu.regs().get_esp()).unwrap_or(0);
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 

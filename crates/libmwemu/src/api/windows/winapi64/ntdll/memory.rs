@@ -45,21 +45,12 @@ fn NtAllocateVirtualMemory(emu: &mut emu::Emu) {
     let size_ptr = emu.regs().rdx;
     let protection_offset = 0x30;
     let protection_addr = emu.regs().rsp + protection_offset;
-    let protect_value = emu
-        .maps
-        .read_dword(protection_addr)
-        .expect("Failed to read Protection argument at NtAllocateVirtualMemory");
+    let protect_value = emu.maps.read_dword(protection_addr).unwrap_or(0);
 
     let (can_read, can_write, can_execute) = ntdll::protect_to_rwx(protect_value);
 
-    let addr = emu
-        .maps
-        .read_qword(addr_ptr)
-        .expect("bad NtAllocateVirtualMemory address parameter");
-    let size = emu
-        .maps
-        .read_qword(size_ptr)
-        .expect("bad NtAllocateVirtualMemory size parameter");
+    let addr = emu.maps.read_qword(addr_ptr).unwrap_or(0);
+    let size = emu.maps.read_qword(size_ptr).unwrap_or(0);
 
     let do_alloc: bool = if addr == 0 {
         true
@@ -167,10 +158,7 @@ fn NtProtectVirtualMemory(emu: &mut emu::Emu) {
     let status = emu.regs().rdx;
     let page_number = emu.regs().r8;
     let page = emu.regs().r9;
-    let prot = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("ntdll!NtProtectVirtualMemory error reading old prot param");
+    let prot = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     log_red!(emu, "ntdll!NtProtectVirtualMemory sz: {} {}", sz, prot);
 

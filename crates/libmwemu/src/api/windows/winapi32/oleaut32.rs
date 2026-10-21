@@ -36,14 +36,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn SysAllocStringLen(emu: &mut emu::Emu) {
-    let str_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("oleaut32!SysAllocStringLen cannot read str_ptr") as u64;
-    let mut size = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("oleaut32!SysAllocStringLen cannot read size") as u64;
+    let str_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let mut size = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
 
     if size == 0xffffffff {
         size = 1024;
@@ -70,10 +64,7 @@ fn SysAllocStringLen(emu: &mut emu::Emu) {
 }
 
 fn SysFreeString(emu: &mut emu::Emu) {
-    let str_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("oleaut32!SysFreeString cannot read host_port") as u64;
+    let str_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     log_red!(emu, "oleaut32!SysFreeString  0x{:x}", str_ptr);
 

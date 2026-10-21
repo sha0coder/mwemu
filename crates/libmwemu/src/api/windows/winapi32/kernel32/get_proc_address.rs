@@ -1,14 +1,8 @@
 use crate::emu;
 
 pub fn GetProcAddress(emu: &mut emu::Emu) {
-    let hndl = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!GetProcAddress cannot read the handle") as u64;
-    let func_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("kernel32!GetProcAddress cannot read the func name") as u64;
+    let hndl = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let func_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
 
     emu.stack_pop32(false);
     emu.stack_pop32(false);

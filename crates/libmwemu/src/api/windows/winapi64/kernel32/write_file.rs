@@ -7,10 +7,7 @@ pub fn WriteFile(emu: &mut emu::Emu) {
     let buff = emu.regs().rdx;
     let size = emu.regs().r8;
     let bytes_written = emu.regs().r9;
-    let overlapped = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("kernel32!WriteFile cannot read the overlapped");
+    let overlapped = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     let mut count = COUNT_WRITE.lock().unwrap();
     *count += 1;

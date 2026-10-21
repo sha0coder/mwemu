@@ -37,14 +37,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn __register_frame_info(emu: &mut emu::Emu) {
-    let p1 = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("advapi32!__register_frame_info error reading param");
-    let p2 = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("advapi32!__register_frame_info error reading param");
+    let p1 = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
+    let p2 = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
 
     log_red!(emu, "libgcc!__register_frame_info {:x} {:x}", p1, p2);
 
@@ -65,10 +59,7 @@ fn __register_frame_info(emu: &mut emu::Emu) {
 }
 
 fn __deregister_frame_info(emu: &mut emu::Emu) {
-    let p1 = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("advapi32!__deregister_frame_info error reading param");
+    let p1 = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     log_red!(emu, "libgcc!__deregister_frame_info {:x}", p1);
 

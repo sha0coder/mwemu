@@ -2,10 +2,7 @@ use crate::emu;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn GetLocalTime(emu: &mut emu::Emu) {
-    let lp_system_time = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!GetLocalTime error reading param") as u64;
+    let lp_system_time = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     log_red!(emu, "kernel32!GetLocalTime ptr: 0x{:x}", lp_system_time);
 

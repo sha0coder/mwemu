@@ -6,10 +6,7 @@ pub fn MapViewOfFile(emu: &mut emu::Emu) {
     let access = emu.regs().rdx;
     let off_high = emu.regs().r8;
     let off_low = emu.regs().r9;
-    let mut size = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("kernel32!MapViewOfFile cannot read the size");
+    let mut size = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     let off: u64 = (off_high << 32) + off_low;
 

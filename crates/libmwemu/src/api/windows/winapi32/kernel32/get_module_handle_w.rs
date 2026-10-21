@@ -3,10 +3,7 @@ use crate::winapi::helper;
 use crate::windows::peb;
 
 pub fn GetModuleHandleW(emu: &mut emu::Emu) {
-    let mod_name_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!GetModuleHandleW cannot read mod_name_ptr") as u64;
+    let mod_name_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     let mod_name: String;
     let base;

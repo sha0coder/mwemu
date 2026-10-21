@@ -2,10 +2,7 @@ use crate::emu;
 use crate::winapi::winapi32::kernel32::LAST_ERROR;
 
 pub fn SetLastError(emu: &mut emu::Emu) {
-    let err_code = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!SetLastError cannot read err_code");
+    let err_code = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     log_red!(emu, "kernel32!SetLastError err: {}", err_code);
 

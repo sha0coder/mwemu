@@ -20,10 +20,7 @@ pub fn GetComputerNameW(emu: &mut emu::Emu) {
     }
 
     // Read current buffer size (in characters)
-    let buffer_size = emu
-        .maps
-        .read_dword(size_ptr)
-        .expect("Cannot read buffer size") as usize;
+    let buffer_size = emu.maps.read_dword(size_ptr).unwrap_or(0) as usize;
 
     // Calculate required size in characters
     let host_name = emu.cfg.host_name.clone();

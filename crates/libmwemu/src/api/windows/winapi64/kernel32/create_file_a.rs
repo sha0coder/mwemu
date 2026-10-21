@@ -8,18 +8,9 @@ pub fn CreateFileA(emu: &mut emu::Emu) {
     let dw_desired_access = emu.regs().rdx as u32;
     let dw_share_mode = emu.regs().r8 as u32;
     let lp_security_attributes = emu.regs().r9;
-    let dw_creation_disposition =
-        emu.maps
-            .read_qword(emu.regs().rsp + 0x20)
-            .expect("kernel32!CreateFileW cannot read dw_creation_disposition") as u32;
-    let dw_flags_and_attributes =
-        emu.maps
-            .read_qword(emu.regs().rsp + 0x28)
-            .expect("kernel32!CreateFileW cannot read dw_flags_and_attributes") as u32;
-    let h_template_file = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x30)
-        .expect("kernel32!CreateFileW cannot read h_template_file");
+    let dw_creation_disposition = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0) as u32;
+    let dw_flags_and_attributes = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0) as u32;
+    let h_template_file = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0);
 
     log_red!(
         emu,

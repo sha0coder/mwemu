@@ -2,26 +2,11 @@ use crate::emu;
 use crate::maps::mem64::Permission;
 
 pub fn MapViewOfFile(emu: &mut emu::Emu) {
-    let hndl = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!MapViewOfFile cannot read the handle");
-    let access = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("kernel32!MapViewOfFile cannot read the acess");
-    let off_high = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("kernel32!MapViewOfFile cannot read the off_hight") as u64;
-    let off_low = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("kernel32!MapViewOfFile cannot read the off_low") as u64;
-    let mut size = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("kernel32!MapViewOfFile cannot read the size") as u64;
+    let hndl = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
+    let access = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let off_high = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let off_low = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
+    let mut size = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0) as u64;
 
     let off: u64 = (off_high << 32) + off_low;
 

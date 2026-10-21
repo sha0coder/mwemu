@@ -44,14 +44,8 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn PkiInitializeCriticalSection(emu: &mut emu::Emu) {
-    let addr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("crypt32!PkiInitializeCriticalSection error getting flags param");
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("crypt32!PkiInitializeCriticalSection error getting addr param");
+    let addr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
+    let flags = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
 
     log_red!(
         emu,
@@ -67,34 +61,13 @@ fn PkiInitializeCriticalSection(emu: &mut emu::Emu) {
 }
 
 fn CryptStringToBinaryA(emu: &mut emu::Emu) {
-    let string = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("crypt32!CryptStringToBinaryA error getting flags param");
-    let num_chars = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("crypt32!PCryptStringToBinaryA error getting addr param");
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("crypt32!CryptStringToBinaryA error getting flags param");
-    let ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("crypt32!PCryptStringToBinaryA error getting addr param");
-    let inout_sz = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("crypt32!CryptStringToBinaryA error getting flags param");
-    let skip = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 20)
-        .expect("crypt32!PCryptStringToBinaryA error getting addr param");
-    let out_flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 24)
-        .expect("crypt32!CryptStringToBinaryA error getting flags param");
+    let string = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
+    let num_chars = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let flags = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let ptr = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0);
+    let inout_sz = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0);
+    let skip = emu.maps.read_dword(emu.regs().get_esp() + 20).unwrap_or(0);
+    let out_flags = emu.maps.read_dword(emu.regs().get_esp() + 24).unwrap_or(0);
 
     let dflags = match flags {
         0x00000000 => "CRYPT_STRING_BASE64HEADER",

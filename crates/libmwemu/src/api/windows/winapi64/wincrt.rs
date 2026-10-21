@@ -439,10 +439,7 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     let file = emu.regs().rdx; // _In_ FILE*
     let format = emu.regs().r8; // _In_ format string ptr
     let locale = emu.regs().r9; // _In_opt_ locale
-    let va_list = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("wincrt!__stdio_common_vfprintf cannot read_qword va_list");
+    let va_list = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
 
     // Just try to read the format string
     let fmt_str = emu.maps.read_string(format);
@@ -462,18 +459,12 @@ fn __stdio_common_vfprintf(emu: &mut emu::Emu) {
     for spec in specs {
         match spec {
             "int" | "hex" | "ptr" => {
-                let arg = emu
-                    .maps
-                    .read_qword(current_ptr)
-                    .expect("wincrt!__stdio_common_vfprintf cannot read_qword arg");
+                let arg = emu.maps.read_qword(current_ptr).unwrap_or(0);
                 current_ptr += 8; // Move to next arg
                 log::trace!("arg: {:016x}", arg);
             }
             "str" => {
-                let str_ptr = emu
-                    .maps
-                    .read_qword(current_ptr)
-                    .expect("wincrt!__stdio_common_vfprintf cannot read_qword str_ptr");
+                let str_ptr = emu.maps.read_qword(current_ptr).unwrap_or(0);
                 let string = emu.maps.read_string(str_ptr);
                 current_ptr += 8;
                 log::trace!("string: {}", string);

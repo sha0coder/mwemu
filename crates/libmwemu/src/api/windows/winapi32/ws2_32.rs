@@ -85,22 +85,10 @@ lazy_static! {
 }
 
 fn getaddrinfo(emu: &mut emu::Emu) {
-    let node_name_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!getaddrinfo cannot read node_name_ptr");
-    let service_name_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!getaddrinfo cannot read service_name_ptr");
-    let hints_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!getaddrinfo cannot read hints_ptr");
-    let result_ptr_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("ws2_32!getaddrinfo cannot read result_ptr_ptr");
+    let node_name_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let service_name_ptr = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let hints_ptr = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0);
+    let result_ptr_ptr = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0);
 
     let node_name = if node_name_ptr != 0 {
         emu.maps.read_string(node_name_ptr as u64)
@@ -264,14 +252,8 @@ fn socket(emu: &mut emu::Emu) {
 }
 
 fn WsaHtons(emu: &mut emu::Emu) {
-    let host_port = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!WsaHtons cannot read host_port");
-    let out_port = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!WsaHtons cannot read out_port");
+    let host_port = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let out_port = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
 
     log_red!(emu, "ws2_32!WsaHtons {}", host_port);
 
@@ -294,10 +276,7 @@ fn htons(emu: &mut emu::Emu) {
 }
 
 fn inet_addr(emu: &mut emu::Emu) {
-    let addr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!inet_addr: error reading addr");
+    let addr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     log_red!(emu, "ws2_32!inet_addr");
 
@@ -306,28 +285,12 @@ fn inet_addr(emu: &mut emu::Emu) {
 }
 
 fn connect(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!connect: error reading sock") as u64;
-    let sockaddr_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!connect: error reading sockaddr ptr") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let sockaddr_ptr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
     //let sockaddr = emu.maps.read_bytes(sockaddr_ptr, 8);
-    let family: u16 = emu
-        .maps
-        .read_word(sockaddr_ptr)
-        .expect("ws2_32!connect: error reading family");
-    let port: u16 = emu
-        .maps
-        .read_word(sockaddr_ptr + 2)
-        .expect("ws2_32!connect: error reading port")
-        .to_be();
-    let ip: u32 = emu
-        .maps
-        .read_dword(sockaddr_ptr + 4)
-        .expect("ws2_32!connect: error reading ip");
+    let family: u16 = emu.maps.read_word(sockaddr_ptr).unwrap_or(0);
+    let port: u16 = emu.maps.read_word(sockaddr_ptr + 2).unwrap_or(0).to_be();
+    let ip: u32 = emu.maps.read_dword(sockaddr_ptr + 4).unwrap_or(0);
 
     let sip = format!(
         "{}.{}.{}.{}",
@@ -363,22 +326,10 @@ fn connect(emu: &mut emu::Emu) {
 }
 
 fn recv(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!recv: error reading sock") as u64;
-    let buff = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!recv: error reading buff") as u64;
-    let mut len = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!recv: error reading len") as u64;
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!recv: error reading flags") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let buff = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let mut len = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let flags = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
 
     log_red!(emu, "ws2_32!recv   buff: 0x{:x} sz: {}", buff, len);
 
@@ -432,22 +383,10 @@ fn recv(emu: &mut emu::Emu) {
 }
 
 fn send(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!send: error reading sock") as u64;
-    let buff = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!send: error reading buff") as u64;
-    let mut len = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!send: error reading len") as u64;
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!send: error reading flags") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let buff = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let mut len = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let flags = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
 
     let bytes = emu.maps.read_string_of_bytes(buff, len as usize);
 
@@ -482,31 +421,13 @@ fn send(emu: &mut emu::Emu) {
 }
 
 fn bind(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!send: error reading sock") as u64;
-    let saddr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!send: error reading addr") as u64;
-    let len = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!send: error reading len") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let saddr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let len = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
 
-    let family: u16 = emu
-        .maps
-        .read_word(saddr)
-        .expect("ws2_32!connect: error reading family");
-    let port: u16 = emu
-        .maps
-        .read_word(saddr + 2)
-        .expect("ws2_32!connect: error reading port");
-    let ip: u32 = emu
-        .maps
-        .read_dword(saddr + 4)
-        .expect("ws2_32!connect: error reading ip");
+    let family: u16 = emu.maps.read_word(saddr).unwrap_or(0);
+    let port: u16 = emu.maps.read_word(saddr + 2).unwrap_or(0);
+    let ip: u32 = emu.maps.read_dword(saddr + 4).unwrap_or(0);
 
     let sip = format!(
         "{}.{}.{}.{}",
@@ -537,14 +458,8 @@ fn bind(emu: &mut emu::Emu) {
 }
 
 fn listen(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!send: error reading sock") as u64;
-    let connections = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!send: error reading num of connections") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let connections = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
 
     log_red!(emu, "ws2_32!listen  connections: {}", connections);
 
@@ -561,22 +476,10 @@ fn listen(emu: &mut emu::Emu) {
 }
 
 fn accept(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!accept: error reading sock") as u64;
-    let saddr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!accept: error reading sockaddr") as u64;
-    let len = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!seacceptnd: error reading len") as u64;
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!accept: error reading flags") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let saddr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let len = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let flags = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 
@@ -595,10 +498,7 @@ fn accept(emu: &mut emu::Emu) {
 }
 
 fn closesocket(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!send: error reading sock") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     log_red!(emu, "ws2_32!closesocket");
 
@@ -614,26 +514,11 @@ fn closesocket(emu: &mut emu::Emu) {
 }
 
 fn setsockopt(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!setsockopt: error reading sock") as u64;
-    let level = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!setsockopt: error reading level") as u64;
-    let optname = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!setsockopt: error reading optname") as u64;
-    let optval = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!setsockopt: error reading optval") as u64;
-    let optlen = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("ws2_32!setsockopt: error reading optlen") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let level = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let optname = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let optval = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
+    let optlen = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0) as u64;
 
     let val = emu.maps.read_dword(optval).unwrap_or_default();
 
@@ -658,26 +543,11 @@ fn setsockopt(emu: &mut emu::Emu) {
 }
 
 fn getsockopt(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!getsockopt: error reading sock") as u64;
-    let level = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!getsockopt: error reading level") as u64;
-    let optname = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!getsockopt: error reading optname") as u64;
-    let optval = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!getsockopt: error reading optval") as u64;
-    let optlen = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("ws2_32!getsockopt: error reading optlen") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let level = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let optname = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let optval = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
+    let optlen = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0) as u64;
 
     emu.maps.write_dword(optval, 1);
 
@@ -696,26 +566,11 @@ fn getsockopt(emu: &mut emu::Emu) {
 }
 
 fn WsaAccept(emu: &mut emu::Emu) {
-    let sock = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("ws2_32!WsaAccept: error reading sock") as u64;
-    let saddr = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("ws2_32!WsaAccept: error reading sockaddr") as u64;
-    let len = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("ws2_32!WsaAccept: error reading len") as u64;
-    let cond = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("ws2_32!WsaAccept: error reading cond") as u64;
-    let callback = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("ws2_32!WsaAccept: error reading callback") as u64;
+    let sock = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let saddr = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let len = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0) as u64;
+    let cond = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
+    let callback = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0) as u64;
 
     let bytes = emu.maps.read_string_of_bytes(saddr, len as usize);
 

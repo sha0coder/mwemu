@@ -35,10 +35,7 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn PathFileExistsA(emu: &mut emu::Emu) {
-    let ptr_path = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("shlwapi!PathFileExistsA error reading path") as u64;
+    let ptr_path = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     let path = emu.maps.read_string(ptr_path);
 
@@ -49,10 +46,7 @@ fn PathFileExistsA(emu: &mut emu::Emu) {
 }
 
 fn PathFileExistsW(emu: &mut emu::Emu) {
-    let ptr_path = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("shlwapi!PathFileExistsW error reading path") as u64;
+    let ptr_path = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     let path = emu.maps.read_wide_string(ptr_path);
 

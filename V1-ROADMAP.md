@@ -24,14 +24,15 @@ is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
 Current audit (v0.26.0):
 
-| Signal                | Total | Guest-reachable hot spots            |
-|-----------------------|-------|--------------------------------------|
-| `unimplemented!()`    | ~~98~~ **0** | All converted to log + graceful stop (v0.26.0) |
-| `panic!(...)`         | 14    | 4 are arch-assertion guards (not guest-reachable), 10 in tests |
-| `.unwrap()`           | ~858  | emu 57, engine 24→4*, maps 54→~45    |
-| `.expect(...)`        | ~3096 | emu 63→~50, engine 8→0, maps 32→~25  |
+| Signal                | Total (non-test) | Guest-reachable hot spots            |
+|-----------------------|------------------|--------------------------------------|
+| `unimplemented!()`    | ~~98~~ **0**     | All converted to log + graceful stop (v0.26.0) |
+| `panic!(...)`         | 15               | 5 are arch-assertion guards, 10 in tests |
+| `.unwrap()`           | 580              | api/ 131, emu/ 33, maps/ 13, engine/ 4* |
+| `.expect(...)`        | 2896             | api/ 2646, syscall/ 72, emu/ 49, maps/ 26 |
 
 \* engine remaining 4 are in commented-out debug code or infallible `try_into`.
+† api/ expect count is dominated by winapi stack reads (`read_dword().expect()`).
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
@@ -41,11 +42,19 @@ Current audit (v0.26.0):
       `stack_pop*.unwrap()` → match+return false, all memory read `.expect()`
       → match+return false (pop, fadd, ret, pshufd, movs*, cmps*, stos*, scas*).
 - [x] **maps/**: `mem64.rs` slice/file I/O unwraps → `unwrap_or`/log+return,
-      `mod.rs` map lookups, free/dealloc, alloc → log+return 0.
+      `mod.rs` map lookups, free/dealloc, alloc, cross-map writes → log+return.
+      `search.rs` hex parse → graceful return.
 - [x] **emu/operands.rs**: banzai map `.expect()` → match+return false.
 - [x] **emu/instruction_pointer.rs**: `get_addr_name().expect()` → match+return false.
 - [x] **emu/object_handle/hive_parser.rs**: `RegType` conversion → `?` propagation.
-- [ ] **Headline gate:** remaining ~2700 `.expect()` in `api/` winapi stubs
+- [x] **emu/memory.rs**: all `unreachable!()` and `expect()` → log::warn + return 0.
+- [x] **emu/disassemble**: `expect("address not mapped")` → return error string.
+- [x] **emu/execution**: dump/trace file unwrap/expect → if-let-Some pattern.
+- [x] **emu/trace.rs**: file creation expect → graceful error handling.
+- [x] **emu/iso.rs, winver.rs**: `to_str().unwrap()` → guarded with if-let.
+- [x] **emu/object_handle**: file_handle/windows_path unwrap → ok_or/ok_or_else.
+- [x] **emu/loaders/pe.rs**: `expect("out of memory")` → match + return (0,0).
+- [ ] **Headline gate:** remaining ~2646 `.expect()` in `api/` winapi stubs
       (stack reads). These are lower risk (stack is set up by gateway) but
       should eventually use a fallible helper. Hold the line with a CI grep
       gate on `engine/`, `maps/`, `emu/` core (see P2 #9).
