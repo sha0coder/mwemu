@@ -58,7 +58,6 @@ lazy_static! {
 }
 
 /// kernelbase API ////
-
 fn GetModuleHandleW(emu: &mut emu::Emu) {
     let mod_name_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 

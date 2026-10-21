@@ -42,6 +42,7 @@ impl KSystemTime {
 }
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct SSDT {
     pub p_service_table: u64,
     pub p_counter_table: u64,

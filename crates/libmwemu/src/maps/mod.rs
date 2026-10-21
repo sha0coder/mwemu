@@ -1007,14 +1007,11 @@ impl Maps {
             .map(|(_, m)| (m.get_base(), m.get_bottom(), m.get_name().to_string()))
             .collect();
 
-        for i in 0..regions.len() {
-            let (b1, t1, ref n1) = regions[i];
-
-            for j in 0..regions.len() {
+        for (i, (b1, t1, n1)) in regions.iter().enumerate() {
+            for (j, (b2, t2, n2)) in regions.iter().enumerate() {
                 if i == j {
                     continue;
                 }
-                let (b2, t2, ref n2) = regions[j];
 
                 // Pairwise overlap test: two half-open ranges [b1, t1), [b2, t2)
                 // overlap iff b1 < t2 && b2 < t1. Equivalent to the original

@@ -42,6 +42,7 @@ pub enum SerializableInstructionState {
 }
 
 #[derive(Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum SerializableCurrentThreadState {
     X86 {
         regs: Regs64,

@@ -87,6 +87,7 @@ impl KDeviceQueue {
 }
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct KDPC {
     pub type_: u8,
     pub importance: u8,

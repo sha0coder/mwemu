@@ -394,7 +394,7 @@ pub fn get_crypto_key_len(value: u32) -> usize {
 }
 
 /// WINDOWS KERNEL ////
-
+///
 /// `_MEMORY_INFORMATION_CLASS` for `NtQueryVirtualMemory` (see Windows SDK).
 pub const MEMORY_INFORMATION_CLASS_MEMORY_BASIC_INFORMATION: u64 = 0;
 pub const MEMORY_INFORMATION_CLASS_MEMORY_PRIVILEGED_BASIC_INFORMATION: u64 = 8;

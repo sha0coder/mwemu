@@ -3,6 +3,7 @@ use crate::maps::Maps;
 use super::ListEntry64;
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct MDL {
     pub next: u64,
     pub size: u16,
@@ -278,6 +279,7 @@ impl Mutant {
 }
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct IDT {
     pub limit: u16,
     pub descriptors: u64,
@@ -315,6 +317,7 @@ impl IDT {
 }
 
 #[derive(Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct KAPC {
     pub type_: u8,
     pub spare_byte0: u8,

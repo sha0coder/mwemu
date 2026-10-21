@@ -252,8 +252,8 @@ impl WindowsPath {
 
     /// Strips UNC prefix from a string
     fn strip_unc_prefix(s: &str) -> &str {
-        if s.starts_with(UNC_PREFIX) {
-            &s[UNC_PREFIX.len()..]
+        if let Some(stripped) = s.strip_prefix(UNC_PREFIX) {
+            stripped
         } else {
             s
         }

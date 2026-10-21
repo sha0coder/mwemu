@@ -121,8 +121,8 @@ Enigma-canary philosophy the rest of the suite already follows.
 
 - [x] `cargo-fuzz` harness over `load_code` (PE/ELF/Mach-O) and
       over `run` on random shellcode buffers (`fuzz/fuzz_targets/`).
-- [ ] Run a short fuzz smoke pass in CI; keep a corpus of crashers as
-      regression seeds.
+- [x] Run a short fuzz smoke pass in CI (30s per target, both x86 and x64).
+      Corpus of crashers kept as regression seeds.
 
 ---
 
@@ -164,7 +164,9 @@ Priority list (based on Enigma, Themida, and common malware):
 
 ### 8. Documentation
 
-- [ ] `///` doc comments on all public API types and methods
+- [ ] `///` doc comments on all public API types and methods (done: Emu, Config,
+      MwemuError, Hooks, Maps, Mem64, Permission, Arch, OperatingSystem, register
+      accessors, emu32/emu64/emu_aarch64, load_code, run/step/run_to/run_until_ret)
 - [x] `examples/` directory (01_shellcode, 02_memory, 03_hooks,
       04_load_binary already exist)
 - [ ] Add examples for the Python (pymwemu) and C (cmwemu) bindings

@@ -199,8 +199,8 @@ impl Emu {
 
         // Name RVA table
         let no = (name_tbl_rva - edata_rva) as usize;
-        for i in 0..n as usize {
-            w32(&mut ed, no + i * 4, name_rvas[i]);
+        for (i, &rva) in name_rvas.iter().enumerate().take(n as usize) {
+            w32(&mut ed, no + i * 4, rva);
         }
 
         // Ordinal table

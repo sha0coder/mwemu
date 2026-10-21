@@ -491,7 +491,7 @@ impl FPU {
     pub fn convert_st(&self, src: Vec<f64>) -> [u128; 8] {
         let mut result = [0u128; 8];
 
-        for i in 0..8 {
+        for (i, item) in result.iter_mut().enumerate() {
             let low = if let Some(val) = src.get(i * 2) {
                 *val
             } else {
@@ -505,7 +505,7 @@ impl FPU {
 
             let low_bits = low.to_bits() as u128;
             let high_bits = high.to_bits() as u128;
-            result[i] = low_bits | (high_bits << 64);
+            *item = low_bits | (high_bits << 64);
         }
 
         result

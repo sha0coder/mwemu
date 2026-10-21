@@ -41,8 +41,8 @@ where
     D: serde::Deserializer<'de>,
 {
     let s: String = serde::Deserialize::deserialize(deserializer)?;
-    if s.starts_with("0x") {
-        u64::from_str_radix(&s[2..], 16).map_err(serde::de::Error::custom)
+    if let Some(stripped) = s.strip_prefix("0x") {
+        u64::from_str_radix(stripped, 16).map_err(serde::de::Error::custom)
     } else {
         s.parse::<u64>().map_err(serde::de::Error::custom)
     }

@@ -11,6 +11,7 @@ use crate::threading::context::{
 };
 
 #[derive(Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum SerializableThreadArch {
     X86 {
         regs: Regs64,

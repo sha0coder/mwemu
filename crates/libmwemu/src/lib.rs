@@ -3,23 +3,13 @@
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
 #![allow(clippy::assertions_on_constants)]
-// --- clippy v1 burn-down backlog (see V1-ROADMAP.md P2 #9) ---
-// These lints are grandfathered so CI can run `-D warnings` and fail on any
-// NEW warning outside this set. Remove entries as the backlog is cleared.
 // NOTE: `neg_cmp_op_on_partial_ord` is kept deliberately — in the float
 // compare handlers (cmpss/cmpsd/cmpps/cmppd/avx) `!(a < b)` is NOT the same
 // as `a >= b` for NaN operands, which is the intended x86 semantics.
-#![allow(clippy::empty_line_after_doc_comments)]
-#![allow(clippy::explicit_counter_loop)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::manual_clamp)]
-#![allow(clippy::manual_div_ceil)]
-#![allow(clippy::manual_strip)]
-#![allow(clippy::needless_late_init)]
-#![allow(clippy::needless_range_loop)]
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
-#![allow(clippy::upper_case_acronyms)]
+// The `construct_uint!` macro from `uint` generates code with manual div_ceil;
+// we cannot fix it inside the macro expansion.
+#![allow(clippy::manual_div_ceil)]
 
 #[macro_use]
 pub mod utils;

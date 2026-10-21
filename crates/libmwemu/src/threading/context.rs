@@ -60,6 +60,7 @@ impl AArch64TraceSnapshot {
 /// `Option<Box<…>>` so a run without `--trace-regs` skips the per-thread
 /// buffer allocation entirely.
 #[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ArchThreadState {
     X86 {
         regs: Regs64,

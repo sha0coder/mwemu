@@ -42,9 +42,8 @@ impl Maps {
     }
 
     pub fn write_spaced_bytes(&mut self, addr: u64, sbs: &str) -> bool {
-        let mut waddr = addr;
         let bs: Vec<&str> = sbs.split(' ').collect();
-        for bsi in bs.iter() {
+        for (waddr, bsi) in (addr..).zip(bs.iter()) {
             let Ok(b) = u8::from_str_radix(bsi, 16) else {
                 log::warn!("write_spaced_bytes: bad hex byte '{}'", bsi);
                 return false;
@@ -52,7 +51,6 @@ impl Maps {
             if !self.write_byte(waddr, b) {
                 return false;
             }
-            waddr += 1;
         }
         true
     }
