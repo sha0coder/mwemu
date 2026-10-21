@@ -233,10 +233,18 @@ jobs:
           cache-on-failure: true
           workspaces: fuzz
 
-      - name: Fuzz load_code (30s)
+      - name: Fuzz load_code x86 (30s)
         run: cargo +nightly fuzz run fuzz_load_code -- -max_total_time=30
         working-directory: fuzz
 
-      - name: Fuzz run_shellcode (30s)
+      - name: Fuzz run_shellcode x86 (30s)
         run: cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=30
+        working-directory: fuzz
+
+      - name: Fuzz load_code x64 (30s)
+        run: cargo +nightly fuzz run fuzz_load_code64 -- -max_total_time=30
+        working-directory: fuzz
+
+      - name: Fuzz run_shellcode x64 (30s)
+        run: cargo +nightly fuzz run fuzz_run_shellcode64 -- -max_total_time=30
         working-directory: fuzz

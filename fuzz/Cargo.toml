@@ -22,3 +22,13 @@ doc = false
 name = "fuzz_run_shellcode"
 path = "fuzz_targets/fuzz_run_shellcode.rs"
 doc = false
+
+[[bin]]
+name = "fuzz_load_code64"
+path = "fuzz_targets/fuzz_load_code64.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_run_shellcode64"
+path = "fuzz_targets/fuzz_run_shellcode64.rs"
+doc = false
