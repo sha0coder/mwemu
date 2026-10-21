@@ -9,15 +9,12 @@
 // NOTE: `neg_cmp_op_on_partial_ord` is kept deliberately — in the float
 // compare handlers (cmpss/cmpsd/cmpps/cmppd/avx) `!(a < b)` is NOT the same
 // as `a >= b` for NaN operands, which is the intended x86 semantics.
-#![allow(clippy::assign_op_pattern)]
-#![allow(clippy::doc_lazy_continuation)]
 #![allow(clippy::duplicate_mod)]
-// TEMP_REMOVED: clippy::empty_line_after_doc_comments
+#![allow(clippy::empty_line_after_doc_comments)]
 #![allow(clippy::explicit_counter_loop)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::if_same_then_else)]
 #![allow(clippy::large_enum_variant)]
-#![allow(clippy::legacy_numeric_constants)]
 #![allow(clippy::len_without_is_empty)]
 #![allow(clippy::lines_filter_map_ok)]
 #![allow(clippy::manual_clamp)]
@@ -28,14 +25,11 @@
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
-#![allow(clippy::nonminimal_bool)]
 #![allow(clippy::ptr_arg)]
 #![allow(clippy::redundant_locals)]
 #![allow(clippy::single_match)]
 #![allow(clippy::suspicious_open_options)]
-#![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
-#![allow(clippy::unnecessary_unwrap)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::while_let_loop)]
 
