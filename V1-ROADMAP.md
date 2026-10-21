@@ -65,8 +65,8 @@ Current audit (v0.26.0 → v0.26.1):
       70 `.expect()` in api/ are on map creation or handle lookups with
       appropriate fallbacks.  Hold the line with a CI grep gate on
       `engine/`, `maps/`, `emu/` core (see P2 #9).
-- [ ] Unimplemented x86 instructions should raise `#UD` (exception), not
-      `return false` + silent stop.
+- [x] Unimplemented x86 instructions now raise `#UD` (IllegalInstruction
+      exception via SEH/VEH) instead of `return false` + silent stop.
 
 ### 2. Public API stability
 
