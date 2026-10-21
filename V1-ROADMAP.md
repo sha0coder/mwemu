@@ -22,19 +22,18 @@ The emulator must never abort on any guest binary, no matter how malformed.
 The real crash surface is not the handful of `unimplemented!()` macros — it
 is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
-Current audit (v0.26.0 → v0.26.1):
+Current audit (v0.26.0 → v0.26.2):
 
-| Signal                | v0.26.0 | v0.26.1  | Guest-reachable hot spots            |
-|-----------------------|---------|----------|--------------------------------------|
-| `unimplemented!()`    | 98      | **0**    | All converted to log + graceful stop (v0.26.0) |
-| `panic!(...)`         | 15      | 15       | 5 are arch-assertion guards, 10 in tests |
-| `.unwrap()`           | 580     | **796†** | structures/ 275, api/ 131, emu/ 33, maps/ 13, engine/ 4* |
-| `.expect(...)`        | 2896    | **480**  | api/ 70, syscall/ 72, emu/ 49, maps/ 26 |
+| Signal                | v0.26.0 | v0.26.1  | v0.26.2  | Guest-reachable hot spots            |
+|-----------------------|---------|----------|----------|--------------------------------------|
+| `unimplemented!()`    | 98      | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
+| `panic!(...)`         | 15      | 15       | **15**   | 5 are arch-assertion guards, 10 in tests |
+| `.unwrap()`           | 580     | 796†     | **447**  | maps/heap 15 (internal), engine/ 4 (commented/infallible) |
+| `.expect(...)`        | 2896    | 480      | **312**  | test-only 80, maps/host-invariant 10, remaining scattered |
 
-\* engine remaining 4 are in commented-out debug code or infallible `try_into`.
-† unwrap count rose because ~2500 `expect()` in api/ were converted to
-  `unwrap_or(0)` (safe default for missing stack args). structures/ unwraps
-  are memory writes for Windows struct emulation (PEB/TEB/system_info).
+† unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
+  to `unwrap_or(0)`. In v0.26.2, structures/ 346 unwraps → `unwrap_or(0)`,
+  many more from api/syscall/init expect→unwrap_or conversions.
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
@@ -62,9 +61,16 @@ Current audit (v0.26.0 → v0.26.1):
       return empty; bounds checks on all byte-slice indexing in chained fixups.
 - [x] **api/ winapi stubs:** ~2500 `.expect()` on stack reads converted to
       `.unwrap_or(0)` (safe default — gateway sets up the stack). Remaining
-      70 `.expect()` in api/ are on map creation or handle lookups with
-      appropriate fallbacks.  Hold the line with a CI grep gate on
-      `engine/`, `maps/`, `emu/` core (see P2 #9).
+      70 `.expect()` in api/ converted to match+log or unwrap_or (v0.26.2).
+      Hold the line with a CI grep gate on `engine/`, `maps/`, `emu/` core
+      (see P2 #9).
+- [x] **syscall/**: 72 `.expect()` → `unwrap_or(0)` for reads, match+log
+      for alloc/file ops (v0.26.2).
+- [x] **structures/**: 346 `.unwrap()` → `unwrap_or(0)` on PEB/TEB/system_info
+      memory reads (v0.26.2).
+- [x] **initialization.rs**: 26 `.expect()` → Result propagation via `?`/match
+      for map creation, heap alloc, banzai CSV parse (v0.26.2).
+- [x] **loaders (pe_stub, ko, kext)**: 7 `.expect()` → Result propagation (v0.26.2).
 - [x] Unimplemented x86 instructions now raise `#UD` (IllegalInstruction
       exception via SEH/VEH) instead of `return false` + silent stop.
 
