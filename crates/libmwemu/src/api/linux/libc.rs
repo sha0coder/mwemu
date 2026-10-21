@@ -1,10 +1,7 @@
-#[path = "../abi.rs"]
-mod abi;
-
+use crate::api::abi::ApiAbi;
 use crate::emu::Emu;
 use crate::kernel::heap::Region;
 use crate::maps::mem64::Permission;
-use abi::ApiAbi;
 
 const ERRNO_MAP: &str = "linux_errno";
 const FAKE_PID: u64 = 1234;

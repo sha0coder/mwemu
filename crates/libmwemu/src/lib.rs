@@ -9,29 +9,17 @@
 // NOTE: `neg_cmp_op_on_partial_ord` is kept deliberately — in the float
 // compare handlers (cmpss/cmpsd/cmpps/cmppd/avx) `!(a < b)` is NOT the same
 // as `a >= b` for NaN operands, which is the intended x86 semantics.
-#![allow(clippy::duplicate_mod)]
 #![allow(clippy::empty_line_after_doc_comments)]
 #![allow(clippy::explicit_counter_loop)]
 #![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::if_same_then_else)]
 #![allow(clippy::large_enum_variant)]
-#![allow(clippy::len_without_is_empty)]
-#![allow(clippy::lines_filter_map_ok)]
 #![allow(clippy::manual_clamp)]
 #![allow(clippy::manual_div_ceil)]
-#![allow(clippy::manual_memcpy)]
 #![allow(clippy::manual_strip)]
-#![allow(clippy::match_single_binding)]
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
-#![allow(clippy::ptr_arg)]
-#![allow(clippy::redundant_locals)]
-#![allow(clippy::single_match)]
-#![allow(clippy::suspicious_open_options)]
-#![allow(clippy::type_complexity)]
 #![allow(clippy::upper_case_acronyms)]
-#![allow(clippy::while_let_loop)]
 
 #[macro_use]
 pub mod utils;

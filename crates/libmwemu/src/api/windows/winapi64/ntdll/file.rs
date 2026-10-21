@@ -43,8 +43,6 @@ fn RtlDosPathNameToNtPathName_U(emu: &mut emu::Emu) {
 
     let nt_path = if dos_path_name.starts_with("\\\\?\\") {
         format!("\\??\\{}", &dos_path_name[4..])
-    } else if dos_path_name.len() >= 2 && dos_path_name.chars().nth(1) == Some(':') {
-        format!("\\??\\{}", dos_path_name)
     } else {
         format!("\\??\\{}", dos_path_name)
     };

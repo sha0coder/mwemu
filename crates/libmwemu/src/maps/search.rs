@@ -74,7 +74,7 @@ impl Maps {
     }
 
     #[inline]
-    fn is_pattern_match_at(memory: &Mem64, address: u64, pattern: &Vec<u8>) -> bool {
+    fn is_pattern_match_at(memory: &Mem64, address: u64, pattern: &[u8]) -> bool {
         for (i, &pattern_byte) in pattern.iter().enumerate() {
             let current_addr = address + (i as u64);
 

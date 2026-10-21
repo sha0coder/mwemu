@@ -164,7 +164,6 @@ impl Emu {
                 registers, pre_op_regs.r15, post_op_regs.r15
             );
         } else {
-            let post_op_regs = post_op_regs;
             registers = Regs64::diff(pre_op_regs, post_op_regs);
         }
 

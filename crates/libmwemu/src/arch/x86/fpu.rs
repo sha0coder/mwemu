@@ -307,7 +307,6 @@ impl FPU {
     }
 
     pub fn xchg_st(&mut self, i: usize) {
-        let i = i;
         self.st.swap(0, i);
     }
 

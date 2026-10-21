@@ -42,7 +42,7 @@ impl Script {
         let file = File::open(filename).unwrap();
         let buf = BufReader::new(file);
 
-        for line in buf.lines().flatten() {
+        for line in buf.lines().map_while(Result::ok) {
             self.code.push(line);
         }
     }

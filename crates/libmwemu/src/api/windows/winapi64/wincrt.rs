@@ -251,15 +251,11 @@ fn puts(emu: &mut emu::Emu) {
 fn strlen(emu: &mut emu::Emu) {
     let s = emu.regs().rcx;
     let mut n: u64 = 0;
-    loop {
-        if let Some(b) = emu.maps.read_byte(s + n) {
-            if b == 0 {
-                break;
-            }
-            n += 1;
-        } else {
+    while let Some(b) = emu.maps.read_byte(s + n) {
+        if b == 0 {
             break;
         }
+        n += 1;
         if n > 0x10_0000 {
             break;
         }

@@ -204,6 +204,7 @@ impl FileHandle {
                     .read(true)
                     .write(true)
                     .create(true)
+                    .truncate(false)
                     .open(&resolved_path), // OPEN_ALWAYS
                 _ => {
                     return Err(Box::new(io::Error::new(
