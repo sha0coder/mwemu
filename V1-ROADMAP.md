@@ -29,8 +29,8 @@ Current audit (v0.26.0 → v0.26.3):
 | `unimplemented!()`    | 98      | **0**    | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
 | `unreachable!()`      | —       | —        | 11       | **0** ✅ | 57 remain but all are arch-mismatch host invariants |
 | `panic!(...)`         | 15      | 15       | **15**   | **6**    | 4 arch-assertion guards, 1 heap init fatal, 1 kuser init |
-| `.unwrap()`           | 580     | 796†     | **447**  | **164**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, serialization I/O, tests |
-| `.expect(...)`        | 2896    | 480      | **312**  | **49**   | **0 guest-reachable**; 17 heap tests, 5 maps host-invariant, rest test/Mutex/conditional |
+| `.unwrap()`           | 580     | 796†     | **447**  | **126**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, serialization I/O, tests |
+| `.expect(...)`        | 2896    | 480      | **312**  | **51**   | **0 guest-reachable**; heap tests, maps host-invariant, rest test/Mutex/conditional |
 
 † unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
   to `unwrap_or(0)`. v0.26.2: structures/ 346 unwraps → `unwrap_or(0)`,
@@ -101,12 +101,17 @@ The public signatures are already `Result`-based (`run`, `run_to`,
 `Result<u64, MwemuError>`). The open work is making the internals honor
 that contract instead of panicking — which is the same sweep as P0 #1.
 
-- [ ] `run()` must propagate every internal failure as `Err`, never abort.
+- [x] `run()` must propagate every internal failure as `Err`, never abort.
+      Zero guest-reachable panics remain (v0.26.3). Remaining `panic!` are
+      4 arch-assertion API guards and 1 heap-init fatal (host invariant).
 - [x] Malformed PE/ELF/Mach-O input: return `Err` from `load_code`, not
       panic on short reads or missing sections. `load_code` and
       `load_code_bytes` now return `Result<(), MwemuError>`. All callers
       (CLI, pymwemu, cmwemu, MCP, examples, tests) updated.
-- [ ] OOM in `maps.alloc()` / `create_map()`: propagate, don't `expect`.
+- [x] OOM in `maps.alloc()` / `create_map()`: `alloc()` returns `Option<u64>`,
+      `create_map()` returns `Result<&mut Mem64, String>`. All callers
+      handle `None`/`Err` gracefully. No `.expect()` on alloc results
+      outside test code.
 
 ### 4. Fuzz the input surface (new)
 
