@@ -461,13 +461,18 @@ impl Emu {
                     //   +0xF8  Rip            (QWORD)
                     const CTX_SIZE: u64 = 0x4D0;
                     const CONTEXT_FULL: u32 = 0x10_007F;
-                    let ctx_addr = self
+                    let Some(ctx_addr) = self.maps.lib64_alloc(CTX_SIZE) else {
+                        log::error!("cannot alloc CONTEXT for LdrInitializeThunk");
+                        return;
+                    };
+                    if self
                         .maps
-                        .lib64_alloc(CTX_SIZE)
-                        .expect("cannot alloc CONTEXT for LdrInitializeThunk");
-                    self.maps
                         .create_map("ldr_context", ctx_addr, CTX_SIZE, Permission::READ_WRITE)
-                        .expect("cannot create ldr_context map");
+                        .is_err()
+                    {
+                        log::error!("cannot create ldr_context map");
+                        return;
+                    }
                     // ContextFlags
                     let _ = self.maps.write_dword(ctx_addr + 0x30, CONTEXT_FULL);
                     // Rsp: current stack pointer
@@ -685,17 +690,19 @@ impl Emu {
                 peb32::update_ldr_entry_base(&exe_name, base as u64, self);
             }
 
-            if !self
-                .maps
-                .create_map(
-                    "code",
-                    self.cfg.code_base_addr,
-                    0,
-                    Permission::READ_WRITE_EXECUTE,
-                )
-                .expect("cannot create code map")
-                .load(filename)
-            {
+            let code_map = match self.maps.create_map(
+                "code",
+                self.cfg.code_base_addr,
+                0,
+                Permission::READ_WRITE_EXECUTE,
+            ) {
+                Ok(m) => m,
+                Err(_) => {
+                    log::error!("cannot create code map");
+                    return;
+                }
+            };
+            if !code_map.load(filename) {
                 log::trace!("shellcode not found, select the file with -f");
                 return;
             }
@@ -724,15 +731,18 @@ impl Emu {
 
         self.init_cpu();
 
-        let code = self
-            .maps
-            .create_map(
-                "code",
-                self.cfg.code_base_addr,
-                bytes.len() as u64,
-                Permission::READ_WRITE_EXECUTE,
-            )
-            .expect("cannot create code map");
+        let code = match self.maps.create_map(
+            "code",
+            self.cfg.code_base_addr,
+            bytes.len() as u64,
+            Permission::READ_WRITE_EXECUTE,
+        ) {
+            Ok(m) => m,
+            Err(_) => {
+                log::error!("cannot create code map for load_code_bytes");
+                return;
+            }
+        };
         let base = code.get_base();
         code.write_bytes(base, bytes);
         self.set_pc(base);
@@ -751,10 +761,10 @@ impl Emu {
         let exe_name = self.cfg.exe_name.clone();
 
         if wcmdln_addr != 0 {
-            let buf = self
-                .heap_mut()
-                .allocate(2048)
-                .expect("cannot allocate _wcmdln buffer");
+            let Some(buf) = self.heap_mut().allocate(2048) else {
+                log::error!("cannot allocate _wcmdln buffer");
+                return;
+            };
             self.maps.write_wide_string(buf, &exe_name);
             self.maps.write_qword(wcmdln_addr, buf);
             log::trace!(
@@ -766,10 +776,10 @@ impl Emu {
         }
 
         if acmdln_addr != 0 {
-            let buf = self
-                .heap_mut()
-                .allocate(1024)
-                .expect("cannot allocate _acmdln buffer");
+            let Some(buf) = self.heap_mut().allocate(1024) else {
+                log::error!("cannot allocate _acmdln buffer");
+                return;
+            };
             self.maps.write_string(buf, &exe_name);
             self.maps.write_qword(acmdln_addr, buf);
             log::trace!(
