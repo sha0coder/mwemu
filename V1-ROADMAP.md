@@ -182,12 +182,16 @@ CI already has `fmt`, `clippy`, and a `test` matrix. What's missing:
 - [ ] **Burn down** the grandfathered clippy allow list (search the codebase
       for "clippy v1 burn-down backlog") and remove entries as fixed. Keep
       `neg_cmp_op_on_partial_ord` — it guards intended NaN semantics in the
-      float-compare handlers.
-- [ ] Add the integration tests (test_linux, test_windows, test_syscall) to
-      the CI matrix.
-- [ ] Add the P0 grep gate: fail if `unwrap`/`expect`/`panic!` appears on
+      float-compare handlers. Progress: removed 5 zero-warning allows
+      (assign_op_pattern, doc_lazy_continuation, legacy_numeric_constants,
+      too_many_arguments, unnecessary_unwrap). 22 remain, all with real warnings.
+- [x] Add the integration tests (test_linux, test_windows, test_syscall) to
+      the CI matrix. Done: CI runs on Linux, Windows, macOS with
+      platform-filtered nextest expressions.
+- [x] Add the P0 grep gate: fail if `unwrap`/`expect`/`panic!` appears on
       guest-reachable paths (`emu/`, `engine/`, `maps/`), and a panic-count
-      regression check so the number can only go down.
+      regression check so the number can only go down. Done:
+      `scripts/panic-gate.sh` runs in CI as a separate job.
 
 ### 10. Performance
 
