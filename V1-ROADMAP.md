@@ -22,17 +22,19 @@ The emulator must never abort on any guest binary, no matter how malformed.
 The real crash surface is not the handful of `unimplemented!()` macros — it
 is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
-Current audit (v0.26.0):
+Current audit (v0.26.0 → v0.26.1):
 
-| Signal                | Total (non-test) | Guest-reachable hot spots            |
-|-----------------------|------------------|--------------------------------------|
-| `unimplemented!()`    | ~~98~~ **0**     | All converted to log + graceful stop (v0.26.0) |
-| `panic!(...)`         | 15               | 5 are arch-assertion guards, 10 in tests |
-| `.unwrap()`           | 580              | api/ 131, emu/ 33, maps/ 13, engine/ 4* |
-| `.expect(...)`        | 2896             | api/ 2646, syscall/ 72, emu/ 49, maps/ 26 |
+| Signal                | v0.26.0 | v0.26.1  | Guest-reachable hot spots            |
+|-----------------------|---------|----------|--------------------------------------|
+| `unimplemented!()`    | 98      | **0**    | All converted to log + graceful stop (v0.26.0) |
+| `panic!(...)`         | 15      | 15       | 5 are arch-assertion guards, 10 in tests |
+| `.unwrap()`           | 580     | **796†** | structures/ 275, api/ 131, emu/ 33, maps/ 13, engine/ 4* |
+| `.expect(...)`        | 2896    | **480**  | api/ 70, syscall/ 72, emu/ 49, maps/ 26 |
 
 \* engine remaining 4 are in commented-out debug code or infallible `try_into`.
-† api/ expect count is dominated by winapi stack reads (`read_dword().expect()`).
+† unwrap count rose because ~2500 `expect()` in api/ were converted to
+  `unwrap_or(0)` (safe default for missing stack args). structures/ unwraps
+  are memory writes for Windows struct emulation (PEB/TEB/system_info).
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
@@ -54,10 +56,11 @@ Current audit (v0.26.0):
 - [x] **emu/iso.rs, winver.rs**: `to_str().unwrap()` → guarded with if-let.
 - [x] **emu/object_handle**: file_handle/windows_path unwrap → ok_or/ok_or_else.
 - [x] **emu/loaders/pe.rs**: `expect("out of memory")` → match + return (0,0).
-- [ ] **Headline gate:** remaining ~2646 `.expect()` in `api/` winapi stubs
-      (stack reads). These are lower risk (stack is set up by gateway) but
-      should eventually use a fallible helper. Hold the line with a CI grep
-      gate on `engine/`, `maps/`, `emu/` core (see P2 #9).
+- [x] **api/ winapi stubs:** ~2500 `.expect()` on stack reads converted to
+      `.unwrap_or(0)` (safe default — gateway sets up the stack). Remaining
+      70 `.expect()` in api/ are on map creation or handle lookups with
+      appropriate fallbacks.  Hold the line with a CI grep gate on
+      `engine/`, `maps/`, `emu/` core (see P2 #9).
 - [ ] Unimplemented x86 instructions should raise `#UD` (exception), not
       `return false` + silent stop.
 

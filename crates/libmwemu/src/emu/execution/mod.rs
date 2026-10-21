@@ -195,16 +195,16 @@ impl Emu {
         if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
             log::trace!("exit position reached");
 
-            if self.cfg.dump_on_exit {
-                if let Some(ref fname) = self.cfg.dump_filename {
-                    serialization::Serialization::dump(self, fname);
-                }
+            if self.cfg.dump_on_exit
+                && let Some(ref fname) = self.cfg.dump_filename
+            {
+                serialization::Serialization::dump(self, fname);
             }
 
-            if self.cfg.trace_regs {
-                if let Some(ref mut tf) = self.trace_file {
-                    let _ = tf.flush();
-                }
+            if self.cfg.trace_regs
+                && let Some(ref mut tf) = self.trace_file
+            {
+                let _ = tf.flush();
             }
 
             return false;
@@ -343,15 +343,15 @@ impl Emu {
         // exit position check
         if self.cfg.exit_position != 0 && self.pos == self.cfg.exit_position {
             log::trace!("exit position reached");
-            if self.cfg.dump_on_exit {
-                if let Some(ref fname) = self.cfg.dump_filename {
-                    serialization::Serialization::dump(self, fname);
-                }
+            if self.cfg.dump_on_exit
+                && let Some(ref fname) = self.cfg.dump_filename
+            {
+                serialization::Serialization::dump(self, fname);
             }
-            if self.cfg.trace_regs {
-                if let Some(ref mut tf) = self.trace_file {
-                    let _ = tf.flush();
-                }
+            if self.cfg.trace_regs
+                && let Some(ref mut tf) = self.trace_file
+            {
+                let _ = tf.flush();
             }
             return false;
         }

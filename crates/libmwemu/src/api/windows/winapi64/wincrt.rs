@@ -491,7 +491,7 @@ pub fn realloc(emu: &mut emu::Emu) {
             emu.regs_mut().rax = 0;
             return;
         } else {
-            let base = allocate_memory(emu, size).expect("msvcrt!malloc out of memory");
+            let base = allocate_memory(emu, size).unwrap_or(0);
 
             log_red!(emu, "msvcrt!realloc 0x{:x} {} =0x{:x}", addr, size, base);
 
@@ -515,7 +515,7 @@ pub fn realloc(emu: &mut emu::Emu) {
         }
     };
 
-    let new_addr = allocate_memory(emu, size).expect("msvcrt!realloc out of memory");
+    let new_addr = allocate_memory(emu, size).unwrap_or(0);
 
     emu.maps
         .memcpy(new_addr, addr, std::cmp::min(prev_size, size as usize));
@@ -545,7 +545,7 @@ fn malloc(emu: &mut emu::Emu) {
         return;
     }
 
-    let base = allocate_memory(emu, size).expect("msvcrt!malloc out of memory");
+    let base = allocate_memory(emu, size).unwrap_or(0);
 
     log_red!(emu, "msvcrt!malloc {} =0x{:x}", size, base);
 

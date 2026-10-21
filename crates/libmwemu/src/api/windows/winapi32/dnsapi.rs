@@ -38,30 +38,12 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
 }
 
 fn DnsQuery_A(emu: &mut emu::Emu) {
-    let name_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("dnsapi!DnsQuery_A cant read name ptr param") as u64;
-    let wtype = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("dnsapi!DnsQuery_A cant read wtype pram");
-    let opt = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("dnsapi!DnsQuery_A cant read options param");
-    let extra = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("dnsapi!DnsQuery_A cant read extra param");
-    let out_results = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("dnsapi!DnsQuery_A cant read out results param");
-    let out_reserved = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 20)
-        .expect("dnsapi!DnsQuery_A cant read out reserved param");
+    let name_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let wtype = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let opt = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let extra = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0);
+    let out_results = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0);
+    let out_reserved = emu.maps.read_dword(emu.regs().get_esp() + 20).unwrap_or(0);
 
     let name = emu.maps.read_string(name_ptr);
 
@@ -71,30 +53,12 @@ fn DnsQuery_A(emu: &mut emu::Emu) {
 }
 
 fn DnsQuery_W(emu: &mut emu::Emu) {
-    let name_ptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("dnsapi!DnsQuery_W cant read name ptr param") as u64;
-    let wtype = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("dnsapi!DnsQuery_W cant read wtype pram");
-    let opt = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("dnsapi!DnsQuery_W cant read options param");
-    let extra = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("dnsapi!DnsQuery_W cant read extra param");
-    let out_results = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 16)
-        .expect("dnsapi!DnsQuery_W cant read out results param");
-    let out_reserved = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 20)
-        .expect("dnsapi!DnsQuery_W cant read out reserved param");
+    let name_ptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let wtype = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
+    let opt = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let extra = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0);
+    let out_results = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0);
+    let out_reserved = emu.maps.read_dword(emu.regs().get_esp() + 20).unwrap_or(0);
 
     let name = emu.maps.read_wide_string(name_ptr);
 

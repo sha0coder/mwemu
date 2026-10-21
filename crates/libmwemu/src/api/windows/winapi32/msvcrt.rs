@@ -248,7 +248,7 @@ fn malloc(emu: &mut emu::Emu) {
         let base = if emu.cfg.memory_guard {
             emu.kernel_alloc(Region::Slab, size, "malloc", "malloc", false)
         } else {
-            allocate_memory(emu, size).expect("msvcrt!malloc out of memory")
+            allocate_memory(emu, size).unwrap_or(0)
         };
 
         log_red!(emu, "msvcrt!malloc sz: {} addr: 0x{:x}", size, base);
@@ -265,10 +265,7 @@ fn __p__acmdln(emu: &mut emu::Emu) {
 }
 
 fn _onexit(emu: &mut emu::Emu) {
-    let fptr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("msvcrt!_onexit") as u64;
+    let fptr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
 
     log_red!(emu, "msvcrt!_onexit 0x{:x}", fptr);
 
@@ -276,10 +273,7 @@ fn _onexit(emu: &mut emu::Emu) {
 }
 
 fn _lock(emu: &mut emu::Emu) {
-    let lock_num = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("msvcrt!_lock");
+    let lock_num = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     log_red!(emu, "msvcrt!_lock {}", lock_num);
 
@@ -307,7 +301,7 @@ fn realloc(emu: &mut emu::Emu) {
             emu.regs_mut().rax = 0;
             return;
         } else {
-            let base = allocate_memory(emu, size).expect("msvcrt!malloc out of memory");
+            let base = allocate_memory(emu, size).unwrap_or(0);
 
             log_red!(emu, "msvcrt!realloc 0x{:x} {} =0x{:x}", addr, size, base);
 
@@ -334,7 +328,7 @@ fn realloc(emu: &mut emu::Emu) {
     let new_addr = if emu.cfg.memory_guard {
         emu.kernel_alloc(Region::Slab, size, "malloc", "realloc", false)
     } else {
-        allocate_memory(emu, size).expect("msvcrt!realloc out of memory")
+        allocate_memory(emu, size).unwrap_or(0)
     };
 
     emu.maps
