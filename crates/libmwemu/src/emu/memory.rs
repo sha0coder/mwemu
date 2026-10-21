@@ -6,9 +6,10 @@ impl Emu {
     /// NOTE: x86 operand syntax only. Will panic on aarch64.
     pub fn memory_operand_to_address(&mut self, operand: &str) -> u64 {
         if self.cfg.arch.is_aarch64() {
-            unreachable!(
+            log::warn!(
                 "memory_operand_to_address() uses x86 operand syntax, not available on aarch64"
             );
+            return 0;
         }
         let spl: Vec<&str> = operand.split('[').collect::<Vec<&str>>()[1]
             .split(']')

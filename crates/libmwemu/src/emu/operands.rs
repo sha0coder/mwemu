@@ -553,7 +553,11 @@ impl Emu {
                 }
                 _ => {
                     std::hint::cold_path();
-                    unreachable!("Error something is wrong")
+                    log::warn!(
+                        "operand: unexpected immediate kind {:?}",
+                        ins.op_kind(noperand)
+                    );
+                    None
                 }
             }
         }
@@ -946,7 +950,10 @@ impl Emu {
                         32 => self.maps.read_dword(mem_addr).unwrap_or(0) as u64,
                         16 => self.maps.read_word(mem_addr).unwrap_or(0) as u64,
                         8 => self.maps.read_byte(mem_addr).unwrap_or(0) as u64,
-                        _ => unreachable!("weird size: {}", sz),
+                        _ => {
+                            log::warn!("operand: unexpected size {} in memory trace", sz);
+                            0
+                        }
                     };
                     let memory_operation = MemoryOperation {
                         pos: self.pos,

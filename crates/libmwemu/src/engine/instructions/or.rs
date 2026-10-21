@@ -42,7 +42,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             result1 = value0 | value1;
             result2 = result1;
         }
-        _ => unreachable!(""),
+        _ => {
+            log::warn!("or: unexpected operand size");
+            return false;
+        }
     }
 
     let bits = emu.get_operand_sz(ins, 0);
