@@ -761,15 +761,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_qword(mem_addr, value2);
                                     true
                                 } else {
@@ -797,15 +803,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_dword(mem_addr, to32!(value2));
                                     true
                                 } else {
@@ -833,15 +845,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_word(mem_addr, value2 as u16);
                                     true
                                 } else {
@@ -886,15 +904,21 @@ impl Emu {
                                 }
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_byte(mem_addr, value2 as u8);
                                     true
                                 } else {
