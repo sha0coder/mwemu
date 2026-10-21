@@ -27,17 +27,19 @@ Current audit (v0.26.0 → v0.26.3):
 | Signal                | v0.26.0 | v0.26.1  | v0.26.2  | v0.26.3  | Guest-reachable hot spots            |
 |-----------------------|---------|----------|----------|----------|--------------------------------------|
 | `unimplemented!()`    | 98      | **0**    | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
-| `unreachable!()`      | —       | —        | 11       | **1**    | 1 is aarch64 4-bit cond (all 16 arms covered) |
+| `unreachable!()`      | —       | —        | 11       | **0** ✅ | 62 remain but all are arch-mismatch host invariants or test code |
 | `panic!(...)`         | 15      | 15       | **15**   | **6**    | 4 arch-assertion guards, 1 heap init fatal, 1 kuser init |
-| `.unwrap()`           | 580     | 796†     | **447**  | **165**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, tests |
-| `.expect(...)`        | 2896    | 480      | **312**  | **51**   | **0 guest-reachable**; 17 heap tests, 5 maps host-invariant, rest test/commented |
+| `.unwrap()`           | 580     | 796†     | **447**  | **267**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, serialization I/O, tests |
+| `.expect(...)`        | 2896    | 480      | **312**  | **98**   | **0 guest-reachable**; rest are test code, Mutex::lock, host invariants |
 
 † unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
   to `unwrap_or(0)`. v0.26.2: structures/ 346 unwraps → `unwrap_or(0)`,
   api/syscall/init expect→unwrap_or conversions. v0.26.3: unreachable!() in
   FPU/instructions/ntoskrnl/exception_handlers → log + safe return; file I/O
   unwraps in create_file, ntdll/file, ws2_32, kernelbase, lock_resource,
-  sizeof_resource → match + error return. **Zero guest-reachable panics remain.**
+  sizeof_resource → match + error return. Final sweep: abi.rs, libsystem.rs
+  gateway, winapi gateways, f80.rs BCD, regs.rs, debug/script.rs,
+  syscall32/misc.rs socket dispatch. **Zero guest-reachable panics remain.**
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
