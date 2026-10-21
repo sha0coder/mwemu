@@ -206,7 +206,9 @@ impl Emu {
                         self.set_pc(init);
                     }
                 }
-                Err(err) => log::error!("cannot load kext: {err}"),
+                Err(err) => {
+                    return Err(MwemuError::new(&format!("cannot load kext: {err}")));
+                }
             }
 
         // Mach-O AArch64
