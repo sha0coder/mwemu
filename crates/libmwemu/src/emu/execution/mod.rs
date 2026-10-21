@@ -271,9 +271,7 @@ impl Emu {
         false
     }
 
-    /// Run until a specific position (emu.pos)
-    /// This don't reset the emu.pos, will meulate from current position to
-    /// selected end_pos included.
+    /// Run from the current position until `end_pos` is reached (inclusive).
     pub fn run_to(&mut self, end_pos: u64) -> Result<u64, MwemuError> {
         self.max_pos = Some(end_pos);
         let r = self.run(None);

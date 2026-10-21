@@ -57,6 +57,7 @@ pub struct Lib {
 }
 
 impl Emu {
+    /// Create a new emulator for the given architecture.
     pub fn new(arch: crate::arch::Arch) -> Emu {
         let instruction_state = InstructionState::default();
         let mut cfg = Config::new();

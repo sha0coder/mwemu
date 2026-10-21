@@ -110,6 +110,8 @@ pub mod winver;
 
 pub mod object_handle;
 
+/// The core emulator state machine. Holds CPU registers, memory maps,
+/// configuration, and all runtime state for x86/x64/AArch64 emulation.
 pub struct Emu {
     // --- Configuration & display ---
     pub cfg: Config,

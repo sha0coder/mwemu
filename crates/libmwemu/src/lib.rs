@@ -85,18 +85,21 @@ mod tests;
 use arch::Arch;
 use emu::Emu;
 
+/// Create an x86-64 emulator with Ctrl-C handling disabled.
 pub fn emu64() -> Emu {
     let mut emu = Emu::new(Arch::X86_64);
     emu.disable_ctrlc();
     emu
 }
 
+/// Create an x86 (32-bit) emulator with Ctrl-C handling disabled.
 pub fn emu32() -> Emu {
     let mut emu = Emu::new(Arch::X86);
     emu.disable_ctrlc();
     emu
 }
 
+/// Create an AArch64 emulator with Ctrl-C handling disabled.
 pub fn emu_aarch64() -> Emu {
     let mut emu = Emu::new(Arch::Aarch64);
     emu.disable_ctrlc();

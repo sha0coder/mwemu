@@ -77,10 +77,10 @@ impl Emu {
 
     /// Load a sample. It can be PE32, PE64, ELF32, ELF64 or shellcode.
     /// If its a shellcode cannot be known if is for windows or linux, it triggers also init() to
-    /// setup windows simulator.
-    /// For now mwemu also don't know if shellcode is for 32bits or 64bits, in commandline -6 has
-    /// to be selected for indicating 64bits, and from python or rust the emu32() or emu64()
-    /// construtor dtermines the engine.
+    /// Load a binary file (PE, ELF, Mach-O, or raw shellcode) into the emulator.
+    ///
+    /// The format is auto-detected from the file header. For shellcode, the
+    /// architecture must match the emulator (use `emu32()` or `emu64()`).
     pub fn load_code(&mut self, filename: &str) -> Result<(), MwemuError> {
         self.filename = filename.to_string();
         self.cfg.filename = self.filename.clone();
