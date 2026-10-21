@@ -12,7 +12,7 @@
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::doc_lazy_continuation)]
 #![allow(clippy::duplicate_mod)]
-#![allow(clippy::empty_line_after_doc_comments)]
+// TEMP_REMOVED: clippy::empty_line_after_doc_comments
 #![allow(clippy::explicit_counter_loop)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::if_same_then_else)]
