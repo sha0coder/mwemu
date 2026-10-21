@@ -22,20 +22,22 @@ The emulator must never abort on any guest binary, no matter how malformed.
 The real crash surface is not the handful of `unimplemented!()` macros — it
 is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
-Current audit (v0.26.0 → v0.26.2):
+Current audit (v0.26.0 → v0.26.3):
 
 | Signal                | v0.26.0 | v0.26.1  | v0.26.2  | v0.26.3  | Guest-reachable hot spots            |
 |-----------------------|---------|----------|----------|----------|--------------------------------------|
 | `unimplemented!()`    | 98      | **0**    | **0**    | **0**    | All converted to log + graceful stop (v0.26.0) |
-| `panic!(...)`         | 15      | 15       | **15**   | **15**   | 5 are arch-assertion guards, 10 in tests |
-| `.unwrap()`           | 580     | 796†     | **447**  | **403**  | maps/heap 15 (internal), engine/ 4 (commented/infallible) |
-| `.expect(...)`        | 2896    | 480      | **312**  | **211**  | **0 guest-reachable**; 17 heap tests, 8 maps host-invariant, rest test/commented |
+| `unreachable!()`      | —       | —        | 11       | **1**    | 1 is aarch64 4-bit cond (all 16 arms covered) |
+| `panic!(...)`         | 15      | 15       | **15**   | **6**    | 4 arch-assertion guards, 1 heap init fatal, 1 kuser init |
+| `.unwrap()`           | 580     | 796†     | **447**  | **165**  | 0 guest-reachable; rest are Mutex::lock, try_into on fixed slices, tests |
+| `.expect(...)`        | 2896    | 480      | **312**  | **51**   | **0 guest-reachable**; 17 heap tests, 5 maps host-invariant, rest test/commented |
 
 † unwrap count rose in v0.26.1 because ~2500 `expect()` in api/ were converted
-  to `unwrap_or(0)`. In v0.26.2, structures/ 346 unwraps → `unwrap_or(0)`,
-  many more from api/syscall/init expect→unwrap_or conversions. In v0.26.3,
-  PEB64/bootstrap, LDR, context, exception, threading, debug, kernel expects
-  all replaced — **zero guest-reachable expects remain**.
+  to `unwrap_or(0)`. v0.26.2: structures/ 346 unwraps → `unwrap_or(0)`,
+  api/syscall/init expect→unwrap_or conversions. v0.26.3: unreachable!() in
+  FPU/instructions/ntoskrnl/exception_handlers → log + safe return; file I/O
+  unwraps in create_file, ntdll/file, ws2_32, kernelbase, lock_resource,
+  sizeof_resource → match + error return. **Zero guest-reachable panics remain.**
 
 **Work:**
 - [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
@@ -110,8 +112,8 @@ P0 is "don't crash on malformed input"; the only way to *prove* it is to
 feed random bytes at the entry points. This also operationalizes the
 Enigma-canary philosophy the rest of the suite already follows.
 
-- [ ] `cargo-fuzz` (or `afl`) harness over `load_code` (PE/ELF/Mach-O) and
-      over `run` on random code buffers.
+- [x] `cargo-fuzz` harness over `load_code` (PE/ELF/Mach-O) and
+      over `run` on random shellcode buffers (`fuzz/fuzz_targets/`).
 - [ ] Run a short fuzz smoke pass in CI; keep a corpus of crashers as
       regression seeds.
 
