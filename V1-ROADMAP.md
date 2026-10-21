@@ -116,7 +116,9 @@ Priority list (based on Enigma, Themida, and common malware):
 
 - [x] **ole32**: `CoInitialize`, `CoCreateInstance`, `CoTaskMemAlloc/Free`
 - [x] **advapi32**: `RegOpenKeyExA/W`, `RegQueryValueExA/W`, `RegCloseKey`
-- [ ] **crypt32**: `CryptDecodeObjectEx`, `CertOpenStore` (stub)
+- [x] **crypt32**: `CryptDecodeObjectEx`, `CertOpenStore`, `CertOpenSystemStoreA/W`,
+      `CertCloseStore`, `CertFindCertificateInStore`, `CertFreeCertificateContext`
+      (32-bit and 64-bit stubs)
 - [x] **user32**: `wsprintfA/W`, `LoadStringA/W`, `CharNextA`
 - [x] **kernel32**: `CreateFileMappingA/W`, `MapViewOfFile` (basic)
 - [x] **ntdll**: `RtlGetVersion`, `NtQueryInformationProcess` (anti-debug)
