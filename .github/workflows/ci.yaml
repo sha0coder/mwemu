@@ -208,3 +208,35 @@ jobs:
           --package cmwemu
           --target ${{ matrix.target }}
           -E '${{ matrix.nextest-filter }}'
+
+  fuzz-smoke:
+    name: Fuzz smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: clippy
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --locked
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: fuzz-smoke-linux
+          add-rust-environment-hash-key: true
+          cache-on-failure: true
+          workspaces: fuzz
+
+      - name: Fuzz load_code (30s)
+        run: cargo +nightly fuzz run fuzz_load_code -- -max_total_time=30
+        working-directory: fuzz
+
+      - name: Fuzz run_shellcode (30s)
+        run: cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=30
+        working-directory: fuzz

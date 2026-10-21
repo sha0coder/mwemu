@@ -20,6 +20,7 @@ use std::collections::BTreeMap;
 use std::convert::TryInto;
 use tlb::TLB;
 
+/// Memory map manager: owns all memory regions, handles allocation, read/write, and address lookup.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
     pub banzai: bool,

@@ -4,6 +4,7 @@ use crate::arch::Arch;
 use crate::{debug::definitions::Definition, windows::constants};
 use serde::{Deserialize, Serialize};
 
+/// Emulation configuration controlling architecture, memory layout, tracing, and runtime limits.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     // --- Binary & architecture ---
