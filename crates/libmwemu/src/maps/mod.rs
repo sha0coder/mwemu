@@ -128,7 +128,7 @@ impl Maps {
         self.name_map.contains_key(name)
     }
 
-    // slow, better hold the object
+    /// Look up a memory region by name. Prefer caching the result over repeated calls.
     pub fn get_map_by_name(&self, name: &str) -> Option<&Mem64> {
         self.name_map.get(name).and_then(|v| self.mem_slab.get(*v))
     }
@@ -154,6 +154,7 @@ impl Maps {
             })
     }
 
+    /// Create a new memory region with the given name, base address, size, and permissions.
     pub fn create_map(
         &mut self,
         name: &str,
@@ -742,6 +743,7 @@ impl Maps {
         }
     }
 
+    /// Free (unmap) a memory region by name.
     pub fn free(&mut self, name: &str) {
         let Some(id) = self.name_map.get(name) else {
             log::warn!("free: map name '{}' not found", name);
@@ -871,7 +873,7 @@ impl Maps {
         self._alloc(sz, constants::LIBS32_MIN, constants::LIBS32_MAX, true)
     }
 
-    // this alloc return an address but you have to map it
+    /// Find a free address for `sz` bytes. Returns the base address; the caller must create the map.
     pub fn alloc(&self, sz: u64) -> Option<u64> {
         if self.is_64bits {
             self._alloc(sz, constants::ALLOC64_MIN, constants::ALLOC64_MAX, false)

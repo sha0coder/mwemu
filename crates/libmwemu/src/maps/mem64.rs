@@ -1,6 +1,3 @@
-/*
-    Little endian 64 bits and inferior bits memory.
-*/
 use crate::emu::emu_context;
 use crate::maps::scalar::{LittleEndianScalar, ScalarTrace};
 use bytemuck::cast_slice;
@@ -13,6 +10,7 @@ use std::io::SeekFrom;
 use std::io::Write;
 use std::io::prelude::*;
 
+/// Memory region permission flags (read/write/execute).
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct Permission(u8);
 
@@ -138,6 +136,7 @@ impl std::ops::Not for Permission {
     }
 }
 
+/// A single contiguous memory region with base address, permissions, and byte storage.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Mem64 {
     mem_name: String,
