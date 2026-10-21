@@ -18,10 +18,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     }
 
     if emu.cfg.is_x64() {
-        let val = emu
-            .maps
-            .read_word(emu.regs().rsi)
-            .expect("cannot read memory");
+        let val = match emu.maps.read_word(emu.regs().rsi) {
+            Some(v) => v,
+            None => {
+                log::trace!("movsw: cannot read memory at rsi=0x{:x}", emu.regs().rsi);
+                return false;
+            }
+        };
         emu.maps.write_word(emu.regs().rdi, val);
 
         if !emu.flag_df() {
@@ -33,10 +36,16 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
     } else {
         // 32bits
-        let val = emu
-            .maps
-            .read_word(emu.regs().get_esi())
-            .expect("cannot read memory");
+        let val = match emu.maps.read_word(emu.regs().get_esi()) {
+            Some(v) => v,
+            None => {
+                log::trace!(
+                    "movsw: cannot read memory at esi=0x{:x}",
+                    emu.regs().get_esi()
+                );
+                return false;
+            }
+        };
         emu.maps.write_word(emu.regs().get_edi(), val);
 
         if !emu.flag_df() {

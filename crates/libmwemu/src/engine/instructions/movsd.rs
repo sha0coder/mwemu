@@ -48,7 +48,7 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         // legacy mode of movsd
 
         if emu.rep.is_some() {
-            if emu.rep.unwrap() == 0 {
+            if emu.rep.unwrap_or(0) == 0 {
                 emu.show_instruction(
                     color!("LightCyan"),
                     &crate::emu::decoded_instruction::DecodedInstruction::X86(*ins),
@@ -62,10 +62,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
 
         if emu.cfg.is_x64() {
-            let val = emu
-                .maps
-                .read_dword(emu.regs().rsi)
-                .expect("cannot read memory");
+            let val = match emu.maps.read_dword(emu.regs().rsi) {
+                Some(v) => v,
+                None => {
+                    log::trace!("movsd: cannot read memory at rsi=0x{:x}", emu.regs().rsi);
+                    return false;
+                }
+            };
 
             emu.maps.write_dword(emu.regs().rdi, val);
 

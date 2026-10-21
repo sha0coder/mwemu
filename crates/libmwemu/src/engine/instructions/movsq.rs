@@ -20,10 +20,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     assert!(emu.cfg.is_x64());
 
-    let val = emu
-        .maps
-        .read_qword(emu.regs().rsi)
-        .expect("cannot read memory");
+    let val = match emu.maps.read_qword(emu.regs().rsi) {
+        Some(v) => v,
+        None => {
+            log::trace!("movsq: cannot read memory at rsi=0x{:x}", emu.regs().rsi);
+            return false;
+        }
+    };
     emu.maps.write_qword(emu.regs().rdi, val);
 
     if !emu.flag_df() {

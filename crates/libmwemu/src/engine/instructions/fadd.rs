@@ -15,13 +15,29 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     } else if ins.op_count() == 1 {
         if ins.op_kind(0) == iced_x86::OpKind::Memory {
             let mem_size = ins.memory_size();
-            let mem_addr = emu
-                .get_operand_value(ins, 0, false)
-                .expect("Fadd bad mem addr");
+            let mem_addr = match emu.get_operand_value(ins, 0, false) {
+                Some(v) => v,
+                None => {
+                    log::trace!("fadd: bad memory address");
+                    return false;
+                }
+            };
 
             let value = match mem_size {
-                iced_x86::MemorySize::Float32 => emu.maps.read_f32(mem_addr).unwrap() as f64,
-                iced_x86::MemorySize::Float64 => emu.maps.read_f64(mem_addr).unwrap(),
+                iced_x86::MemorySize::Float32 => match emu.maps.read_f32(mem_addr) {
+                    Some(v) => v as f64,
+                    None => {
+                        log::trace!("fadd: cannot read f32 at 0x{:x}", mem_addr);
+                        return false;
+                    }
+                },
+                iced_x86::MemorySize::Float64 => match emu.maps.read_f64(mem_addr) {
+                    Some(v) => v,
+                    None => {
+                        log::trace!("fadd: cannot read f64 at 0x{:x}", mem_addr);
+                        return false;
+                    }
+                },
                 _ => unreachable!(),
             };
 
