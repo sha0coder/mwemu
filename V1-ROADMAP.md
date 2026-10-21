@@ -2,15 +2,15 @@
 
 What needs to happen before cutting a stable 1.0 release.
 
-Current state: 560+ tests, multi-platform (PE/ELF/Mach-O), x86/x64/AArch64,
+Current state: 766+ tests, multi-platform (PE/ELF/Mach-O), x86/x64/AArch64,
 kernel-mode driver emulation, syscall mode, and Windows system simulation
 (PEB/TEB/LDR, heap, TLS, IAT binding, SEH/VEH). CI already runs `fmt`,
 `clippy`, and a `test` matrix; `examples/` (01–04) exists.
 
-> Counts below were re-audited on 2026-09-28 against `crates/libmwemu/src`.
-> Re-run the audit before turning any P0 item into a GitHub issue — the
-> previous version of this file quoted stale numbers (e.g. "48
-> `unimplemented!()` across DLL gateways", now 11 and mostly not in gateways).
+> Counts re-audited on 2026-10-21 against `crates/libmwemu/src` (v0.26.0).
+> The previous audit (2026-09-28) quoted 11 `unimplemented!()` — the real
+> count was ~98 (most with message strings that the grep missed). All 98
+> have now been eliminated.
 
 ---
 
@@ -22,24 +22,23 @@ The emulator must never abort on any guest binary, no matter how malformed.
 The real crash surface is not the handful of `unimplemented!()` macros — it
 is the mass of `unwrap()`/`expect()` on paths reachable from guest bytes.
 
-Current audit:
+Current audit (v0.26.0):
 
 | Signal                | Total | Guest-reachable hot spots            |
 |-----------------------|-------|--------------------------------------|
-| `unimplemented!()`    | 11    | SSE handlers (`psubb/w/d/q`, `movhpd`), `arch/x86/regs.rs`, `emu/memory.rs`, `mscoree`, `ntapi32` |
-| `panic!(...)`         | 13    | `emu/`, `engine/`, `maps/`           |
-| `.unwrap()`           | ~811  | emu 57, engine 24, maps 54           |
-| `.expect(...)`        | ~3032 | emu 63, engine 8, maps 32            |
+| `unimplemented!()`    | ~~98~~ **0** | All converted to log + graceful stop (v0.26.0) |
+| `panic!(...)`         | 14    | 4 are arch-assertion guards (not guest-reachable), 10 in tests |
+| `.unwrap()`           | ~858  | emu 57, engine 24, maps 54           |
+| `.expect(...)`        | ~3096 | emu 63, engine 8, maps 32            |
 
 **Work:**
-- [ ] **Headline gate:** no `unwrap`/`expect`/`panic!` on any path reachable
-      from guest bytes (start with `emu/`, `engine/`, `maps/`). Convert to
-      `Result` or a guest exception. Hold the line with a CI grep gate on
-      those modules (see P2 #8).
-- [ ] Replace the 11 `unimplemented!()` with a log + skip (or return-error
-      when `skip_unimplemented` is false). Note: only `mscoree.rs` and
-      `ntapi32.rs` are API/syscall gateways now; the rest are ISA handlers
-      and should instead raise `#UD` — fold into the next bullet.
+- [x] Replace all `unimplemented!()` with log + graceful stop. DLL gateways
+      use `log::error`, ISA handlers use `log::warn + return false`, API
+      stubs log and return defaults. Done in v0.26.0 (98 → 0).
+- [ ] **Headline gate:** no `unwrap`/`expect` on any path reachable from
+      guest bytes (start with `engine/`, `maps/`, then `emu/`). Convert to
+      `Option`/`Result` propagation or a guest exception. Hold the line
+      with a CI grep gate on those modules (see P2 #9).
 - [ ] Unimplemented x86 instructions should raise `#UD` (exception), not
       `return false` + silent stop.
 
@@ -89,12 +88,12 @@ Enigma-canary philosophy the rest of the suite already follows.
 Triage the top unimplemented APIs hit by real samples and implement stubs.
 Priority list (based on Enigma, Themida, and common malware):
 
-- [ ] **ole32**: `CoInitialize`, `CoCreateInstance`, `CoTaskMemAlloc/Free`
-- [ ] **advapi32**: `RegOpenKeyExA/W`, `RegQueryValueExA/W`, `RegCloseKey`
+- [x] **ole32**: `CoInitialize`, `CoCreateInstance`, `CoTaskMemAlloc/Free`
+- [x] **advapi32**: `RegOpenKeyExA/W`, `RegQueryValueExA/W`, `RegCloseKey`
 - [ ] **crypt32**: `CryptDecodeObjectEx`, `CertOpenStore` (stub)
-- [ ] **user32**: `wsprintfA/W`, `LoadStringA/W`, `CharNextA`
-- [ ] **kernel32**: `CreateFileMappingA/W`, `MapViewOfFile` (basic)
-- [ ] **ntdll**: `RtlGetVersion`, `NtQueryInformationProcess` (anti-debug)
+- [x] **user32**: `wsprintfA/W`, `LoadStringA/W`, `CharNextA`
+- [x] **kernel32**: `CreateFileMappingA/W`, `MapViewOfFile` (basic)
+- [x] **ntdll**: `RtlGetVersion`, `NtQueryInformationProcess` (anti-debug)
 
 ### 6. 32-bit / 64-bit parity
 
