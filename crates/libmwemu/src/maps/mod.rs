@@ -483,7 +483,9 @@ impl Maps {
     pub fn print_maps_keyword(&self, kw: &str) {
         log::trace!("--- maps ---");
         for (mem_name, base) in self.name_map.iter() {
-            let mem = self.get_map_by_name(mem_name).unwrap();
+            let Some(mem) = self.get_map_by_name(mem_name) else {
+                continue;
+            };
             let k = mem_name;
 
             let n = if k.len() < 20 { 20 - k.len() } else { 1 };
@@ -731,11 +733,15 @@ impl Maps {
     }
 
     pub fn free(&mut self, name: &str) {
-        let id = self
-            .name_map
-            .get(name)
-            .unwrap_or_else(|| unreachable!("map name {} not found", name));
-        let mem = self.mem_slab.get_mut(*id).unwrap();
+        let Some(id) = self.name_map.get(name) else {
+            log::warn!("free: map name '{}' not found", name);
+            return;
+        };
+        let Some(mem) = self.mem_slab.get_mut(*id) else {
+            log::warn!("free: slab entry missing for '{}'", name);
+            self.name_map.remove(name);
+            return;
+        };
         // Capture the base before `clear()` zeroes it, otherwise the map
         // table keeps a stale base entry pointing at the removed slab slot.
         let base = mem.get_base();
@@ -754,7 +760,11 @@ impl Maps {
                 return;
             }
         };
-        let mem = self.mem_slab.get_mut(*mem_key).unwrap();
+        let Some(mem) = self.mem_slab.get_mut(*mem_key) else {
+            log::warn!("dealloc: slab entry missing for 0x{:x}", addr);
+            self.maps.remove(&addr);
+            return;
+        };
         self.name_map.remove(mem.get_name());
         mem.clear();
         self.mem_slab.remove(*mem_key);
@@ -808,22 +818,31 @@ impl Maps {
     }
 
     pub fn map(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
-        let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
-        self.create_map(name, addr, sz, permission)
-            .expect("emu.maps.map(sz) cannot create map");
+        let Some(addr) = self.alloc(sz) else {
+            log::error!("maps.map: cannot allocate {} bytes for '{}'", sz, name);
+            return 0;
+        };
+        if let Err(e) = self.create_map(name, addr, sz, permission) {
+            log::error!("maps.map: cannot create map '{}': {}", name, e);
+            return 0;
+        }
         addr
     }
 
     pub fn map_lib(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = if self.is_64bits {
             self.lib64_alloc(sz)
-                .expect("emu.maps.map_lib(sz) cannot allocate")
         } else {
             self.lib32_alloc(sz)
-                .expect("emu.maps.map_lib(sz) cannot allocate")
         };
-        self.create_map(name, addr, sz, permission)
-            .expect("emu.maps.map_lib(sz) cannot create map");
+        let Some(addr) = addr else {
+            log::error!("maps.map_lib: cannot allocate {} bytes for '{}'", sz, name);
+            return 0;
+        };
+        if let Err(e) = self.create_map(name, addr, sz, permission) {
+            log::error!("maps.map_lib: cannot create map '{}': {}", name, e);
+            return 0;
+        }
         addr
     }
 

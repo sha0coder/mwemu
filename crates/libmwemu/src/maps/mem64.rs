@@ -397,11 +397,9 @@ impl Mem64 {
         let idx = 0;
         let sz2 = self.size();
         if sz2 > self.mem.len() {
-            // TODO: log trace?
-            let bytes = self.mem.get(idx..self.mem.len()).unwrap();
-            return bytes;
+            return self.mem.get(idx..self.mem.len()).unwrap_or(&[]);
         }
-        let r = self.mem.get(idx..sz2).unwrap();
+        let r = self.mem.get(idx..sz2).unwrap_or(&[]);
         if cfg!(feature = "log_mem_read") && emu_context::mem_trace_enabled() {
             log::trace!(
                 "mem_trace: read_bytes: 0x{:x?} = {:x?}",
@@ -913,7 +911,15 @@ impl Mem64 {
             }
         };
 
-        let blob = self.mem.get(idx..sz2).unwrap();
+        let Some(blob) = self.mem.get(idx..sz2) else {
+            log::error!(
+                "save: invalid range {}..{} for mem len {}",
+                idx,
+                sz2,
+                self.mem.len()
+            );
+            return;
+        };
 
         match f.write_all(blob) {
             Ok(_) => log::debug!(
@@ -925,7 +931,7 @@ impl Mem64 {
             Err(_) => log::error!("couldn't save the file"),
         }
 
-        f.sync_all().unwrap();
+        let _ = f.sync_all();
     }
 
     pub fn save_all(&self, filename: &str) -> bool {
@@ -936,11 +942,11 @@ impl Mem64 {
             }
         };
 
-        let blob = self.mem.get(0..).unwrap();
+        let blob = self.mem.get(0..).unwrap_or(&[]);
 
         let res = f.write_all(blob).is_ok();
 
-        f.sync_all().unwrap();
+        let _ = f.sync_all();
 
         res
     }
