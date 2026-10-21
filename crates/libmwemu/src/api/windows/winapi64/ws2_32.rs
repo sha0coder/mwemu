@@ -42,9 +42,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         _ => {
             if !emu.cfg.skip_unimplemented {
                 if emu.cfg.dump_on_exit
-                    && let Some(ref fname) = emu.cfg.dump_filename {
-                        serialization::Serialization::dump(emu, fname);
-                    }
+                    && let Some(ref fname) = emu.cfg.dump_filename
+                {
+                    serialization::Serialization::dump(emu, fname);
+                }
 
                 log::error!("attempt to call unimplemented API 0x{:x} {}", addr, api);
             }
