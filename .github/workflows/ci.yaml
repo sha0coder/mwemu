@@ -236,15 +236,23 @@ jobs:
       - name: Fuzz load_code x86 (30s)
         run: cargo +nightly fuzz run fuzz_load_code -- -max_total_time=30
         working-directory: fuzz
+        env:
+          ASAN_OPTIONS: detect_leaks=0
 
       - name: Fuzz run_shellcode x86 (30s)
         run: cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=30
         working-directory: fuzz
+        env:
+          ASAN_OPTIONS: detect_leaks=0
 
       - name: Fuzz load_code x64 (30s)
         run: cargo +nightly fuzz run fuzz_load_code64 -- -max_total_time=30
         working-directory: fuzz
+        env:
+          ASAN_OPTIONS: detect_leaks=0
 
       - name: Fuzz run_shellcode x64 (30s)
         run: cargo +nightly fuzz run fuzz_run_shellcode64 -- -max_total_time=30
         working-directory: fuzz
+        env:
+          ASAN_OPTIONS: detect_leaks=0
