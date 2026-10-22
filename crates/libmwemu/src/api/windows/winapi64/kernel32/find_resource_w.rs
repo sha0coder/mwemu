@@ -15,9 +15,7 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
         }
     };
 
-    let x: Option<(u64, usize)>;
-
-    if lpName > 0xff && lpType > 0xff {
+    let x: Option<(u64, usize)> = if lpName > 0xff && lpType > 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
         let ntype = emu.maps.read_wide_string(lpType as u64);
         log_red!(
@@ -28,8 +26,7 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             name,
             ntype
         );
-
-        x = pe.get_resource(raw, None, None, Some(name.as_str()), Some(ntype.as_str()));
+        pe.get_resource(raw, None, None, Some(name.as_str()), Some(ntype.as_str()))
     } else if lpName > 0xff && lpType <= 0xff {
         let name = emu.maps.read_wide_string(lpName as u64);
         log_red!(
@@ -40,8 +37,7 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             name,
             lpType
         );
-
-        x = pe.get_resource(raw, Some(lpType as u32), None, Some(name.as_str()), None);
+        pe.get_resource(raw, Some(lpType as u32), None, Some(name.as_str()), None)
     } else if lpName <= 0xff && lpType > 0xff {
         let ntype = emu.maps.read_wide_string(lpType as u64);
         log_red!(
@@ -52,8 +48,7 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             lpName,
             ntype
         );
-
-        x = pe.get_resource(raw, None, Some(lpName as u32), None, Some(ntype.as_str()));
+        pe.get_resource(raw, None, Some(lpName as u32), None, Some(ntype.as_str()))
     } else {
         log_red!(
             emu,
@@ -63,9 +58,8 @@ pub fn FindResourceW(emu: &mut emu::Emu) {
             lpName,
             lpType
         );
-
-        x = pe.get_resource(raw, Some(lpType as u32), Some(lpName as u32), None, None);
-    }
+        pe.get_resource(raw, Some(lpType as u32), Some(lpName as u32), None, None)
+    };
 
     let Some((addr, size)) = x else {
         log::trace!("{} resource not found!", emu.pos);

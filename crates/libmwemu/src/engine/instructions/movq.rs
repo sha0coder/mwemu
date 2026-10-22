@@ -11,28 +11,26 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     let sz0 = emu.get_operand_sz(ins, 0);
     let sz1 = emu.get_operand_sz(ins, 1);
-    let value1: u128;
-
-    if sz1 == 128 {
-        value1 = match emu.get_operand_xmm_value_128(ins, 1, true) {
+    let value1: u128 = if sz1 == 128 {
+        match emu.get_operand_xmm_value_128(ins, 1, true) {
             Some(v) => v,
             None => {
                 log::trace!("error getting xmm value1");
                 return false;
             }
-        };
+        }
     } else if sz1 < 128 {
-        value1 = match emu.get_operand_value(ins, 1, true) {
+        match emu.get_operand_value(ins, 1, true) {
             Some(v) => v as u128,
             None => {
                 log::trace!("error getting xmm value1");
                 return false;
             }
-        };
+        }
     } else {
         log::warn!("movq: ymm/zmm not supported");
         return false;
-    }
+    };
 
     if sz0 == 128 {
         // MOVQ moves only 64 bits; when the destination is an XMM register bits
