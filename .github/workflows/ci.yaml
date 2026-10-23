@@ -35,7 +35,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
-          toolchain: stable
+          toolchain: 1.86.0
           components: rustfmt
 
       - name: Check formatting
@@ -52,7 +52,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
-          toolchain: stable
+          toolchain: 1.86.0
           components: clippy
           targets: x86_64-unknown-linux-gnu
 
@@ -173,7 +173,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
-          toolchain: stable
+          toolchain: 1.86.0
           targets: ${{ matrix.target }}
 
       - name: Install nextest
