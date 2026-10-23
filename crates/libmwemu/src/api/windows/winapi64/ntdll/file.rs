@@ -443,8 +443,8 @@ fn NtWriteFile(emu: &mut emu::Emu) {
     }
 
     let mut data = vec![0u8; len];
-    for i in 0..len {
-        data[i] = emu.maps.read_byte(buff + i as u64).unwrap_or(0);
+    for (i, byte) in data.iter_mut().enumerate() {
+        *byte = emu.maps.read_byte(buff + i as u64).unwrap_or(0);
     }
 
     let handle_key = file_hndl as u32;

@@ -179,10 +179,10 @@ impl FileHandle {
             })?;
 
         // For creation modes that may create a new file, ensure parent directory exists
-        if matches!(creation_disposition, 1 | 2 | 4) {
-            if let Some(parent) = resolved_path.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
+        if matches!(creation_disposition, 1 | 2 | 4)
+            && let Some(parent) = resolved_path.parent()
+        {
+            let _ = fs::create_dir_all(parent);
         }
 
         // Try to open/create the file first, then get metadata
