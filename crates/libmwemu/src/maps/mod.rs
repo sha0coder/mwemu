@@ -194,7 +194,7 @@ impl Maps {
     }
 
     fn read_scalar<T: LittleEndianScalar>(&self, addr: u64, kind: ScalarKind) -> Option<T> {
-        let end_addr = addr + T::SIZE as u64 - 1;
+        let end_addr = addr.checked_add(T::SIZE as u64 - 1)?;
         let banzai = self.banzai;
         match self.get_mem_by_addr(addr) {
             Some(mem) if mem.inside(end_addr) && mem.can_read() => {
@@ -237,7 +237,9 @@ impl Maps {
         value: T,
         kind: ScalarKind,
     ) -> bool {
-        let end_addr = addr + T::SIZE as u64 - 1;
+        let Some(end_addr) = addr.checked_add(T::SIZE as u64 - 1) else {
+            return false;
+        };
         // Check for cross-map boundary write before taking &mut.
         if T::SIZE > 1
             && let Some(mem) = self.get_mem_by_addr(addr)
@@ -348,7 +350,9 @@ impl Maps {
             return true;
         }
 
-        let end_addr = addr + data.len() as u64 - 1;
+        let Some(end_addr) = addr.checked_add(data.len() as u64 - 1) else {
+            return false;
+        };
 
         // Fast path: if all data fits in a single memory map, use bulk copy
         match self.get_mem_by_addr_mut(addr) {
