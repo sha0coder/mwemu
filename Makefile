@@ -1,4 +1,4 @@
-.PHONY: all tests test-ci clippy clippy-release smoke maps sloppy samples symbols driver macos-driver test_macos test_golang test_speed
+.PHONY: all tests test-ci clippy clippy-release smoke maps sloppy samples symbols driver macos-driver test_macos test_golang test_speed test_fuzz
 
 # Extra Cargo target arguments for cross-target checks. On Apple Silicon, use
 # CARGO_TARGET="--target x86_64-apple-darwin" as required by AGENTS.md.
@@ -152,4 +152,13 @@ test_golang:
 test_speed: all samples
 	bash -c 'time ./target/release/mwemu -f $(TEST_DIR)/exe64win_enigma.bin -6 -v -c 20000000 --cmd q'
 	@echo "[speed] 20,000,000 instructions emulated successfully."
+
+# Fuzz smoke test: same targets and duration as CI (30s each, nightly + cargo-fuzz required).
+FUZZ_TIME ?= 30
+test_fuzz:
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code -- -max_total_time=$(FUZZ_TIME)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=$(FUZZ_TIME)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code64 -- -max_total_time=$(FUZZ_TIME)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode64 -- -max_total_time=$(FUZZ_TIME)
+	@echo "[fuzz] all 4 targets passed ($(FUZZ_TIME)s each)"
 
