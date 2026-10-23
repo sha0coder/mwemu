@@ -25,7 +25,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             emu.regs_mut().rsi += 8;
         }
     } else {
-        unreachable!("lodsq dont exists in 32bit");
+        log::warn!("lodsq: not available in 32-bit mode");
+        return false;
     }
     true
 }

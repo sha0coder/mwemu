@@ -1117,7 +1117,7 @@ checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libmwemu"
-version = "0.25.6"
+version = "0.26.3"
 dependencies = [
  "ahash",
  "bitcode",

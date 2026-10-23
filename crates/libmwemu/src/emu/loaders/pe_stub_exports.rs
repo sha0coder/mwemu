@@ -1,6 +1,5 @@
 /// Export catalogs for PE32 stub DLLs.
 /// Each function returns the list of export names for a system DLL stub.
-
 pub fn kernel32_exports() -> &'static [&'static str] {
     &[
         "VirtualAlloc",

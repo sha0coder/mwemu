@@ -1,10 +1,7 @@
 use crate::emu;
 
 pub fn TlsGetValue(emu: &mut emu::Emu) {
-    let idx = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!TlsGetValue cannot read idx");
+    let idx = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
 
     emu.stack_pop32(false);
 

@@ -704,7 +704,10 @@ fn main() -> process::ExitCode {
 /// (script, GDB server, kernel module init, or a plain run).
 fn execute(emu: &mut Emu, matches: &ArgMatches, filename: &str) -> process::ExitCode {
     // load code
-    emu.load_code(filename);
+    if let Err(e) = emu.load_code(filename) {
+        eprintln!("[mwemu] load failed: {}", e);
+        return process::ExitCode::FAILURE;
+    }
 
     // --sys: override OS after load_code autodetection
     if let Some(sys_str) = matches.value_of("sys") {

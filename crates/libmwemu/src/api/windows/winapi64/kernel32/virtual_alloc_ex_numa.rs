@@ -11,14 +11,8 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
     let addr = emu.regs().rdx;
     let orig_size = emu.regs().r8;
     let typ = emu.regs().r9;
-    let prot = emu
-        .maps
-        .read_dword(emu.regs().rsp + 0x20)
-        .expect("kernel32!VirtualAllocExNuma cannot read the protect");
-    let nnd = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("kernel32!VirtualAllocExNuma cannot read the nndPreferred");
+    let prot = emu.maps.read_dword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let nnd = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
 
     let size = round_up(orig_size);
     let typ32 = typ as u32;

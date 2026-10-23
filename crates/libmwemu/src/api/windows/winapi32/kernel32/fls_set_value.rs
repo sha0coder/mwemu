@@ -1,14 +1,8 @@
 use crate::emu;
 
 pub fn FlsSetValue(emu: &mut emu::Emu) {
-    let idx = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!FlsSetValue cannot read index");
-    let val = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("kernel32!FlsSetValue cannot read value");
+    let idx = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0);
+    let val = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0);
 
     log_red!(emu, "kernel32!FlsSetValue idx: {} val: {}", idx, val);
 

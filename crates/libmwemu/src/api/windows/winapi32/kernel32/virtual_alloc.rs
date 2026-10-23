@@ -7,22 +7,10 @@ use crate::windows::constants;
 use super::virtual_alloc_common::{fail, fail_oom};
 
 pub fn VirtualAlloc(emu: &mut emu::Emu) {
-    let addr = emu
-        .maps
-        .read_dword(emu.regs().get_esp())
-        .expect("kernel32!VirtualAlloc error reading addr") as u64;
-    let orig_size = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 4)
-        .expect("kernel32!VirtualAlloc error reading size ptr") as u64;
-    let typ = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 8)
-        .expect("kernel32!VirtualAlloc error reading type");
-    let prot = emu
-        .maps
-        .read_dword(emu.regs().get_esp() + 12)
-        .expect("kernel32!VirtualAlloc error reading protect");
+    let addr = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
+    let orig_size = emu.maps.read_dword(emu.regs().get_esp() + 4).unwrap_or(0) as u64;
+    let typ = emu.maps.read_dword(emu.regs().get_esp() + 8).unwrap_or(0);
+    let prot = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0);
     let size = round_up(orig_size);
     let mem_reserve = (typ & constants::MEM_RESERVE) != 0;
     let mem_commit = (typ & constants::MEM_COMMIT) != 0;

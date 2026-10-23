@@ -279,7 +279,8 @@ impl Emu {
                     stack.size() as u64
                 }
                 0x14 => {
-                    unimplemented!("GS:[14]  get stack canary")
+                    log::warn!("GS:[0x14] stack canary not implemented");
+                    0
                 }
                 0x1488 => {
                     if self.cfg.verbose >= 1 {
@@ -552,7 +553,11 @@ impl Emu {
                 }
                 _ => {
                     std::hint::cold_path();
-                    unreachable!("Error something is wrong")
+                    log::warn!(
+                        "operand: unexpected immediate kind {:?}",
+                        ins.op_kind(noperand)
+                    );
+                    None
                 }
             }
         }
@@ -760,15 +765,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_qword(mem_addr, value2);
                                     true
                                 } else {
@@ -796,15 +807,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_dword(mem_addr, to32!(value2));
                                     true
                                 } else {
@@ -832,15 +849,21 @@ impl Emu {
                             } else {
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_word(mem_addr, value2 as u16);
                                     true
                                 } else {
@@ -885,15 +908,21 @@ impl Emu {
                                 }
                                 return if self.cfg.skip_unimplemented {
                                     let map_name = format!("banzai_{:x}", mem_addr);
-                                    let map = self
-                                        .maps
-                                        .create_map(
-                                            &map_name,
-                                            mem_addr,
-                                            100,
-                                            Permission::READ_WRITE_EXECUTE,
-                                        )
-                                        .expect("cannot create banzai map");
+                                    let map = match self.maps.create_map(
+                                        &map_name,
+                                        mem_addr,
+                                        100,
+                                        Permission::READ_WRITE_EXECUTE,
+                                    ) {
+                                        Ok(m) => m,
+                                        Err(_) => {
+                                            log::error!(
+                                                "cannot create banzai map at 0x{:x}",
+                                                mem_addr
+                                            );
+                                            return false;
+                                        }
+                                    };
                                     map.write_byte(mem_addr, value2 as u8);
                                     true
                                 } else {
@@ -921,7 +950,10 @@ impl Emu {
                         32 => self.maps.read_dword(mem_addr).unwrap_or(0) as u64,
                         16 => self.maps.read_word(mem_addr).unwrap_or(0) as u64,
                         8 => self.maps.read_byte(mem_addr).unwrap_or(0) as u64,
-                        _ => unreachable!("weird size: {}", sz),
+                        _ => {
+                            log::warn!("operand: unexpected size {} in memory trace", sz);
+                            0
+                        }
                     };
                     let memory_operation = MemoryOperation {
                         pos: self.pos,
@@ -1029,7 +1061,10 @@ impl Emu {
                     mem_addr as u128
                 }
             }
-            _ => unimplemented!("unimplemented operand type {:?}", ins.op_kind(noperand)),
+            _ => {
+                log::warn!("unimplemented operand type {:?}", ins.op_kind(noperand));
+                return None;
+            }
         };
         Some(value)
     }

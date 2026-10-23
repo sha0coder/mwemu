@@ -6,14 +6,11 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
     let dw_flags = emu.regs().rdx;
     let utf8_ptr = emu.regs().r8;
     let cb_multi_byte = emu.regs().r9 as i64;
-    let wide_ptr = emu
+    let wide_ptr = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let cch_wide_char = emu
         .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("kernel32!MultiByteToWideChar cannot read wide_ptr");
-    let cch_wide_char =
-        emu.maps
-            .read_dword(emu.regs().rsp + 0x28) // yes, read only half of the stack item
-            .expect("kernel32!MultiByteToWideChar cannot read cchWideChar") as i32;
+        .read_dword(emu.regs().rsp + 0x28) // yes, read only half of the stack item
+        .unwrap_or(0) as i32;
 
     let mut utf8: String = String::new();
 

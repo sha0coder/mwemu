@@ -1,42 +1,18 @@
 use crate::emu;
 
 pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
-    let codepage = emu
-        .maps
-        .read_dword(emu.regs().rsp)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let flags = emu
-        .maps
-        .read_dword(emu.regs().rsp + 4)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let wstr_ptr = emu
-        .maps
-        .read_dword(emu.regs().rsp + 8)
-        .expect("kernel32!WideCharToMultiByte error reading param") as u64;
-    let wstr_sz = emu
-        .maps
-        .read_dword(emu.regs().rsp + 12)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let mbytestr_ptr = emu
-        .maps
-        .read_dword(emu.regs().rsp + 16)
-        .expect("kernel32!WideCharToMultiByte error reading param") as u64;
-    let mbytestr_sz = emu
-        .maps
-        .read_dword(emu.regs().rsp + 20)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let in_default_char =
-        emu.maps
-            .read_dword(emu.regs().rsp + 24)
-            .expect("kernel32!WideCharToMultiByte error reading param") as u64;
-    let out_default_char =
-        emu.maps
-            .read_dword(emu.regs().rsp + 28)
-            .expect("kernel32!WideCharToMultiByte error reading param") as u64;
+    let codepage = emu.maps.read_dword(emu.regs().rsp).unwrap_or(0);
+    let flags = emu.maps.read_dword(emu.regs().rsp + 4).unwrap_or(0);
+    let wstr_ptr = emu.maps.read_dword(emu.regs().rsp + 8).unwrap_or(0) as u64;
+    let wstr_sz = emu.maps.read_dword(emu.regs().rsp + 12).unwrap_or(0);
+    let mbytestr_ptr = emu.maps.read_dword(emu.regs().rsp + 16).unwrap_or(0) as u64;
+    let mbytestr_sz = emu.maps.read_dword(emu.regs().rsp + 20).unwrap_or(0);
+    let in_default_char = emu.maps.read_dword(emu.regs().rsp + 24).unwrap_or(0) as u64;
+    let out_default_char = emu.maps.read_dword(emu.regs().rsp + 28).unwrap_or(0) as u64;
 
     //log::trace!("default_char_ptr 0x{:x}", in_default_char);
     //let default_char = emu.maps.read_byte(in_default_char)
-    //    .expect("kernel32!WideCharToMultiByte error reading default char");
+    //    .unwrap_or(0);
 
     //emu.maps.write_byte(out_default_char, 0);
 

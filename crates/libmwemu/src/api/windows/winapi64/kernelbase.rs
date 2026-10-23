@@ -143,11 +143,18 @@ fn GetFileVersionInfoSizeA(emu: &mut emu::Emu) {
 
     if filename == "comctl32.dll" {
         let dll_path = format!("{}/comctl32.dll", emu.cfg.maps_folder);
-        let metadata = std::fs::metadata(dll_path).unwrap();
-        let file_size = metadata.len() as u64;
-        emu.regs_mut().rax = file_size;
+        match std::fs::metadata(dll_path) {
+            Ok(metadata) => {
+                emu.regs_mut().rax = metadata.len();
+            }
+            Err(e) => {
+                log::warn!("GetFileVersionInfoSizeA: cannot stat comctl32.dll: {}", e);
+                emu.regs_mut().rax = 0;
+            }
+        }
     } else {
-        unimplemented!("TODO: {}", filename);
+        log::warn!("GetFileVersionInfoSizeA: unsupported file {}", filename);
+        emu.regs_mut().rax = 0;
     }
 }
 
@@ -207,7 +214,8 @@ fn GetFileVersionInfoA(emu: &mut emu::Emu) {
 
         emu.regs_mut().rax = 1; // Success
     } else {
-        unimplemented!("TODO: {}", filename);
+        log::warn!("GetFileVersionInfoA: unsupported file {}", filename);
+        emu.regs_mut().rax = 0;
     }
 }
 
@@ -264,10 +272,14 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
             _ => "\0",
         };
 
-        let string_addr = emu
-            .maps
-            .alloc(string_data.len() as u64)
-            .expect("out of memory");
+        let string_addr = match emu.maps.alloc(string_data.len() as u64) {
+            Some(a) => a,
+            None => {
+                log::error!("kernelbase!VerQueryValueA: out of memory");
+                emu.regs_mut().rax = 0;
+                return;
+            }
+        };
         emu.maps.write_string(string_addr, string_data);
         emu.maps.write_qword(lplp_buffer as u64, string_addr);
         emu.maps
@@ -275,7 +287,14 @@ fn VerQueryValueA(emu: &mut emu::Emu) {
         emu.regs_mut().rax = 1;
     } else if sub_block == "\\VarFileInfo\\Translation" {
         // Translation array
-        let trans_addr = emu.maps.alloc(4).expect("out of memory");
+        let trans_addr = match emu.maps.alloc(4) {
+            Some(a) => a,
+            None => {
+                log::error!("kernelbase!VerQueryValueA: out of memory (translation)");
+                emu.regs_mut().rax = 0;
+                return;
+            }
+        };
         emu.maps.write_dword(trans_addr, 0x04B00409); // Language and codepage
         emu.maps.write_qword(lplp_buffer as u64, trans_addr);
         emu.maps.write_dword(pu_len as u64, 4);

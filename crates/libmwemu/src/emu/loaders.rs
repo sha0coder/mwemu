@@ -2,6 +2,7 @@ use iced_x86::Register;
 
 use crate::arch::Arch;
 use crate::emu::Emu;
+use crate::err::MwemuError;
 use crate::loaders::macho::macho64::Macho64;
 use crate::maps::mem64::Permission;
 use crate::winapi::winapi64;
@@ -76,11 +77,11 @@ impl Emu {
 
     /// Load a sample. It can be PE32, PE64, ELF32, ELF64 or shellcode.
     /// If its a shellcode cannot be known if is for windows or linux, it triggers also init() to
-    /// setup windows simulator.
-    /// For now mwemu also don't know if shellcode is for 32bits or 64bits, in commandline -6 has
-    /// to be selected for indicating 64bits, and from python or rust the emu32() or emu64()
-    /// construtor dtermines the engine.
-    pub fn load_code(&mut self, filename: &str) {
+    /// Load a binary file (PE, ELF, Mach-O, or raw shellcode) into the emulator.
+    ///
+    /// The format is auto-detected from the file header. For shellcode, the
+    /// architecture must match the emulator (use `emu32()` or `emu64()`).
+    pub fn load_code(&mut self, filename: &str) -> Result<(), MwemuError> {
         self.filename = filename.to_string();
         self.cfg.filename = self.filename.clone();
 
@@ -97,7 +98,10 @@ impl Emu {
                     "[mwemu] cannot open '{}': {} — check the -f path",
                     filename, e
                 );
-                return;
+                return Err(MwemuError::new(&format!(
+                    "cannot read '{}': {}",
+                    filename, e
+                )));
             }
         };
 
@@ -118,9 +122,13 @@ impl Emu {
                         self.set_pc(init);
                     }
                 }
-                Err(err) => log::error!("cannot load kernel module: {err}"),
+                Err(err) => {
+                    return Err(MwemuError::new(&format!(
+                        "cannot load kernel module: {err}"
+                    )));
+                }
             }
-            return;
+            return Ok(());
         }
 
         // ELF32
@@ -135,7 +143,7 @@ impl Emu {
                     log::error!("elf32 parse failed: {err}");
                     self.os = crate::arch::OperatingSystem::Linux;
                     self.cfg.arch = Arch::X86;
-                    return;
+                    return Err(MwemuError::new(&format!("elf32 parse failed: {err}")));
                 }
             };
             elf32.load(&mut self.maps);
@@ -198,7 +206,9 @@ impl Emu {
                         self.set_pc(init);
                     }
                 }
-                Err(err) => log::error!("cannot load kext: {err}"),
+                Err(err) => {
+                    return Err(MwemuError::new(&format!("cannot load kext: {err}")));
+                }
             }
 
         // Mach-O AArch64
@@ -461,13 +471,20 @@ impl Emu {
                     //   +0xF8  Rip            (QWORD)
                     const CTX_SIZE: u64 = 0x4D0;
                     const CONTEXT_FULL: u32 = 0x10_007F;
-                    let ctx_addr = self
+                    let Some(ctx_addr) = self.maps.lib64_alloc(CTX_SIZE) else {
+                        log::error!("cannot alloc CONTEXT for LdrInitializeThunk");
+                        return Err(MwemuError::new(
+                            "cannot alloc CONTEXT for LdrInitializeThunk",
+                        ));
+                    };
+                    if self
                         .maps
-                        .lib64_alloc(CTX_SIZE)
-                        .expect("cannot alloc CONTEXT for LdrInitializeThunk");
-                    self.maps
                         .create_map("ldr_context", ctx_addr, CTX_SIZE, Permission::READ_WRITE)
-                        .expect("cannot create ldr_context map");
+                        .is_err()
+                    {
+                        log::error!("cannot create ldr_context map");
+                        return Err(MwemuError::new("cannot create ldr_context map"));
+                    }
                     // ContextFlags
                     let _ = self.maps.write_dword(ctx_addr + 0x30, CONTEXT_FULL);
                     // Rsp: current stack pointer
@@ -685,19 +702,24 @@ impl Emu {
                 peb32::update_ldr_entry_base(&exe_name, base as u64, self);
             }
 
-            if !self
-                .maps
-                .create_map(
-                    "code",
-                    self.cfg.code_base_addr,
-                    0,
-                    Permission::READ_WRITE_EXECUTE,
-                )
-                .expect("cannot create code map")
-                .load(filename)
-            {
+            let code_map = match self.maps.create_map(
+                "code",
+                self.cfg.code_base_addr,
+                0,
+                Permission::READ_WRITE_EXECUTE,
+            ) {
+                Ok(m) => m,
+                Err(_) => {
+                    log::error!("cannot create code map");
+                    return Err(MwemuError::new("cannot create code map"));
+                }
+            };
+            if !code_map.load(filename) {
                 log::trace!("shellcode not found, select the file with -f");
-                return;
+                return Err(MwemuError::new(&format!(
+                    "cannot load shellcode from '{}'",
+                    filename
+                )));
             }
             let code = self.maps.get_mem_mut("code");
             code.extend(0xffff); // this could overlap an existing map
@@ -712,30 +734,38 @@ impl Emu {
             code.update_base(self.cfg.code_base_addr);
             code.update_bottom(self.cfg.code_base_addr + code.size() as u64);
         }*/
+
+        Ok(())
     }
 
     /// Load a shellcode from a variable.
     /// This assumes that there is no headers like PE/ELF and it's direclty code.
     /// Any OS simulation is triggered, but init() could be called by the user
-    pub fn load_code_bytes(&mut self, bytes: &[u8]) {
+    pub fn load_code_bytes(&mut self, bytes: &[u8]) -> Result<(), MwemuError> {
         if self.cfg.verbose >= 1 {
             log::trace!("Loading shellcode from bytes");
         }
 
         self.init_cpu();
 
-        let code = self
-            .maps
-            .create_map(
-                "code",
-                self.cfg.code_base_addr,
-                bytes.len() as u64,
-                Permission::READ_WRITE_EXECUTE,
-            )
-            .expect("cannot create code map");
+        let code = match self.maps.create_map(
+            "code",
+            self.cfg.code_base_addr,
+            bytes.len() as u64,
+            Permission::READ_WRITE_EXECUTE,
+        ) {
+            Ok(m) => m,
+            Err(_) => {
+                log::error!("cannot create code map for load_code_bytes");
+                return Err(MwemuError::new(
+                    "cannot create code map for load_code_bytes",
+                ));
+            }
+        };
         let base = code.get_base();
         code.write_bytes(base, bytes);
         self.set_pc(base);
+        Ok(())
     }
 
     fn init_msvcrt_cmdln_globals(&mut self) {
@@ -751,10 +781,10 @@ impl Emu {
         let exe_name = self.cfg.exe_name.clone();
 
         if wcmdln_addr != 0 {
-            let buf = self
-                .heap_mut()
-                .allocate(2048)
-                .expect("cannot allocate _wcmdln buffer");
+            let Some(buf) = self.heap_mut().allocate(2048) else {
+                log::error!("cannot allocate _wcmdln buffer");
+                return;
+            };
             self.maps.write_wide_string(buf, &exe_name);
             self.maps.write_qword(wcmdln_addr, buf);
             log::trace!(
@@ -766,10 +796,10 @@ impl Emu {
         }
 
         if acmdln_addr != 0 {
-            let buf = self
-                .heap_mut()
-                .allocate(1024)
-                .expect("cannot allocate _acmdln buffer");
+            let Some(buf) = self.heap_mut().allocate(1024) else {
+                log::error!("cannot allocate _acmdln buffer");
+                return;
+            };
             self.maps.write_string(buf, &exe_name);
             self.maps.write_qword(acmdln_addr, buf);
             log::trace!(

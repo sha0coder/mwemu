@@ -8,18 +8,9 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
     let dw_desired_access = emu.regs().rdx as u32;
     let dw_share_mode = emu.regs().r8 as u32;
     let lp_security_attributes = emu.regs().r9; // LPSECURITY_ATTRIBUTES
-    let dw_creation_disposition =
-        emu.maps
-            .read_qword(emu.regs().rsp + 0x20)
-            .expect("kernel32!CreateFileW cannot read dw_creation_disposition") as u32;
-    let dw_flags_and_attributes =
-        emu.maps
-            .read_qword(emu.regs().rsp + 0x28)
-            .expect("kernel32!CreateFileW cannot read dw_flags_and_attributes") as u32;
-    let h_template_file = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x30)
-        .expect("kernel32!CreateFileW cannot read h_template_file");
+    let dw_creation_disposition = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0) as u32;
+    let dw_flags_and_attributes = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0) as u32;
+    let h_template_file = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0);
 
     log_red!(
         emu,
@@ -51,7 +42,14 @@ pub fn CreateFileW(emu: &mut emu::Emu) {
     let temp_emu = FILE_SYSTEM.get();
     let emu_path =
         temp_emu.and_then(|file_system| file_system.local_to_windows_path(&name_utf8).ok());
-    let emu_path_str = emu_path.unwrap().to_string();
+    let emu_path_str = match emu_path {
+        Some(p) => p.to_string(),
+        None => {
+            log::warn!("CreateFileW: cannot map path `{}`", name_utf8);
+            emu.regs_mut().rax = 0xFFFFFFFFFFFFFFFF;
+            return;
+        }
+    };
 
     // Attempt to create or open the file using the FileHandle struct
     match FileHandle::new(

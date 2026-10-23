@@ -311,7 +311,9 @@ impl crate::emu::Emu {
         }
 
         self.cfg.winver = Some(build);
-        self.set_maps_folder(cache.to_str().unwrap());
+        if let Some(s) = cache.to_str() {
+            self.set_maps_folder(s);
+        }
         Ok(())
     }
 }
@@ -379,7 +381,7 @@ fn seed_loader_exe(cache: &Path, is_x64: bool) {
 
 /// One retry at most, after a pause: enough for a stale CDN redirect without
 /// hammering Microsoft's servers.
-
+///
 /// Desktop Chrome on Windows, sent on every winver request.
 const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
 

@@ -6,22 +6,10 @@ pub fn WideCharToMultiByte(emu: &mut emu::Emu) {
     let dw_flags = emu.regs().rdx as usize;
     let lp_wide_char_str = emu.regs().r8 as usize;
     let cch_wide_char = emu.regs().r9 as isize;
-    let lp_multi_byte_str = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x20)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let cb_multi_byte = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x28)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let lp_default_char = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x30)
-        .expect("kernel32!WideCharToMultiByte error reading param");
-    let lp_used_default_char = emu
-        .maps
-        .read_qword(emu.regs().rsp + 0x38)
-        .expect("kernel32!WideCharToMultiByte error reading param");
+    let lp_multi_byte_str = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let cb_multi_byte = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
+    let lp_default_char = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0);
+    let lp_used_default_char = emu.maps.read_qword(emu.regs().rsp + 0x38).unwrap_or(0);
 
     log_red!(
         emu,

@@ -20,6 +20,7 @@ use std::collections::BTreeMap;
 use std::convert::TryInto;
 use tlb::TLB;
 
+/// Memory map manager: owns all memory regions, handles allocation, read/write, and address lookup.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Maps {
     pub banzai: bool,
@@ -127,7 +128,7 @@ impl Maps {
         self.name_map.contains_key(name)
     }
 
-    // slow, better hold the object
+    /// Look up a memory region by name. Prefer caching the result over repeated calls.
     pub fn get_map_by_name(&self, name: &str) -> Option<&Mem64> {
         self.name_map.get(name).and_then(|v| self.mem_slab.get(*v))
     }
@@ -153,6 +154,7 @@ impl Maps {
             })
     }
 
+    /// Create a new memory region with the given name, base address, size, and permissions.
     pub fn create_map(
         &mut self,
         name: &str,
@@ -185,7 +187,10 @@ impl Maps {
         // Creating a map can reuse a freed slab slot, leaving stale TLB entries
         // that still point at the recycled key — flush so lookups re-resolve.
         self.tlb.get_mut().flush();
-        Ok(self.mem_slab.get_mut(base_key).unwrap())
+        Ok(self
+            .mem_slab
+            .get_mut(base_key)
+            .expect("just-inserted slab key missing"))
     }
 
     fn read_scalar<T: LittleEndianScalar>(&self, addr: u64, kind: ScalarKind) -> Option<T> {
@@ -250,10 +255,16 @@ impl Maps {
             {
                 let mut buf = [0u8; 16];
                 value.write_le(&mut buf);
-                let first_key = self.maps.range(..=addr).next_back().unwrap().1;
-                let first_mem = self.mem_slab.get_mut(*first_key).unwrap();
+                let Some((_, &first_key)) = self.maps.range(..=addr).next_back() else {
+                    return false;
+                };
+                let Some(first_mem) = self.mem_slab.get_mut(first_key) else {
+                    return false;
+                };
                 first_mem.write_bytes(addr, &buf[..lo_len]);
-                let next_mem_mut = self.mem_slab.get_mut(next_key).unwrap();
+                let Some(next_mem_mut) = self.mem_slab.get_mut(next_key) else {
+                    return false;
+                };
                 next_mem_mut.write_bytes(boundary, &buf[lo_len..T::SIZE]);
                 return true;
             }
@@ -483,7 +494,9 @@ impl Maps {
     pub fn print_maps_keyword(&self, kw: &str) {
         log::trace!("--- maps ---");
         for (mem_name, base) in self.name_map.iter() {
-            let mem = self.get_map_by_name(mem_name).unwrap();
+            let Some(mem) = self.get_map_by_name(mem_name) else {
+                continue;
+            };
             let k = mem_name;
 
             let n = if k.len() < 20 { 20 - k.len() } else { 1 };
@@ -730,12 +743,17 @@ impl Maps {
         }
     }
 
+    /// Free (unmap) a memory region by name.
     pub fn free(&mut self, name: &str) {
-        let id = self
-            .name_map
-            .get(name)
-            .unwrap_or_else(|| unreachable!("map name {} not found", name));
-        let mem = self.mem_slab.get_mut(*id).unwrap();
+        let Some(id) = self.name_map.get(name) else {
+            log::warn!("free: map name '{}' not found", name);
+            return;
+        };
+        let Some(mem) = self.mem_slab.get_mut(*id) else {
+            log::warn!("free: slab entry missing for '{}'", name);
+            self.name_map.remove(name);
+            return;
+        };
         // Capture the base before `clear()` zeroes it, otherwise the map
         // table keeps a stale base entry pointing at the removed slab slot.
         let base = mem.get_base();
@@ -754,7 +772,11 @@ impl Maps {
                 return;
             }
         };
-        let mem = self.mem_slab.get_mut(*mem_key).unwrap();
+        let Some(mem) = self.mem_slab.get_mut(*mem_key) else {
+            log::warn!("dealloc: slab entry missing for 0x{:x}", addr);
+            self.maps.remove(&addr);
+            return;
+        };
         self.name_map.remove(mem.get_name());
         mem.clear();
         self.mem_slab.remove(*mem_key);
@@ -808,22 +830,31 @@ impl Maps {
     }
 
     pub fn map(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
-        let addr = self.alloc(sz).expect("emu.maps.map(sz) cannot allocate");
-        self.create_map(name, addr, sz, permission)
-            .expect("emu.maps.map(sz) cannot create map");
+        let Some(addr) = self.alloc(sz) else {
+            log::error!("maps.map: cannot allocate {} bytes for '{}'", sz, name);
+            return 0;
+        };
+        if let Err(e) = self.create_map(name, addr, sz, permission) {
+            log::error!("maps.map: cannot create map '{}': {}", name, e);
+            return 0;
+        }
         addr
     }
 
     pub fn map_lib(&mut self, name: &str, sz: u64, permission: Permission) -> u64 {
         let addr = if self.is_64bits {
             self.lib64_alloc(sz)
-                .expect("emu.maps.map_lib(sz) cannot allocate")
         } else {
             self.lib32_alloc(sz)
-                .expect("emu.maps.map_lib(sz) cannot allocate")
         };
-        self.create_map(name, addr, sz, permission)
-            .expect("emu.maps.map_lib(sz) cannot create map");
+        let Some(addr) = addr else {
+            log::error!("maps.map_lib: cannot allocate {} bytes for '{}'", sz, name);
+            return 0;
+        };
+        if let Err(e) = self.create_map(name, addr, sz, permission) {
+            log::error!("maps.map_lib: cannot create map '{}': {}", name, e);
+            return 0;
+        }
         addr
     }
 
@@ -842,7 +873,7 @@ impl Maps {
         self._alloc(sz, constants::LIBS32_MIN, constants::LIBS32_MAX, true)
     }
 
-    // this alloc return an address but you have to map it
+    /// Find a free address for `sz` bytes. Returns the base address; the caller must create the map.
     pub fn alloc(&self, sz: u64) -> Option<u64> {
         if self.is_64bits {
             self._alloc(sz, constants::ALLOC64_MIN, constants::ALLOC64_MAX, false)
@@ -879,8 +910,11 @@ impl Maps {
             .range(..top)
             .next_back()
             .map(|(addr, mem)| {
-                let mem = self.mem_slab.get(*mem).unwrap();
-                let sz = mem.size() as u64;
+                let sz = self
+                    .mem_slab
+                    .get(*mem)
+                    .map(|m| m.size() as u64)
+                    .unwrap_or(0);
                 let base = *addr;
                 self.align_up(base + sz, Self::DEFAULT_ALIGNMENT)
             })
@@ -909,7 +943,9 @@ impl Maps {
                 return Some(prev + sz);
             }
 
-            let mem = self.mem_slab.get(*mem_key).unwrap();
+            let Some(mem) = self.mem_slab.get(*mem_key) else {
+                continue;
+            };
             sz = mem.size() as u64;
             prev = mem_base;
         }
@@ -971,14 +1007,11 @@ impl Maps {
             .map(|(_, m)| (m.get_base(), m.get_bottom(), m.get_name().to_string()))
             .collect();
 
-        for i in 0..regions.len() {
-            let (b1, t1, ref n1) = regions[i];
-
-            for j in 0..regions.len() {
+        for (i, (b1, t1, n1)) in regions.iter().enumerate() {
+            for (j, (b2, t2, n2)) in regions.iter().enumerate() {
                 if i == j {
                     continue;
                 }
-                let (b2, t2, ref n2) = regions[j];
 
                 // Pairwise overlap test: two half-open ranges [b1, t1), [b2, t2)
                 // overlap iff b1 < t2 && b2 < t1. Equivalent to the original
