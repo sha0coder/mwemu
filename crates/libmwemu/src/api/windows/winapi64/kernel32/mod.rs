@@ -162,12 +162,14 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetSystemInfo" => GetSystemInfo(emu),
         "GetSystemTime" => GetSystemTime(emu),
         "GetSystemTimeAsFileTime" => GetSystemTimeAsFileTime(emu),
+        "GetSystemTimePreciseAsFileTime" => GetSystemTimePreciseAsFileTime(emu),
         "GetTempPathW" => GetTempPathW(emu),
         "GetThreadContext" => GetThreadContext(emu),
         "GetThreadLocale" => GetThreadLocale(emu),
         "GetTickCount" => GetTickCount(emu),
         "GetTickCount64" => GetTickCount64(emu),
         "GetTimeZoneInformation" => GetTimeZoneInformation(emu),
+        "GetTimeZoneInformationForYear" => GetTimeZoneInformationForYear(emu),
         "GetUserDefaultLangId" => GetUserDefaultLangId(emu),
         "GetUserDefaultLCID" => GetUserDefaultLCID(emu),
         "GetVersion" => GetVersion(emu),
@@ -197,6 +199,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "IsWow64Process" => IsWow64Process(emu),
         "IsProcessorFeaturePresent" => IsProcessorFeaturePresent(emu),
         "LeaveCriticalSection" => LeaveCriticalSection(emu),
+        "Module32FirstW" => Module32FirstW(emu),
+        "Module32NextW" => Module32NextW(emu),
         "LoadLibraryA" => LoadLibraryA(emu),
         "LoadLibraryExA" => LoadLibraryExA(emu),
         "LoadLibraryExW" => LoadLibraryExW(emu),
@@ -230,6 +234,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "Process32Next" => Process32Next(emu),
         "QueryPerformanceCounter" => QueryPerformanceCounter(emu),
         "QueryPerformanceFrequency" => QueryPerformanceFrequency(emu),
+        "RaiseException" => RaiseException(emu),
         "ReadFile" => ReadFile(emu),
         "ReadProcessMemory" => ReadProcessMemory(emu),
         "RegCloseKey" => RegCloseKey(emu),
@@ -282,6 +287,12 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "WriteProcessMemory" => WriteProcessMemory(emu),
         "DeviceIoControl" => api_DeviceIoControl(emu),
         _ => {
+            // Windows forwards many Rtl*/Nt* functions through kernel32 →
+            // ntdll. Try ntdll sub-dispatchers before giving up.
+            if super::ntdll::try_dispatch(api, emu) {
+                return String::new();
+            }
+
             if !emu.cfg.skip_unimplemented {
                 if emu.cfg.dump_on_exit && emu.cfg.dump_filename.is_some() {
                     serialization::Serialization::dump(

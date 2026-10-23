@@ -18,6 +18,7 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "RtlAddFunctionTable" => RtlAddFunctionTable(emu),
         "RtlCaptureContext" => RtlCaptureContext(emu),
         "RtlLookupFunctionEntry" => RtlLookupFunctionEntry(emu),
+        "RtlVirtualUnwind" => RtlVirtualUnwind(emu),
         "NtFreeVirtualMemory" => NtFreeVirtualMemory(emu),
         "NtCreateSection" => NtCreateSection(emu),
         "NtMapViewOfSection" => NtMapViewOfSection(emu),
@@ -250,6 +251,23 @@ fn RtlLookupFunctionEntry(emu: &mut emu::Emu) {
         control_pc,
         image_base,
         history_table
+    );
+    emu.regs_mut().rax = 0;
+}
+
+fn RtlVirtualUnwind(emu: &mut emu::Emu) {
+    let handler_type = emu.regs().rcx;
+    let image_base = emu.regs().rdx;
+    let control_pc = emu.regs().r8;
+    let function_entry = emu.regs().r9;
+    log_red!(
+        emu,
+        "** {} ntdll!RtlVirtualUnwind type:{} base:0x{:x} pc:0x{:x} entry:0x{:x}",
+        emu.pos,
+        handler_type,
+        image_base,
+        control_pc,
+        function_entry
     );
     emu.regs_mut().rax = 0;
 }

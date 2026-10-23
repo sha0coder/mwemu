@@ -1,6 +1,6 @@
 use crate::emu;
 use crate::emu::object_handle::FileHandle;
-use crate::emu::object_handle::file_handle::{FILE_SYSTEM, INVALID_HANDLE_VALUE};
+use crate::emu::object_handle::file_handle::INVALID_HANDLE_VALUE;
 use log::error;
 
 pub fn CreateFileA(emu: &mut emu::Emu) {
@@ -37,22 +37,9 @@ pub fn CreateFileA(emu: &mut emu::Emu) {
         emu.colors.nc
     );
 
-    // Map the Windows path to the emulator's path
-    let emu_path = FILE_SYSTEM
-        .get()
-        .and_then(|file_system| file_system.local_to_windows_path(&name_utf8).ok());
-    let emu_path_str = match emu_path {
-        Some(p) => p.to_string(),
-        None => {
-            log::warn!("CreateFileA: cannot map path `{}`", name_utf8);
-            emu.regs_mut().rax = 0xFFFFFFFFFFFFFFFF;
-            return;
-        }
-    };
-
     // Attempt to create or open the file using the FileHandle struct
     match FileHandle::new(
-        emu_path_str.clone(), // Use the mapped path string
+        name_utf8.clone(),
         dw_desired_access,
         dw_creation_disposition,
         dw_flags_and_attributes,
@@ -71,6 +58,7 @@ pub fn CreateFileA(emu: &mut emu::Emu) {
         }
         Err(e) => {
             error!("CreateFileA failed for '{}': {}", name_utf8, e);
+            emu.set_last_error(2); // ERROR_FILE_NOT_FOUND
             emu.regs_mut().rax = INVALID_HANDLE_VALUE as u64;
             log_red!(
                 emu,

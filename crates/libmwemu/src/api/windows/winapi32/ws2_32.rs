@@ -7,9 +7,6 @@ use crate::serialization;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
     let api = api.split("!").last().unwrap_or(&api);
@@ -76,11 +73,6 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
-}
-
-lazy_static! {
-    static ref COUNT_SEND: Mutex<u32> = Mutex::new(0);
-    static ref COUNT_RECV: Mutex<u32> = Mutex::new(0);
 }
 
 fn getaddrinfo(emu: &mut emu::Emu) {
@@ -362,9 +354,8 @@ fn recv(emu: &mut emu::Emu) {
         emu.regs_mut().rax = n as u64;
         */
     } else {
-        let mut count_recv = COUNT_RECV.lock().unwrap();
-        *count_recv += 1;
-        if *count_recv > 3 {
+        emu.count_recv += 1;
+        if emu.count_recv > 3 {
             len = 0; // finish the recv loop
         }
 
@@ -418,9 +409,8 @@ fn send(emu: &mut emu::Emu) {
         emu.regs_mut().rax = n as u64;
         */
     } else {
-        let mut count_send = COUNT_SEND.lock().unwrap();
-        *count_send += 1;
-        if *count_send > 3 {
+        emu.count_send += 1;
+        if emu.count_send > 3 {
             len = 0; // finish the send loop
         }
 

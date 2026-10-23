@@ -207,8 +207,12 @@ pub struct Emu {
     pub api_call_log: VecDeque<ApiCallLogEntry>, // resolved calls seen while cfg.trace_calls is on (bounded, see API_CALL_LOG_CAP)
     pub instruction_count: u64,                  // total instructions executed
     pub fault_count: u32,                        // page faults / exceptions encountered
-    pub entropy: f64,    // entropy measurement for polymorphic code detection
-    pub last_error: u32, // Win32 GetLastError value
+    pub entropy: f64,     // entropy measurement for polymorphic code detection
+    pub last_error: u64,  // Win32 GetLastError value
+    pub count_read: u32,  // ReadFile call counter
+    pub count_write: u32, // WriteFile call counter
+    pub count_send: u32,  // send/WSASend call counter
+    pub count_recv: u32,  // recv/WSARecv call counter
 
     // --- Win32 resource management ---
     pub handle_management: HandleManagement, // file and object handle table
@@ -230,6 +234,21 @@ pub struct Emu {
     pub export_indexes: ExportIndexRegistry,
     pub symbolic_link_targets: HashMap<u64, String>, // NtOpenSymbolicLinkObject handle → resolved link target (e.g. "\KnownDlls\KnownDllPath" → "C:\\Windows\\System32"); read back by NtQuerySymbolicLinkObject so ntdll's LdrInit can resolve the KnownDlls search path
     pub ssdt_pad_stack: Vec<u64>, // expected return addresses for PE→DLL CALLs that received an extra 0x20 of shadow-space padding (--ssdt only); a matching RET to PE pops and unpads
+}
+
+// --- Win32 last-error helpers ---
+impl Emu {
+    pub fn set_last_error(&mut self, code: u64) {
+        self.last_error = code;
+    }
+
+    pub fn get_last_error(&self) -> u64 {
+        self.last_error
+    }
+
+    pub fn clear_last_error(&mut self) {
+        self.last_error = 0;
+    }
 }
 
 // --- InstructionState accessors ---

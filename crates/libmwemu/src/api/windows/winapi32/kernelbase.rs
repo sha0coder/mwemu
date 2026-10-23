@@ -9,9 +9,6 @@ use crate::serialization;
 use crate::winapi::helper;
 use crate::winapi::winapi32::kernel32;
 
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-
 pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     let api = kernel32::guess_api_name(emu, addr);
     let api = api.split("!").last().unwrap_or(&api);
@@ -49,12 +46,6 @@ pub fn gateway(addr: u32, emu: &mut emu::Emu) -> String {
     }
 
     String::new()
-}
-
-lazy_static! {
-    static ref COUNT_READ: Mutex<u32> = Mutex::new(0);
-    static ref COUNT_WRITE: Mutex<u32> = Mutex::new(0);
-    static ref LAST_ERROR: Mutex<u32> = Mutex::new(0);
 }
 
 /// kernelbase API ////

@@ -1,7 +1,6 @@
 use crate::emu;
 use crate::maps::mem64::Permission;
 use crate::winapi::common::virtual_alloc::{permissions, round_up};
-use crate::winapi::winapi64::kernel32::set_last_error;
 use crate::windows::constants;
 
 use super::virtual_alloc_common::{fail, fail_oom};
@@ -79,13 +78,13 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
             nnd,
             err
         );
-        set_last_error(constants::ERROR_NOT_ENOUGH_MEMORY);
+        emu.set_last_error(constants::ERROR_NOT_ENOUGH_MEMORY);
         emu.regs_mut().rax = 0;
         return;
     }
 
     if mem_commit && !mem_reserve {
-        set_last_error(constants::ERROR_SUCCESS);
+        emu.set_last_error(constants::ERROR_SUCCESS);
         log_red!(
             emu,
             "kernel32!VirtualAllocExNuma hproc: 0x{:x} addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} nnd: {} = 0x{:x}",
@@ -102,7 +101,7 @@ pub fn VirtualAllocExNuma(emu: &mut emu::Emu) {
         return;
     }
 
-    set_last_error(constants::ERROR_SUCCESS);
+    emu.set_last_error(constants::ERROR_SUCCESS);
     log_red!(
         emu,
         "kernel32!VirtualAllocExNuma hproc: 0x{:x} addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} nnd: {} = 0x{:x}",

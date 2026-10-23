@@ -27,6 +27,7 @@ pub fn kernel32_exports() -> &'static [&'static str] {
         "GetModuleFileNameA",
         "GetModuleFileNameW",
         "GetSystemTimeAsFileTime",
+        "GetSystemTimePreciseAsFileTime",
         "GetCurrentProcess",
         "GetCurrentProcessId",
         "GetCurrentThreadId",
@@ -114,6 +115,8 @@ pub fn kernel32_exports() -> &'static [&'static str] {
         "CreateNamedPipeA",
         "CreateRemoteThread",
         "CreateToolhelp32Snapshot",
+        "Module32FirstW",
+        "Module32NextW",
         "Process32FirstW",
         "Process32Next",
         "Process32NextW",
@@ -142,6 +145,7 @@ pub fn kernel32_exports() -> &'static [&'static str] {
         "GetLocalTime",
         "GetSystemTime",
         "GetTimeZoneInformation",
+        "GetTimeZoneInformationForYear",
         "MapViewOfFile",
         "OpenFileMappingA",
         "CreateSemaphoreA",
@@ -251,6 +255,7 @@ pub fn ntdll_exports() -> &'static [&'static str] {
         "NtCreateFile",
         "NtQueryInformationFile",
         "NtReadFile",
+        "NtWriteFile",
         "NtClose",
         "RtlDosPathNameToNtPathName_U",
         "RtlGetProcessHeaps",
@@ -290,6 +295,10 @@ pub fn ntdll_exports() -> &'static [&'static str] {
         "NtUnmapViewOfSection",
         "RtlAddVectoredExceptionHandler",
         "NtQuerySystemInformation",
+        "RtlCaptureContext",
+        "RtlLookupFunctionEntry",
+        "RtlVirtualUnwind",
+        "RtlAddFunctionTable",
     ]
 }
 

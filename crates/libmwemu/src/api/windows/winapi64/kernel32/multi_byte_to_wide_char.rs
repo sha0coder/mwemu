@@ -1,4 +1,3 @@
-use crate::winapi::winapi64::kernel32::LAST_ERROR;
 use crate::{emu, windows::constants};
 
 pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
@@ -86,13 +85,11 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
             }
             emu.regs_mut().rax = wide.len() as u64;
         } else {
-            let mut err = LAST_ERROR.lock().unwrap();
-            *err = constants::ERROR_INSUFFICIENT_BUFFER;
+            emu.set_last_error(constants::ERROR_INSUFFICIENT_BUFFER);
             emu.regs_mut().rax = 0;
         }
     } else {
-        let mut err = LAST_ERROR.lock().unwrap();
-        *err = constants::ERROR_INVALID_PARAMETER;
+        emu.set_last_error(constants::ERROR_INVALID_PARAMETER);
         emu.regs_mut().rax = 0;
     }
 }

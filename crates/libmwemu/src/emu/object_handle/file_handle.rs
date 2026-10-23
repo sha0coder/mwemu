@@ -178,44 +178,47 @@ impl FileHandle {
                 )
             })?;
 
-        let metadata = fs::metadata(&resolved_path)?;
+        // For creation modes that may create a new file, ensure parent directory exists
+        if matches!(creation_disposition, 1 | 2 | 4) {
+            if let Some(parent) = resolved_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+        }
 
-        // Determine if it's a directory *after* potential creation logic (simplified here)
+        // Try to open/create the file first, then get metadata
+        let file_result = match creation_disposition {
+            1 => File::create_new(&resolved_path), // CREATE_NEW
+            2 => File::create(&resolved_path),     // CREATE_ALWAYS
+            3 => File::open(&resolved_path),       // OPEN_EXISTING
+            5 => File::options()
+                .read(true)
+                .write(true)
+                .truncate(true)
+                .open(&resolved_path), // TRUNCATE_EXISTING
+            4 => File::options()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .open(&resolved_path), // OPEN_ALWAYS
+            _ => {
+                return Err(Box::new(io::Error::new(
+                    ErrorKind::InvalidInput,
+                    "Unknown or unsupported access mode",
+                )));
+            }
+        };
+        let opened_file = file_result?;
+
+        let metadata = opened_file.metadata()?;
         let is_dir = metadata.is_dir();
-
-        let file = if is_dir {
-            // we haven't support opening a directory yet
+        if is_dir {
             return Err(Box::new(io::Error::new(
                 ErrorKind::InvalidInput,
                 "Calling handle other than File isn't support yet",
             )));
-        } else {
-            // It's a file, attempt to open/create based on creation_disposition and access_mode
-            let file_result = match creation_disposition {
-                1 => File::create_new(&resolved_path), // CREATE_NEW
-                2 => File::create(&resolved_path),     // CREATE_ALWAYS
-                3 => File::open(&resolved_path),       // OPEN_EXISTING
-                5 => File::options()
-                    .read(true)
-                    .write(true)
-                    .truncate(true)
-                    .open(&resolved_path), // TRUNCATE_EXISTING
-                4 => File::options()
-                    .read(true)
-                    .write(true)
-                    .create(true)
-                    .truncate(false)
-                    .open(&resolved_path), // OPEN_ALWAYS
-                _ => {
-                    return Err(Box::new(io::Error::new(
-                        ErrorKind::InvalidInput,
-                        "Unknown or unsupported access mode",
-                    )));
-                }
-            };
-            Some(file_result?)
-        };
-
+        }
+        let file = Some(opened_file);
         let file_size = metadata.len();
         Ok(FileHandle {
             name,

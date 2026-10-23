@@ -69,7 +69,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
     };
 
     if mem_commit && !mem_reserve && addr > 0 {
-        set_last_error(constants::ERROR_SUCCESS as u32);
+        set_last_error(emu, constants::ERROR_SUCCESS as u32);
         log_red!(
             emu,
             "kernel32!VirtualAlloc addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} = 0x{:x}",
@@ -102,7 +102,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
             prot,
             err
         );
-        set_last_error(constants::ERROR_NOT_ENOUGH_MEMORY as u32);
+        set_last_error(emu, constants::ERROR_NOT_ENOUGH_MEMORY as u32);
         emu.regs_mut().rax = 0;
         for _ in 0..4 {
             emu.stack_pop32(false);
@@ -110,7 +110,7 @@ pub fn VirtualAlloc(emu: &mut emu::Emu) {
         return;
     }
 
-    set_last_error(constants::ERROR_SUCCESS as u32);
+    set_last_error(emu, constants::ERROR_SUCCESS as u32);
     log_red!(
         emu,
         "kernel32!VirtualAlloc addr: 0x{:x} sz: {} (rounded {}) flags: {} prot: {} = 0x{:x}",

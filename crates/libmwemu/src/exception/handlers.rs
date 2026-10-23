@@ -26,7 +26,7 @@ pub enum HandlerKind {
 
 impl HandlerKind {
     #[inline]
-    fn as_u32(self) -> u32 {
+    pub fn as_u32(self) -> u32 {
         match self {
             HandlerKind::Seh => 1,
             HandlerKind::Veh => 2,

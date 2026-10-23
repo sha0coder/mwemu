@@ -138,7 +138,11 @@ pub struct SerializableEmu {
     // --- Tracing & statistics ---
     // NOTE: trace_file reconstructed from cfg.trace_filename
     pub entropy: f64,
-    pub last_error: u32,
+    pub last_error: u64,
+    pub count_read: u32,
+    pub count_write: u32,
+    pub count_send: u32,
+    pub count_recv: u32,
     // NOTE: instruction_count, fault_count not serialized
     // NOTE: handle_management not yet serialized
 }
@@ -267,6 +271,10 @@ impl<'a> From<&'a Emu> for SerializableEmu {
             // Tracing & statistics
             entropy: emu.entropy,
             last_error: emu.last_error,
+            count_read: emu.count_read,
+            count_write: emu.count_write,
+            count_send: emu.count_send,
+            count_recv: emu.count_recv,
         }
     }
 }
@@ -314,6 +322,10 @@ impl From<SerializableEmu> for Emu {
             exp,
             entropy,
             last_error,
+            count_read,
+            count_write,
+            count_send,
+            count_recv,
         } = serialized;
 
         let trace_file = if let Some(trace_filename) = &cfg.trace_filename {
@@ -413,6 +425,10 @@ impl From<SerializableEmu> for Emu {
             fault_count: 0,
             entropy,
             last_error,
+            count_read,
+            count_write,
+            count_send,
+            count_recv,
             // Win32 resource management
             handle_management: HandleManagement::new(), // TODO: not yet serialized
             section_handles: HashMap::new(),

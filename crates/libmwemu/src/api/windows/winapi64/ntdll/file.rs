@@ -12,6 +12,7 @@ pub(super) fn dispatch(api: &str, emu: &mut emu::Emu) -> bool {
         "NtQueryInformationFile" => NtQueryInformationFile(emu),
         "NtSetInformationFile" => NtSetInformationFile(emu),
         "NtReadFile" => NtReadFile(emu),
+        "NtWriteFile" => NtWriteFile(emu),
         "NtClose" => NtClose(emu),
         "RtlDosPathNameToNtPathName_U" => RtlDosPathNameToNtPathName_U(emu),
         _ => return false,
@@ -411,6 +412,64 @@ fn NtReadFile(emu: &mut emu::Emu) {
     }
 
     emu.regs_mut().rax = constants::STATUS_SUCCESS;
+}
+
+fn NtWriteFile(emu: &mut emu::Emu) {
+    let file_hndl = emu.regs().rcx;
+    let ev_hndl = emu.regs().rdx;
+    let apc_rout = emu.regs().r8;
+    let apc_ctx = emu.regs().r9;
+    let io_status = emu.maps.read_qword(emu.regs().rsp + 0x20).unwrap_or(0);
+    let buff = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
+    let len = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0) as usize;
+    let off = emu.maps.read_qword(emu.regs().rsp + 0x38).unwrap_or(0);
+    let key = emu.maps.read_qword(emu.regs().rsp + 0x40).unwrap_or(0);
+
+    log_red!(
+        emu,
+        "ntdll!NtWriteFile hndl: 0x{:x} buff: 0x{:x} sz: {}",
+        file_hndl,
+        buff,
+        len,
+    );
+
+    if len == 0 {
+        if io_status != 0 {
+            emu.maps.write_dword(io_status, 0);
+            emu.maps.write_qword(io_status + 8, 0);
+        }
+        emu.regs_mut().rax = constants::STATUS_SUCCESS;
+        return;
+    }
+
+    let mut data = vec![0u8; len];
+    for i in 0..len {
+        data[i] = emu.maps.read_byte(buff + i as u64).unwrap_or(0);
+    }
+
+    let handle_key = file_hndl as u32;
+    match emu.handle_management.get_mut_file_handle(handle_key) {
+        Some(fh) => match fh.write(&data) {
+            Ok(written) => {
+                if io_status != 0 {
+                    emu.maps.write_dword(io_status, 0);
+                    emu.maps.write_qword(io_status + 8, written as u64);
+                }
+                emu.regs_mut().rax = constants::STATUS_SUCCESS;
+            }
+            Err(e) => {
+                log::warn!("NtWriteFile: write error: {}", e);
+                if io_status != 0 {
+                    emu.maps.write_dword(io_status, 0xC0000001);
+                }
+                emu.regs_mut().rax = 0xC0000001;
+            }
+        },
+        None => {
+            log::warn!("NtWriteFile: invalid handle 0x{:x}", file_hndl);
+            emu.regs_mut().rax = constants::STATUS_INVALID_HANDLE;
+        }
+    }
 }
 
 fn NtClose(emu: &mut emu::Emu) {

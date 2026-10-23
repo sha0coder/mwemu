@@ -1,6 +1,5 @@
 use crate::emu;
 use crate::winapi::helper;
-use crate::winapi::winapi32::kernel32::COUNT_READ;
 
 pub fn ReadFile(emu: &mut emu::Emu) {
     let file_hndl = emu.maps.read_dword(emu.regs().get_esp()).unwrap_or(0) as u64;
@@ -9,15 +8,14 @@ pub fn ReadFile(emu: &mut emu::Emu) {
     let bytes_read = emu.maps.read_dword(emu.regs().get_esp() + 12).unwrap_or(0) as u64;
     let overlapped = emu.maps.read_dword(emu.regs().get_esp() + 16).unwrap_or(0);
 
-    let mut count = COUNT_READ.lock().unwrap();
-    *count += 1;
+    emu.count_read += 1;
 
-    if size == 4 && *count == 1 {
+    if size == 4 && emu.count_read == 1 {
         // probably reading the size
         emu.maps.write_dword(buff, 0x10);
     }
 
-    if *count < 3 {
+    if emu.count_read < 3 {
         // keep reading bytes
         emu.maps.write_dword(bytes_read, size);
         emu.maps.memset(buff, 0x90, size as usize);
