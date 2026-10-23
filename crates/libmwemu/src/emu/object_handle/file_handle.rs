@@ -259,7 +259,7 @@ impl FileHandle {
     }
 
     pub fn write(&mut self, buffer: &[u8]) -> Result<usize, io::Error> {
-        if !(self.is_valid && !self.is_dir) {
+        if !self.is_valid || self.is_dir {
             return Err(io::Error::new(
                 ErrorKind::InvalidInput,
                 "Invalid handle or operation for directory",
