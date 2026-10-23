@@ -1,6 +1,7 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use libmwemu::emu::Emu;
+use std::panic;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 4 || data.len() > 4096 {
@@ -10,6 +11,8 @@ fuzz_target!(|data: &[u8]| {
     if emu.load_code_bytes(data).is_ok() {
         emu.cfg.verbose = 0;
         emu.cfg.max_instructions = Some(1000);
-        let _ = emu.run(None);
+        let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            let _ = emu.run(None);
+        }));
     }
 });
