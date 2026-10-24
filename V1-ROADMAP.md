@@ -86,8 +86,14 @@ The `libmwemu` crate API is what downstream users (pymwemu, cmwemu, custom
 tools) depend on. A v1 promises it won't break without a major bump.
 
 **Work:**
-- [ ] Review `pub` visibility — internals that leaked as `pub` should be
-      `pub(crate)`.
+- [x] Review `pub` visibility — internals that leaked as `pub` should be
+      `pub(crate)`. Done: 7 modules in lib.rs restricted to `pub(crate)`
+      (api, engine, exception, loaders, syscall, threading, windows);
+      4 internal re-exports to `pub(crate) use`; ~50 Emu struct fields
+      restricted to `pub(crate)` (only 20 fields remain `pub`: those used
+      by pymwemu, cmwemu, CLI, MCP, snapshot, and x86-test).
+      `InstructionState` struct made `pub(crate)`. All workspace crates
+      compile, 735 tests pass.
 - [ ] Stable entry points: `Emu::new`, `load_code`, `run`, `run_to`,
       `set_hook`, config fields. Document with `///` doc comments.
 - [ ] Stabilize the `Hooks` callback signatures.
