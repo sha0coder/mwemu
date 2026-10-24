@@ -22,9 +22,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.maps.write_qword(emu.regs().rdi, emu.regs().rax);
 
     if emu.flag_df() {
-        emu.regs_mut().rdi -= 8;
+        let v = emu.regs().rdi.wrapping_sub(8); emu.regs_mut().rdi = v;
     } else {
-        emu.regs_mut().rdi += 8;
+        let v = emu.regs().rdi.wrapping_add(8); emu.regs_mut().rdi = v;
     }
     true
 }

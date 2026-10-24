@@ -27,9 +27,9 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             return false;
         }
         if emu.flag_df() {
-            emu.regs_mut().rdi -= 4;
+            let v = emu.regs().rdi.wrapping_sub(4); emu.regs_mut().rdi = v;
         } else {
-            emu.regs_mut().rdi += 4;
+            let v = emu.regs().rdi.wrapping_add(4); emu.regs_mut().rdi = v;
         }
     } else {
         // 32bits
@@ -41,10 +41,10 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         }
 
         if emu.flag_df() {
-            let edi = emu.regs().get_edi() - 4;
+            let edi = emu.regs().get_edi().wrapping_sub(4);
             emu.regs_mut().set_edi(edi);
         } else {
-            let edi = emu.regs().get_edi() + 4;
+            let edi = emu.regs().get_edi().wrapping_add(4);
             emu.regs_mut().set_edi(edi);
         }
     }

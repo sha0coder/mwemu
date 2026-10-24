@@ -37,11 +37,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         if emu.flag_df() {
-            emu.regs_mut().rsi -= 2;
-            emu.regs_mut().rdi -= 2;
+            let v = emu.regs().rsi.wrapping_sub(2); emu.regs_mut().rsi = v;
+            let v = emu.regs().rdi.wrapping_sub(2); emu.regs_mut().rdi = v;
         } else {
-            emu.regs_mut().rsi += 2;
-            emu.regs_mut().rdi += 2;
+            let v = emu.regs().rsi.wrapping_add(2); emu.regs_mut().rsi = v;
+            let v = emu.regs().rdi.wrapping_add(2); emu.regs_mut().rdi = v;
         }
     } else {
         // 32bits
@@ -61,13 +61,13 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         if emu.flag_df() {
-            let esi = emu.regs().get_esi() - 2;
-            let edi = emu.regs().get_edi() - 2;
+            let esi = emu.regs().get_esi().wrapping_sub(2);
+            let edi = emu.regs().get_edi().wrapping_sub(2);
             emu.regs_mut().set_esi(esi);
             emu.regs_mut().set_edi(edi);
         } else {
-            let esi = emu.regs().get_esi() + 2;
-            let edi = emu.regs().get_edi() + 2;
+            let esi = emu.regs().get_esi().wrapping_add(2);
+            let edi = emu.regs().get_edi().wrapping_add(2);
             emu.regs_mut().set_esi(esi);
             emu.regs_mut().set_edi(edi);
         }

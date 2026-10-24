@@ -30,17 +30,17 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
     if emu.cfg.is_x64() {
         if emu.flag_df() {
-            emu.regs_mut().rdi -= 1;
+            let v = emu.regs().rdi.wrapping_sub(1); emu.regs_mut().rdi = v;
         } else {
-            emu.regs_mut().rdi += 1;
+            let v = emu.regs().rdi.wrapping_add(1); emu.regs_mut().rdi = v;
         }
     } else {
         // 32bits
         if emu.flag_df() {
-            let edi = emu.regs().get_edi() - 1;
+            let edi = emu.regs().get_edi().wrapping_sub(1);
             emu.regs_mut().set_edi(edi);
         } else {
-            let edi = emu.regs().get_edi() + 1;
+            let edi = emu.regs().get_edi().wrapping_add(1);
             emu.regs_mut().set_edi(edi);
         }
     }
