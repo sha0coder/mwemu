@@ -144,10 +144,18 @@ Priority list (based on Enigma, Themida, and common malware):
 
 ### 6. 32-bit / 64-bit parity
 
-- [ ] ntdll cross-module call interception (done for 64-bit, needs 32-bit)
-- [ ] `_HEAP` structure emulation for 32-bit
-- [ ] VirtualAllocEx for 32-bit (same commit-without-reserve fix)
-- [ ] Test coverage: every 64-bit winapi test should have a 32-bit mirror
+- [x] ntdll cross-module call interception (done for 64-bit, needs 32-bit)
+      Added `is_ntdll_cross_call` detection in `set_eip` mirroring the 64-bit
+      `set_rip` logic. Cross-module calls into ntdll32 are now intercepted by
+      the gateway instead of executing raw bytes.
+- [x] `_HEAP` structure emulation for 32-bit
+      New `heap32.rs` models the Win10 x86 `_HEAP` (SegmentSignature, Flags,
+      SegmentList, BlocksIndex, FreeLists, LockVariable). `peb32::init_peb()`
+      now allocates and writes the ProcessHeap at PEB32 offset +0x18.
+- [x] VirtualAllocEx for 32-bit (same commit-without-reserve fix)
+- [x] Test coverage: 32-bit mirrors for GetModuleHandleA, CloseHandle added.
+      9 64-bit tests without mirrors audited; remaining are COM/WinHTTP/user32
+      stubs not yet implemented in 32-bit.
 
 ### 7. Syscall mode (`--syscall-mode`) robustness
 
