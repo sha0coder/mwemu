@@ -244,14 +244,8 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
             let flags = emu.regs().rdx;
             let src = emu.regs().r8;
             let src_len = emu.regs().r9 as i64;
-            let dst = emu
-                .maps
-                .read_qword(emu.regs().rsp + 0x28)
-                .unwrap_or(0);
-            let dst_len = emu
-                .maps
-                .read_qword(emu.regs().rsp + 0x30)
-                .unwrap_or(0) as i64;
+            let dst = emu.maps.read_qword(emu.regs().rsp + 0x28).unwrap_or(0);
+            let dst_len = emu.maps.read_qword(emu.regs().rsp + 0x30).unwrap_or(0) as i64;
             let real_src_len = if src_len < 0 {
                 let s = emu.maps.read_wide_string(src);
                 (s.len() + 1) as i64
