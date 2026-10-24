@@ -34,18 +34,19 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         );
     }
 
-    // validation 4: if cb_multi_byte is negative or too big
-    if !(0..=10_000_000).contains(&cb_multi_byte) {
-        log::warn!(
-            "[ALERT] MultiByteToWideChar: cb_multi_byte = {} is suspicious",
-            cb_multi_byte
-        );
-    }
-
-    // Read exact number of bytes specified
+    // Read the input string
     if utf8_ptr > 0 {
-        let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
-        utf8 = String::from_utf8_lossy(bytes).to_string();
+        if cb_multi_byte == -1 {
+            utf8 = emu.maps.read_string(utf8_ptr);
+        } else if (0..=10_000_000).contains(&cb_multi_byte) {
+            let bytes = emu.maps.read_bytes(utf8_ptr, cb_multi_byte as usize);
+            utf8 = String::from_utf8_lossy(bytes).to_string();
+        } else {
+            log::warn!(
+                "[ALERT] MultiByteToWideChar: cb_multi_byte = {} is suspicious",
+                cb_multi_byte
+            );
+        }
     }
 
     log_red!(
@@ -71,8 +72,10 @@ pub fn MultiByteToWideChar(emu: &mut emu::Emu) {
         );
     }
 
-    // Convert to UTF-16 (without null terminator since cb_multi_byte is explicit)
-    let wide: Vec<u16> = utf8.encode_utf16().collect();
+    let mut wide: Vec<u16> = utf8.encode_utf16().collect();
+    if cb_multi_byte == -1 {
+        wide.push(0);
+    }
 
     if cch_wide_char == 0 {
         // Return required buffer size for UTF-16 conversion

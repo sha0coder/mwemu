@@ -39,7 +39,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "AcquireSRWLockShared" => AcquireSRWLockShared(emu),
         "ActivateActCtx" => ActivateActCtx(emu),
         "AddVectoredExceptionHandler" => AddVectoredExceptionHandler(emu),
-        "AreFileApiIsAnsi" => AreFileApiIsAnsi(emu),
+        "AreFileApiIsAnsi" | "AreFileApisANSI" => AreFileApiIsAnsi(emu),
         "BeginUpdateResourceA" => BeginUpdateResourceA(emu),
         "CloseHandle" => CloseHandle(emu),
         "CompareStringW" => CompareStringW(emu),
@@ -53,6 +53,7 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "CreateDirectoryA" => CreateDirectoryA(emu),
         "CreateDirectoryW" => CreateDirectoryW(emu),
         "CreateEventA" => CreateEventA(emu),
+        "CreateEventW" => CreateEventW(emu),
         "CreateFileA" => CreateFileA(emu),
         "CreateFileW" => CreateFileW(emu),
         "CreateFileMappingA" => CreateFileMappingA(emu),
@@ -138,6 +139,10 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetFileType" => GetFileType(emu),
         "GetFullPathNameA" => GetFullPathNameA(emu),
         "GetFullPathNameW" => GetFullPathNameW(emu),
+        "GetCurrentPackagePath" => {
+            log_red!(emu, "kernel32!GetCurrentPackagePath (stub)");
+            emu.regs_mut().rax = 0x80073D54; // APPMODEL_ERROR_NO_PACKAGE
+        }
         "GetLastError" => GetLastError(emu),
         "GetLocaleInfoA" => GetLocaleInfoA(emu),
         "GetLocaleInfoW" => GetLocaleInfoW(emu),
@@ -155,6 +160,17 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "GetStartupInfoA" => GetStartupInfoA(emu),
         "GetStartupInfoW" => GetStartupInfoW(emu),
         "GetStdHandle" => GetStdHandle(emu),
+        "GetStringTypeW" => {
+            let dw_info_type = emu.regs().rcx;
+            let len = emu.regs().r8;
+            log_red!(
+                emu,
+                "kernel32!GetStringTypeW type: {} len: {}",
+                dw_info_type,
+                len
+            );
+            emu.regs_mut().rax = 1;
+        }
         "GetThreadId" => GetThreadId(emu),
         "GetSystemDirectoryA" => GetSystemDirectoryA(emu),
         "GetSystemDirectoryW" => GetSystemDirectoryW(emu),
@@ -196,6 +212,11 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "InitOnceBeginInitialize" => InitOnceBeginInitialize(emu),
         "IsBadReadPtr" => IsBadReadPtr(emu),
         "IsDebuggerPresent" => IsDebuggerPresent(emu),
+        "IsValidCodePage" => {
+            let cp = emu.regs().rcx;
+            log_red!(emu, "kernel32!IsValidCodePage cp: {}", cp);
+            emu.regs_mut().rax = 1;
+        }
         "IsWow64Process" => IsWow64Process(emu),
         "IsProcessorFeaturePresent" => IsProcessorFeaturePresent(emu),
         "LeaveCriticalSection" => LeaveCriticalSection(emu),
@@ -244,6 +265,11 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "RegSetValueExA" => RegSetValueExA(emu),
         "RegSetValueExW" => RegSetValueExW(emu),
         "ResetEvent" => ResetEvent(emu),
+        "SetEvent" => {
+            let handle = emu.regs().rcx;
+            log_red!(emu, "kernel32!SetEvent handle: 0x{:x}", handle);
+            emu.regs_mut().rax = 1;
+        }
 
         "ReleaseSRWLockExclusive" => ReleaseSRWLockExclusive(emu),
         "ReleaseSRWLockShared" => ReleaseSRWLockShared(emu),
@@ -280,6 +306,23 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "VirtualProtectEx" => VirtualProtectEx(emu),
         "WaitForMultipleObjects" => WaitForMultipleObjects(emu),
         "WaitForSingleObject" => WaitForSingleObject(emu),
+        "VerifyVersionInfoA" | "VerifyVersionInfoW" => {
+            log_red!(emu, "kernel32!VerifyVersionInfo (stub) -> TRUE");
+            emu.regs_mut().rax = 1;
+        }
+        "VerSetConditionMask" => {
+            let mask = emu.regs().rcx;
+            let type_bit = emu.regs().rdx;
+            let condition = emu.regs().r8;
+            log_red!(
+                emu,
+                "kernel32!VerSetConditionMask mask: 0x{:x} type: {} cond: {}",
+                mask,
+                type_bit,
+                condition
+            );
+            emu.regs_mut().rax = mask | (condition << (type_bit & 0x1f));
+        }
         "WideCharToMultiByte" => WideCharToMultiByte(emu),
         "WinExec" => WinExec(emu),
         "WriteConsoleW" => WriteConsoleW(emu),

@@ -477,6 +477,21 @@ pub fn get_stub_exports(dll_name: &str) -> Option<&'static [&'static str]> {
         "iphlpapi" => Some(iphlpapi_exports()),
         "user32" => Some(user32_exports()),
         "winhttp" => Some(winhttp_exports()),
+        "bcryptprimitives" => Some(bcryptprimitives_exports()),
+        "winmm" => Some(winmm_exports()),
+        "mscoree" => Some(mscoree_exports()),
         _ => None,
     }
+}
+
+fn bcryptprimitives_exports() -> &'static [&'static str] {
+    &["ProcessPrng"]
+}
+
+fn winmm_exports() -> &'static [&'static str] {
+    &["timeBeginPeriod", "timeEndPeriod", "timeGetTime"]
+}
+
+fn mscoree_exports() -> &'static [&'static str] {
+    &["_CorExeMain", "_CorDllMain", "CorBindToRuntimeEx"]
 }

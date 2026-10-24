@@ -59,7 +59,7 @@ pub enum SerializableCurrentThreadState {
         eh_ctx: u64,
         tls32: Vec<u32>,
         tls64: Vec<u64>,
-        fls: Vec<u32>,
+        fls: Vec<u64>,
         fs: BTreeMap<u64, u64>,
         call_stack: Vec<(u64, u64)>,
     },

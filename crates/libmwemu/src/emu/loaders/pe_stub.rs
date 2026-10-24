@@ -246,6 +246,213 @@ impl Emu {
 
         base
     }
+
+    pub fn create_stub_pe64(&mut self, dll_name: &str, exports: &[&str]) -> u64 {
+        let n = exports.len() as u32;
+
+        let map_name = dll_name
+            .rsplit('/')
+            .next()
+            .unwrap_or(dll_name)
+            .rsplit('\\')
+            .next()
+            .unwrap_or(dll_name)
+            .trim_end_matches(".dll")
+            .trim_end_matches(".DLL")
+            .to_string();
+
+        let text_size = align_page(n * FUNC_SLOT);
+        let edata_rva = TEXT_RVA + text_size;
+
+        let dll_name_str = format!("{}.dll", map_name);
+        let strings_len: u32 =
+            dll_name_str.len() as u32 + 1 + exports.iter().map(|s| s.len() as u32 + 1).sum::<u32>();
+        let edata_raw = 40 + n * 10 + strings_len;
+        let edata_size = align_page(edata_raw);
+
+        let size_of_image = PAGE + text_size + edata_size;
+        let base = match self.maps.lib64_alloc(size_of_image as u64) {
+            Some(b) => b,
+            None => {
+                log::error!("create_stub_pe64: out of lib64 space for {}", dll_name);
+                return 0;
+            }
+        };
+
+        let pe_map = match self.maps.create_map(
+            &format!("{}.pe", map_name),
+            base,
+            PAGE as u64,
+            Permission::READ_WRITE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub pe64 map: {}", e);
+                return 0;
+            }
+        };
+
+        let mut hdr = vec![0u8; PAGE as usize];
+        hdr[0] = 0x4d;
+        hdr[1] = 0x5a;
+        w32(&mut hdr, 0x3c, 0x80);
+        w32(&mut hdr, 0x80, 0x0000_4550);
+
+        w16(&mut hdr, 0x84, 0x8664); // Machine = AMD64
+        w16(&mut hdr, 0x86, 2);
+        w16(&mut hdr, 0x94, 0xf0); // SizeOfOptionalHeader (PE32+)
+        w16(&mut hdr, 0x96, 0x2022); // DLL | EXEC | LARGE_ADDRESS_AWARE
+
+        w16(&mut hdr, 0x98, 0x20b); // Magic = PE32+
+        w32(&mut hdr, 0x9c, text_size);
+        w32(&mut hdr, 0xac, TEXT_RVA);
+        // PE32+ has ImageBase at 0xb0 as u64
+        let ib_off = 0xb0;
+        hdr[ib_off..ib_off + 8].copy_from_slice(&base.to_le_bytes());
+        w32(&mut hdr, 0xb8, PAGE); // SectionAlignment
+        w32(&mut hdr, 0xbc, 0x200); // FileAlignment
+        w32(&mut hdr, 0xd0, size_of_image); // SizeOfImage
+        w32(&mut hdr, 0xd4, 0x200); // SizeOfHeaders
+        w16(&mut hdr, 0xdc, 3); // Subsystem = CONSOLE
+        w32(&mut hdr, 0x108, 16); // NumberOfRvaAndSizes
+
+        w32(&mut hdr, 0x10c, edata_rva); // DataDirectory[0] Export RVA
+        w32(&mut hdr, 0x110, edata_raw); // Export Size
+
+        let s0 = 0x188;
+        copy_name(&mut hdr, s0, b".text\0\0\0");
+        w32(&mut hdr, s0 + 8, text_size);
+        w32(&mut hdr, s0 + 12, TEXT_RVA);
+        w32(&mut hdr, s0 + 16, text_size);
+        w32(&mut hdr, s0 + 20, TEXT_RVA);
+        w32(&mut hdr, s0 + 36, 0x6000_0020);
+
+        let s1 = s0 + 40;
+        copy_name(&mut hdr, s1, b".edata\0\0");
+        w32(&mut hdr, s1 + 8, edata_size);
+        w32(&mut hdr, s1 + 12, edata_rva);
+        w32(&mut hdr, s1 + 16, edata_size);
+        w32(&mut hdr, s1 + 20, edata_rva);
+        w32(&mut hdr, s1 + 36, 0x4000_0040);
+
+        pe_map.memcpy(&hdr, hdr.len());
+
+        let text_map = match self.maps.create_map(
+            &format!("{}.text", map_name),
+            base + TEXT_RVA as u64,
+            text_size as u64,
+            Permission::READ_WRITE_EXECUTE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub text64 map: {}", e);
+                return 0;
+            }
+        };
+        for i in 0..n {
+            text_map.write_byte(base + TEXT_RVA as u64 + (i * FUNC_SLOT) as u64, 0xc3);
+        }
+
+        let edata_base = base + edata_rva as u64;
+        let edata_map = match self.maps.create_map(
+            &format!("{}.edata", map_name),
+            edata_base,
+            edata_size as u64,
+            Permission::READ_WRITE,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                log::error!("cannot create stub edata64 map: {}", e);
+                return 0;
+            }
+        };
+
+        let mut ed = vec![0u8; edata_size as usize];
+
+        let func_tbl_rva = edata_rva + 40;
+        let name_tbl_rva = func_tbl_rva + n * 4;
+        let ord_tbl_rva = name_tbl_rva + n * 4;
+        let str_base_rva = ord_tbl_rva + n * 2;
+
+        let mut str_off = (str_base_rva - edata_rva) as usize;
+        let dll_name_rva = edata_rva + str_off as u32;
+        for b in dll_name_str.bytes() {
+            ed[str_off] = b;
+            str_off += 1;
+        }
+        ed[str_off] = 0;
+        str_off += 1;
+
+        let mut name_rvas = Vec::with_capacity(exports.len());
+        for name in exports {
+            name_rvas.push(edata_rva + str_off as u32);
+            for b in name.bytes() {
+                ed[str_off] = b;
+                str_off += 1;
+            }
+            ed[str_off] = 0;
+            str_off += 1;
+        }
+
+        w32(&mut ed, 0x0c, dll_name_rva);
+        w32(&mut ed, 0x10, 1);
+        w32(&mut ed, 0x14, n);
+        w32(&mut ed, 0x18, n);
+        w32(&mut ed, 0x1c, func_tbl_rva);
+        w32(&mut ed, 0x20, name_tbl_rva);
+        w32(&mut ed, 0x24, ord_tbl_rva);
+
+        let fo = (func_tbl_rva - edata_rva) as usize;
+        for i in 0..n as usize {
+            w32(&mut ed, fo + i * 4, TEXT_RVA + (i as u32) * FUNC_SLOT);
+        }
+
+        let no = (name_tbl_rva - edata_rva) as usize;
+        for (i, &rva) in name_rvas.iter().enumerate().take(n as usize) {
+            w32(&mut ed, no + i * 4, rva);
+        }
+
+        let oo = (ord_tbl_rva - edata_rva) as usize;
+        for i in 0..n as usize {
+            w16(&mut ed, oo + i * 2, i as u16);
+        }
+
+        edata_map.memcpy(&ed, ed.len());
+
+        let mut ordinal_targets = Vec::with_capacity(exports.len());
+        let mut named_exports_vec = Vec::with_capacity(exports.len());
+        for (i, name) in exports.iter().enumerate() {
+            ordinal_targets.push(Some(ExportTarget::Direct {
+                rva: TEXT_RVA + (i as u32) * FUNC_SLOT,
+            }));
+            named_exports_vec.push(NamedExport {
+                name: name.to_string(),
+                ordinal_index: i as u32,
+            });
+        }
+        let parsed = ExportIndexData {
+            export_base: 1,
+            number_of_functions: exports.len() as u32,
+            ordinal_targets,
+            named_exports: named_exports_vec,
+        };
+        let index = ModuleExportIndex::from_parsed(
+            map_name.clone(),
+            export_index::normalize_module_name(&map_name),
+            base,
+            &parsed,
+        );
+        self.export_indexes.register(index);
+
+        log::info!(
+            "created PE64 stub for {} at 0x{:x} ({} exports)",
+            dll_name,
+            base,
+            exports.len()
+        );
+
+        base
+    }
 }
 
 fn w32(buf: &mut [u8], off: usize, val: u32) {

@@ -8,7 +8,7 @@ pub fn FlsGetValue(emu: &mut emu::Emu) {
     if idx as usize > emu.fls().len() {
         emu.regs_mut().rax = 0;
     } else {
-        emu.regs_mut().rax = emu.fls_mut()[idx as usize] as u64;
+        emu.regs_mut().rax = emu.fls_mut()[idx as usize];
     }
 
     log_red!(

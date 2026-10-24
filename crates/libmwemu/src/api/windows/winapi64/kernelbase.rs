@@ -24,6 +24,22 @@ pub fn gateway(addr: u64, emu: &mut emu::Emu) -> String {
         "atexit" => atexit(emu),
         "SetUnhandledExceptionFilter" => SetUnhandledExceptionFilter(emu),
         "LocalAlloc" => LocalAlloc(emu),
+        "LCMapStringEx" => {
+            let src_len = emu.regs().get_r9d() as i32;
+            log_red!(emu, "kernelbase!LCMapStringEx src_len: {}", src_len);
+            emu.regs_mut().rax = if src_len > 0 { src_len as u64 } else { 0 };
+        }
+        "AppPolicyGetProcessTerminationMethod" => {
+            let policy_ptr = emu.regs().rdx;
+            log_red!(
+                emu,
+                "kernelbase!AppPolicyGetProcessTerminationMethod (stub)"
+            );
+            if policy_ptr != 0 {
+                emu.maps.write_dword(policy_ptr, 0);
+            }
+            emu.regs_mut().rax = 0;
+        }
 
         _ => {
             // kernelbase is bridge to kernel32

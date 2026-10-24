@@ -153,12 +153,15 @@ test_speed: all samples
 	bash -c 'time ./target/release/mwemu -f $(TEST_DIR)/exe64win_enigma.bin -6 -v -c 20000000 --cmd q'
 	@echo "[speed] 20,000,000 instructions emulated successfully."
 
-# Fuzz smoke test: same targets and duration as CI (30s each, nightly + cargo-fuzz required).
+# Fuzz smoke test (30s each by default, nightly + cargo-fuzz required).
+# Uses x86.dict for smarter input generation. Panics are caught (not crashes),
+# so the fuzzer only stops on real memory-safety bugs.
 FUZZ_TIME ?= 30
+FUZZ_DICT := -dict=x86.dict
 test_fuzz:
-	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code -- -max_total_time=$(FUZZ_TIME)
-	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=$(FUZZ_TIME)
-	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code64 -- -max_total_time=$(FUZZ_TIME)
-	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode64 -- -max_total_time=$(FUZZ_TIME)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code -- -max_total_time=$(FUZZ_TIME) $(FUZZ_DICT)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode -- -max_total_time=$(FUZZ_TIME) $(FUZZ_DICT)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_load_code64 -- -max_total_time=$(FUZZ_TIME) $(FUZZ_DICT)
+	cd fuzz && ASAN_OPTIONS=detect_leaks=0 cargo +nightly fuzz run fuzz_run_shellcode64 -- -max_total_time=$(FUZZ_TIME) $(FUZZ_DICT)
 	@echo "[fuzz] all 4 targets passed ($(FUZZ_TIME)s each)"
 

@@ -335,7 +335,7 @@ impl Emu {
                             .unwrap_or(0),
                         _ => self.maps.read_qword(teb_addr).unwrap_or(0),
                     };
-                    if self.cfg.verbose >= 1 {
+                    if self.cfg.verbose >= 3 {
                         log::trace!("gs:[0x{:x}] -> 0x{:x}  (teb+0x{:x})", mem_addr, v, mem_addr);
                     }
                     return Some(v);
@@ -608,9 +608,19 @@ impl Emu {
                 };
 
                 let mem_seg = ins.memory_segment();
+
+                // Compute full effective address for segment-relative writes,
+                // matching the read path: displacement + base register.
+                let seg_offset = if mem_base == Register::None || mem_base == Register::RIP {
+                    temp_displace
+                } else {
+                    let base_val = self.regs().get_reg(mem_base);
+                    base_val.wrapping_add(temp_displace)
+                };
+
                 if unlikely(mem_seg == Register::GS && self.kernel.is_some()) {
                     // Per-CPU store; see the matching read path above.
-                    let addr = self.regs().gs.wrapping_add(temp_displace);
+                    let addr = self.regs().gs.wrapping_add(seg_offset);
                     match (ins.memory_size().size() * 8) as u32 {
                         8 => self.maps.write_byte(addr, value as u8),
                         16 => self.maps.write_word(addr, value as u16),
@@ -623,13 +633,13 @@ impl Emu {
                     // x64 Windows: GS is based at TEB.  Forward writes to teb_base + offset
                     // so that real ntdll code can update TEB fields without writing to address 0.
                     let teb_base = self.maps.get_mem("teb").get_base();
-                    let teb_addr = teb_base.wrapping_add(temp_displace);
-                    if self.cfg.verbose >= 1 {
+                    let teb_addr = teb_base.wrapping_add(seg_offset);
+                    if self.cfg.verbose >= 3 {
                         log::trace!(
                             "gs:[0x{:x}] = 0x{:x}  (teb+0x{:x})",
-                            temp_displace,
+                            seg_offset,
                             value,
-                            temp_displace
+                            seg_offset
                         );
                     }
                     match (ins.memory_size().size() * 8) as u32 {
