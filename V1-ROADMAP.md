@@ -160,11 +160,15 @@ Priority list (based on Enigma, Themida, and common malware):
 ### 7. Syscall mode (`--syscall-mode`) robustness
 
 - [ ] `_HEAP` struct: populate `BlocksIndex` function pointers or intercept
-      CFG dispatch so ntdll heap code doesn't crash (see `docs/ANTI_EMU_HEAP.md`)
-- [ ] TEB fields: `+0x1480` (FlsData), `+0x1858` (heap-related) used by
-      ntdll internals
-- [ ] More syscall stubs: `NtQueryVirtualMemory`, `NtProtectVirtualMemory`,
-      `NtAllocateVirtualMemory`
+      CFG dispatch so ntdll heap code doesn't crash (see `docs/ANTI_EMU_HEAP.md`).
+      Low urgency: `VirtualMemoryThreshold = 0xFE00` routes most allocations
+      away from BlocksIndex; only large-block paths (>0xFE00) are affected.
+- [x] TEB fields: `+0x1480` (FlsData), `+0x1858` (heap-related) used by
+      ntdll internals. `ensure_teb_fls_and_heap_fields()` allocates a zeroed
+      FLS region and writes `&_HEAP.Flags` so ntdll reads don't crash.
+- [x] More syscall stubs: `NtQueryVirtualMemory`, `NtProtectVirtualMemory`,
+      `NtAllocateVirtualMemory` — all three already implemented in
+      `syscall/windows/syscall64/memory.rs`.
 
 ---
 
