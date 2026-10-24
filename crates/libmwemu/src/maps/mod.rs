@@ -52,6 +52,7 @@ impl Default for Maps {
 impl Maps {
     const DEFAULT_ALIGNMENT: u64 = 0x1000; //16;
 
+    /// Create a Maps instance from pre-built storage. Typically called internally by `Emu::new`.
     pub fn new(
         mem_slab: Slab<Mem64>,
         maps: BTreeMap<u64, usize>,
@@ -305,10 +306,12 @@ impl Maps {
         }
     }
 
+    /// Write a byte to the virtual address space. Returns false if unmapped or read-only.
     pub fn write_byte(&mut self, addr: u64, value: u8) -> bool {
         self.write_scalar(addr, value, ScalarKind::Byte)
     }
 
+    /// Read a byte from the virtual address space. Returns None if unmapped.
     pub fn read_byte(&self, addr: u64) -> Option<u8> {
         self.read_scalar(addr, ScalarKind::Byte)
     }
@@ -329,14 +332,17 @@ impl Maps {
         self.write_dword(addr, value.to_bits())
     }
 
+    /// Write a 64-bit value to the virtual address space.
     pub fn write_qword(&mut self, addr: u64, value: u64) -> bool {
         self.write_scalar(addr, value, ScalarKind::Qword)
     }
 
+    /// Write a 32-bit value to the virtual address space.
     pub fn write_dword(&mut self, addr: u64, value: u32) -> bool {
         self.write_scalar(addr, value, ScalarKind::Dword)
     }
 
+    /// Write a 16-bit value to the virtual address space.
     pub fn write_word(&mut self, addr: u64, value: u16) -> bool {
         self.write_scalar(addr, value, ScalarKind::Word)
     }
@@ -345,6 +351,7 @@ impl Maps {
         self.write_bytes(addr, data)
     }
 
+    /// Write a byte slice to the virtual address space, handling cross-map boundaries.
     pub fn write_bytes(&mut self, addr: u64, data: &[u8]) -> bool {
         if data.is_empty() {
             return true;
@@ -397,18 +404,22 @@ impl Maps {
         self.read_scalar(addr, ScalarKind::Oword)
     }
 
+    /// Read a 64-bit value from the virtual address space.
     pub fn read_qword(&self, addr: u64) -> Option<u64> {
         self.read_scalar(addr, ScalarKind::Qword)
     }
 
+    /// Read a 32-bit value from the virtual address space.
     pub fn read_dword(&self, addr: u64) -> Option<u32> {
         self.read_scalar(addr, ScalarKind::Dword)
     }
 
+    /// Read a 16-bit value from the virtual address space.
     pub fn read_word(&self, addr: u64) -> Option<u16> {
         self.read_scalar(addr, ScalarKind::Word)
     }
 
+    /// Get a memory region by name. Panics if the name doesn't exist.
     pub fn get_mem_ref(&self, name: &str) -> &Mem64 {
         self.get_map_by_name(name)
             .expect("incorrect memory map name")
@@ -420,6 +431,7 @@ impl Maps {
             .expect("incorrect memory map name")
     }
 
+    /// Get a mutable memory region by name. Panics if the name doesn't exist.
     pub fn get_mem_mut(&mut self, name: &str) -> &mut Mem64 {
         self.get_map_by_name_mut(name)
             .expect("incorrect memory map name")

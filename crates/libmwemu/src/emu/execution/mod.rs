@@ -61,6 +61,7 @@ mod x86;
 pub(crate) use crate::emu::Emu;
 
 impl Emu {
+    /// Stop emulation. Marks the process as terminated and clears the running flag.
     #[inline]
     pub fn stop(&mut self) {
         self.process_terminated = true;

@@ -232,14 +232,17 @@ pub struct Emu {
 
 // --- Win32 last-error helpers ---
 impl Emu {
+    /// Set the Win32 last-error code (GetLastError / SetLastError).
     pub fn set_last_error(&mut self, code: u64) {
         self.last_error = code;
     }
 
+    /// Get the Win32 last-error code.
     pub fn get_last_error(&self) -> u64 {
         self.last_error
     }
 
+    /// Reset the Win32 last-error code to zero.
     pub fn clear_last_error(&mut self) {
         self.last_error = 0;
     }

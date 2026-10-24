@@ -119,6 +119,7 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Create a new Config with sensible defaults (x86, no tracing, no console).
     pub fn new() -> Config {
         Config {
             filename: String::new(),
@@ -193,21 +194,25 @@ impl Config {
         }
     }
 
+    /// Returns true when the configured architecture is x86-64.
     #[inline(always)]
     pub fn is_x64(&self) -> bool {
         self.arch.is_x64()
     }
 
+    /// Returns true when the configured architecture is AArch64.
     #[inline(always)]
     pub fn is_aarch64(&self) -> bool {
         self.arch.is_aarch64()
     }
 
+    /// Returns true when the configured architecture is 32-bit x86.
     #[inline(always)]
     pub fn is_x86(&self) -> bool {
         self.arch.is_x86()
     }
 
+    /// Build an absolute path inside the configured maps folder.
     pub fn get_maps_folder(&self, filename: &str) -> String {
         let mut path = self.maps_folder.clone();
         if !path.ends_with('/') {
