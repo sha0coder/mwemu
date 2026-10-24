@@ -94,11 +94,17 @@ tools) depend on. A v1 promises it won't break without a major bump.
       by pymwemu, cmwemu, CLI, MCP, snapshot, and x86-test).
       `InstructionState` struct made `pub(crate)`. All workspace crates
       compile, 735 tests pass.
-- [ ] Stable entry points: `Emu::new`, `load_code`, `run`, `run_to`,
-      `set_hook`, config fields. Document with `///` doc comments.
-- [ ] Stabilize the `Hooks` callback signatures.
-- [ ] `cfg` fields that control behavior should have builder methods or
-      a `Config` struct with `Default`.
+- [x] Stable entry points: `Emu::new`, `load_code`, `run`, `run_to`,
+      `set_hook`, config fields. Documented with `///` doc comments on all
+      public API methods (Config, Emu, Hooks, Maps, stack, trace, execution).
+- [x] Stabilize the `Hooks` callback signatures. Done: hook convenience
+      methods added to `Emu` (`set_hook_on_*`, `clear_hooks`) so users
+      don't access `emu.hooks` directly. Signatures stable since
+      `DecodedInstruction` migration.
+- [x] `cfg` fields that control behavior should have builder methods or
+      a `Config` struct with `Default`. Done: 48 `set_*` builder methods
+      on `Config` returning `&mut Self` for chaining. `Default` impl
+      already existed.
 
 ### 3. Error handling
 
