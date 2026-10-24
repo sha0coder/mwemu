@@ -26,9 +26,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.flags_overwrite_mut().sub64(rax, value0);
 
     if emu.flag_df() {
-        let v = emu.regs().rdi.wrapping_sub(8); emu.regs_mut().rdi = v;
+        let v = emu.regs().rdi.wrapping_sub(8);
+        emu.regs_mut().rdi = v;
     } else {
-        let v = emu.regs().rdi.wrapping_add(8); emu.regs_mut().rdi = v;
+        let v = emu.regs().rdi.wrapping_add(8);
+        emu.regs_mut().rdi = v;
     }
     true
 }

@@ -30,11 +30,15 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
     emu.maps.write_qword(emu.regs().rdi, val);
 
     if !emu.flag_df() {
-        let v = emu.regs().rsi.wrapping_add(8); emu.regs_mut().rsi = v;
-        let v = emu.regs().rdi.wrapping_add(8); emu.regs_mut().rdi = v;
+        let v = emu.regs().rsi.wrapping_add(8);
+        emu.regs_mut().rsi = v;
+        let v = emu.regs().rdi.wrapping_add(8);
+        emu.regs_mut().rdi = v;
     } else {
-        let v = emu.regs().rsi.wrapping_sub(8); emu.regs_mut().rsi = v;
-        let v = emu.regs().rdi.wrapping_sub(8); emu.regs_mut().rdi = v;
+        let v = emu.regs().rsi.wrapping_sub(8);
+        emu.regs_mut().rsi = v;
+        let v = emu.regs().rdi.wrapping_sub(8);
+        emu.regs_mut().rdi = v;
     }
     true
 }

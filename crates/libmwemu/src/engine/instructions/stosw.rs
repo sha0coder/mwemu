@@ -13,9 +13,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
             .write_word(emu.regs().rdi, emu.regs().get_ax() as u16);
 
         if emu.flag_df() {
-            let v = emu.regs().rdi.wrapping_sub(2); emu.regs_mut().rdi = v;
+            let v = emu.regs().rdi.wrapping_sub(2);
+            emu.regs_mut().rdi = v;
         } else {
-            let v = emu.regs().rdi.wrapping_add(2); emu.regs_mut().rdi = v;
+            let v = emu.regs().rdi.wrapping_add(2);
+            emu.regs_mut().rdi = v;
         }
     } else {
         // 32bits

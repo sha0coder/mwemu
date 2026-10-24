@@ -19,7 +19,8 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         if emu.regs_mut().rcx == 0 {
             emu.regs_mut().rcx = 0xffffffffffffffff;
         } else {
-            let v = emu.regs().rcx.wrapping_sub(1); emu.regs_mut().rcx = v;
+            let v = emu.regs().rcx.wrapping_sub(1);
+            emu.regs_mut().rcx = v;
         }
 
         if emu.regs().rcx > 0 {

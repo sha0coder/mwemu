@@ -37,11 +37,15 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
         };
 
         if emu.flag_df() {
-            let v = emu.regs().rsi.wrapping_sub(2); emu.regs_mut().rsi = v;
-            let v = emu.regs().rdi.wrapping_sub(2); emu.regs_mut().rdi = v;
+            let v = emu.regs().rsi.wrapping_sub(2);
+            emu.regs_mut().rsi = v;
+            let v = emu.regs().rdi.wrapping_sub(2);
+            emu.regs_mut().rdi = v;
         } else {
-            let v = emu.regs().rsi.wrapping_add(2); emu.regs_mut().rsi = v;
-            let v = emu.regs().rdi.wrapping_add(2); emu.regs_mut().rdi = v;
+            let v = emu.regs().rsi.wrapping_add(2);
+            emu.regs_mut().rsi = v;
+            let v = emu.regs().rdi.wrapping_add(2);
+            emu.regs_mut().rdi = v;
         }
     } else {
         // 32bits

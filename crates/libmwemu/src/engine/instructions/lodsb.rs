@@ -22,9 +22,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         emu.regs_mut().set_al(val as u64);
         if emu.flag_df() {
-            let v = emu.regs().rsi.wrapping_sub(1); emu.regs_mut().rsi = v;
+            let v = emu.regs().rsi.wrapping_sub(1);
+            emu.regs_mut().rsi = v;
         } else {
-            let v = emu.regs().rsi.wrapping_add(1); emu.regs_mut().rsi = v;
+            let v = emu.regs().rsi.wrapping_add(1);
+            emu.regs_mut().rsi = v;
         }
     } else {
         let val = match emu.maps.read_byte(emu.regs().get_esi()) {

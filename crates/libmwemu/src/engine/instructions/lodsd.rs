@@ -17,9 +17,11 @@ pub fn execute(emu: &mut Emu, ins: &Instruction, instruction_sz: usize, _rep_ste
 
         emu.regs_mut().set_eax(val as u64);
         if emu.flag_df() {
-            let v = emu.regs().rsi.wrapping_sub(4); emu.regs_mut().rsi = v;
+            let v = emu.regs().rsi.wrapping_sub(4);
+            emu.regs_mut().rsi = v;
         } else {
-            let v = emu.regs().rsi.wrapping_add(4); emu.regs_mut().rsi = v;
+            let v = emu.regs().rsi.wrapping_add(4);
+            emu.regs_mut().rsi = v;
         }
     } else {
         let val = match emu.maps.read_dword(emu.regs().get_esi()) {
