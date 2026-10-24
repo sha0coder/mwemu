@@ -167,4 +167,72 @@ impl emu::Emu {
             true
         }
     }
+
+    // --- Hook registration convenience methods ---
+
+    /// Register an interrupt hook. Return false from the callback to skip default handling.
+    pub fn set_hook_on_interrupt(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static,
+    ) {
+        self.hooks.on_interrupt(hook);
+    }
+
+    /// Register an exception hook. Return false to suppress default handling.
+    pub fn set_hook_on_exception(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, types::ExceptionType) -> bool + 'static,
+    ) {
+        self.hooks.on_exception(hook);
+    }
+
+    /// Register a pre-read hook that fires before every memory read.
+    pub fn set_hook_on_memory_read(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64, u32) + 'static,
+    ) {
+        self.hooks.on_memory_read(hook);
+    }
+
+    /// Register a pre-write hook. Return the value to actually write.
+    pub fn set_hook_on_memory_write(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64, u32, u128) -> u128 + 'static,
+    ) {
+        self.hooks.on_memory_write(hook);
+    }
+
+    /// Register a pre-instruction hook. Return false to skip the instruction.
+    pub fn set_hook_on_pre_instruction(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize) -> bool + 'static,
+    ) {
+        self.hooks.on_pre_instruction(hook);
+    }
+
+    /// Register a post-instruction hook, called after each instruction executes.
+    pub fn set_hook_on_post_instruction(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, &DecodedInstruction, usize, bool) + 'static,
+    ) {
+        self.hooks.on_post_instruction(hook);
+    }
+
+    /// Register a WinAPI call hook. Return false to skip the API handler.
+    pub fn set_hook_on_winapi_call(
+        &mut self,
+        hook: impl FnMut(&mut emu::Emu, u64, u64) -> bool + 'static,
+    ) {
+        self.hooks.on_winapi_call(hook);
+    }
+
+    /// Register a syscall hook. Return false to skip the default syscall handler.
+    pub fn set_hook_on_syscall(&mut self, hook: impl FnMut(&mut emu::Emu, u64) -> bool + 'static) {
+        self.hooks.on_syscall(hook);
+    }
+
+    /// Remove all installed hooks.
+    pub fn clear_hooks(&mut self) {
+        self.hooks = Hooks::new();
+    }
 }
