@@ -116,6 +116,7 @@ pub struct Emu {
     pub maps: Maps, // virtual memory map (all allocations, stack, heap, code regions)
     pub base: u64,  // base address for code loading
     pub(crate) heap_addr: u64, // current heap base address
+    #[allow(clippy::vec_box)] // O1Heap is large; boxing avoids costly moves on vec growth
     pub(crate) heap_arenas: Vec<Box<O1Heap>>, // index 0 = process heap; O(1) allocator per heap
     pub(crate) memory_operations: Vec<MemoryOperation>, // per-step memory read/write log for tracing
 
